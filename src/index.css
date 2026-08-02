@@ -1,0 +1,112 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.625rem;
+
+  /* ---- Brand ---- */
+  --color-brand-primary: #F0522B;
+  --color-brand-primary-hover: #D8431F;
+  --color-brand-primary-subtle: #FEEBE4;
+
+  /* ---- Text ---- */
+  --color-text-primary: #212529;
+  --color-text-secondary: #495057;
+  --color-text-tertiary: #868E96;
+  --color-text-on-brand: #FFFFFF;
+
+  /* ---- Surface ---- */
+  --color-surface-page: #F5F6F8;
+  --color-surface-card: #FFFFFF;
+  --color-surface-muted: #F1F3F5;
+
+  /* ---- Border ---- */
+  --color-border-default: #E9ECEF;
+  --color-border-strong: #DEE2E6;
+
+  /* ---- Status ---- */
+  --color-status-success: #12B76A;
+  --color-status-success-subtle: #E6F7EF;
+  --color-status-warning: #F59E0B;
+  --color-status-warning-subtle: #FEF3E2;
+  --color-status-danger: #F04438;
+  --color-status-danger-subtle: #FEEDEC;
+  --color-status-info: #2E90FA;
+  --color-status-info-subtle: #E7F1FE;
+
+  /* ---- shadcn/ui base ---- */
+  --background: var(--color-surface-page);
+  --foreground: var(--color-text-primary);
+  --card: var(--color-surface-card);
+  --card-foreground: var(--color-text-primary);
+  --popover: var(--color-surface-card);
+  --popover-foreground: var(--color-text-primary);
+  --primary: var(--color-brand-primary);
+  --primary-foreground: var(--color-text-on-brand);
+  --secondary: var(--color-surface-muted);
+  --secondary-foreground: var(--color-text-primary);
+  --muted: var(--color-surface-muted);
+  --muted-foreground: var(--color-text-tertiary);
+  --accent: var(--color-brand-primary-subtle);
+  --accent-foreground: var(--color-brand-primary);
+  --destructive: var(--color-status-danger);
+  --border: var(--color-border-default);
+  --input: var(--color-border-default);
+  --ring: var(--color-brand-primary);
+}
+
+@theme inline {
+  --font-sans: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-brand-primary: var(--color-brand-primary);
+  --color-brand-primary-hover: var(--color-brand-primary-hover);
+  --color-brand-primary-subtle: var(--color-brand-primary-subtle);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-tertiary: var(--color-text-tertiary);
+  --color-text-on-brand: var(--color-text-on-brand);
+  --color-surface-page: var(--color-surface-page);
+  --color-surface-card: var(--color-surface-card);
+  --color-surface-muted: var(--color-surface-muted);
+  --color-border-default: var(--color-border-default);
+  --color-border-strong: var(--color-border-strong);
+  --color-status-success: var(--color-status-success);
+  --color-status-success-subtle: var(--color-status-success-subtle);
+  --color-status-warning: var(--color-status-warning);
+  --color-status-warning-subtle: var(--color-status-warning-subtle);
+  --color-status-danger: var(--color-status-danger);
+  --color-status-danger-subtle: var(--color-status-danger-subtle);
+  --color-status-info: var(--color-status-info);
+  --color-status-info-subtle: var(--color-status-info-subtle);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+  }
+}
