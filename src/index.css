@@ -36,7 +36,30 @@
   --color-status-info: #2E90FA;
   --color-status-info-subtle: #E7F1FE;
 
-  /* ---- shadcn/ui base ---- */
+  /* ---- Spacing (thang cách đều 4px) ---- */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  --spacing-2xl: 32px;
+  --spacing-3xl: 40px;
+  --spacing-4xl: 48px;
+  --spacing-5xl: 64px;
+
+  /* ---- Radius ---- */
+  --radius-token-sm: 6px;
+  --radius-token-md: 10px;
+  --radius-token-lg: 14px;
+  --radius-token-xl: 20px;
+  --radius-token-pill: 999px;
+
+  /* Bán kính riêng của từng component, lấy đúng theo Inspect panel Figma */
+  --radius-button: 12px;
+  --radius-card: 16px;
+  --radius-stat-card: 14px;
+
+  /* ---- shadcn/ui base (giữ để không vỡ phần UI khác đang dùng) ---- */
   --background: var(--color-surface-page);
   --foreground: var(--color-text-primary);
   --card: var(--color-surface-card);
@@ -55,6 +78,63 @@
   --border: var(--color-border-default);
   --input: var(--color-border-default);
   --ring: var(--color-brand-primary);
+
+  /* Trạng thái nghiệp vụ dùng chung (bàn, món, thanh toán...) — map đúng
+     4 màu status của Design System, không tự bịa màu mới. */
+  --status-available: var(--color-status-success);
+  --status-occupied: var(--color-status-warning);
+  --status-pending-confirm: var(--color-status-info);
+  --status-awaiting-payment: var(--color-status-warning);
+  --status-reserved: var(--color-status-danger);
+  --status-inactive: var(--color-text-tertiary);
+
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: var(--color-surface-card);
+  --sidebar-foreground: var(--color-text-primary);
+  --sidebar-primary: var(--color-brand-primary);
+  --sidebar-primary-foreground: var(--color-text-on-brand);
+  --sidebar-accent: var(--color-surface-muted);
+  --sidebar-accent-foreground: var(--color-text-primary);
+  --sidebar-border: var(--color-border-default);
+  --sidebar-ring: var(--color-brand-primary);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
 }
 
 @theme inline {
@@ -79,6 +159,8 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
+  /* Tokens đúng tên trong Design System, dùng trực tiếp: bg-brand-primary,
+     text-text-secondary, border-border-strong, bg-status-success-subtle... */
   --color-brand-primary: var(--color-brand-primary);
   --color-brand-primary-hover: var(--color-brand-primary-hover);
   --color-brand-primary-subtle: var(--color-brand-primary-subtle);
@@ -99,6 +181,36 @@
   --color-status-danger-subtle: var(--color-status-danger-subtle);
   --color-status-info: var(--color-status-info);
   --color-status-info-subtle: var(--color-status-info-subtle);
+
+  --color-status-available: var(--status-available);
+  --color-status-occupied: var(--status-occupied);
+  --color-status-pending-confirm: var(--status-pending-confirm);
+  --color-status-awaiting-payment: var(--status-awaiting-payment);
+  --color-status-reserved: var(--status-reserved);
+  --color-status-inactive: var(--status-inactive);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: var(--radius-token-sm);
+  --radius-md: var(--radius-token-md);
+  --radius-lg: var(--radius-token-lg);
+  --radius-xl: var(--radius-token-xl);
+  --radius-pill: var(--radius-token-pill);
+  --radius-button: var(--radius-button);
+  --radius-card: var(--radius-card);
+  --radius-stat-card: var(--radius-stat-card);
 }
 
 @layer base {

@@ -1,2 +1,1 @@
-# Restaurant-Frontend
-Frontend Web App for Restaurant Order Management System built with React &amp; TypeScript
+# Front-end-Booking-Service
