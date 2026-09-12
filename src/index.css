@@ -222,3 +222,22 @@
     font-family: var(--font-sans);
   }
 }
+
+/* Animation rung chuông (run run) khi có thông báo real-time mới */
+@keyframes bell-ring {
+  0%, 100% {
+    transform: rotate(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: rotate(18deg);
+  }
+  20%, 40%, 60%, 80% {
+    transform: rotate(-18deg);
+  }
+}
+
+.animate-bell-ring {
+  animation: bell-ring 1s ease-in-out infinite;
+  transform-origin: top center;
+}
+
