@@ -1,24 +1,15 @@
-import * as React from "react";
-import { NavLink, useNavigate } from "react-router-dom";
-import { LogOut, ChevronDown } from "lucide-react";
+import { NavLink, useLocation } from "react-router-dom";
+import { LogOut } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { APP_ROLE_LABEL } from "@/config/roles";
 import { getNavGroupsForRole } from "@/config/nav-items";
-import { AUTH_PATHS } from "@/app/router/paths";
+import { isNavItemActive } from "@/config/nav-utils";
+import { useLogout } from "@/features/auth/hooks/useLogout";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
+import { BranchSwitcher } from "@/components/layout/BranchSwitcher";
+import { RestaurantBrand, useRestaurantName } from "@/components/layout/RestaurantBrand";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 import { cn } from "@/lib/utils";
-
-const BRANCH_LIST = [
-  "Chi nhánh Quận 1",
-  "Chi nhánh Quận 3",
-  "Chi nhánh Thủ Đức",
-];
 
 /**
  * Sidebar — khung điều hướng desktop dùng CHUNG cho các role nhân viên qua `StaffLayout`.
@@ -30,13 +21,15 @@ const BRANCH_LIST = [
 export function Sidebar() {
   const account = useAuthStore((s) => s.account);
   const role = useAuthStore((s) => s.role);
-  const clearSession = useAuthStore((s) => s.clearSession);
-  const navigate = useNavigate();
-  const [currentBranch, setCurrentBranch] = React.useState("Chi nhánh Quận 1");
+  const { logout, isLoggingOut } = useLogout();
 
   // Mặc định vai trò là Quản trị nhà hàng (RESTAURANT_ADMIN) để xem được toàn bộ màn hình
   const currentRole = role && role !== "CUSTOMER" ? role : "RESTAURANT_ADMIN";
-  const navGroups = getNavGroupsForRole(currentRole);
+  // "desktop": bỏ các mục chỉ dành cho điều hướng mobile (xem NavItem.mobileOnly).
+  const navGroups = getNavGroupsForRole(currentRole, "desktop");
+  const { pathname } = useLocation();
+  // Tên hiện trên thanh bên lấy từ cấu hình nhà hàng thật (FR-ADM-03), không viết cứng.
+  const restaurantName = useRestaurantName();
 
   const initials =
     account?.fullName
@@ -46,52 +39,21 @@ export function Sidebar() {
       .join("")
       .toUpperCase() || "QL";
 
-  function handleLogout() {
-    clearSession();
-    navigate(AUTH_PATHS.LOGIN, { replace: true });
-  }
-
   return (
-    <aside className="hidden md:flex h-screen w-60 shrink-0 flex-col border-r border-border-default/80 bg-surface-card select-none">
+    <aside className="hidden lg:flex h-screen w-60 shrink-0 flex-col border-r border-border-default/80 bg-surface-card select-none">
       {/* Brand & Branch Switcher */}
       <div className="flex h-16 items-center justify-between border-b border-border-default/60 px-4">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-brand-primary shadow-xs">
-            <span className="text-base font-extrabold text-text-on-brand font-sans">
-              P
-            </span>
-          </div>
+          <RestaurantBrand size="sm" />
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-sm font-bold text-text-primary">
-              Phở Việt
+              {restaurantName || "Nhà hàng"}
             </h2>
-            <p className="truncate text-xs text-text-tertiary">
-              {currentBranch}
-            </p>
+            {/* Danh sách chi nhánh lấy từ CÁC PHÂN CÔNG của tài khoản (BR-18),
+                không còn mảng tên chi nhánh viết cứng. */}
+            <BranchSwitcher variant="full" />
           </div>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="text-text-tertiary hover:text-text-primary transition-colors p-1 cursor-pointer"
-              title="Chọn chi nhánh"
-            >
-              <ChevronDown className="size-4" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="right" className="w-48">
-            {BRANCH_LIST.map((branch) => (
-              <DropdownMenuItem
-                key={branch}
-                onClick={() => setCurrentBranch(branch)}
-                className="cursor-pointer"
-              >
-                {branch}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
 
       {/* Nav groups */}
@@ -111,28 +73,27 @@ export function Sidebar() {
                 <li key={item.path}>
                   <NavLink
                     to={item.path}
-                    className={({ isActive }) =>
-                      cn(
+                    // Tự tính active thay vì dùng cờ của NavLink: mục "Nhân viên" còn
+                    // phải sáng ở hai màn tab của nó (xem NavItem.activeAlsoOn).
+                    className={() => {
+                      const isActive = isNavItemActive(item, pathname);
+                      return cn(
                         "flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-all",
                         isActive
                           ? "bg-brand-primary-subtle text-brand-primary font-semibold shadow-2xs"
                           : "text-text-secondary hover:bg-surface-muted hover:text-text-primary",
-                      )
-                    }
+                      );
+                    }}
                   >
-                    {({ isActive }) => (
-                      <>
-                        <item.icon
-                          className={cn(
-                            "size-4.5 shrink-0 transition-colors",
-                            isActive
-                              ? "text-brand-primary"
-                              : "text-text-tertiary group-hover:text-text-secondary",
-                          )}
-                        />
-                        <span className="truncate">{item.label}</span>
-                      </>
-                    )}
+                    <item.icon
+                      className={cn(
+                        "size-4.5 shrink-0 transition-colors",
+                        isNavItemActive(item, pathname)
+                          ? "text-brand-primary"
+                          : "text-text-tertiary group-hover:text-text-secondary",
+                      )}
+                    />
+                    <span className="truncate">{item.label}</span>
                   </NavLink>
                 </li>
               ))}
@@ -159,14 +120,18 @@ export function Sidebar() {
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            title="Đăng xuất"
-            className="flex size-7 shrink-0 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-surface-muted hover:text-status-danger cursor-pointer"
-          >
-            <LogOut className="size-3.5" />
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            <NotificationBell variant="sidebar" />
+            <button
+              type="button"
+              onClick={() => void logout()}
+              disabled={isLoggingOut}
+              title="Đăng xuất"
+              className="flex size-7 shrink-0 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-surface-muted hover:text-status-danger cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <LogOut className="size-3.5" />
+            </button>
+          </div>
         </div>
       </div>
     </aside>

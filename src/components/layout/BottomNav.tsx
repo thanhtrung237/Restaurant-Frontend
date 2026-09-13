@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react"
-import { Utensils, ReceiptText, ShoppingCart, LayoutGrid, BarChart2, Droplet, User, MoreHorizontal } from "lucide-react"
+import { Utensils, ReceiptText, ShoppingCart } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export interface BottomNavItem {
@@ -24,18 +24,14 @@ export const CUSTOMER_BOTTOM_NAV_ITEMS: BottomNavItem[] = [
   { key: "cart", label: "Giỏ hàng", icon: ShoppingCart },
 ]
 
-export const MANAGER_BOTTOM_NAV_ITEMS: BottomNavItem[] = [
-  { key: "tables", label: "Sơ đồ bàn", icon: LayoutGrid },
-  { key: "reports", label: "Báo cáo", icon: BarChart2 },
-  { key: "orders", label: "Đơn món", icon: Droplet },
-  { key: "staff", label: "Nhân viên", icon: User },
-  { key: "more", label: "Thêm", icon: MoreHorizontal },
-]
-
 /**
  * BottomNav — khớp component "Bottom Navigation" & "Bottom Nav · Quản lý" trong UI Component (Figma):
- * Thanh điều hướng đáy màn hình cho thiết bị di động, hỗ trợ chế độ Khách hàng (Thực đơn / Món đã gọi / Giỏ hàng)
- * và Quản lý (Sơ đồ bàn / Báo cáo / Đơn món / Nhân viên / Thêm).
+ * Thanh điều hướng đáy màn hình cho thiết bị di động.
+ *
+ * Khu vực NHÂN VIÊN không dùng danh sách mặc định: `StaffLayout` truyền `items` đã được
+ * lọc theo quyền qua `getBottomNavItems(role)` (config/nav-utils.ts). Mảng
+ * `MANAGER_BOTTOM_NAV_ITEMS` hard-code trước đây đã bị bỏ vì nó hiện cả mục mà vai trò
+ * không có quyền (vd Thu ngân vẫn thấy "Báo cáo", "Nhân viên").
  */
 export function BottomNav({
   items,
@@ -44,12 +40,7 @@ export function BottomNav({
   variant = "customer",
   className,
 }: BottomNavProps) {
-  const defaultItems =
-    variant === "manager"
-      ? MANAGER_BOTTOM_NAV_ITEMS
-      : variant === "customer"
-      ? CUSTOMER_BOTTOM_NAV_ITEMS
-      : []
+  const defaultItems = variant === "customer" ? CUSTOMER_BOTTOM_NAV_ITEMS : []
 
   const navItems = items ?? defaultItems
   const currentActive = activeKey ?? (navItems[0]?.key || "")

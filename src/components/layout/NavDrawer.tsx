@@ -1,168 +1,143 @@
-import type { LucideIcon } from "lucide-react"
-import {
-  X,
-  LayoutGrid,
-  Droplet,
-  List,
-  Tag,
-  BarChart2,
-  MapPin,
-  User,
-  Sliders,
-  Clock,
-  LogOut,
-} from "lucide-react"
+import { NavLink } from "react-router-dom"
+import { X, LogOut } from "lucide-react"
+import * as DialogPrimitive from "@radix-ui/react-dialog"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { useLogout } from "@/features/auth/hooks/useLogout"
+import { useAuthStore } from "@/stores/auth.store"
+import { APP_ROLE_LABEL } from "@/config/roles"
+import { flattenNavItems } from "@/config/nav-utils"
+import { useBranchSwitcher } from "@/features/auth/hooks/useBranchSwitcher"
 import { cn } from "@/lib/utils"
-
-export interface NavDrawerItem {
-  key: string
-  label: string
-  icon: LucideIcon
-  active?: boolean
-  onClick?: () => void
-}
+import { RestaurantBrand, useRestaurantName } from "@/components/layout/RestaurantBrand"
 
 export interface NavDrawerProps {
-  open?: boolean
-  onClose?: () => void
-  brandName?: string
-  branchName?: string
-  items?: NavDrawerItem[]
-  activeKey?: string
-  onSelect?: (key: string) => void
-  user?: {
-    name: string
-    role: string
-    avatarText?: string
-  }
-  onLogout?: () => void
-  className?: string
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
 
-export const DEFAULT_NAV_DRAWER_ITEMS: NavDrawerItem[] = [
-  { key: "tables", label: "Sơ đồ bàn", icon: LayoutGrid },
-  { key: "orders", label: "Gọi món & Chế biến", icon: Droplet },
-  { key: "menu", label: "Thực đơn", icon: List },
-  { key: "promotions", label: "Khuyến mãi", icon: Tag },
-  { key: "reports", label: "Báo cáo", icon: BarChart2 },
-  { key: "branches", label: "Chi nhánh", icon: MapPin },
-  { key: "staff", label: "Nhân viên", icon: User },
-  { key: "settings", label: "Cấu hình", icon: Sliders },
-  { key: "logs", label: "Nhật ký hoạt động", icon: Clock },
-]
-
 /**
- * NavDrawer — khớp component "Nav Drawer" trong UI Component (Figma):
- * Menu trượt dạng drawer cho giao diện mobile / tablet:
- * - Header: Logo Phở Việt + Chi nhánh + Nút đóng (X)
- * - Body: Danh sách các chức năng (Sơ đồ bàn, Thực đơn, Khuyến mãi...)
- * - Footer: Thông tin tài khoản đăng nhập + Nút đăng xuất màu cam nhạt.
+ * NavDrawer — menu trượt từ trái cho MOBILE (<768px), theo Figma
+ * "Menu Drawer · Mobile (375)".
+ *
+ * Dùng Radix Dialog có sẵn nên được miễn phí: khoá scroll nền, focus trap, đóng bằng
+ * Esc, overlay bấm ra ngoài để đóng — không phải tự viết (yêu cầu 4.7).
+ *
+ * Danh sách mục lấy từ `flattenNavItems(role)`, cùng nguồn với Sidebar/SidebarRail/
+ * BottomNav. Trước đây component giữ `DEFAULT_NAV_DRAWER_ITEMS` hard-code 9 mục.
  */
-export function NavDrawer({
-  open = true,
-  onClose,
-  brandName = "Phở Việt",
-  branchName = "Chi nhánh Quận 1",
-  items = DEFAULT_NAV_DRAWER_ITEMS,
-  activeKey = "tables",
-  onSelect,
-  user = { name: "Quản lý", role: "Quản trị nhà hàng", avatarText: "QL" },
-  onLogout,
-  className,
-}: NavDrawerProps) {
-  if (!open) return null
+export function NavDrawer({ open, onOpenChange }: NavDrawerProps) {
+  const account = useAuthStore((s) => s.account)
+  const role = useAuthStore((s) => s.role)
+  const { logout, isLoggingOut } = useLogout()
+  const { activeChoice } = useBranchSwitcher()
+  const restaurantName = useRestaurantName()
+
+  const items = role ? flattenNavItems(role) : []
+
+  const initials =
+    account?.fullName
+      ?.split(" ")
+      .slice(-2)
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase() || "QL"
 
   return (
-    <div
-      className={cn(
-        "flex h-full max-h-[640px] w-full max-w-[280px] flex-col justify-between rounded-card border border-border-default bg-surface-card p-4 shadow-xl select-none",
-        className
-      )}
-    >
-      {/* Header Drawer: Logo & Chi nhánh */}
-      <div>
-        <div className="flex items-center justify-between gap-3 border-b border-border-default pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand-primary text-xl font-extrabold text-white shadow-xs">
-              P
-            </div>
-            <div className="min-w-0">
-              <h3 className="truncate text-base font-bold text-text-primary">
-                {brandName}
-              </h3>
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-text-primary/40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogPrimitive.Content
+          aria-label="Menu điều hướng"
+          className="fixed inset-y-0 left-0 z-50 flex w-[80%] max-w-[320px] flex-col bg-surface-card shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left"
+        >
+          <DialogPrimitive.Title className="sr-only">
+            Menu điều hướng
+          </DialogPrimitive.Title>
+          <DialogPrimitive.Description className="sr-only">
+            Danh sách các phân hệ bạn có quyền truy cập
+          </DialogPrimitive.Description>
+
+          {/* Đầu drawer: logo + tên nhà hàng + chi nhánh đang chọn */}
+          <div className="flex items-center gap-3 border-b border-border-default px-4 py-4">
+            <RestaurantBrand size="md" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-base font-bold text-text-primary">
+                {restaurantName || "Nhà hàng"}
+              </p>
               <p className="truncate text-xs text-text-tertiary">
-                {branchName}
+                {activeChoice?.name ?? ""}
               </p>
             </div>
+            <DialogPrimitive.Close
+              aria-label="Đóng menu"
+              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-muted text-text-secondary transition-colors hover:bg-border-strong"
+            >
+              <X className="size-4.5" />
+            </DialogPrimitive.Close>
           </div>
 
-          {onClose ? (
+          {/* Danh sách mục — bấm vào là đóng drawer */}
+          <nav className="flex-1 overflow-y-auto py-2">
+            <ul>
+              {items.map((item) => (
+                <li key={item.path}>
+                  <NavLink
+                    to={item.path}
+                    onClick={() => onOpenChange(false)}
+                    className={({ isActive }) =>
+                      cn(
+                        "flex items-center gap-3.5 px-4 py-3.5 text-[15px] transition-colors",
+                        isActive
+                          ? "bg-brand-primary-subtle font-bold text-brand-primary"
+                          : "font-medium text-text-primary hover:bg-surface-muted",
+                      )
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <item.icon
+                          className={cn(
+                            "size-5 shrink-0",
+                            isActive ? "text-brand-primary" : "text-text-tertiary",
+                          )}
+                        />
+                        <span className="truncate">{item.label}</span>
+                      </>
+                    )}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          {/* Chân drawer: tài khoản + đăng xuất */}
+          <div className="flex items-center gap-3 border-t border-border-default px-4 py-3.5">
+            <Avatar className="size-10 bg-text-primary text-text-on-brand text-xs font-bold">
+              <AvatarFallback className="bg-text-primary text-text-on-brand">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-bold text-text-primary">
+                {account?.fullName || "Quản lý"}
+              </p>
+              <p className="truncate text-xs text-text-tertiary">
+                {role ? APP_ROLE_LABEL[role] : ""}
+              </p>
+            </div>
             <button
               type="button"
-              onClick={onClose}
-              aria-label="Đóng menu"
-              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-muted text-text-secondary transition-colors hover:bg-border-strong active:scale-95"
+              onClick={() => void logout()}
+              disabled={isLoggingOut}
+              aria-label="Đăng xuất"
+              title="Đăng xuất"
+              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-status-danger-subtle text-status-danger transition-colors hover:bg-status-danger hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <X className="size-4" />
+              <LogOut className="size-4.5" />
             </button>
-          ) : null}
-        </div>
-
-        {/* Danh sách Menu Items */}
-        <nav className="space-y-1 pt-3">
-          {items.map((item) => {
-            const isActive = activeKey === item.key || item.active
-            const Icon = item.icon
-
-            return (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => {
-                  item.onClick?.()
-                  onSelect?.(item.key)
-                }}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors outline-none",
-                  isActive
-                    ? "bg-brand-primary-subtle font-bold text-brand-primary"
-                    : "font-medium text-text-secondary hover:bg-surface-muted hover:text-text-primary"
-                )}
-              >
-                <Icon className="size-5 shrink-0" strokeWidth={isActive ? 2.5 : 2} />
-                <span className="truncate">{item.label}</span>
-              </button>
-            )
-          })}
-        </nav>
-      </div>
-
-      {/* Footer Drawer: User profile & Logout */}
-      <div className="flex items-center justify-between border-t border-border-default pt-3">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-text-primary text-xs font-bold text-white">
-            {user.avatarText ?? "QL"}
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-bold text-text-primary">
-              {user.name}
-            </p>
-            <p className="truncate text-[11px] text-text-tertiary">
-              {user.role}
-            </p>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={onLogout}
-          aria-label="Đăng xuất"
-          title="Đăng xuất"
-          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-primary-subtle text-brand-primary transition-colors hover:bg-status-danger-subtle hover:text-status-danger active:scale-95"
-        >
-          <LogOut className="size-4" strokeWidth={2.2} />
-        </button>
-      </div>
-    </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   )
 }

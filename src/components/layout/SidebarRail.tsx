@@ -1,127 +1,100 @@
-import type { LucideIcon } from "lucide-react"
-import {
-  ChevronDown,
-  LayoutGrid,
-  Droplet,
-  List,
-  Tag,
-  BarChart2,
-  MapPin,
-  User,
-  Sliders,
-  LogOut,
-} from "lucide-react"
+import { NavLink } from "react-router-dom"
+import { LogOut } from "lucide-react"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { BranchSwitcher } from "@/components/layout/BranchSwitcher"
+import { useLogout } from "@/features/auth/hooks/useLogout"
+import { useAuthStore } from "@/stores/auth.store"
+import { APP_ROLE_LABEL } from "@/config/roles"
+import { flattenNavItems } from "@/config/nav-utils"
+import { NotificationBell } from "@/components/layout/NotificationBell"
 import { cn } from "@/lib/utils"
 
-export interface SidebarRailItem {
-  key: string
-  label?: string
-  icon: LucideIcon
-  active?: boolean
-  onClick?: () => void
-}
-
-export interface SidebarRailProps {
-  branchCode?: string
-  items?: SidebarRailItem[]
-  activeKey?: string
-  onSelect?: (key: string) => void
-  avatarText?: string
-  onLogout?: () => void
-  className?: string
-}
-
-export const DEFAULT_SIDEBAR_RAIL_ITEMS: SidebarRailItem[] = [
-  { key: "tables", label: "Sơ đồ bàn", icon: LayoutGrid },
-  { key: "orders", label: "Đơn món", icon: Droplet },
-  { key: "menu", label: "Thực đơn", icon: List },
-  { key: "promotions", label: "Khuyến mãi", icon: Tag },
-  { key: "reports", label: "Báo cáo", icon: BarChart2 },
-  { key: "branches", label: "Chi nhánh", icon: MapPin },
-  { key: "staff", label: "Nhân viên", icon: User },
-  { key: "settings", label: "Cấu hình", icon: Sliders },
-]
-
 /**
- * SidebarRail — khớp component "Sidebar Rail" trong UI Component (Figma):
- * Thanh menu thu gọn (icon rail) tối ưu không gian cho màn hình tablet / POS:
- * - Logo P cam trên cùng
- * - Pill chi nhánh "Q1 v"
- * - Danh sách icons với item active có khung nền cam nhạt (brand/primary-subtle)
- * - Avatar người dùng & nút logout ở chân.
+ * SidebarRail — thanh điều hướng thu gọn cho TABLET (768–1023px), theo Figma
+ * "Sơ đồ bàn · Tablet (834)" và "Sidebar Rail".
+ *
+ * Bố cục dọc: logo · chip chi nhánh ("Q1 ▾") · danh sách icon · avatar + đăng xuất.
+ *
+ * Danh sách mục lấy từ `flattenNavItems(role)` — cùng nguồn với Sidebar, NavDrawer và
+ * BottomNav. Trước đây component này giữ mảng `DEFAULT_SIDEBAR_RAIL_ITEMS` hard-code
+ * 8 mục, nên vai trò nào cũng thấy đủ 8 icon kể cả Phục vụ hay Thu ngân.
  */
-export function SidebarRail({
-  branchCode = "Q1",
-  items = DEFAULT_SIDEBAR_RAIL_ITEMS,
-  activeKey = "tables",
-  onSelect,
-  avatarText = "QL",
-  onLogout,
-  className,
-}: SidebarRailProps) {
-  return (
-    <aside
-      className={cn(
-        "flex h-full max-h-[640px] w-18 flex-col items-center justify-between rounded-card border border-border-default bg-surface-card py-4 select-none shadow-xs",
-        className
-      )}
-    >
-      {/* Phần trên: Logo & Chi nhánh */}
-      <div className="flex flex-col items-center gap-3">
-        <div className="flex size-11 items-center justify-center rounded-xl bg-brand-primary text-xl font-extrabold text-white shadow-xs">
-          P
-        </div>
+export function SidebarRail() {
+  const account = useAuthStore((s) => s.account)
+  const role = useAuthStore((s) => s.role)
+  const { logout, isLoggingOut } = useLogout()
 
-        <button
-          type="button"
-          className="flex items-center gap-1 rounded-pill bg-brand-primary-subtle px-2.5 py-1 text-xs font-bold text-brand-primary transition-colors hover:bg-brand-primary-hover hover:text-white outline-none"
-        >
-          <span>{branchCode}</span>
-          <ChevronDown className="size-3" strokeWidth={3} />
-        </button>
+  const items = role ? flattenNavItems(role, "desktop") : []
+
+  const initials =
+    account?.fullName
+      ?.split(" ")
+      .slice(-2)
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase() || "QL"
+
+  return (
+    <aside className="hidden h-screen w-[72px] shrink-0 flex-col items-center gap-1 border-r border-border-default bg-surface-card py-3 select-none md:flex lg:hidden">
+      {/* Logo */}
+      <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand-primary shadow-xs">
+        <span className="text-lg font-extrabold text-text-on-brand">P</span>
       </div>
 
-      {/* Phần giữa: Danh sách Icons */}
-      <nav className="flex flex-col items-center gap-1.5 py-2">
-        {items.map((item) => {
-          const isActive = activeKey === item.key || item.active
-          const Icon = item.icon
+      {/* Chip chi nhánh ngay dưới logo (Figma) */}
+      <div className="mt-1.5 mb-2">
+        <BranchSwitcher variant="chip" />
+      </div>
 
-          return (
-            <button
-              key={item.key}
-              type="button"
-              title={item.label}
-              onClick={() => {
-                item.onClick?.()
-                onSelect?.(item.key)
-              }}
-              className={cn(
-                "flex size-10 items-center justify-center rounded-xl transition-all outline-none",
+      {/* Danh sách icon */}
+      <nav className="flex w-full flex-1 flex-col items-center gap-1 overflow-y-auto px-2">
+        {items.map((item) => (
+          <NavLink
+            key={item.path}
+            to={item.path}
+            title={item.label}
+            aria-label={item.label}
+            className={({ isActive }) =>
+              cn(
+                "group relative flex size-11 shrink-0 items-center justify-center rounded-xl transition-colors",
                 isActive
-                  ? "bg-brand-primary-subtle text-brand-primary font-bold shadow-2xs"
-                  : "text-text-tertiary hover:bg-surface-muted hover:text-text-primary"
-              )}
+                  ? "bg-brand-primary-subtle text-brand-primary"
+                  : "text-text-tertiary hover:bg-surface-muted hover:text-text-primary",
+              )
+            }
+          >
+            <item.icon className="size-5" />
+            {/* Tooltip đơn giản bằng CSS — không thêm thư viện tooltip */}
+            <span
+              role="tooltip"
+              className="pointer-events-none absolute left-full z-50 ml-2 hidden whitespace-nowrap rounded-lg bg-text-primary px-2.5 py-1.5 text-xs font-semibold text-text-on-brand shadow-lg group-hover:block"
             >
-              <Icon className="size-5" strokeWidth={isActive ? 2.5 : 2} />
-            </button>
-          )
-        })}
+              {item.label}
+            </span>
+          </NavLink>
+        ))}
       </nav>
 
-      {/* Phần dưới: User avatar & Logout */}
-      <div className="flex flex-col items-center gap-3 pt-2">
-        <div className="flex size-8 items-center justify-center rounded-full bg-text-primary text-xs font-bold text-white shadow-2xs">
-          {avatarText}
-        </div>
-
+      {/* Chân: avatar + chuông thông báo + đăng xuất */}
+      <div className="flex w-full flex-col items-center gap-2 border-t border-border-default/60 pt-3">
+        <Avatar className="size-9 bg-text-primary text-text-on-brand text-xs font-bold">
+          <AvatarFallback className="bg-text-primary text-text-on-brand">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+        <span className="sr-only">
+          {account?.fullName} — {role ? APP_ROLE_LABEL[role] : ""}
+        </span>
+        <NotificationBell variant="rail" />
         <button
           type="button"
-          onClick={onLogout}
+          onClick={() => void logout()}
+          disabled={isLoggingOut}
           title="Đăng xuất"
-          className="flex size-8 items-center justify-center text-text-tertiary transition-colors hover:text-status-danger outline-none"
+          aria-label="Đăng xuất"
+          className="flex size-9 items-center justify-center rounded-xl text-text-tertiary transition-colors hover:bg-surface-muted hover:text-status-danger disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <LogOut className="size-5" />
+          <LogOut className="size-4.5" />
         </button>
       </div>
     </aside>
