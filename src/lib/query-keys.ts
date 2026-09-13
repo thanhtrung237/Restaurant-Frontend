@@ -78,6 +78,7 @@ export const qk = {
     openByTable: (tableId: number) => ["table-sessions", "table", tableId, "open"] as const,
     openByBranch: (branchId: number) => ["table-sessions", "branch", branchId, "open"] as const,
     byTable: (tableId: number) => ["table-sessions", "table", tableId] as const,
+    billPreview: (id: number) => ["table-sessions", "bill-preview", id] as const,
   },
   categories: {
     all: ["categories"] as const,
@@ -154,6 +155,7 @@ export const qk = {
     detail: (id: number) => ["promotions", "detail", id] as const,
     byRestaurant: (restaurantId: number, params?: unknown) =>
       ["promotions", "restaurant", restaurantId, params ?? null] as const,
+    byBranchActive: (branchId: number) => ["promotions", "branch", branchId, "active"] as const,
   },
   promotionBranches: {
     all: ["promotion-branches"] as const,
@@ -168,5 +170,16 @@ export const qk = {
     byBranch: (branchId: number) => ["audit-logs", "branch", branchId] as const,
     byEntityType: (entityType: string) => ["audit-logs", "entity-type", entityType] as const,
     byPerformedBy: (accountId: number) => ["audit-logs", "performed-by", accountId] as const,
+  },
+  reports: {
+    all: ["reports"] as const,
+    revenue: (branchIds: number[], from: string, to: string, groupBy: string) =>
+      ["reports", "revenue", branchIds, from, to, groupBy] as const,
+    hourly: (branchIds: number[], from: string, to: string) =>
+      ["reports", "hourly", branchIds, from, to] as const,
+    topDishes: (branchIds: number[], from: string, to: string, topN: number) =>
+      ["reports", "top-dishes", branchIds, from, to, topN] as const,
+    branchComparison: (restaurantId: number, from: string, to: string) =>
+      ["reports", "branch-comparison", restaurantId, from, to] as const,
   },
 } as const

@@ -16,11 +16,6 @@ export function isBillableDetail(d: OrderDetail): boolean {
   return d.isBillable === true
 }
 
-/** Tổng tiền hàng chỉ tính các dòng món billable (bỏ qua món huỷ không tính tiền). */
-export function sumBillableAmount(details: OrderDetail[]): number {
-  return details.filter(isBillableDetail).reduce((sum, d) => sum + (d.price || 0), 0)
-}
-
 export interface CancelInfo {
   label: string
   /** true = đã huỷ nhưng vẫn tính tiền (khách đổi ý sau khi bếp đã làm) */
