@@ -1,5 +1,5 @@
 import * as React from "react"
-import type { DiningTableStatus } from "@/types/enums"
+import { TABLE_DISPLAY_STATUS_LABEL, type TableDisplayStatus } from "@/types/enums"
 import type { DiningTable } from "@/types/models"
 import { cn } from "@/lib/utils"
 
@@ -8,11 +8,9 @@ import { Button } from "@/components/ui/button"
 import { IconButton } from "@/components/ui/icon-button"
 import { QRCodeSVG, QRCodeCanvas } from "qrcode.react"
 
-export type TableDisplayStatus =
-  | DiningTableStatus
-  | "WAITING_OPEN" // Chờ xác nhận / Chờ mở bàn (khách đã quét QR)
-  | "AWAITING_PAYMENT" // Chờ thanh toán
-  | "MERGED" // Đã gộp vào bàn khác
+// Kiểu đã chuyển sang `@/types/enums` để nằm cùng chỗ với map nhãn dùng chung;
+// re-export ở đây để các nơi đang import từ TableCard không phải sửa.
+export type { TableDisplayStatus }
 
 export interface TableCardProps {
   table: DiningTable
@@ -48,7 +46,7 @@ export interface TableCardProps {
 /**
  * Bộ màu theo trạng thái bàn — Khớp 100% component "Table Card" trong ảnh Figma:
  * - Nền thẻ bên trong có màu nhạt cùng tông với viền (tinted background) thay vì màu trắng tinh
- * - Viền màu bo nét rõ ràng bao quanh thẻ (Trống: xám nhạt, Chờ xác nhận: xanh dương, Đang phục vụ: đỏ cam, Chờ thanh toán: vàng cam)
+ * - Viền màu bo nét rõ ràng bao quanh thẻ (Trống: xám nhạt, Chờ mở bàn: xanh dương, Đang phục vụ: đỏ cam, Chờ thanh toán: vàng cam)
  * - Chấm tròn góc trên cùng màu viền (kích thước lớn rõ nét)
  * - Chip pill bo tròn: viền mảnh cùng màu, nền trắng, chữ đậm cùng màu viền
  */
@@ -61,49 +59,49 @@ const CARD_STYLE_BY_DISPLAY_STATUS: Record<
     dot: "bg-[#9CA3AF]",
     chip: "border-slate-200 text-slate-600 bg-white dark:bg-zinc-800",
     bg: "bg-white dark:bg-zinc-900",
-    defaultLabel: "Trống",
+    defaultLabel: TABLE_DISPLAY_STATUS_LABEL.AVAILABLE,
   },
   INACTIVE: {
     border: "border-slate-200 dark:border-zinc-800",
     dot: "bg-[#CBD5E1]",
     chip: "border-slate-200 text-slate-400 bg-white dark:bg-zinc-800",
     bg: "bg-[#F8FAFC] dark:bg-zinc-900/40",
-    defaultLabel: "Ngưng dùng",
+    defaultLabel: TABLE_DISPLAY_STATUS_LABEL.INACTIVE,
   },
   WAITING_OPEN: {
     border: "border-[#2E90FA] hover:border-blue-600",
     dot: "bg-[#2E90FA]",
     chip: "border-[#2E90FA] text-[#1570EF] bg-white dark:bg-zinc-800",
     bg: "bg-[#F5F9FF] dark:bg-blue-950/20",
-    defaultLabel: "Chờ xác nhận",
+    defaultLabel: TABLE_DISPLAY_STATUS_LABEL.WAITING_OPEN,
   },
   OCCUPIED: {
     border: "border-[#F0522B] hover:border-[#D8431F]",
     dot: "bg-[#F0522B]",
     chip: "border-[#F0522B] text-[#D8431F] bg-white dark:bg-zinc-800",
     bg: "bg-[#FFFAF8] dark:bg-[#F0522B]/10",
-    defaultLabel: "Đang phục vụ",
+    defaultLabel: TABLE_DISPLAY_STATUS_LABEL.OCCUPIED,
   },
   AWAITING_PAYMENT: {
     border: "border-[#F59E0B] hover:border-amber-600",
     dot: "bg-[#F59E0B]",
     chip: "border-[#F59E0B] text-[#D97706] bg-white dark:bg-zinc-800",
     bg: "bg-[#FFFDF5] dark:bg-amber-950/20",
-    defaultLabel: "Chờ thanh toán",
+    defaultLabel: TABLE_DISPLAY_STATUS_LABEL.AWAITING_PAYMENT,
   },
   RESERVED: {
     border: "border-[#7F56D9] hover:border-purple-600",
     dot: "bg-[#7F56D9]",
     chip: "border-[#7F56D9] text-[#6941C6] bg-white dark:bg-zinc-800",
     bg: "bg-[#FAF8FF] dark:bg-purple-950/20",
-    defaultLabel: "Đặt trước",
+    defaultLabel: TABLE_DISPLAY_STATUS_LABEL.RESERVED,
   },
   MERGED: {
     border: "border-slate-300 dark:border-zinc-700",
     dot: "bg-[#64748B]",
     chip: "border-slate-300 text-slate-500 bg-white dark:bg-zinc-800",
     bg: "bg-[#F8FAFC] dark:bg-zinc-900/60",
-    defaultLabel: "Đã gộp",
+    defaultLabel: TABLE_DISPLAY_STATUS_LABEL.MERGED,
   },
 }
 
@@ -121,20 +119,32 @@ export function DraggableTableQr({
   size?: number
 }) {
   const [dataUrl, setDataUrl] = React.useState<string>("")
+  const [exportFailed, setExportFailed] = React.useState(false)
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null)
   const tableUrl = `${typeof window !== "undefined" ? window.location.origin : "http://localhost:5173"}/ban/${qrCode}`
 
-  React.useEffect(() => {
-    // Xuất Data URL từ canvas ngầm để trình duyệt hỗ trợ kéo ảnh và chuột phải lưu ảnh
-    if (canvasRef.current) {
-      try {
-        const url = canvasRef.current.toDataURL("image/png")
-        setDataUrl(url)
-      } catch (err) {
-        console.error("Failed to generate QR data URL", err)
-      }
+  /**
+   * Xuất Data URL từ canvas ngầm để trình duyệt hỗ trợ kéo ảnh và chuột phải lưu ảnh.
+   *
+   * Thất bại KHÔNG làm mất mã QR: nhánh dự phòng bên dưới vẫn vẽ `QRCodeSVG` quét được
+   * bình thường. Thứ mất đi là ảnh PNG — tức thao tác kéo sang tab mới và lưu ảnh.
+   */
+  const exportDataUrl = React.useCallback(() => {
+    if (!canvasRef.current) return
+    try {
+      setDataUrl(canvasRef.current.toDataURL("image/png"))
+      setExportFailed(false)
+    } catch (err) {
+      // Giữ console.error: nay đã đi kèm khung báo lỗi + nút "Thử lại" cho người dùng.
+      console.error("Failed to generate QR data URL", err)
+      setDataUrl("")
+      setExportFailed(true)
     }
-  }, [qrCode, tableUrl])
+  }, [])
+
+  React.useEffect(() => {
+    exportDataUrl()
+  }, [exportDataUrl, qrCode, tableUrl])
 
   const handleDragStart = (e: React.DragEvent) => {
     // Đặt dataTransfer để khi kéo lên thanh Tab của Chrome/Edge sẽ mở tab mới đến URL bàn
@@ -188,6 +198,28 @@ export function DraggableTableQr({
           <ExternalLink className="size-4 text-white drop-shadow-md" />
         </div>
       </a>
+
+      {/* Chỉ xuất ảnh PNG lỗi — mã QV phía trên vẫn quét và in được, nên báo ở dạng
+          dải cảnh báo nhỏ thay vì che mất mã. `print:hidden` để không lọt vào bản in. */}
+      {exportFailed ? (
+        <div className="mt-1 flex items-center gap-1.5 rounded-md bg-status-warning-subtle px-1.5 py-1 print:hidden">
+          <span className="text-[10px] font-medium leading-tight text-status-warning">
+            Không tạo được ảnh QR
+          </span>
+          <button
+            type="button"
+            onClick={(e) => {
+              // Thẻ nằm trong <a>; chặn để bấm "Thử lại" không mở trang gọi món.
+              e.preventDefault()
+              e.stopPropagation()
+              exportDataUrl()
+            }}
+            className="shrink-0 rounded px-1 text-[10px] font-bold text-brand-primary underline underline-offset-2 hover:text-brand-primary-hover cursor-pointer"
+          >
+            Thử lại
+          </button>
+        </div>
+      ) : null}
     </div>
   )
 }

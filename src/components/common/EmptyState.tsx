@@ -1,42 +1,55 @@
-import type { LucideIcon } from "lucide-react"
-import { ShoppingCart } from "lucide-react"
+import * as React from "react"
+import { Inbox } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-interface EmptyStateProps {
-  icon?: LucideIcon
+export interface EmptyStateProps {
+  /** Icon minh hoạ, đặt trong vòng tròn xám. Bỏ trống thì dùng icon hộp rỗng mặc định. */
+  icon?: React.ComponentType<{ className?: string }>
   title: string
   description?: string
+  /** Nút hành động chính, thường là nút tạo mới của màn. */
   action?: { label: string; onClick: () => void }
   className?: string
 }
 
 /**
- * EmptyState — khớp component "Empty State" trong UI Component (Figma):
- * padding 24px, gap 16px, icon tròn nền surface/muted, tiêu đề text/primary,
- * mô tả text/tertiary, nút hành động dùng Button (primary).
- * Dùng chung ở mọi bảng/danh sách rỗng (không có bàn, không có món, không có
- * khuyến mãi...). Được `DataTable` tự render khi `rows` rỗng, nhưng cũng có
- * thể dùng độc lập ngoài bảng (VD: Giỏ hàng trống bên Khách hàng).
+ * EmptyState — khung "chưa có dữ liệu" dùng chung.
+ *
+ * Figma vẽ trạng thái rỗng thành một THẺ TRẮNG cao: vòng tròn icon, tiêu đề, mô tả, rồi
+ * nút hành động (xem "Khuyến mãi · Rỗng", "Nhân viên · Rỗng", "Nhật ký · Rỗng",
+ * "Chi nhánh · Rỗng").
+ *
+ * Phân biệt hai trạng thái rỗng — nơi gọi tự chọn nội dung:
+ *  - CHƯA CÓ DỮ LIỆU  → kèm `action` để người dùng tạo mới ngay.
+ *  - LỌC KHÔNG RA GÌ  → KHÔNG kèm `action`; mô tả gợi ý đổi bộ lọc.
  */
 export function EmptyState({
-  icon: Icon = ShoppingCart,
+  icon: Icon = Inbox,
   title,
   description,
   action,
   className,
 }: EmptyStateProps) {
   return (
-    <div className={cn("flex flex-col items-center justify-center gap-4 px-6 py-9 text-center", className)}>
-      <div className="flex size-16 items-center justify-center rounded-full bg-surface-muted">
-        <Icon className="size-7 text-text-tertiary" />
-      </div>
-      <div className="space-y-1">
-        <p className="text-base font-bold text-text-primary">{title}</p>
-        {description ? <p className="text-sm text-text-tertiary">{description}</p> : null}
-      </div>
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center rounded-card bg-surface-card px-6 py-16 text-center",
+        className,
+      )}
+    >
+      <span className="flex size-20 items-center justify-center rounded-full bg-surface-muted text-text-tertiary">
+        <Icon className="size-9" />
+      </span>
+
+      <h3 className="mt-6 text-lg font-bold text-text-primary">{title}</h3>
+
+      {description ? (
+        <p className="mt-1.5 max-w-md text-sm text-text-tertiary">{description}</p>
+      ) : null}
+
       {action ? (
-        <Button onClick={action.onClick} className="mt-1">
+        <Button type="button" onClick={action.onClick} className="mt-6 h-11 px-5">
           {action.label}
         </Button>
       ) : null}

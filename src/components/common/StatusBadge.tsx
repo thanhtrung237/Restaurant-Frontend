@@ -61,6 +61,8 @@ const TABLE_SESSION_VARIANT: Record<TableSessionStatus, BadgeProps["variant"]> =
 const INVOICE_VARIANT: Record<InvoiceStatus, BadgeProps["variant"]> = {
   PENDING: "warning",
   PAID: "success",
+  // Đã phát hành hoá đơn điện tử — trạng thái cuối, bất biến (BR-09).
+  ISSUED: "success",
   CANCELLED: "danger",
   REFUNDED: "info",
 }

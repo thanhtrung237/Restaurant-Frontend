@@ -13,9 +13,9 @@ export interface KDSTicketProps {
   timeAgo: string;
   dishName: string;
   quantity?: number;
-  /** Ghi chú món (VD "Ít cay", "Không rau") — hiển thị màu đỏ cảnh báo, in nghiêng */
+  /** Ghi chú món (VD "Ít cay", "Không rau") — hiển thị màu cam như Figma */
   note?: string;
-  /** Dòng hướng dẫn phụ, trung tính (VD "Bán theo cân · cần cân trước khi gửi bếp") */
+  /** Dòng hướng dẫn phụ (VD "Bán theo cân · cần cân trước khi gửi bếp") */
   hint?: string;
   /** Các tùy chọn đã chọn (size, topping, etc.) */
   options?: Array<{ id: number; optionItemId: number; optionItemName: string; priceSnapshot: number }>;
@@ -31,8 +31,7 @@ export interface KDSTicketProps {
  * KDSTicket — khớp component "KDS Ticket" trong UI Component (Figma):
  * Phiếu hiển thị điều phối nhà bếp (Kitchen Display System) với các trạng thái:
  * 1. "Xác nhận" (Nút xanh dương info #2E90FA)
- * 2. "Đánh dấu xong" (Nút vàng cam warning #F59E0B)
- * 3. "Đã phục vụ" (Nút viền xanh lá success #12B76A)
+ * 2. "Đã phục vụ" (Nút vàng cam warning #F59E0B) — Phục vụ bấm khi đã mang món ra bàn
  * 4. "weighing" — món bán theo cân, cần "Nhập số cân" trước khi gửi bếp (Nút đỏ danger),
  *    có thêm badge cảnh báo phía trên header và viền/nền cam nhạt để nổi bật trong cột.
  */
@@ -61,7 +60,10 @@ export function KDSTicket({
         "bg-status-info text-white hover:bg-status-info/90 active:bg-status-info/80";
       break;
     case "cooking":
-      buttonLabel = buttonLabel ?? "Đánh dấu xong";
+      // Đặc tả: bếp KHÔNG thao tác trên hệ thống. Phục vụ là người chuyển
+      // ĐANG CHẾ BIẾN → ĐÃ PHỤC VỤ, nên nhãn nút là "Đã phục vụ" (không phải
+      // "Đánh dấu xong" — chữ đó ngụ ý bếp bấm báo nấu xong).
+      buttonLabel = buttonLabel ?? "Đã phục vụ";
       buttonClass =
         "bg-status-warning text-white hover:bg-status-warning/90 active:bg-status-warning/80";
       break;
@@ -107,20 +109,24 @@ export function KDSTicket({
 
       {/* Nội dung món */}
       <div className="my-4 space-y-1">
+        {/* Luôn hiển thị số lượng dạng "1× Tên món", kể cả khi số lượng = 1 (theo Figma) */}
         <h4 className="text-base font-bold text-text-primary">
-          {quantity && quantity > 1 ? `${quantity}x ` : ""}
-          {dishName}
+          {quantity ?? 1}× {dishName}
         </h4>
+        {/* Tuỳ chọn / ghi chú / hướng dẫn đều dùng màu cam thương hiệu như Figma,
+            để bếp đọc lướt vẫn thấy ngay yêu cầu riêng của món. */}
         {options && options.length > 0 ? (
-          <p className="text-xs text-text-tertiary">
-            {options.map((opt) => opt.optionItemName).join(", ")}
-          </p>
+          <div className="space-y-0.5">
+            {options.map((opt) => (
+              <p key={opt.id} className="text-xs text-brand-primary">
+                + {opt.optionItemName}
+              </p>
+            ))}
+          </div>
         ) : null}
-        {note ? (
-          <p className="text-xs text-status-danger italic">* {note}</p>
-        ) : null}
+        {note ? <p className="text-xs text-brand-primary">{note}</p> : null}
         {hint ? (
-          <p className="flex items-center gap-1 text-xs text-text-tertiary">
+          <p className="flex items-center gap-1 text-xs text-brand-primary">
             {status === "weighing" ? <Scale className="size-3" /> : null}
             {hint}
           </p>
