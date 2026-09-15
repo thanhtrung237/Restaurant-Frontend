@@ -25,7 +25,13 @@ export interface Invoice extends BaseResponse {
   invoiceNumber: string
   invoiceNote?: string
   subTotalBeforeDiscount?: number
+  totalPromotionDiscount?: number
   totalManualDiscount?: number
+  /** Breakdown BE đã tách sẵn (InvoiceResponse.java) */
+  itemPromotionDiscount?: number
+  orderPromotionDiscount?: number
+  orderPromotionId?: number
+  orderPromotionName?: string
   serviceFee?: number
   vatAmount?: number
   grandTotal: number

@@ -16,6 +16,10 @@ export interface Promotion extends BaseResponse {
   priority?: number
   status: PromotionStatus
   code?: string
+  usageLimit?: number
+  usageCount?: number
+  allBranches?: boolean
+  branchIds?: number[]
   createdAt?: string
   modifiedAt?: string
 }

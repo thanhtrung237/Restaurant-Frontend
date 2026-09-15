@@ -30,14 +30,16 @@ export interface LoginRequest {
 export interface AccountAddRequest {
   restaurantId: number
   fullName: string
-  employeeCode: string
   username: string
   password: string
   email?: string
+  /**
+   * QĐ-03: mã nhân viên do BACKEND sinh (NV + số tăng dần theo nhà hàng). Không có trong
+   * request nữa — gửi lên cũng bị bỏ qua. Mã do BE trả về trong `AccountResponse`.
+   */
 }
 export interface AccountUpdateRequest {
   fullName?: string
-  employeeCode?: string
   email?: string
 }
 
@@ -114,9 +116,13 @@ export interface BranchUpdateRequest {
 export interface BranchManagerConfigRequest {
   openingTime?: string
   closingTime?: string
-  businessDayStartTime?: string
-  bankAccountNo?: string
-  bankName?: string
+  /**
+   * 3 trường dưới đây nhận `null` = XOÁ TRẮNG cấu hình; bỏ hẳn field = giữ nguyên
+   * giá trị cũ. Backend phân biệt hai trường hợp này (be-issues mục 7).
+   */
+  businessDayStartTime?: string | null
+  bankAccountNo?: string | null
+  bankName?: string | null
   pendingConfirmTimeoutMinutes?: number
   reservationHoldMinutes?: number
 }
@@ -369,6 +375,10 @@ export interface PromotionAddRequest {
   action?: string
   priority?: number
   code?: string
+  usageLimit?: number
+  allBranches?: boolean
+  branchIds?: number[]
+  isActiveNow?: boolean
 }
 export interface PromotionUpdateRequest {
   name?: string
@@ -383,6 +393,9 @@ export interface PromotionUpdateRequest {
   priority?: number
   status?: PromotionStatus
   code?: string
+  usageLimit?: number
+  allBranches?: boolean
+  branchIds?: number[]
 }
 export interface PromotionBranchAddRequest {
   branchId: number
@@ -400,6 +413,12 @@ export interface AuditLogListParams {
   restaurantId?: number
   branchId?: number
   entityType?: string
+  /**
+   * Lọc theo loại thao tác (be-issues mục 22). Nhiều giá trị thì nối bằng dấu phẩy
+   * (`LOGIN,LOGOUT`) — Spring tự tách thành `List<String>`. Không dùng mảng vì axios
+   * serialize thành `actionType[]=...`, Spring không nhận dạng đó.
+   */
+  actionType?: string
   startDate?: string
   endDate?: string
   page?: number
