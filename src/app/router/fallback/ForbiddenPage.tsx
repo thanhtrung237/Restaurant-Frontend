@@ -4,11 +4,12 @@ import { APP_ROLE_LABEL } from "@/config/roles";
 import { ROLE_HOME } from "@/app/router/RoleHomeRedirect";
 import { AUTH_PATHS } from "@/app/router/paths";
 import { Button } from "@/components/ui/button";
+import { useLogout } from "@/features/auth/hooks/useLogout";
 
 export default function ForbiddenPage() {
   const navigate = useNavigate();
   const role = useAuthStore((s) => s.role);
-  const clearSession = useAuthStore((s) => s.clearSession);
+  const { logout, isLoggingOut } = useLogout();
 
   function handleGoHome() {
     if (role && ROLE_HOME[role]) {
@@ -16,11 +17,6 @@ export default function ForbiddenPage() {
     } else {
       navigate(AUTH_PATHS.LOGIN, { replace: true });
     }
-  }
-
-  function handleLogout() {
-    clearSession();
-    navigate(AUTH_PATHS.LOGIN, { replace: true });
   }
 
   return (
@@ -34,8 +30,13 @@ export default function ForbiddenPage() {
         <Button onClick={handleGoHome} className="rounded-xl">
           Về trang chủ
         </Button>
-        <Button variant="outline" onClick={handleLogout} className="rounded-xl">
-          Đăng xuất / Đăng nhập lại
+        <Button
+          variant="outline"
+          onClick={() => void logout()}
+          disabled={isLoggingOut}
+          className="rounded-xl"
+        >
+          {isLoggingOut ? "Đang đăng xuất..." : "Đăng xuất / Đăng nhập lại"}
         </Button>
       </div>
     </div>

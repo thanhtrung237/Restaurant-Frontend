@@ -16,10 +16,17 @@ const BRANCH_MANAGER_BASE = "/quan-ly-chi-nhanh"
  */
 export const BRANCH_MANAGER_PATHS = {
   // Vận hành sàn/bếp (dùng chung — xem @/features/shared/floor-ops)
+  /**
+   * Man Thanh toan cua phien ban.
+   *
+   * Bang 4.2: "Thu tien, dong ban" - Thu ngan X, QL chi nhanh X, Quan tri NH X.
+   * Truoc day route nay CHI nam duoi /thu-ngan (RequireRole chi cho CASHIER), nen
+   * nut "Dong ban" o man Don mon cua QLCN/QTNH khong co cho de di toi.
+   */
+  CHECKOUT: `${BRANCH_MANAGER_BASE}/thanh-toan/:tableSessionId`,
   TABLE_MAP: `${BRANCH_MANAGER_BASE}/so-do-ban`, // Sơ đồ bàn — trang chủ của QL chi nhánh
-  OPEN_TABLE: `${BRANCH_MANAGER_BASE}/so-do-ban/:tableId/mo-ban`,
   ORDER_AND_PREP: `${BRANCH_MANAGER_BASE}/order-che-bien`,
-  ORDER_CONFIRM: `${BRANCH_MANAGER_BASE}/order-che-bien/:orderId/xac-nhan`,
+  // ORDER_CONFIRM removed: kitchen staff now confirms items directly in KDS (PENDING → PREPARING)
   ORDER_DETAIL: `${BRANCH_MANAGER_BASE}/order/:orderId`,
   ADD_DISH: `${BRANCH_MANAGER_BASE}/order/:orderId/them-mon`, // Thêm món vào bàn
   KITCHEN_DISPLAY: `${BRANCH_MANAGER_BASE}/bep`,
@@ -32,7 +39,6 @@ export const BRANCH_MANAGER_PATHS = {
   REPORT: `${BRANCH_MANAGER_BASE}/bao-cao`, // Báo cáo chi nhánh mình (không có tab So sánh chi nhánh)
   REVENUE_BY_HOUR: `${BRANCH_MANAGER_BASE}/bao-cao/doanh-thu-theo-gio`, // tab "Theo khung giờ"
   BRANCH: `${BRANCH_MANAGER_BASE}/chi-nhanh`, // Chi nhánh — đi thẳng vào chi tiết (3 tab) của chi nhánh mình
-  STAFF: `${BRANCH_MANAGER_BASE}/nhan-vien`, // Nhân viên — 2 tab (Nhân viên + Nhật ký), chỉ xem
   CONFIG: `${BRANCH_MANAGER_BASE}/cau-hinh`, // Cấu hình chi nhánh (giờ mở/đóng, TK ngân hàng, tự hủy phiên — FR-BRN-02)
 
   // Màn hình con / tương thích ngược
