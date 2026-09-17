@@ -14,14 +14,20 @@ export interface CartLine {
   dishId: string
   name: string
   imageUrl?: string
-  /** Đơn giá base (chưa tính options - BE sẽ tính khi submit order) */
+  /** Đơn giá base của món (chưa tính options) */
   unitPrice: number
+  /** Tổng giá các topping/option đã chọn (tính cho 1 suất, nhân thêm với quantity khi tính tổng) */
+  optionsTotalPrice?: number
   quantity: number
   /** Các option items đã chọn (groupId, itemId) - để submit lên BE */
   selectedOptions?: Array<{ groupId: number; itemId: number }>
   /** Tóm tắt lựa chọn hiển thị dưới tên món trong giỏ, vd: "Nhỏ · thêm nước chấm" */
   optionsSummary?: string
   note?: string
+  /** Promotion info - applied at menu level */
+  promotionId?: number
+  promotionName?: string
+  promotionDiscountAmount?: number
 }
 
 interface CustomerCartState {
@@ -29,7 +35,15 @@ interface CustomerCartState {
   /** Thêm 1 dòng mới vào giỏ (luôn tạo dòng mới — dùng cho cả "thêm nhanh" và "thêm từ chi tiết món") */
   addLine: (line: Omit<CartLine, "cartItemId">) => void
   /** Thêm nhanh từ danh sách thực đơn (không tuỳ chọn): gộp số lượng nếu đã có đúng món này ở dạng mặc định */
-  quickAdd: (item: { dishId: string; name: string; imageUrl?: string; unitPrice: number }) => void
+  quickAdd: (item: {
+    dishId: string
+    name: string
+    imageUrl?: string
+    unitPrice: number
+    promotionId?: number
+    promotionName?: string
+    promotionDiscountAmount?: number
+  }) => void
   updateQuantity: (cartItemId: string, quantity: number) => void
   removeLine: (cartItemId: string) => void
   clear: () => void
@@ -51,12 +65,13 @@ export const useCustomerCartStore = create<CustomerCartState>((set) => ({
       items: [...state.items, { ...line, cartItemId: genCartItemId() }],
     })),
 
-  quickAdd: ({ dishId, name, imageUrl, unitPrice }) =>
+  quickAdd: ({ dishId, name, imageUrl, unitPrice, promotionId, promotionName, promotionDiscountAmount }) =>
     set((state) => {
       // Chỉ gộp vào dòng mặc định (không có optionsSummary/note) của đúng món này
       const existing = state.items.find(
         (i) => i.dishId === dishId && !i.optionsSummary && !i.note
       )
+
       if (existing) {
         return {
           items: state.items.map((i) =>
@@ -67,7 +82,17 @@ export const useCustomerCartStore = create<CustomerCartState>((set) => ({
       return {
         items: [
           ...state.items,
-          { cartItemId: genCartItemId(), dishId, name, imageUrl, unitPrice, quantity: 1 },
+          {
+            cartItemId: genCartItemId(),
+            dishId,
+            name,
+            imageUrl,
+            unitPrice,
+            quantity: 1,
+            promotionId,
+            promotionName,
+            promotionDiscountAmount,
+          },
         ],
       }
     }),
@@ -96,7 +121,23 @@ export function selectCartTotalQuantity(items: CartLine[]): number {
   return items.reduce((sum, i) => sum + i.quantity, 0)
 }
 
-/** Tổng tiền hàng (chưa gồm khuyến mãi/phí DV/VAT) */
+/** Tổng tiền hàng (chưa gồm khuyến mãi/phí DV/VAT) — bao gồm cả giá topping/option */
 export function selectCartSubtotal(items: CartLine[]): number {
-  return items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0)
+  return items.reduce(
+    (sum, i) => sum + (i.unitPrice + (i.optionsTotalPrice ?? 0)) * i.quantity,
+    0,
+  )
+}
+
+/** Tổng giảm giá từ khuyến mãi món ăn */
+export function selectCartItemPromotionDiscount(items: CartLine[]): number {
+  return items.reduce(
+    (sum, i) => sum + (i.promotionDiscountAmount || 0) * i.quantity,
+    0
+  )
+}
+
+/** Subtotal sau khi trừ khuyến mãi món */
+export function selectCartSubtotalAfterPromotion(items: CartLine[]): number {
+  return selectCartSubtotal(items) - selectCartItemPromotionDiscount(items)
 }

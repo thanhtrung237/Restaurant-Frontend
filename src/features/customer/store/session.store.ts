@@ -10,13 +10,13 @@ interface CustomerSessionState {
   sessionToken: string | null // token phiên cấp cho thiết bị khách sau khi Phục vụ mở bàn
   tableSession: TableSession | null
   /**
-   * true kể từ khi khách bấm "Yêu cầu tính tiền" (Món đã gọi -> Yêu cầu tính tiền).
-   * Theo đúng UI gốc ("Phiên đã khoá — không thể gọi thêm món"), khi cờ này bật:
-   * Menu/Giỏ hàng phải chặn gọi thêm món cho tới khi thanh toán xong / phiên đóng.
-   * TODO(api): khi có backend, suy ra trực tiếp từ TableSessionStatus
-   * (WAITING_FOR_PAY) thay vì giữ cờ riêng ở FE.
+   * Khoá TẠM ngay sau khi `POST /table-sessions/{id}/request-payment` thành công, để UI
+   * không phải chờ vòng polling kế tiếp. Gắn theo đúng `sessionId` và **KHÔNG persist**.
+   *
+   * Nguồn sự thật của "phiên đã khoá" là `tableSession.status === "WAITING_FOR_PAY"` lấy
+   * từ backend — xem `useBillLocked`. Cờ này chỉ lấp khoảng trống vài giây.
    */
-  billRequested: boolean
+  pendingBillSessionId: number | null
   /**
    * Mã khuyến mãi đang áp dụng cho CẢ PHIÊN bàn — nâng lên đây (thay vì state cục bộ ở
    * Giỏ hàng) vì Hoá đơn / Yêu cầu tính tiền / Thanh toán QR đều cần hiển thị lại đúng
@@ -25,8 +25,8 @@ interface CustomerSessionState {
   appliedPromo: AppliedPromo | null
   setSession: (payload: { qrCode: string; sessionToken: string; tableSession: TableSession }) => void
   clearSession: () => void
-  /** Đánh dấu đã gửi yêu cầu tính tiền — khoá phiên, không cho gọi thêm món */
-  requestBill: () => void
+  /** Gọi SAU khi API request-payment trả về thành công — API lỗi thì KHÔNG gọi. */
+  markBillRequested: (sessionId: number) => void
   applyPromo: (promo: AppliedPromo) => void
   clearPromo: () => void
 }
@@ -38,28 +38,64 @@ export const useCustomerSessionStore = create<CustomerSessionState>()(
       qrCode: null,
       sessionToken: null,
       tableSession: null,
-      billRequested: false,
-      appliedPromo: {
-        code: "COMBOTRUA",
-        label: "Combo trưa",
-        discountAmount: 20000,
-      },
+      pendingBillSessionId: null,
+      // Không gán sẵn khuyến mãi nào. Trước đây field này mặc định là mã demo
+      // "COMBOTRUA" (-20.000đ), nghĩa là MỌI khách vừa quét QR đã được giảm 20k
+      // mà không nhập mã — và số tiền đó KHÔNG tồn tại ở backend
+      // (`InvoiceServiceImpl` đang hard-code `totalPromotionDiscount = 0`),
+      // nên tổng tiền khách nhìn thấy lệch hẳn với hoá đơn Thu ngân thu.
+      appliedPromo: null,
       setSession: ({ qrCode, sessionToken, tableSession }) =>
-        set({ qrCode, sessionToken, tableSession }),
+        set((state) => {
+          // Phiên KHÁC phiên cũ (quét bàn khác, hoặc bàn cũ đã đóng và mở phiên mới)
+          // ⇒ bỏ mọi thứ gắn với phiên cũ. Thiếu bước này thì khuyến mãi và khoá tạm
+          // của bàn trước dính sang bàn sau trên cùng một trình duyệt.
+          const isDifferentSession = state.tableSession?.id !== tableSession.id
+          return {
+            qrCode,
+            sessionToken,
+            tableSession,
+            appliedPromo: isDifferentSession ? null : state.appliedPromo,
+            pendingBillSessionId: isDifferentSession ? null : state.pendingBillSessionId,
+          }
+        }),
       clearSession: () =>
         set({
           qrCode: null,
           sessionToken: null,
           tableSession: null,
-          billRequested: false,
+          pendingBillSessionId: null,
           appliedPromo: null,
         }),
-      requestBill: () => set({ billRequested: true }),
+      markBillRequested: (sessionId) => set({ pendingBillSessionId: sessionId }),
       applyPromo: (promo) => set({ appliedPromo: promo }),
       clearPromo: () => set({ appliedPromo: null }),
     }),
     {
       name: "pho-viet-customer-session",
+      /**
+       * v1: bỏ cờ `billRequested` khỏi bộ nhớ trình duyệt.
+       *
+       * Cờ cũ được persist nhưng chỉ reset ở 2 trang (Thanh toán thành công, Đánh giá).
+       * Thu ngân thu tiền mặt và đóng bàn thì máy của khách KHÔNG đi qua hai trang đó,
+       * nên cờ kẹt lại vĩnh viễn: quét bàn khác vẫn thấy "Phiên đã khoá".
+       */
+      version: 1,
+      migrate: (persisted, version) => {
+        if (version === 0 && persisted && typeof persisted === "object") {
+          const { billRequested: _drop, ...rest } = persisted as Record<string, unknown>
+          return rest
+        }
+        return persisted
+      },
+      // `pendingBillSessionId` cố ý KHÔNG nằm trong danh sách: khoá tạm chỉ sống trong
+      // phiên làm việc hiện tại của tab, không được sống dai qua F5.
+      partialize: (state) => ({
+        qrCode: state.qrCode,
+        sessionToken: state.sessionToken,
+        tableSession: state.tableSession,
+        appliedPromo: state.appliedPromo,
+      }),
     }
   )
 )
@@ -79,14 +115,14 @@ export async function syncCustomerSessionWithBackend(qrCode: string): Promise<Ta
 
     const session = await getOpenSessionByTable(table.id)
     if (session && ["SERVING", "WAITING_FOR_OPEN", "WAITING_FOR_PAY"].includes(session.status)) {
+      // Chỉ lưu phiên. KHÔNG bật cờ khoá ở đây nữa: trạng thái khoá suy ra từ
+      // `session.status`, nên bật cờ là thừa — và trước đây hàm này chỉ biết BẬT, không
+      // bao giờ TẮT, nên phiên quay lại SERVING vẫn kẹt khoá.
       useCustomerSessionStore.getState().setSession({
         qrCode,
         sessionToken: `session-${session.id}`,
         tableSession: session,
       })
-      if (session.status === "WAITING_FOR_PAY") {
-        useCustomerSessionStore.getState().requestBill()
-      }
       return session
     }
   } catch {
