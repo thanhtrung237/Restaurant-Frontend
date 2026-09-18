@@ -5,11 +5,16 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
 import { CUSTOMER_PATHS } from "@/app/router/paths"
-import { useDish, useDishOptionGroups, useOptionItemsByGroup } from "@/features/customer/api"
+import { useDish, useDishOptionGroups, useOptionItemsByGroup, useBranchMenu } from "@/features/customer/api"
 import { useCustomerCartStore } from "@/features/customer/store/cart.store"
 import { useCustomerSessionStore } from "@/features/customer/store/session.store"
+import { useBillLocked } from "@/features/customer/hooks/use-bill-locked"
+import { useGoBack } from "@/hooks/use-go-back"
+import { useActivePromotionsByBranch } from "@/api/promotions.api"
+import { evaluateItemPromotion } from "@/lib/promotion-display"
 import type { DishOptionGroup } from "@/types/models"
 import { cn } from "@/lib/utils"
+
 
 /**
  * Chi tiết món — Fetch từ API thực
@@ -26,6 +31,9 @@ import { cn } from "@/lib/utils"
 export default function DishDetailPage() {
   const navigate = useNavigate()
   const { qrCode, dishId } = useParams<{ qrCode: string; dishId: string }>()
+  // Fallback cho nút "Quay lại": mở thẳng màn này (link/bookmark/F5) thì về Thực đơn của
+  // đúng bàn, chứ không rơi ra ngoài ứng dụng.
+  const goBack = useGoBack(generatePath(CUSTOMER_PATHS.MENU, { qrCode: qrCode ?? "" }))
   const { toast } = useToast()
 
   const dishIdNum = dishId ? parseInt(dishId, 10) : undefined
@@ -35,14 +43,41 @@ export default function DishDetailPage() {
   // Khách có thể xem trước trang chi tiết món khi phiên còn WAITING_FOR_OPEN
   // (vào từ "Xem trước thực đơn"), nhưng chưa được thêm vào giỏ tới khi nhân
   // viên xác nhận mở bàn — chặn ở đây để không lọt qua đường vòng này.
+  // QD-09: phien da yeu cau tinh tien -> khoa goi them mon (nguon: trang thai phien o BE)
+  const billLocked = useBillLocked()
   const tableSession = useCustomerSessionStore((s) => s.tableSession)
   const isTableOpenConfirmed = tableSession?.status === "SERVING"
 
+  const branchId = tableSession?.branchId
+  const { data: menuItems = [] } = useBranchMenu(branchId ?? 1)
+  const { data: activePromotions = [] } = useActivePromotionsByBranch(branchId)
+
+  const branchMenuItem = React.useMemo(
+    () => menuItems.find((m) => m.dishId === dishIdNum),
+    [menuItems, dishIdNum]
+  )
+  const effectiveUnitPrice = branchMenuItem?.effectivePrice ?? dish?.basePrice ?? 0
+
   const [selectedOptions, setSelectedOptions] = React.useState<Map<number, Set<number>>>(new Map())
-  // Store option item names for building summary
+  // Store option item names and prices for building summary & total
   const [optionItemNames, setOptionItemNames] = React.useState<Map<number, string>>(new Map())
+  const [optionItemPrices, setOptionItemPrices] = React.useState<Map<number, number>>(new Map())
   const [note, setNote] = React.useState("")
   const [quantity, setQuantity] = React.useState(1)
+
+  const promoEval = React.useMemo(() => {
+    if (!dish) return { discountAmount: 0, discountPercent: 0 }
+    return evaluateItemPromotion(
+      {
+        dishId: dish.id,
+        categoryId: branchMenuItem?.categoryId ?? (dish as any).categoryId,
+        effectivePrice: effectiveUnitPrice,
+      },
+      quantity,
+      activePromotions
+    )
+  }, [dish, branchMenuItem, effectiveUnitPrice, quantity, activePromotions])
+
 
   // Nếu không tìm thấy món, quay lại Menu
   React.useEffect(() => {
@@ -89,6 +124,16 @@ export default function DishDetailPage() {
 
   function handleAddToCart() {
     if (!dish) return
+    // QĐ-09: phiên đã yêu cầu tính tiền thì không gọi thêm món được. Nút đã bị khoá ở dưới;
+    // đây là chốt thứ hai phòng khi trạng thái đổi ngay lúc khách đang bấm.
+    if (billLocked) {
+      toast({
+        title: "Đã yêu cầu tính tiền",
+        description: "Không thể gọi thêm món. Cần gọi thêm, vui lòng báo nhân viên.",
+        variant: "warning",
+      })
+      return
+    }
     if (!isTableOpenConfirmed) {
       toast({
         title: "Chưa thể đặt món",
@@ -125,22 +170,32 @@ export default function DishDetailPage() {
       .filter(Boolean)
       .join(" · ")
 
-    // Cart item chỉ lưu dishId và options, không cần tính giá ở FE
-    // Giá sẽ được BE tính khi submit order
+    // Tổng giá các option đã chọn (1 suất)
+    const optionsTotalPrice = Array.from(selectedItemIds).reduce(
+      (sum, itemId) => sum + (optionItemPrices.get(itemId) ?? 0),
+      0,
+    )
+
     useCustomerCartStore.getState().addLine({
       dishId: String(dish.id),
       name: dish.name,
       imageUrl: dish.imageUrl || "",
-      unitPrice: dish.basePrice, // Base price, options sẽ được add khi submit
+      unitPrice: effectiveUnitPrice,
+      optionsTotalPrice: optionsTotalPrice > 0 ? optionsTotalPrice : undefined,
       quantity,
       selectedOptions: selectedOptionsForOrder,
       optionsSummary: optionsSummary || undefined,
       note: note.trim() || undefined,
+      promotionId: promoEval.appliedPromotion?.id,
+      promotionName: promoEval.appliedPromotion?.name,
+      promotionDiscountAmount:
+        promoEval.discountAmount > 0 ? Math.round(promoEval.discountAmount / quantity) : undefined,
     })
 
     toast({ title: "Đã thêm vào giỏ", description: dish.name, variant: "success" })
-    navigate(-1)
+    goBack()
   }
+
 
   return (
     <div className="flex flex-1 flex-col bg-surface-page min-h-dvh w-full">
@@ -155,7 +210,7 @@ export default function DishDetailPage() {
             )}
             <button
               type="button"
-              onClick={() => navigate(-1)}
+              onClick={goBack}
               aria-label="Quay lại"
               className="absolute top-[max(1rem,env(safe-area-inset-top))] left-4 flex size-9 items-center justify-center rounded-full bg-surface-card/90 text-text-primary shadow-sm backdrop-blur-sm transition-colors hover:bg-surface-card"
             >
@@ -167,11 +222,34 @@ export default function DishDetailPage() {
           <div className="-mt-4 rounded-t-2xl bg-surface-page px-5 sm:px-6 pt-5 pb-4">
             <h1 className="text-xl sm:text-2xl font-bold break-words text-text-primary">{dish.name}</h1>
 
-            <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="mt-2 flex flex-wrap items-baseline gap-2">
               <span className="text-2xl sm:text-3xl font-bold text-brand-primary">
-                {dish.basePrice.toLocaleString("vi-VN")}đ
+                {promoEval.discountAmount > 0
+                  ? Math.round(
+                      (effectiveUnitPrice * quantity - promoEval.discountAmount) / quantity
+                    ).toLocaleString("vi-VN") + "đ"
+                  : effectiveUnitPrice.toLocaleString("vi-VN") + "đ"}
               </span>
+              {promoEval.discountAmount > 0 ||
+              (branchMenuItem?.hasOverride && effectiveUnitPrice < dish.basePrice) ? (
+                <span className="text-base text-text-tertiary line-through">
+                  {dish.basePrice.toLocaleString("vi-VN")}đ
+                </span>
+              ) : null}
+              {promoEval.appliedPromotion ? (
+                <span className="rounded-full bg-status-success-subtle px-2.5 py-0.5 text-xs font-bold text-status-success">
+                  🏷 {promoEval.appliedPromotion.name}
+                </span>
+              ) : null}
             </div>
+
+            {promoEval.hint ? (
+              <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-status-warning-subtle/50 px-2.5 py-1 border border-status-warning/20">
+                <span className="text-xs">💡</span>
+                <p className="text-xs text-[#B54708] font-medium leading-tight">{promoEval.hint}</p>
+              </div>
+            ) : null}
+
 
             {dish.description ? (
               <p className="mt-3 text-sm sm:text-base text-text-secondary">{dish.description}</p>
@@ -183,10 +261,11 @@ export default function DishDetailPage() {
                 key={group.id}
                 group={group}
                 selectedItems={selectedOptions.get(group.optionGroupId) || new Set()}
-                onToggle={(itemId, itemName) => {
+                onToggle={(itemId, itemName, itemPrice) => {
                   toggleOptionItem(group.optionGroupId, itemId, group.maxSelect === 1)
-                  // Store item name for building summary later
+                  // Store item name and price for building summary and total
                   setOptionItemNames((prev) => new Map(prev).set(itemId, itemName))
+                  setOptionItemPrices((prev) => new Map(prev).set(itemId, itemPrice))
                 }}
               />
             ))}
@@ -230,11 +309,36 @@ export default function DishDetailPage() {
             </button>
           </div>
 
-          <Button size="lg" className="min-w-0 flex-1 h-12 rounded-xl text-base font-bold" onClick={handleAddToCart}>
-            <span className="truncate">
-              Thêm vào giỏ · {(dish.basePrice * quantity).toLocaleString("vi-VN")}đ
-            </span>
-          </Button>
+          {/* QĐ-09: `title` ở thẻ bọc vì nút disabled không tự hiện tooltip */}
+          <span
+            title={billLocked ? "Đã yêu cầu tính tiền — không thể gọi thêm món" : undefined}
+            className="min-w-0 flex-1"
+          >
+            <Button
+              size="lg"
+              className="h-12 w-full rounded-xl text-base font-bold"
+              onClick={handleAddToCart}
+              disabled={billLocked}
+            >
+              <span className="truncate">
+                {billLocked
+                  ? "Đã yêu cầu tính tiền"
+                  : (() => {
+                      const selectedItemIds = new Set(
+                        Array.from(selectedOptions.entries()).flatMap(([, ids]) => Array.from(ids))
+                      )
+                      const optionsTotal = Array.from(selectedItemIds).reduce(
+                        (s, id) => s + (optionItemPrices.get(id) ?? 0),
+                        0,
+                      )
+                      const grossTotal = (effectiveUnitPrice + optionsTotal) * quantity
+                      const finalTotal = Math.max(0, grossTotal - promoEval.discountAmount)
+                      return `Thêm vào giỏ · ${finalTotal.toLocaleString("vi-VN")}đ`
+                    })()}
+
+              </span>
+            </Button>
+          </span>
         </div>
       </div>
     </div>
@@ -251,7 +355,7 @@ function OptionGroupSection({
 }: {
   group: DishOptionGroup
   selectedItems: Set<number>
-  onToggle: (itemId: number, itemName: string) => void
+  onToggle: (itemId: number, itemName: string, itemPrice: number) => void
 }) {
   const { data: items = [], isLoading } = useOptionItemsByGroup(group.optionGroupId)
 
@@ -289,7 +393,7 @@ function OptionGroupSection({
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => onToggle(item.id, item.name)}
+                  onClick={() => onToggle(item.id, item.name, item.extraPrice ?? 0)}
                   className={cn(
                     "flex w-full items-center justify-between gap-3 rounded-md border px-4 py-3 text-left transition-colors",
                     isSelected
@@ -325,7 +429,7 @@ function OptionGroupSection({
                   <span className="flex min-w-0 items-center gap-3">
                     <Checkbox
                       checked={isSelected}
-                      onCheckedChange={() => onToggle(item.id, item.name)}
+                      onCheckedChange={() => onToggle(item.id, item.name, item.extraPrice ?? 0)}
                     />
                     <span className="truncate text-sm font-medium text-text-primary">
                       {item.name}

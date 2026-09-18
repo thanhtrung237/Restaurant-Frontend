@@ -1,24 +1,43 @@
 import * as React from "react"
 import { useNavigate, useParams, generatePath } from "react-router-dom"
-import { ChevronLeft, Plus, Trash2, ShoppingCart, Tag, Lock } from "lucide-react"
+import { ChevronLeft, Plus, Trash2, ShoppingCart, Tag, Lock, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { EmptyState } from "@/components/common/EmptyState"
 import { QuantityStepper } from "@/components/common/QuantityStepper"
 import { useToast } from "@/hooks/use-toast"
+import { getErrorMessage } from "@/lib/http"
 import { CUSTOMER_PATHS } from "@/app/router/paths"
-import { useCreateOrder } from "@/features/customer/api"
+import { useCreateOrder, useOutOfStock, useBranchMenu } from "@/features/customer/api"
+import { getPromotionByBranchAndCode, useActivePromotionsByBranch } from "@/api/promotions.api"
+import { evaluateItemPromotion } from "@/lib/promotion-display"
+import { calculatePromoDiscount } from "@/features/cashier/components/PromotionSelectModal"
 import {
   useCustomerCartStore,
   selectCartSubtotal,
   type CartLine,
 } from "@/features/customer/store/cart.store"
 import { useCustomerSessionStore } from "@/features/customer/store/session.store"
-import { computePricing, MOCK_PROMOTIONS, SERVICE_FEE_RATE, VAT_RATE } from "@/features/customer/lib/pricing"
+import { useBillLocked } from "@/features/customer/hooks/use-bill-locked"
+import { useGoBack } from "@/hooks/use-go-back"
+import { formatVnd } from "@/features/customer/lib/pricing"
 
 type CartModal =
   | { kind: "none" }
   | { kind: "confirmSend" }
+  // Giỏ có món vừa hết tại chi nhánh — phải bỏ khỏi giỏ trước khi gửi được order
+  | { kind: "outOfStock" }
   | { kind: "sendSuccess"; orderNumber: number }
+  // FR-CUS-05: Khuyến mãi vừa hết lượt trước lúc gửi order
+  | { kind: "promoExpired"; message: string }
+
 
 /**
  * Giỏ hàng — Gửi order xuống bếp
@@ -30,6 +49,9 @@ type CartModal =
 export default function CartPage() {
   const navigate = useNavigate()
   const { qrCode } = useParams<{ qrCode: string }>()
+  // Fallback cho nút "Quay lại": mở thẳng màn này (link/bookmark/F5) thì về Thực đơn của
+  // đúng bàn, chứ không rơi ra ngoài ứng dụng.
+  const goBack = useGoBack(generatePath(CUSTOMER_PATHS.MENU, { qrCode: qrCode ?? "" }))
   const { toast } = useToast()
 
   const tableSession = useCustomerSessionStore((s) => s.tableSession)
@@ -41,41 +63,218 @@ export default function CartPage() {
   const clear = useCustomerCartStore((s) => s.clear)
   const subtotal = selectCartSubtotal(items)
 
-  // Khuyến mãi + cờ khoá phiên nằm ở session.store
+  // Khuyến mãi nằm ở session.store; trạng thái khoá suy ra từ backend (useBillLocked).
   const appliedPromo = useCustomerSessionStore((s) => s.appliedPromo)
-  const applyPromo = useCustomerSessionStore((s) => s.applyPromo)
-  const billRequested = useCustomerSessionStore((s) => s.billRequested)
+  const billLocked = useBillLocked()
 
   const [promoCode, setPromoCode] = React.useState("")
   const [modal, setModal] = React.useState<CartModal>({ kind: "none" })
 
   const createOrderMutation = useCreateOrder()
 
-  const pricing = computePricing(subtotal, appliedPromo?.discountAmount ?? 0)
-  const { discountAmount, serviceFee, vatAmount, grandTotal } = pricing
+  // Món hết tại chi nhánh này (FR-MNU-03). Chặn ở FE là cần thiết vì
+  // `OrderServiceImpl.buildDetail()` KHÔNG kiểm tra tồn kho khi tạo order — nếu không
+  // chặn, khách gửi được món đã hết và bếp mới phát hiện.
+  const branchId = tableSession?.branchId
+  const { data: outOfStockRows = [], refetch: refetchOutOfStock } = useOutOfStock(branchId)
+
+  // `CartLine.dishId` là string, `BranchDishStock.dishId` là number → so sánh theo number.
+  const outOfStockDishIds = React.useMemo(
+    () => new Set(outOfStockRows.map((row) => row.dishId)),
+    [outOfStockRows],
+  )
+  const outOfStockLines = React.useMemo(
+    () => items.filter((line) => outOfStockDishIds.has(Number(line.dishId))),
+    [items, outOfStockDishIds],
+  )
+
+  const { data: menuItems = [] } = useBranchMenu(branchId ?? 1)
+  const { data: activePromotions = [] } = useActivePromotionsByBranch(branchId)
+
+  // Đánh giá khuyến mãi cấp MÓN cho từng dòng trong giỏ (dùng chung hàm evaluateItemPromotion với menu)
+  const lineEvaluations = React.useMemo(() => {
+    return items.map((line) => {
+      const menuItem = menuItems.find((m) => String(m.dishId) === String(line.dishId))
+      const evalResult = evaluateItemPromotion(
+        {
+          dishId: line.dishId,
+          categoryId: menuItem?.categoryId,
+          effectivePrice: line.unitPrice,
+        },
+        line.quantity,
+        activePromotions
+      )
+      return {
+        line,
+        ...evalResult,
+      }
+    })
+  }, [items, menuItems, activePromotions])
+
+  // Tổng giảm giá món từ các dòng trong giỏ
+  const itemPromotionDiscount = React.useMemo(() => {
+    return lineEvaluations.reduce((sum, item) => sum + (item.discountAmount || 0), 0)
+  }, [lineEvaluations])
+
+  const subtotalAfterItemPromo = Math.max(0, subtotal - itemPromotionDiscount)
+
+  // Khuyến mãi cấp HÓA ĐƠN: hiển thị dải thông báo và tính tạm tính dự kiến
+  const invoicePromos = React.useMemo(
+    () => activePromotions.filter((p) => p.applyLevel === "INVOICE"),
+    [activePromotions]
+  )
+
+  const autoOrderPromo = React.useMemo(() => {
+    if (appliedPromo?.discountAmount) return null
+    const eligible = invoicePromos
+      .map((p) => {
+        const { discount, isEligible } = calculatePromoDiscount(p, subtotalAfterItemPromo)
+        return { promo: p, discount, isEligible }
+      })
+      .filter((r) => r.isEligible && r.discount > 0)
+    if (!eligible.length) return null
+    eligible.sort((a, b) => (b.promo.priority || 0) - (a.promo.priority || 0) || b.discount - a.discount)
+    return eligible[0]
+  }, [appliedPromo, invoicePromos, subtotalAfterItemPromo])
+
+  const orderPromoDiscount = appliedPromo?.discountAmount || autoOrderPromo?.discount || 0
+  const orderPromoLabel = appliedPromo?.label || autoOrderPromo?.promo?.name || ""
+
+  // Giỏ hàng chỉ tạm tính: chưa gồm phí dịch vụ & VAT (tính ở bước hóa đơn/thanh toán)
+  const grandTotal = Math.max(0, subtotalAfterItemPromo - orderPromoDiscount)
 
   function goToMenu() {
     navigate(generatePath(CUSTOMER_PATHS.MENU, { qrCode: qrCode ?? "" }))
   }
 
-  function handleApplyPromo() {
-    const code = promoCode.trim().toUpperCase()
-    if (!code) return
-    const found = MOCK_PROMOTIONS[code]
-    if (!found) {
-      toast({ title: "Mã khuyến mãi không hợp lệ", variant: "danger" })
+  const [isApplyingPromo, setIsApplyingPromo] = React.useState(false)
+
+
+  async function handleApplyPromoWithCode(rawCode: string) {
+    const code = rawCode.trim().toUpperCase()
+    if (!code) {
+      toast({
+        title: "Chưa nhập mã",
+        description: "Vui lòng nhập mã khuyến mãi.",
+        variant: "warning",
+      })
       return
     }
-    applyPromo({ code, ...found })
-    toast({ title: "Đã áp dụng khuyến mãi", description: found.label, variant: "success" })
+
+    if (!branchId) {
+      toast({
+        title: "Lỗi",
+        description: "Không xác định được chi nhánh.",
+        variant: "danger",
+      })
+      return
+    }
+
+    setIsApplyingPromo(true)
+    try {
+      const promo = await getPromotionByBranchAndCode(branchId, code)
+      
+      let calculatedDiscount = 0
+      let minOrderValue = 0
+
+      try {
+        const condObj = typeof promo.condition === "string" ? JSON.parse(promo.condition) : promo.condition
+        const actionObj = typeof promo.action === "string" ? JSON.parse(promo.action) : promo.action
+
+        if (condObj?.minOrderValue) {
+          minOrderValue = Number(condObj.minOrderValue) || 0
+          if (subtotal < minOrderValue) {
+            toast({
+              title: "Chưa đủ điều kiện",
+              description: `Mã "${promo.name}" yêu cầu đơn hàng từ ${minOrderValue.toLocaleString("vi-VN")}đ (Hiện tại: ${subtotal.toLocaleString("vi-VN")}đ).`,
+              variant: "warning",
+            })
+            return
+          }
+        }
+
+        if (actionObj?.type === "fixed_amount") {
+          calculatedDiscount = Number(actionObj.value) || 0
+        } else if (actionObj?.type === "percentage") {
+          const pct = Number(actionObj.value) || 0
+          calculatedDiscount = Math.round((subtotal * pct) / 100)
+        } else {
+          calculatedDiscount = Number(actionObj?.value) || 0
+        }
+      } catch (parseErr) {
+        console.error("Parse promotion rules error:", parseErr)
+      }
+
+      if (calculatedDiscount <= 0) {
+        toast({
+          title: "Thông báo",
+          description: `Mã "${promo.name}" không thể tính giảm giá cho đơn hàng này.`,
+          variant: "warning",
+        })
+        return
+      }
+
+      const finalDiscount = Math.min(calculatedDiscount, subtotal)
+
+      useCustomerSessionStore.getState().applyPromo({
+        code: promo.code || code,
+        label: promo.name,
+        discountAmount: finalDiscount,
+      })
+
+      toast({
+        title: "Áp dụng thành công",
+        description: `Đã áp dụng mã "${promo.name}", giảm ${finalDiscount.toLocaleString("vi-VN")}đ.`,
+        variant: "success",
+      })
+      setPromoCode("")
+    } catch (err: any) {
+      toast({
+        title: "Không thể áp dụng",
+        description: getErrorMessage(err),
+        variant: "danger",
+      })
+    } finally {
+      setIsApplyingPromo(false)
+    }
+  }
+
+  function handleApplyPromo() {
+    void handleApplyPromoWithCode(promoCode)
   }
 
   function handleSendOrderClick() {
-    // Bỏ qua kiểm tra tồn kho (BE sẽ validate)
+    // Có món đã hết → buộc xử lý trước, không cho gửi cả giỏ.
+    if (outOfStockLines.length > 0) {
+      setModal({ kind: "outOfStock" })
+      return
+    }
     setModal({ kind: "confirmSend" })
   }
 
+  /** Bỏ các món đã hết khỏi giỏ rồi gửi phần còn lại. */
+  async function handleRemoveOutOfStockAndSend() {
+    const remaining = items.filter((line) => !outOfStockDishIds.has(Number(line.dishId)))
+    outOfStockLines.forEach((line) => removeLine(line.cartItemId))
+
+    if (remaining.length === 0) {
+      setModal({ kind: "none" })
+      toast({
+        title: "Giỏ hàng đã trống",
+        description: "Tất cả món trong giỏ đều đã hết. Vui lòng chọn món khác.",
+        variant: "info",
+      })
+      return
+    }
+
+    await sendOrder(remaining)
+  }
+
   async function handleConfirmSend() {
+    await sendOrder(items)
+  }
+
+  async function sendOrder(lines: CartLine[]) {
     if (!tableSession?.id) {
       toast({ title: "Lỗi", description: "Không tìm thấy phiên bàn", variant: "danger" })
       return
@@ -84,7 +283,7 @@ export default function CartPage() {
     try {
       const order = await createOrderMutation.mutateAsync({
         tableSessionId: tableSession.id,
-        items: items.map((line) => ({
+        items: lines.map((line) => ({
           dishId: parseInt(line.dishId, 10),
           quantity: line.quantity,
           note: line.note,
@@ -96,26 +295,61 @@ export default function CartPage() {
       // Clear cart và hiển thị success
       clear()
       setModal({ kind: "sendSuccess", orderNumber: order.id })
-    } catch (error) {
-      console.error("Error creating order:", error)
+    } catch (error: any) {
+      const errorMsg = getErrorMessage(error)
+
+      // FR-CUS-05: Kiểm tra nếu KM vừa hết lượt (BE ném ConflictException HTTP 409)
+      if (
+        error?.response?.status === 409 ||
+        error?.status === 409 ||
+        errorMsg.toLowerCase().includes("hết lượt")
+      ) {
+        setModal({
+          kind: "promoExpired",
+          message:
+            errorMsg ||
+            "Chương trình khuyến mãi vừa hết lượt. Đơn hàng sẽ được tính theo giá gốc.",
+        })
+        return
+      }
+
+      // Gửi thất bại có thể vì món vừa bị báo hết giữa lúc khách đang xem giỏ.
+      // Kiểm tra lại tồn kho: nếu đúng là do món hết thì mở sheet để khách bỏ món,
+      // thay vì chỉ báo lỗi chung rồi bấm lại vẫn thất bại.
+      const blocked = await findOutOfStockLines(lines)
+      if (blocked.length > 0) {
+        setModal({ kind: "outOfStock" })
+        return
+      }
+
       toast({
         title: "Lỗi gửi order",
-        description: error instanceof Error ? error.message : "Vui lòng thử lại",
+        description: errorMsg,
         variant: "danger",
       })
       setModal({ kind: "none" })
     }
+
   }
 
-  // ---- Trạng thái: Phiên đã khoá (đã yêu cầu tính tiền) — không cho gửi thêm món ----
-  // TODO(phase-tiếp theo): áp cùng điều kiện này ở Thực đơn (menu/index.tsx) để chặn "Thêm vào giỏ".
-  if (billRequested) {
+  /** Hỏi lại server những dòng nào trong `lines` đang hết. */
+  async function findOutOfStockLines(lines: CartLine[]): Promise<CartLine[]> {
+    if (typeof branchId !== "number") return []
+    const result = await refetchOutOfStock()
+    const freshIds = new Set((result.data ?? []).map((row) => row.dishId))
+    return lines.filter((line) => freshIds.has(Number(line.dishId)))
+  }
+
+  // ---- Trạng thái: Phiên đã khoá (phiên đang CHỜ THANH TOÁN) — không cho gửi thêm món ----
+  // TODO(phase-tiếp theo): áp cùng điều kiện này ở Thực đơn / Chi tiết món để chặn
+  // "Thêm vào giỏ" ngay từ đầu (xem docs/todo.md).
+  if (billLocked) {
     return (
       <div className="flex flex-1 flex-col bg-surface-page">
         <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border-default bg-surface-card px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={goBack}
             aria-label="Quay lại"
             className="flex size-9 shrink-0 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-surface-muted hover:text-text-primary"
           >
@@ -196,7 +430,7 @@ export default function CartPage() {
         <div className="flex items-center gap-3 px-4 sm:px-6 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 w-full max-w-2xl mx-auto">
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={goBack}
             aria-label="Quay lại"
             className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#F1F3F5] text-text-primary transition-colors hover:bg-border-default"
           >
@@ -222,12 +456,38 @@ export default function CartPage() {
         <>
           <div className="flex-1 overflow-y-auto w-full">
             <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-4 space-y-3">
-              {items.map((line) => (
+              {/* ---- Dải thông báo KM cấp HÓA ĐƠN (FR-CUS-02, FR-CUS-04) ---- */}
+              {invoicePromos.length > 0 ? (
+                <div className="space-y-1.5 mb-2">
+                  {invoicePromos.map((promo) => {
+                    const { discount } = calculatePromoDiscount(promo, subtotalAfterItemPromo)
+                    return (
+                      <div
+                        key={promo.id}
+                        className="flex items-center gap-2.5 rounded-2xl bg-status-success-subtle/70 px-3.5 py-2.5 border border-status-success/20 shadow-2xs"
+                      >
+                        <span className="text-base">🎉</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-status-success">{promo.name}</p>
+                          <p className="text-[11px] text-text-secondary">
+                            {promo.description || "Áp dụng khi chốt hóa đơn"}.
+                            {discount > 0
+                              ? ` Dự kiến giảm -${discount.toLocaleString("vi-VN")}đ khi chốt bàn.`
+                              : " (Tạm tính chưa đủ điều kiện tối thiểu)"}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : null}
+
+              {lineEvaluations.map((itemEval) => (
                 <CartLineRow
-                  key={line.cartItemId}
-                  line={line}
-                  onQuantityChange={(qty) => updateQuantity(line.cartItemId, qty)}
-                  onRemove={() => removeLine(line.cartItemId)}
+                  key={itemEval.line.cartItemId}
+                  itemEval={itemEval}
+                  onQuantityChange={(qty) => updateQuantity(itemEval.line.cartItemId, qty)}
+                  onRemove={() => removeLine(itemEval.line.cartItemId)}
                 />
               ))}
 
@@ -240,26 +500,88 @@ export default function CartPage() {
                 <span>Thêm món</span>
               </button>
 
+
               {/* ---- Mã khuyến mãi ---- */}
-              <div className="mt-3 flex items-center justify-between rounded-[16px] border border-border-default/80 bg-white p-1.5 pl-3.5 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-                <div className="flex flex-1 items-center gap-2">
-                  <Tag className="size-4 shrink-0 text-text-tertiary" />
-                  <input
-                    type="text"
-                    value={promoCode}
-                    onChange={(e) => setPromoCode(e.target.value)}
-                    placeholder="Nhập mã khuyến mãi"
-                    className="w-full bg-transparent text-sm text-text-primary placeholder:text-text-tertiary outline-none"
-                  />
+              {appliedPromo ? (
+                <div className="mt-3 flex items-center justify-between rounded-[16px] border border-status-success/30 bg-status-success-subtle/40 p-3 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-status-success text-white">
+                      <Tag className="size-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-bold text-text-primary">{appliedPromo.label}</span>
+                        {appliedPromo.code ? (
+                          <span className="rounded bg-status-success-subtle px-1.5 py-0.5 text-xs font-bold text-status-success">
+                            {appliedPromo.code}
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="text-xs font-medium text-status-success">
+                        Giảm -{appliedPromo.discountAmount.toLocaleString("vi-VN")}đ
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => useCustomerSessionStore.getState().clearPromo()}
+                    className="flex size-7 items-center justify-center rounded-full text-text-tertiary transition-colors hover:bg-surface-muted hover:text-status-danger active:scale-95"
+                    title="Bỏ mã khuyến mãi"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleApplyPromo}
-                  className="rounded-[10px] bg-brand-primary-subtle px-3.5 py-2 text-xs font-bold text-brand-primary transition-colors hover:bg-brand-primary-subtle/80 active:scale-95"
-                >
-                  Áp dụng
-                </button>
-              </div>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center justify-between rounded-[16px] border border-border-default/80 bg-white p-1.5 pl-3.5 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+                    <div className="flex flex-1 items-center gap-2">
+                      <Tag className="size-4 shrink-0 text-text-tertiary" />
+                      <input
+                        type="text"
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                            handleApplyPromo()
+                          }
+                        }}
+                        placeholder="Nhập mã khuyến mãi"
+                        className="w-full bg-transparent text-sm text-text-primary placeholder:text-text-tertiary outline-none"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isApplyingPromo}
+                      onClick={handleApplyPromo}
+                      className="rounded-[10px] bg-brand-primary-subtle px-3.5 py-2 text-xs font-bold text-brand-primary transition-colors hover:bg-brand-primary-subtle/80 active:scale-95 disabled:opacity-50"
+                    >
+                      {isApplyingPromo ? "Đang áp..." : "Áp dụng"}
+                    </button>
+                  </div>
+
+                  {/* Gợi ý mã khuyến mãi đang có tại chi nhánh */}
+                  {activePromotions.filter((p) => p.code).length > 0 ? (
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1 pl-1">
+                      <span className="text-xs text-text-tertiary font-medium">Gợi ý mã:</span>
+                      {activePromotions
+                        .filter((p) => p.code)
+                        .slice(0, 3)
+                        .map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => void handleApplyPromoWithCode(p.code!)}
+                            className="inline-flex items-center gap-1 rounded-full border border-dashed border-brand-primary/40 bg-brand-primary-subtle/30 px-2.5 py-1 text-xs font-semibold text-brand-primary transition-all hover:bg-brand-primary-subtle active:scale-95"
+                          >
+                            <Tag className="size-3" />
+                            <span>{p.code}</span>
+                          </button>
+                        ))}
+                    </div>
+                  ) : null}
+                </div>
+              )}
             </div>
           </div>
 
@@ -267,51 +589,34 @@ export default function CartPage() {
           <div className="border-t border-border-default/40 bg-white shadow-[0_-4px_16px_rgba(0,0,0,0.04)] w-full">
             <div className="w-full max-w-2xl mx-auto px-5 sm:px-6 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
             <div className="space-y-2.5 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-text-secondary">Tiền hàng</span>
-                <span className="font-bold text-text-primary">
-                  {subtotal.toLocaleString("vi-VN")}đ
-                </span>
-              </div>
-
-              {discountAmount > 0 ? (
+              {orderPromoDiscount > 0 ? (
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-[#12B76A]">
-                    Khuyến mãi &ldquo;{appliedPromo?.label ?? "Combo trưa"}&rdquo;
+                    KM đơn (dự kiến){orderPromoLabel ? ` · ${orderPromoLabel}` : ""}
                   </span>
                   <span className="font-bold text-[#12B76A]">
-                    -{discountAmount.toLocaleString("vi-VN")}đ
+                    -{orderPromoDiscount.toLocaleString("vi-VN")}đ
                   </span>
                 </div>
               ) : null}
 
-              <div className="flex items-center justify-between">
-                <span className="text-text-secondary">
-                  Phí dịch vụ ({Math.round(SERVICE_FEE_RATE * 100)}%)
-                </span>
-                <span className="font-bold text-text-primary">
-                  {serviceFee.toLocaleString("vi-VN")}đ
-                </span>
-              </div>
+              {orderPromoDiscount > 0 ? (
+                <div className="my-2.5 border-t border-border-default/60" />
+              ) : null}
 
               <div className="flex items-center justify-between">
-                <span className="text-text-secondary">
-                  VAT ({Math.round(VAT_RATE * 100)}%)
-                </span>
-                <span className="font-bold text-text-primary">
-                  {vatAmount.toLocaleString("vi-VN")}đ
-                </span>
-              </div>
-
-              <div className="my-2.5 border-t border-border-default/60" />
-
-              <div className="flex items-center justify-between">
-                <span className="text-base font-bold text-text-primary">Tổng cộng</span>
+                <div>
+                  <span className="text-base font-bold text-text-primary">Tổng cộng</span>
+                  {orderPromoDiscount > 0 ? (
+                    <p className="text-[11px] text-text-tertiary">Đã gồm khuyến mãi đơn dự kiến</p>
+                  ) : null}
+                </div>
                 <span className="text-xl font-bold text-brand-primary">
                   {grandTotal.toLocaleString("vi-VN")}đ
                 </span>
               </div>
             </div>
+
 
             <Button
               size="lg"
@@ -373,58 +678,223 @@ export default function CartPage() {
           </div>
         </div>
       ) : null}
+
+      {/* ---- Bottom sheet: Một số món đã hết ----
+          Dùng Radix Dialog (focus trap + Esc + khoá scroll) và ghi đè lớp định vị để
+          hiện dạng bottom sheet. Sheet "Xác nhận gửi order" ở trên là overlay tự viết
+          từ trước — chưa đổi để không vượt phạm vi task. */}
+      <Dialog
+        open={modal.kind === "outOfStock"}
+        onOpenChange={(open) => !open && setModal({ kind: "none" })}
+      >
+        <DialogContent
+          showCloseButton={false}
+          className="top-auto bottom-0 left-1/2 max-w-md translate-y-0 gap-0 rounded-card rounded-b-none border-b-0 px-6 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:max-w-md"
+        >
+          <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border-default" />
+
+          <DialogHeader className="flex-row items-center gap-3.5">
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-status-warning-subtle text-status-warning">
+              <Info className="size-6" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-xl font-bold text-text-primary">
+                Một số món đã hết
+              </DialogTitle>
+              <DialogDescription className="mt-0.5 text-sm text-text-tertiary">
+                Cần xử lý trước khi gửi món
+              </DialogDescription>
+            </div>
+          </DialogHeader>
+
+          <p className="mt-3 text-sm text-text-secondary">
+            Các món dưới đây vừa hết tại chi nhánh này. Bỏ khỏi giỏ để tiếp tục gửi
+            những món còn lại.
+          </p>
+
+          <ul className="mt-4 space-y-5 rounded-card border border-brand-primary/20 bg-brand-primary-subtle/25 px-4 py-5">
+            {outOfStockLines.map((line) => (
+              <li key={line.cartItemId} className="flex items-center justify-between gap-3">
+                <span className="min-w-0 text-[15px] text-text-primary">
+                  <span className="font-bold">{line.name}</span>
+                  <span className="text-text-tertiary"> × {line.quantity}</span>
+                </span>
+                <Badge variant="danger" className="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold">
+                  Đã hết
+                </Badge>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-5 space-y-2">
+            <Button
+              size="lg"
+              className="w-full"
+              onClick={() => void handleRemoveOutOfStockAndSend()}
+              disabled={createOrderMutation.isPending}
+            >
+              {createOrderMutation.isPending
+                ? "Đang gửi..."
+                : "Bỏ món đã hết & gửi order"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="lg"
+              className="w-full"
+              onClick={() => setModal({ kind: "none" })}
+              disabled={createOrderMutation.isPending}
+            >
+              Quay lại giỏ hàng
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ---- Bottom sheet: Khuyến mãi vừa hết lượt (FR-CUS-05) ---- */}
+      <Dialog
+        open={modal.kind === "promoExpired"}
+        onOpenChange={(open) => !open && setModal({ kind: "none" })}
+      >
+        <DialogContent
+          showCloseButton={false}
+          className="top-auto bottom-0 left-1/2 max-w-md translate-y-0 gap-0 rounded-card rounded-b-none border-b-0 px-6 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:max-w-md"
+        >
+          <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border-default" />
+
+          <DialogHeader className="flex-row items-center gap-3.5">
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-status-warning-subtle text-status-warning">
+              <Info className="size-6" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-xl font-bold text-text-primary">
+                Khuyến mãi vừa hết lượt
+              </DialogTitle>
+              <DialogDescription className="mt-0.5 text-sm text-text-tertiary">
+                Xác nhận thay đổi giá trước khi gửi bếp (FR-CUS-05)
+              </DialogDescription>
+            </div>
+          </DialogHeader>
+
+          <p className="mt-3 text-sm text-text-secondary leading-relaxed">
+            {modal.kind === "promoExpired" ? modal.message : ""}
+          </p>
+
+          <div className="mt-5 space-y-2">
+            <Button
+              size="lg"
+              className="w-full"
+              onClick={() => void handleConfirmSend()}
+              disabled={createOrderMutation.isPending}
+            >
+              {createOrderMutation.isPending ? "Đang gửi..." : "Đồng ý giá gốc & gửi món"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="lg"
+              className="w-full"
+              onClick={() => setModal({ kind: "none" })}
+              disabled={createOrderMutation.isPending}
+            >
+              Quay lại giỏ hàng
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
 
-/** 1 dòng món trong Giỏ hàng: ảnh, tên, tuỳ chọn/ghi chú, giá, stepper số lượng và nút xoá riêng. */
+/** 1 dòng món trong Giỏ hàng: ảnh, tên, tuỳ chọn/ghi chú, giá, stepper số lượng, thông tin KM và lời nhắc điều kiện. */
 function CartLineRow({
-  line,
+  itemEval,
   onQuantityChange,
   onRemove,
 }: {
-  line: CartLine
+  itemEval: {
+    line: CartLine
+    appliedPromotion?: any
+    discountAmount: number
+    discountPercent: number
+    hint?: string
+  }
   onQuantityChange: (quantity: number) => void
   onRemove: () => void
 }) {
+  const { line, appliedPromotion, discountAmount, hint } = itemEval
+  const grossPrice = (line.unitPrice + (line.optionsTotalPrice ?? 0)) * line.quantity
+  const finalPrice = Math.max(0, grossPrice - discountAmount)
+  const promoName = appliedPromotion?.name || line.promotionName
+
   return (
-    <div className="flex items-center gap-3.5 rounded-[18px] bg-white p-3.5 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-      <div className="relative size-14 shrink-0 overflow-hidden rounded-[12px] bg-[#F1F3F5]">
-        {line.imageUrl ? (
-          <img src={line.imageUrl} alt={line.name} className="size-full object-cover" />
-        ) : (
-          <div className="size-full bg-[#F1F3F5]" />
-        )}
+    <div className="flex flex-col gap-2 rounded-[18px] bg-white p-3.5 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+      <div className="flex items-center gap-3.5">
+        <div className="relative size-14 shrink-0 overflow-hidden rounded-[12px] bg-[#F1F3F5]">
+          {line.imageUrl ? (
+            <img src={line.imageUrl} alt={line.name} className="size-full object-cover" />
+          ) : (
+            <div className="size-full bg-[#F1F3F5]" />
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <h4 className="truncate text-sm font-bold text-text-primary">{line.name}</h4>
+          {line.optionsSummary ? (
+            <p className="truncate text-xs text-text-tertiary">{line.optionsSummary}</p>
+          ) : null}
+
+          {/* Dòng khuyến mãi đã áp dụng (FR-CUS-09) */}
+          {discountAmount > 0 && promoName ? (
+            <div className="flex items-center gap-1.5">
+              <Tag className="size-3 text-status-success shrink-0" />
+              <span className="truncate text-xs font-semibold text-status-success">
+                {promoName}
+              </span>
+              <span className="shrink-0 text-xs font-bold text-status-success">
+                -{discountAmount.toLocaleString("vi-VN")}đ
+              </span>
+            </div>
+          ) : null}
+
+          {/* Dòng giá: gạch ngang giá gốc nếu có KM, hiện giá thực tế */}
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-sm font-bold text-brand-primary">
+              {finalPrice.toLocaleString("vi-VN")}đ
+            </span>
+            {discountAmount > 0 ? (
+              <span className="text-xs text-text-tertiary line-through">
+                {grossPrice.toLocaleString("vi-VN")}đ
+              </span>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2.5">
+          <QuantityStepper
+            value={line.quantity}
+            onChange={onQuantityChange}
+            min={1}
+            max={99}
+            variant="pill"
+          />
+
+          <button
+            type="button"
+            onClick={onRemove}
+            aria-label={`Xoá ${line.name} khỏi giỏ`}
+            className="flex size-7 items-center justify-center rounded-full text-text-tertiary/60 transition-colors hover:text-status-danger active:scale-90"
+          >
+            <Trash2 className="size-4" />
+          </button>
+        </div>
       </div>
 
-      <div className="min-w-0 flex-1 space-y-0.5">
-        <h4 className="truncate text-sm font-bold text-text-primary">{line.name}</h4>
-        {line.optionsSummary ? (
-          <p className="truncate text-xs text-text-tertiary">{line.optionsSummary}</p>
-        ) : null}
-        <p className="text-sm font-bold text-brand-primary">
-          {(line.unitPrice * line.quantity).toLocaleString("vi-VN")}đ
-        </p>
-      </div>
-
-      <div className="flex shrink-0 items-center gap-2.5">
-        <QuantityStepper
-          value={line.quantity}
-          onChange={onQuantityChange}
-          min={1}
-          max={99}
-          variant="pill"
-        />
-
-        <button
-          type="button"
-          onClick={onRemove}
-          aria-label={`Xoá ${line.name} khỏi giỏ`}
-          className="flex size-7 items-center justify-center rounded-full text-text-tertiary/60 transition-colors hover:text-status-danger active:scale-90"
-        >
-          <Trash2 className="size-4" />
-        </button>
-      </div>
+      {/* Lời nhắc điều kiện KM chưa đủ (FR-CUS-09: ví dụ 'Thêm 1 ly nữa để được giảm 10%') */}
+      {hint ? (
+        <div className="flex items-center gap-1.5 rounded-lg bg-status-warning-subtle/50 px-2.5 py-1 border border-status-warning/20">
+          <span className="text-xs shrink-0">💡</span>
+          <p className="text-xs text-[#B54708] font-medium leading-tight">{hint}</p>
+        </div>
+      ) : null}
     </div>
   )
 }

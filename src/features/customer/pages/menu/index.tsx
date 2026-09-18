@@ -1,10 +1,12 @@
 import * as React from "react"
 import { useNavigate, useParams, generatePath } from "react-router-dom"
-import { Search, Bell, ClipboardList } from "lucide-react"
+import { Search, Bell, ClipboardList, Lock } from "lucide-react"
 import { MenuItemCard } from "@/components/common/MenuItemCard"
 import { useToast } from "@/hooks/use-toast"
 import { CUSTOMER_PATHS } from "@/app/router/paths"
-import { useBranchMenu, useTableSession, useOrderDetailsBySession } from "@/features/customer/api"
+import { useBranchMenu, useTableSession, useOrderDetailsBySession, useCallStaff } from "@/features/customer/api"
+import { useBillLocked } from "@/features/customer/hooks/use-bill-locked"
+import { TABLE_SESSION_STATUS_LABEL } from "@/types/enums"
 import {
   useCustomerSessionStore,
   syncCustomerSessionWithBackend,
@@ -12,8 +14,11 @@ import {
 import {
   useCustomerCartStore,
   selectCartTotalQuantity,
-  selectCartSubtotal,
+  selectCartSubtotalAfterPromotion,
 } from "@/features/customer/store/cart.store"
+import { useActivePromotionsByBranch } from "@/api/promotions.api"
+import { findBestPromotionForItem, formatPromotionBadge } from "@/lib/promotion-display"
+import { calculatePromoDiscount } from "@/features/cashier/components/PromotionSelectModal"
 import type { BranchMenuItem } from "@/types/models"
 import { cn } from "@/lib/utils"
 
@@ -52,14 +57,16 @@ function stripKnownPrefix(text: string, prefixes: string[]): string {
  * Tab danh mục được suy ra trực tiếp từ `categoryId`/`categoryName` của chính các món trả
  * về (không dùng danh mục mock cứng) để đảm bảo luôn khớp dữ liệu thật.
  * Filter theo category và search text ở frontend.
- * Món hết hàng hiển thị nhãn "Hết hàng", không cho thêm vào giỏ. Món bị ẩn ở chi nhánh
- * (`isHidden`) không hiển thị cho khách.
+ * BR-05: món hết hàng tại chi nhánh KHÔNG hiển thị trên menu khách (backend đã lọc sẵn).
+ * Món bị ẩn ở chi nhánh (`isHidden`) cũng không hiển thị cho khách.
  */
 export default function MenuPage() {
   const navigate = useNavigate()
   const { qrCode } = useParams<{ qrCode: string }>()
   const { toast } = useToast()
 
+  // QD-09: phien da yeu cau tinh tien -> khoa goi them mon (nguon: trang thai phien o BE)
+  const billLocked = useBillLocked()
   const tableSession = useCustomerSessionStore((s) => s.tableSession)
   const setSession = useCustomerSessionStore((s) => s.setSession)
   const qrCodeInStore = useCustomerSessionStore((s) => s.qrCode)
@@ -68,7 +75,16 @@ export default function MenuPage() {
   // Khách có thể vào xem trước thực đơn khi phiên còn WAITING_FOR_OPEN (xem
   // `waiting-table-open` → "Xem trước thực đơn"), nhưng CHỈ được xem — chưa
   // được thêm món vào giỏ cho tới khi nhân viên xác nhận mở bàn (SERVING).
-  const isTableOpenConfirmed = tableSession?.status === "SERVING"
+  /**
+   * Bàn ĐÃ mở hay chưa.
+   *
+   * `WAITING_FOR_PAY` cũng là bàn đã mở — chỉ là đã yêu cầu tính tiền. Trước đây chỉ xét
+   * `SERVING` nên khách ở phiên chờ thanh toán thấy chip "Chờ mở bàn" và dòng "Nhân viên chưa
+   * xác nhận mở bàn" — sai, và mâu thuẫn ngay với băng "Đã yêu cầu tính tiền" ở dưới.
+   * Việc chặn gọi thêm món ở trạng thái đó do `billLocked` lo (QĐ-09).
+   */
+  const isTableOpenConfirmed =
+    tableSession?.status === "SERVING" || tableSession?.status === "WAITING_FOR_PAY"
 
   // Poll lại phiên bàn trong lúc đang ở chế độ xem trước (chưa SERVING), để
   // khi nhân viên xác nhận mở bàn thì trang tự cập nhật ngay, không cần khách
@@ -102,6 +118,17 @@ export default function MenuPage() {
 
   // Fetch menu từ API — trả thẳng mảng BranchMenuItem[]
   const { data: menuItems = [], isLoading, error } = useBranchMenu(branchId ?? 1)
+
+  // Lấy KM đang chạy tại chi nhánh (BE đã filter: active, đúng ngày/giờ/lượt)
+  // Dùng `useActivePromotionsByBranch` thay vì batch-fetch riêng để FE & BE
+  // dùng cùng 1 nguồn dữ liệu — tránh lệch giá giữa menu và lúc gửi order.
+  const { data: activePromotions = [] } = useActivePromotionsByBranch(branchId)
+
+  // KM cấp HÓA ĐƠN: hiển thị dải thông báo ở đầu menu thay vì gạch giá từng món
+  const invoicePromos = React.useMemo(
+    () => activePromotions.filter((p) => p.applyLevel === "INVOICE"),
+    [activePromotions]
+  )
 
   // Fetch món đã gọi để hiển thị số lượng trên nút "Món đã gọi"
   const { data: orderDetails = [] } = useOrderDetailsBySession(
@@ -163,7 +190,7 @@ export default function MenuPage() {
   const cartItems = useCustomerCartStore((s) => s.items)
   const quickAdd = useCustomerCartStore((s) => s.quickAdd)
   const cartTotalQuantity = selectCartTotalQuantity(cartItems)
-  const cartSubtotal = selectCartSubtotal(cartItems)
+  const cartSubtotal = selectCartSubtotalAfterPromotion(cartItems)
 
   function goToQrPath(path: string) {
     navigate(generatePath(path, { qrCode: qrCode ?? "" }))
@@ -174,6 +201,15 @@ export default function MenuPage() {
   }
 
   function handleQuickAdd(dish: BranchMenuItem) {
+    // QĐ-09: phiên đã yêu cầu tính tiền thì không gọi thêm món được.
+    if (billLocked) {
+      toast({
+        title: "Đã yêu cầu tính tiền",
+        description: "Không thể gọi thêm món. Cần gọi thêm, vui lòng báo nhân viên.",
+        variant: "warning",
+      })
+      return
+    }
     // Chặn thêm giỏ nếu bàn chưa được nhân viên xác nhận mở — double-check ở
     // đây (không chỉ ẩn nút) đề phòng nơi khác lỡ gọi thẳng hàm này.
     if (!isTableOpenConfirmed) {
@@ -184,21 +220,41 @@ export default function MenuPage() {
       })
       return
     }
+
+    // Check for active promotion
+    const promotionMatch = findBestPromotionForItem(dish, activePromotions)
+
     quickAdd({
       dishId: String(dish.dishId),
       name: dish.dishName,
       imageUrl: dish.imageUrl || "",
       unitPrice: dish.effectivePrice,
+      promotionId: promotionMatch?.promotion.id,
+      promotionName: promotionMatch?.promotion.name,
+      promotionDiscountAmount: promotionMatch?.discountAmount,
     })
     toast({ title: "Đã thêm vào giỏ", description: dish.dishName, variant: "success" })
   }
 
+  const callStaffMutation = useCallStaff()
+
   function handleCallStaff() {
-    // TODO(api): POST /api/table-sessions/:id/call-staff khi có backend
-    toast({
-      title: "Đã gọi nhân viên",
-      description: `${tableName} · Nhân viên sẽ đến hỗ trợ trong giây lát.`,
-      variant: "info",
+    if (!tableSession?.id) return
+    callStaffMutation.mutate(tableSession.id, {
+      onSuccess: () => {
+        toast({
+          title: "Đã gọi nhân viên",
+          description: `${tableName} · Nhân viên sẽ đến hỗ trợ trong giây lát.`,
+          variant: "success",
+        })
+      },
+      onError: (err) => {
+        toast({
+          title: "Lỗi gọi nhân viên",
+          description: err instanceof Error ? err.message : "Không thể gọi nhân viên lúc này. Vui lòng thử lại.",
+          variant: "danger",
+        })
+      },
     })
   }
 
@@ -277,7 +333,12 @@ export default function MenuPage() {
                 ) : null}
               </button>
 
-              {isTableOpenConfirmed ? (
+              {billLocked ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FEF6EE] px-2.5 py-1.5 text-xs font-bold text-[#B54708]">
+                  <span className="size-1.5 rounded-full bg-[#F79009]" />
+                  <span>{TABLE_SESSION_STATUS_LABEL.WAITING_FOR_PAY}</span>
+                </span>
+              ) : isTableOpenConfirmed ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E6F7EF] px-2.5 py-1.5 text-xs font-bold text-[#12B76A]">
                   <span className="size-1.5 rounded-full bg-[#12B76A]" />
                   <span>Đang phục vụ</span>
@@ -285,7 +346,7 @@ export default function MenuPage() {
               ) : (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FEF6EE] px-2.5 py-1.5 text-xs font-bold text-[#B54708]">
                   <span className="size-1.5 rounded-full bg-[#F79009]" />
-                  <span>Chờ xác nhận mở bàn</span>
+                  <span>{TABLE_SESSION_STATUS_LABEL.WAITING_FOR_OPEN}</span>
                 </span>
               )}
             </div>
@@ -340,8 +401,58 @@ export default function MenuPage() {
       {/* ---- Danh sách món — vùng cuộn riêng, tự động chia 2 cột trên tablet/desktop ---- */}
       <div className="flex-1 overflow-y-auto w-full">
         <div className="w-full max-w-4xl mx-auto px-4 pt-4 pb-6">
-          <p className="mb-3 text-xs font-bold tracking-wider text-text-tertiary uppercase">
-            MÓN {activeCategory?.label.toUpperCase() ?? ""}
+          {/*
+            QĐ-09: phiên đã khoá thì nói NGAY ở đây, chỗ khách bắt đầu chọn món — trước đây
+            chỉ chặn ở Giỏ hàng nên khách chọn cả loạt món rồi mới biết là không gọi được.
+            Nguồn sự thật là trạng thái phiên lấy từ backend (`useBillLocked`).
+          */}
+          {billLocked ? (
+            <div className="mb-3 flex items-start gap-2.5 rounded-xl border border-[#FEDF89] bg-[#FFFCF5] px-4 py-3">
+              <Lock className="mt-0.5 size-4 shrink-0 text-[#B54708]" />
+              <p className="text-sm text-[#B54708]">
+                <strong>Đã yêu cầu tính tiền</strong> — không thể gọi thêm món. Cần gọi thêm,
+                vui lòng báo nhân viên.
+              </p>
+            </div>
+          ) : null}
+
+          {/*
+
+            KHÔNG dùng `uppercase`: ở 12px + màu nhạt, mỗi dấu thanh tiếng Việt chỉ còn
+            1-2 điểm ảnh nên nhìn như mất dấu ("MÓN PHỔ BIẾN" đọc ra "MON PHO BIEN").
+            Đã đo từng dòng điểm ảnh - xem docs/reports/nhan-vien-buoc-0.md mục 10.
+          */}
+
+          {/* ---- Banner KM cấp HÓA ĐƠN (đặc tả FR-CUS-02): không gạch giá từng món,
+              chỉ nhắc điều kiện để khách biết. Lượt có thể hết trước lúc chốt bàn.
+          ---- */}
+          {invoicePromos.length > 0 ? (
+            <div className="mb-3 space-y-1.5">
+              {invoicePromos.map((promo) => {
+                const { discount } = calculatePromoDiscount(promo, cartSubtotal)
+                return (
+                  <div
+                    key={promo.id}
+                    className="flex items-center gap-2.5 rounded-xl bg-status-success-subtle/60 px-3.5 py-2.5 border border-status-success/20"
+                  >
+                    <span className="text-base">🎉</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-status-success">{promo.name}</p>
+                      <p className="text-[11px] text-text-secondary">
+                        {promo.description || "Áp dụng khi chốt hóa đơn"}.
+                        {discount > 0
+                          ? ` Dự kiến giảm ${discount.toLocaleString("vi-VN")}đ.`
+                          : " (Tổng hóa đơn chưa đủ điều kiện)"}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : null}
+
+          <p className="mb-3 text-xs font-bold tracking-wider text-text-tertiary">
+            Món {activeCategory?.label ?? ""}
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -355,10 +466,37 @@ export default function MenuPage() {
               </div>
             ) : (
               dishes.map((dish) => {
-                const outOfStock = dish.stockStatus === "OUT_OF_STOCK"
-                const showOriginalPrice = dish.hasOverride && dish.effectivePrice < dish.basePrice
-                const discountPercent = showOriginalPrice
+                // BR-05: món hết hàng tại chi nhánh KHÔNG hiển thị trên menu khách —
+                // backend `getMenuForCustomer()` đã lọc sẵn `stockStatus == AVAILABLE`,
+                // nên ở đây không cần (và không được) hiển thị nhãn "Hết hàng".
+                // Trường hợp món trong giỏ bị báo hết trước lúc gửi được xử lý ở trang
+                // Giỏ hàng bằng `useOutOfStock(branchId)` — bottom sheet "Một số món đã hết".
+
+                // Check for price override discount (chi nhánh ghi đè giá)
+                const showOverrideDiscount = dish.hasOverride && dish.effectivePrice < dish.basePrice
+                const overrideDiscountPercent = showOverrideDiscount
                   ? Math.round(((dish.basePrice - dish.effectivePrice) / dish.basePrice) * 100)
+                  : undefined
+
+                // Khuyến mãi cấp MÓN — BE đã filter active, chỉ cần match với món này
+                // FR-CUS-02: giá gốc gạch ngang + giá sau giảm + nhãn tên chương trình
+                const promotionMatch = findBestPromotionForItem(dish, activePromotions)
+
+                // Giá hiển thị: ưu tiên KM > giá override > giá gốc
+                const finalPrice = promotionMatch ? promotionMatch.finalPrice : dish.effectivePrice
+                const originalPrice = promotionMatch
+                  ? promotionMatch.originalPrice
+                  : showOverrideDiscount
+                    ? dish.basePrice
+                    : undefined
+
+                const discountPercent = promotionMatch
+                  ? promotionMatch.discountPercent
+                  : overrideDiscountPercent
+
+                // Nhãn tên chương trình (chỉ cho KM món, không phải override giá)
+                const promotionLabel = promotionMatch
+                  ? formatPromotionBadge(promotionMatch.promotion)
                   : undefined
 
                 return (
@@ -366,18 +504,24 @@ export default function MenuPage() {
                     key={dish.dishId}
                     name={dish.dishName}
                     description={dish.description || ""}
-                    price={dish.effectivePrice}
-                    originalPrice={showOriginalPrice ? dish.basePrice : undefined}
+                    price={finalPrice}
+                    originalPrice={originalPrice}
                     discountPercent={discountPercent}
+                    promotionLabel={promotionLabel}
                     imageUrl={dish.imageUrl || ""}
-                    outOfStockLabel={outOfStock ? "Hết hàng" : undefined}
                     onClick={() => goToDishDetail(String(dish.dishId))}
-                    onAdd={outOfStock ? undefined : () => handleQuickAdd(dish)}
+                    onAdd={() => handleQuickAdd(dish)}
+                    // QĐ-09: phiên đã yêu cầu tính tiền thì nút "+" phải TRÔNG như không bấm được,
+                    // đồng bộ với băng cảnh báo ở trên và nút ở màn Chi tiết món.
+                    disabled={billLocked}
+                    disabledReason="Đã yêu cầu tính tiền — không thể gọi thêm món"
                   />
                 )
               })
             )}
           </div>
+
+
         </div>
       </div>
 

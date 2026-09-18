@@ -14,8 +14,14 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { CUSTOMER_PATHS } from "@/app/router/paths"
-import { useOrderDetailsBySession, useCancelBeforeKitchen } from "@/features/customer/api"
+import { useGoBack } from "@/hooks/use-go-back"
+import { useOrderDetailsBySession, useCancelBeforeKitchen, useCallStaff } from "@/features/customer/api"
+import { useStaffCall } from "@/api/order-details.api"
+import { useCustomerWebSocket } from "@/hooks/use-customer-websocket"
 import { useCustomerSessionStore } from "@/features/customer/store/session.store"
+import { useBillLocked } from "@/features/customer/hooks/use-bill-locked"
+import { isBillableDetail } from "@/lib/order-detail-billing"
+import { cn } from "@/lib/utils"
 import type { OrderDetail } from "@/types/models"
 
 /**
@@ -29,23 +35,58 @@ import type { OrderDetail } from "@/types/models"
 export default function OrderedItemsPage() {
   const navigate = useNavigate()
   const { qrCode } = useParams<{ qrCode: string }>()
+  // Fallback cho nút "Quay lại": mở thẳng màn này (link/bookmark/F5) thì về Thực đơn của
+  // đúng bàn, chứ không rơi ra ngoài ứng dụng.
+  const goBack = useGoBack(generatePath(CUSTOMER_PATHS.MENU, { qrCode: qrCode ?? "" }))
   const { toast } = useToast()
 
   const tableSession = useCustomerSessionStore((s) => s.tableSession)
   const tableName = tableSession?.tableName || "Bàn"
   const tableSessionId = tableSession?.id
 
-  // Fetch order details với polling 1s
+  // A3: Lắng nghe real-time qua WebSocket (FR-CUS-08, T-01: độ trễ ≤ 5s, không cần polling)
+  useCustomerWebSocket(tableSessionId)
+
+  // Fetch order details — giữ refetchInterval làm fallback
   const { data: orderDetails = [], isLoading, error } = useOrderDetailsBySession(
     tableSessionId,
     undefined,
-    { refetchInterval: 1000 }
+    { refetchInterval: 5000 }
   )
 
-  const billRequested = useCustomerSessionStore((s) => s.billRequested)
-  const requestBill = useCustomerSessionStore((s) => s.requestBill)
-
+  const billLocked = useBillLocked()
   const cancelBeforeKitchenMutation = useCancelBeforeKitchen()
+  const staffCallMutation = useStaffCall()
+  const [reportedItemIds, setReportedItemIds] = React.useState<Set<number>>(new Set())
+
+  function handleStaffCall(detail: OrderDetail) {
+    if (reportedItemIds.has(detail.id)) {
+      toast({
+        title: "Đã gửi yêu cầu",
+        description: `Yêu cầu hỗ trợ cho món "${detail.dishName}" đã được gửi tới nhân viên.`,
+        variant: "info",
+      })
+      return
+    }
+
+    staffCallMutation.mutate(detail.id, {
+      onSuccess: () => {
+        setReportedItemIds((prev) => new Set(prev).add(detail.id))
+        toast({
+          title: "Đã báo nhân viên",
+          description: `Đã gửi thông báo hỗ trợ cho món "${detail.dishName}" tới nhân viên bàn.`,
+          variant: "success",
+        })
+      },
+      onError: (err) => {
+        toast({
+          title: "Lỗi gửi yêu cầu",
+          description: err instanceof Error ? err.message : "Không thể gửi yêu cầu hỗ trợ lúc này.",
+          variant: "danger",
+        })
+      },
+    })
+  }
 
   // Các dòng món còn đang "Chờ xác nhận" / "Chờ cân" — bếp chưa nhận, có thể huỷ tự do.
   // Nếu còn tồn tại khi khách bấm "Yêu cầu tính tiền", phải hỏi xác nhận huỷ trước khi khoá phiên.
@@ -54,17 +95,48 @@ export default function OrderedItemsPage() {
     [orderDetails]
   )
 
+  // Con dong mon nao TINH TIEN khong - cung tieu chi voi BE (shouldChargeDetail):
+  // dong chua huy thi tinh; dong da huy chi tinh khi isBillable bat (BR-24).
+  const hasBillableItem = React.useMemo(
+    () => orderDetails.some(isBillableDetail),
+    [orderDetails]
+  )
+  // Huy het cac mon dang cho xac nhan xong thi con lai gi khong?
+  const billableAfterCancelPending = React.useMemo(
+    () => orderDetails.some((d) => isBillableDetail(d) && !pendingItems.includes(d)),
+    [orderDetails, pendingItems]
+  )
+
+  // Tính tạm tính: tổng tiền các món tính phí (chưa tính service fee & VAT)
+  const subtotal = React.useMemo(
+    () => orderDetails
+      .filter(isBillableDetail)
+      .reduce((sum, d) => sum + (d.price || 0), 0),
+    [orderDetails]
+  )
+
   const [isConfirmPayOpen, setIsConfirmPayOpen] = React.useState(false)
   const [isCancellingPending, setIsCancellingPending] = React.useState(false)
 
+  // KHÔNG khoá phiên ở đây. Trang "Yêu cầu tính tiền" mới là nơi gọi API, và chỉ khoá
+  // khi API trả về thành công — trước đây khoá ngay lúc điều hướng nên API lỗi vẫn khoá.
   function goToRequestBill() {
-    requestBill()
     navigate(generatePath(CUSTOMER_PATHS.REQUEST_BILL, { qrCode: qrCode ?? "" }))
   }
 
   function handleRequestBillClick() {
+    // Khong con mon tinh tien -> backend tra 409 "Chua co mon de tinh tien".
+    // Chan ngay o day de khach khong roi vao phien 0d bi ket.
+    if (!billLocked && !hasBillableItem) {
+      toast({
+        title: "Chưa có món để tính tiền",
+        description: "Bàn chưa có món nào được xác nhận. Vui lòng gọi món trước.",
+        variant: "danger",
+      })
+      return
+    }
     // Đã gửi yêu cầu tính tiền trước đó rồi -> chỉ xem lại, không cần hỏi lại
-    if (billRequested) {
+    if (billLocked) {
       navigate(generatePath(CUSTOMER_PATHS.REQUEST_BILL, { qrCode: qrCode ?? "" }))
       return
     }
@@ -80,6 +152,17 @@ export default function OrderedItemsPage() {
           pendingItems.map((item) => cancelBeforeKitchenMutation.mutateAsync(item.id))
         )
         setIsConfirmPayOpen(false)
+        // Huy xong ma khong con mon nao tinh tien -> KHONG gui yeu cau tinh tien.
+        // Gui se tao ra phien CHO THANH TOAN tong 0d, thu ngan khong dong duoc ban.
+        if (!billableAfterCancelPending) {
+          toast({
+            title: "Đã huỷ các món chờ xác nhận",
+            description:
+              "Bàn không còn món nào để tính tiền nên chưa gửi yêu cầu. Gọi thêm món hoặc nhờ nhân viên hỗ trợ.",
+            variant: "danger",
+          })
+          return
+        }
         goToRequestBill()
       } catch (error) {
         toast({
@@ -109,14 +192,25 @@ export default function OrderedItemsPage() {
       .sort((a, b) => a.orderId - b.orderId)
   }, [orderDetails])
 
-  // Tính tổng tiền (field đúng từ BE là `price`, không phải `totalPrice`)
-  const subtotal = orderDetails.reduce((sum, d) => sum + (d.price || 0), 0)
+  const callStaffMutation = useCallStaff()
 
   function handleCallStaffGeneral() {
-    toast({
-      title: "Đã gọi nhân viên",
-      description: `${tableName} · Nhân viên sẽ đến hỗ trợ trong giây lát.`,
-      variant: "info",
+    if (!tableSessionId) return
+    callStaffMutation.mutate(tableSessionId, {
+      onSuccess: () => {
+        toast({
+          title: "Đã gọi nhân viên",
+          description: `${tableName} · Nhân viên sẽ đến hỗ trợ trong giây lát.`,
+          variant: "success",
+        })
+      },
+      onError: (err) => {
+        toast({
+          title: "Lỗi gọi nhân viên",
+          description: err instanceof Error ? err.message : "Không thể gọi nhân viên lúc này. Vui lòng thử lại.",
+          variant: "danger",
+        })
+      },
     })
   }
 
@@ -158,7 +252,7 @@ export default function OrderedItemsPage() {
         <div className="flex items-center gap-3 px-4 sm:px-6 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 w-full max-w-2xl mx-auto">
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={goBack}
             aria-label="Quay lại"
             className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#F1F3F5] text-text-primary transition-colors hover:bg-border-default"
           >
@@ -205,14 +299,38 @@ export default function OrderedItemsPage() {
                               {detail.quantity}× <span className="ml-1">{detail.dishName}</span>
                             </p>
                             {detail.options && detail.options.length > 0 ? (
-                              <p className="text-xs text-text-tertiary">
-                                {detail.options.map((opt) => opt.optionItemName).join(", ")}
-                              </p>
+                              <div className="mt-0.5 space-y-0.5">
+                                {detail.options.map((opt) => (
+                                  <p key={opt.id} className="text-xs text-text-tertiary">
+                                    + {opt.optionItemName}
+                                    {opt.priceSnapshot > 0
+                                      ? ` +${opt.priceSnapshot.toLocaleString("vi-VN")}đ`
+                                      : " (Miễn phí)"}
+                                  </p>
+                                ))}
+                              </div>
                             ) : null}
                           </div>
-                          <span className="text-sm sm:text-base font-bold text-text-primary shrink-0 ml-4">
-                            {(detail.price || 0).toLocaleString("vi-VN")}đ
-                          </span>
+                          <div className="flex flex-col items-end shrink-0 ml-4">
+                            {detail.promotionDiscountAmount && detail.promotionDiscountAmount > 0 ? (
+                              <>
+                                <span className="text-xs text-text-tertiary line-through">
+                                  {((detail.price || 0) + detail.promotionDiscountAmount).toLocaleString("vi-VN")}đ
+                                </span>
+                                <span className="text-sm sm:text-base font-bold text-brand-primary">
+                                  {(detail.price || 0).toLocaleString("vi-VN")}đ
+                                </span>
+                                <span className="text-[11px] font-semibold text-status-success">
+                                  -{detail.promotionDiscountAmount.toLocaleString("vi-VN")}đ
+                                  {detail.promotionName ? ` (${detail.promotionName})` : ""}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-sm sm:text-base font-bold text-text-primary">
+                                {(detail.price || 0).toLocaleString("vi-VN")}đ
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         {detail.note ? (
@@ -222,7 +340,7 @@ export default function OrderedItemsPage() {
                         <div className="mt-3 flex items-center justify-between">
                           <StatusBadge type="orderDetail" status={detail.status} />
 
-                          {detail.status === "PENDING" && !billRequested ? (
+                          {detail.status === "PENDING" && !billLocked ? (
                             <button
                               type="button"
                               onClick={() => toast({ title: "Chức năng hủy món đang phát triển", variant: "info" })}
@@ -233,15 +351,17 @@ export default function OrderedItemsPage() {
                           ) : detail.status === "PREPARING" ? (
                             <button
                               type="button"
-                              onClick={() => toast({ 
-                                title: "Đã báo nhân viên", 
-                                description: `Món ${detail.dishName} đang được chế biến`,
-                                variant: "info" 
-                              })}
-                              className="inline-flex items-center gap-1.5 rounded-full bg-[#FEEBE4] px-3 py-1.5 text-xs font-semibold text-brand-primary transition-colors hover:bg-[#FEDBD0] active:scale-95"
+                              onClick={() => handleStaffCall(detail)}
+                              disabled={staffCallMutation.isPending && staffCallMutation.variables === detail.id}
+                              className={cn(
+                                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors active:scale-95 cursor-pointer",
+                                reportedItemIds.has(detail.id)
+                                  ? "bg-surface-muted text-text-tertiary"
+                                  : "bg-[#FEEBE4] text-brand-primary hover:bg-[#FEDBD0]"
+                              )}
                             >
                               <Bell className="size-3.5 text-brand-primary" />
-                              <span>Báo nhân viên</span>
+                              <span>{reportedItemIds.has(detail.id) ? "Đã báo NV" : "Báo nhân viên"}</span>
                             </button>
                           ) : null}
                         </div>
@@ -280,10 +400,16 @@ export default function OrderedItemsPage() {
               <button
                 type="button"
                 onClick={handleRequestBillClick}
-                className="mt-3 flex h-12 w-full items-center justify-center rounded-[16px] border border-brand-primary bg-white text-base font-bold text-brand-primary transition-colors hover:bg-brand-primary-subtle/30 active:scale-[0.99]"
+                disabled={!billLocked && !hasBillableItem}
+                className="mt-3 flex h-12 w-full items-center justify-center rounded-[16px] border border-brand-primary bg-white text-base font-bold text-brand-primary transition-colors hover:bg-brand-primary-subtle/30 active:scale-[0.99] disabled:cursor-not-allowed disabled:border-border-default disabled:text-text-tertiary disabled:hover:bg-white"
               >
-                {billRequested ? "Xem yêu cầu tính tiền" : "Yêu cầu tính tiền"}
+                {billLocked ? "Xem yêu cầu tính tiền" : "Yêu cầu tính tiền"}
               </button>
+              {!billLocked && !hasBillableItem ? (
+                <p className="mt-2 text-center text-xs text-text-tertiary">
+                  Chưa có món nào được xác nhận nên chưa tính tiền được.
+                </p>
+              ) : null}
             </div>
           </div>
         </>
