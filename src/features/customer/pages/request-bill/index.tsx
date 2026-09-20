@@ -1,12 +1,12 @@
 import * as React from "react"
 import { useNavigate, useParams, generatePath } from "react-router-dom"
-import { Check, Info, FileText } from "lucide-react"
+import { Check, Info, FileText, AlertTriangle } from "lucide-react"
 import { CUSTOMER_PATHS } from "@/app/router/paths"
-import { useRequestPayment, useOrderDetailsBySession } from "@/features/customer/api"
+import { useRequestPayment } from "@/features/customer/api"
+import { useTableSession } from "@/api/table-sessions.api"
 import { useCustomerSessionStore } from "@/features/customer/store/session.store"
-import { computePricing, formatVnd } from "@/features/customer/lib/pricing"
-import { useToast } from "@/hooks/use-toast"
-import { sumBillableAmount } from "@/lib/order-detail-billing"
+import { formatVnd } from "@/features/customer/lib/pricing"
+import { useBill } from "@/hooks/useBill"
 
 /**
  * Yêu cầu tính tiền — Gọi API request payment
@@ -14,109 +14,174 @@ import { sumBillableAmount } from "@/lib/order-detail-billing"
  *
  * API: POST /table-sessions/{id}/request-payment
  * Khoá phiên ngay khi vào trang (session chuyển sang WAITING_FOR_PAY) và hiển thị
- * tạm tính CẢ PHIÊN dựa trên order details đã gửi.
+ * tạm tính CẢ PHIÊN dựa trên bill preview từ BE.
  */
 export default function RequestBillPage() {
   const navigate = useNavigate()
   const { qrCode } = useParams<{ qrCode: string }>()
-  const { toast } = useToast()
 
   const tableSession = useCustomerSessionStore((s) => s.tableSession)
   const tableName = tableSession?.tableName || "Bàn"
   const tableSessionId = tableSession?.id
 
-  const appliedPromo = useCustomerSessionStore((s) => s.appliedPromo)
-  const requestBill = useCustomerSessionStore((s) => s.requestBill)
+  const markBillRequested = useCustomerSessionStore((s) => s.markBillRequested)
 
   const requestPaymentMutation = useRequestPayment()
+
+  // Trạng thái THẬT của phiên, hỏi lại theo nhịp — quyết định có gọi API hay chỉ hiển thị.
+  const { data: liveSession } = useTableSession(tableSessionId, { refetchInterval: 3000 })
+  const liveStatus = liveSession?.status
   
-  // Fetch order details để tính tổng tiền
-  const { data: orderDetails = [] } = useOrderDetailsBySession(tableSessionId)
+  // Lấy bill từ BE (invoice nếu có, preview nếu chưa có)
+  const { data: bill, isLoading: billLoading } = useBill(tableSessionId)
 
-  // Tính subtotal từ order details — chỉ cộng dòng món tính tiền (bỏ qua món
-  // đã huỷ không tính tiền: huỷ trước bếp, hoặc huỷ sau bếp do lỗi nhà hàng),
-  // khớp với cách BE tính (InvoiceServiceImpl.shouldChargeDetail).
-  const subtotal = sumBillableAmount(orderDetails)
-  const effectiveDiscount = appliedPromo?.discountAmount ?? 0
-  const pricing = computePricing(subtotal, effectiveDiscount)
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
 
-  const [requested, setRequested] = React.useState(false)
+  /**
+   * Gọi `request-payment` ĐÚNG MỘT LẦN cho mỗi phiên, và CHỈ khi phiên còn ĐANG PHỤC VỤ.
+   */
+  const requestedForSession = React.useRef<number | null>(null)
 
-  // Gọi API request payment khi vào trang
   React.useEffect(() => {
-    if (tableSessionId && !requested && !requestPaymentMutation.isPending) {
-      requestPaymentMutation.mutate(tableSessionId, {
-        onSuccess: () => {
-          setRequested(true)
-          requestBill() // Update local store state
-        },
-        onError: (error) => {
-          console.error("Error requesting payment:", error)
-          toast({
-            title: "Lỗi yêu cầu thanh toán",
-            description: error instanceof Error ? error.message : "Vui lòng thử lại",
-            variant: "danger",
-          })
-        },
-      })
-    }
-  }, [tableSessionId, requested, requestPaymentMutation, requestBill, toast])
+    if (!tableSessionId) return
+    // Chưa biết trạng thái THẬT thì chưa gọi gì cả.
+    if (!liveStatus) return
+    // Đã khoá rồi (do chính mình hoặc do người khác bấm) thì chỉ hiển thị, không gọi lại.
+    if (liveStatus !== "SERVING") return
+    if (requestedForSession.current === tableSessionId) return
+
+    requestedForSession.current = tableSessionId
+    setErrorMessage(null)
+    requestPaymentMutation.mutate(tableSessionId, {
+      onSuccess: () => {
+        markBillRequested(tableSessionId)
+      },
+      onError: (error) => {
+        // Cho phép thử lại ở lần vào sau; KHÔNG khoá phiên khi API lỗi.
+        requestedForSession.current = null
+        setErrorMessage(
+          error instanceof Error ? error.message : "Không gửi được yêu cầu tính tiền"
+        )
+      },
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tableSessionId, liveStatus, markBillRequested])
+
+  const isFailed = errorMessage != null
+  const isSending = requestPaymentMutation.isPending && !isFailed
+
+  if (billLoading) {
+    return (
+      <div className="flex min-h-dvh w-full flex-1 flex-col items-center justify-center bg-white">
+        <div className="size-12 animate-spin rounded-full border-4 border-gray-200 border-t-brand-primary" />
+        <p className="mt-3 text-sm text-text-secondary">Đang tải thông tin...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-dvh w-full flex-1 flex-col bg-white">
       <div className="mx-auto flex w-full max-w-lg md:max-w-xl flex-1 flex-col justify-between px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         {/* ---- Nhóm nội dung chính giữa (Căn giữa hoàn toàn giữa màn hình) ---- */}
         <div className="my-auto flex w-full flex-col items-center py-4 text-center">
-          {/* ---- Vòng tròn đồng tâm thành công ---- */}
-          <div className="flex size-[104px] items-center justify-center rounded-full bg-[#E6F7EF]">
-            <div className="flex size-[64px] items-center justify-center rounded-full bg-[#12B76A]">
-              <Check className="size-8 text-white" strokeWidth={3} />
+          {/* ---- Vòng tròn trạng thái: thành công / đang gửi / lỗi ---- */}
+          <div
+            className={`flex size-[104px] items-center justify-center rounded-full ${
+              isFailed ? "bg-status-danger-subtle" : "bg-[#E6F7EF]"
+            }`}
+          >
+            <div
+              className={`flex size-[64px] items-center justify-center rounded-full ${
+                isFailed ? "bg-status-danger" : "bg-[#12B76A]"
+              }`}
+            >
+              {isFailed ? (
+                <AlertTriangle className="size-8 text-white" strokeWidth={2.5} />
+              ) : (
+                <Check className="size-8 text-white" strokeWidth={3} />
+              )}
             </div>
           </div>
 
           <h1 className="mt-6 text-xl sm:text-2xl font-bold tracking-tight text-text-primary">
-            Đã gửi yêu cầu tính tiền
+            {isFailed
+              ? "Chưa gửi được yêu cầu"
+              : isSending
+                ? "Đang gửi yêu cầu..."
+                : "Đã gửi yêu cầu tính tiền"}
           </h1>
           <p className="mt-2 max-w-[280px] text-sm leading-relaxed text-text-secondary">
-            Thu ngân sẽ đến {tableName} để thanh toán. Vui lòng chờ trong giây lát.
+            {isFailed
+              ? errorMessage
+              : `Thu ngân sẽ đến ${tableName} để thanh toán. Vui lòng chờ trong giây lát.`}
           </p>
 
-          {/* ---- Banner: phiên đã khoá ---- */}
-          <div className="mt-6 flex w-full items-start gap-2.5 rounded-[16px] bg-[#FEF6EE] px-4 py-3.5 text-left">
-            <Info className="mt-0.5 size-4.5 shrink-0 text-[#B54708]" />
-            <p className="text-xs sm:text-[13px] font-semibold text-[#B54708] leading-snug">
-              Phiên đã khóa — không thể gọi thêm món.
-            </p>
-          </div>
+          {/* ---- Banner: phiên đã khoá (chỉ khi thực sự đã khoá) ---- */}
+          {!isFailed ? (
+            <div className="mt-6 flex w-full items-start gap-2.5 rounded-[16px] bg-[#FEF6EE] px-4 py-3.5 text-left">
+              <Info className="mt-0.5 size-4.5 shrink-0 text-[#B54708]" />
+              <p className="text-xs sm:text-[13px] font-semibold text-[#B54708] leading-snug">
+                Phiên đã khóa — không thể gọi thêm món.
+              </p>
+            </div>
+          ) : null}
 
-          {/* ---- Tóm tắt tiền ---- */}
-          <div className="mt-4 w-full rounded-[20px] bg-[#F8F9FA] p-4 sm:p-5">
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between text-xs sm:text-sm">
-                <span className="font-medium text-text-tertiary">Tiền hàng</span>
-                <span className="font-bold text-text-primary">{formatVnd(pricing.subtotal)}</span>
+          {/* ---- Tóm tắt tiền từ BE ---- */}
+          {bill && (
+            <div className="mt-4 w-full rounded-[20px] bg-[#F8F9FA] p-4 sm:p-5">
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between text-xs sm:text-sm">
+                  <span className="font-medium text-text-tertiary">Tiền hàng</span>
+                  <span className="font-bold text-text-primary">
+                    {formatVnd(bill.grossSubTotal - bill.itemPromotionDiscount)}
+                  </span>
+                </div>
+
+                {bill.orderPromotionDiscount > 0 && (
+                  <div className="flex items-center justify-between text-xs sm:text-sm">
+                    <span className="font-medium text-text-tertiary">
+                      Khuyến mãi{bill.orderPromotionName ? ` (${bill.orderPromotionName})` : ""}
+                    </span>
+                    <span className="font-bold text-status-success">
+                      -{formatVnd(bill.orderPromotionDiscount)}
+                    </span>
+                  </div>
+                )}
+
+                {bill.manualDiscount > 0 && (
+                  <div className="flex items-center justify-between text-xs sm:text-sm">
+                    <span className="font-medium text-text-tertiary">Chiết khấu</span>
+                    <span className="font-bold text-status-success">
+                      -{formatVnd(bill.manualDiscount)}
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between text-xs sm:text-sm">
+                  <span className="font-medium text-text-tertiary">
+                    Phí dịch vụ ({bill.serviceFeeRate.toFixed(0)}%)
+                  </span>
+                  <span className="font-bold text-text-primary">+{formatVnd(bill.serviceFee)}</span>
+                </div>
+
+                <div className="flex items-center justify-between text-xs sm:text-sm">
+                  <span className="font-medium text-text-tertiary">
+                    VAT ({bill.vatRate.toFixed(0)}%)
+                  </span>
+                  <span className="font-bold text-text-primary">+{formatVnd(bill.vatAmount)}</span>
+                </div>
               </div>
 
-              <div className="flex items-center justify-between text-xs sm:text-sm">
-                <span className="font-medium text-text-tertiary">Khuyến mãi tự động</span>
-                <span className="font-bold text-text-primary">-{formatVnd(pricing.discountAmount)}</span>
-              </div>
+              <div className="my-3 border-t border-border-default/60" />
 
-              <div className="flex items-center justify-between text-xs sm:text-sm">
-                <span className="font-medium text-text-tertiary">Phí dịch vụ + VAT</span>
-                <span className="font-bold text-text-primary">+{formatVnd(pricing.feePlusVat)}</span>
+              <div className="flex items-center justify-between">
+                <span className="text-sm sm:text-base font-bold text-text-primary">Tổng cộng</span>
+                <span className="text-base sm:text-lg font-bold text-brand-primary">
+                  {formatVnd(bill.grandTotal)}
+                </span>
               </div>
             </div>
-
-            <div className="my-3 border-t border-border-default/60" />
-
-            <div className="flex items-center justify-between">
-              <span className="text-sm sm:text-base font-bold text-text-primary">Tổng cộng</span>
-              <span className="text-base sm:text-lg font-bold text-brand-primary">
-                {formatVnd(pricing.grandTotal)}
-              </span>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* ---- Nút Xem lại hoá đơn dưới cùng ---- */}

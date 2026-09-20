@@ -3,6 +3,7 @@ import { useNavigate, useParams, useLocation, generatePath } from "react-router-
 import { Clock, List } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CUSTOMER_PATHS } from "@/app/router/paths"
+import { useGoBack } from "@/hooks/use-go-back"
 import {
   useCustomerSessionStore,
   syncCustomerSessionWithBackend,
@@ -28,6 +29,9 @@ interface LocationState {
 export default function WaitingTableOpenPage() {
   const navigate = useNavigate()
   const { qrCode } = useParams<{ qrCode: string }>()
+  // Lỗi tải phiên: mở thẳng bằng link thì về màn quét QR của bàn (`/ban/:qrCode`) —
+  // đúng việc màn này khuyên khách làm ("quét lại mã QR").
+  const goBack = useGoBack(generatePath(CUSTOMER_PATHS.TABLE_OPEN_QR, { qrCode: qrCode ?? "" }))
   const location = useLocation()
   const setSession = useCustomerSessionStore((s) => s.setSession)
   const storeSession = useCustomerSessionStore((s) => s.tableSession)
@@ -137,7 +141,7 @@ export default function WaitingTableOpenPage() {
           </p>
           <Button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={goBack}
             className="mt-6"
           >
             Quay lại

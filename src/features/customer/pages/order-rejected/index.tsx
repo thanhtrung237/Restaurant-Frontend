@@ -1,8 +1,8 @@
-import * as React from "react"
 import { useNavigate, useParams, generatePath } from "react-router-dom"
 import { X, Info, Phone } from "lucide-react"
 import { CUSTOMER_PATHS } from "@/app/router/paths"
-import { getTableInfoByQrCode } from "@/features/customer/api/mock-data"
+import { useTableByQrCode } from "@/features/customer/api"
+import { useCustomerSessionStore } from "@/features/customer/store/session.store"
 import { useToast } from "@/hooks/use-toast"
 
 /**
@@ -16,10 +16,19 @@ export default function OrderRejectedPage() {
   const { qrCode } = useParams<{ qrCode: string }>()
   const { toast } = useToast()
 
-  const { branchName, tableName } = React.useMemo(
-    () => getTableInfoByQrCode(qrCode ?? ""),
-    [qrCode]
-  )
+  // Trang này có thể mở khi CHƯA có phiên bàn, nên không dựa hẳn vào session store.
+  // Tách branchId từ mã QR giống các màn khách khác (vd: "QR-B1-T01" -> 1).
+  const tableSession = useCustomerSessionStore((s) => s.tableSession)
+  const branchMatch = qrCode ? qrCode.match(/(?:QR[-_\s]*)?B(\d+)/i) : null
+  const branchId = branchMatch ? Number(branchMatch[1]) : undefined
+
+  // `GET /tables/branch/{branchId}/qr/{qrCode}` là endpoint công khai và trả kèm
+  // `branchName` — dùng được cho khách chưa đăng nhập.
+  // (`GET /branches/{id}` KHÔNG dùng được: BE đặt @PreAuthorize("isAuthenticated()").)
+  const { data: table } = useTableByQrCode(branchId, qrCode)
+
+  const tableName = tableSession?.tableName || table?.name || "Bàn"
+  const branchName = table?.branchName || ""
 
   function handleCallStaff() {
     toast({

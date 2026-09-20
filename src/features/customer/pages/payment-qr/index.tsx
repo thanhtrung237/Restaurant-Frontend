@@ -1,7 +1,10 @@
 import * as React from "react"
 import { useNavigate, useParams, generatePath } from "react-router-dom"
-import { Bell } from "lucide-react"
+import { Bell, AlertTriangle } from "lucide-react"
 import { PseudoQrCode } from "@/components/common/PseudoQrCode"
+import { getBankLabel } from "@/config/banks"
+import { ApiError } from "@/lib/http"
+import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { CUSTOMER_PATHS } from "@/app/router/paths"
 import {
@@ -11,10 +14,12 @@ import {
   useInvoiceQrCodeBySession,
   useTableByQrCode,
   getOpenSessionByTable,
+  useCallStaff,
 } from "@/features/customer/api"
 import { useCustomerSessionStore } from "@/features/customer/store/session.store"
 import { useCustomerPaymentStore } from "@/features/customer/store/payment.store"
 import { formatVnd } from "@/features/customer/lib/pricing"
+import { useBill } from "@/hooks/useBill"
 
 // Thời hạn hiển thị mã QR (03:20)
 const QR_EXPIRES_SECONDS = 200
@@ -26,10 +31,15 @@ const POLL_INTERVAL_MS = 1000
  * Nguồn: Mobile / Thanh toán QR
  *
  * API Flow:
- * 1. Lấy thông tin hóa đơn & VietQR từ backend qua invoiceId / tableSessionId
- * 2. Poll invoice: GET /invoices/session/{tableSessionId} (mỗi 1s)
+ * 1. Poll hoá đơn của phiên: GET /invoices/session/{tableSessionId} (mỗi 1s)
+ *    Chưa có hoá đơn → 404 / QR trả 409: Thu ngân chưa lập hoá đơn, màn này CHỜ.
+ * 2. Có hoá đơn → GET /invoices/{id}/qr-code lấy VietQR, tự hiện, khách không phải bấm lại
  * 3. Khi invoice.status = PAID hoặc ISSUED → navigate to payment-success
- * 4. Timeout sau 200s → navigate to payment-failed
+ * 4. Timeout sau 200s kể từ lúc CÓ mã QR → navigate to payment-failed
+ *
+ * Hoá đơn do Thu ngân lập (POST /invoices — Bảng 4.2 "Thu tiền, đóng bàn"). Trước đây
+ * chính 2 endpoint GET ở trên tự lập hoá đơn và đẩy phiên sang CHỜ THANH TOÁN
+ * (be-issues mục 17); nay chúng chỉ đọc.
  */
 export default function PaymentQrPage() {
   const navigate = useNavigate()
@@ -74,14 +84,20 @@ export default function PaymentQrPage() {
 
   const [secondsLeft, setSecondsLeft] = React.useState(QR_EXPIRES_SECONDS)
 
+  // Lấy bill từ BE để hiển thị breakdown
+  const { data: bill } = useBill(tableSessionId)
+
   // Fetch invoice theo session với polling mỗi 1 giây
   const { data: invoice } = useInvoiceBySession(tableSessionId, {
     refetchInterval: POLL_INTERVAL_MS,
+    retry: false,
   })
 
   // Lấy dữ liệu VietQR chính thức từ backend (theo session ID hoặc invoice ID)
-  const { data: qrDataBySession, isLoading: qrSessionLoading } = useInvoiceQrCodeBySession(tableSessionId)
-  const { data: qrDataByInvoice, isLoading: qrInvoiceLoading } = useInvoiceQrCode(invoice?.id)
+  const { data: qrDataBySession, isLoading: qrSessionLoading, error: qrSessionError } =
+    useInvoiceQrCodeBySession(tableSessionId)
+  const { data: qrDataByInvoice, isLoading: qrInvoiceLoading, error: qrInvoiceError } =
+    useInvoiceQrCode(invoice?.id)
   const qrData = qrDataByInvoice || qrDataBySession
   const qrLoading = (qrInvoiceLoading && !qrData) || (qrSessionLoading && !qrData)
 
@@ -95,9 +111,45 @@ export default function PaymentQrPage() {
   const transferContent = qrData?.transferContent || (invoice?.invoiceNumber ? `TT ${invoice.invoiceNumber.replace(/-/g, "")}` : `PV ${tableCode || "B01"} PHIEN${sessionNumber}`)
   const amountToShow = qrData?.remainingAmount ?? invoice?.grandTotal ?? 0
 
-  const bankName = qrData?.bankName || "Vietcombank"
-  const bankAccountNo = qrData?.accountNo || "0071 0009 88888"
-  const accountName = qrData?.accountName || "CTY TNHH PHỞ VIỆT"
+  /**
+   * Chi nhánh chưa cấu hình tài khoản ngân hàng ⇒ không có QR để hiện.
+   *
+   * Backend nay trả **409** cho trường hợp này (be-issues mục 5 — trước đây nó thế bằng
+   * một số tài khoản hardcode, khách quét là chuyển tiền nhầm người). Lớp nhận diện bộ
+   * giá trị giả ở FE đã gỡ theo.
+   *
+   * Vẫn giữ điều kiện thiếu `accountNo` / `bankName`: hoá đơn đã thanh toán thì backend
+   * trả 200 với các trường rỗng, lúc đó cũng không hiện QR.
+   */
+  /**
+   * `!qrData` là điều kiện then chốt: query QR-theo-phiên lỗi 409 lúc chưa có hoá đơn thì
+   * giữ nguyên lỗi đó (nó không tự gọi lại), nên khi hoá đơn xuất hiện và QR-theo-hoá-đơn
+   * trả về dữ liệu, lỗi cũ vẫn còn trong tay. Bỏ `!qrData` là màn khách hiện nhầm
+   * "chưa hỗ trợ chuyển khoản" ngay lúc đã có mã QR để quét.
+   */
+  const qrError = qrInvoiceError ?? qrSessionError
+  const isConflict = !qrData && qrError instanceof ApiError && qrError.status === 409
+
+  /**
+   * Chưa có hoá đơn dùng được ⇒ đang chờ Thu ngân lập, KHÔNG phải lỗi.
+   *
+   * Backend trả 409 cho hai việc khác nhau: "chưa có hoá đơn" và "chi nhánh chưa cấu
+   * hình tài khoản ngân hàng". Phân biệt bằng việc có hoá đơn hay không thì chắc hơn
+   * là đọc câu thông báo. Hoá đơn đã huỷ coi như chưa có — backend cũng không sinh QR
+   * cho nó.
+   */
+  const hasUsableInvoice = !!invoice && invoice.status !== "CANCELLED"
+  const isAwaitingCashierInvoice = !hasUsableInvoice && !qrData?.qrImageUrl
+
+  const isBankAccountNotConfigured = isConflict && hasUsableInvoice
+  const isUnconfiguredBankAccount =
+    !isAwaitingCashierInvoice &&
+    (isBankAccountNotConfigured || !qrData?.accountNo || !qrData?.bankName)
+
+  // KHÔNG đặt giá trị mặc định: thà không hiện còn hơn hiện số tài khoản sai.
+  const bankName = getBankLabel(qrData?.bankName)
+  const bankAccountNo = qrData?.accountNo ?? ""
+  const accountName = qrData?.accountName ?? ""
 
   // Kiểm tra xem hóa đơn đã được thanh toán (PAID hoặc đã phát hành ISSUED)
   const isPaid =
@@ -116,23 +168,31 @@ export default function PaymentQrPage() {
     }
   }, [isPaid, amountToShow, invoice?.grandTotal, qrData?.grandTotal, startPayment, markPaid, navigate, qrCode])
 
-  // Đếm ngược thời hạn
+  /**
+    * Đếm ngược chỉ bắt đầu khi ĐÃ có mã QR.
+    *
+    * Đồng hồ này là hạn của mã QR. Nếu để nó chạy trong lúc chờ Thu ngân lập hoá đơn
+    * thì sau 3:20 khách bị đẩy sang trang "thanh toán thất bại" dù chưa hề có gì để quét.
+    */
+  const hasQrCode = !!qrData?.qrImageUrl
   React.useEffect(() => {
+    if (!hasQrCode) return
     const timer = setInterval(() => {
       setSecondsLeft((s) => (s <= 1 ? 0 : s - 1))
     }, 1000)
     return () => clearInterval(timer)
-  }, [])
+  }, [hasQrCode])
 
   // Xử lý timeout
   React.useEffect(() => {
+    if (!hasQrCode) return
     if (secondsLeft > 0) return
     markFailed()
     navigate(
       generatePath(CUSTOMER_PATHS.PAYMENT_FAILED, { qrCode: qrCode ?? "" }) + "?reason=timeout",
       { replace: true }
     )
-  }, [secondsLeft, markFailed, navigate, qrCode])
+  }, [hasQrCode, secondsLeft, markFailed, navigate, qrCode])
 
   function handleCopyContent() {
     navigator.clipboard
@@ -141,11 +201,26 @@ export default function PaymentQrPage() {
       .catch(() => toast({ title: "Không thể sao chép, vui lòng thử lại", variant: "danger" }))
   }
 
+  const callStaffMutation = useCallStaff()
+
   function handleCallStaff() {
-    toast({
-      title: "Đã gọi nhân viên",
-      description: `${tableName} · Nhân viên sẽ đến hỗ trợ trong giây lát.`,
-      variant: "info",
+    const sessionId = tableSession?.id
+    if (!sessionId) return
+    callStaffMutation.mutate(sessionId, {
+      onSuccess: () => {
+        toast({
+          title: "Đã gọi nhân viên",
+          description: `${tableName} · Nhân viên sẽ đến hỗ trợ trong giây lát.`,
+          variant: "success",
+        })
+      },
+      onError: (err) => {
+        toast({
+          title: "Lỗi gọi nhân viên",
+          description: err instanceof Error ? err.message : "Không thể gọi nhân viên lúc này. Vui lòng thử lại.",
+          variant: "danger",
+        })
+      },
     })
   }
 
@@ -173,7 +248,29 @@ export default function PaymentQrPage() {
 
             {/* ---- Khung mã QR VietQR thật ---- */}
             <div className="mt-5 rounded-[24px] border border-border-default/60 bg-white p-3 shadow-xs flex items-center justify-center min-h-[200px]">
-              {qrData?.qrImageUrl ? (
+              {isAwaitingCashierInvoice ? (
+                <div className="flex max-w-[260px] flex-col items-center gap-3 px-3 py-8 text-center">
+                  <div className="size-8 animate-spin rounded-full border-4 border-gray-200 border-t-brand-primary" />
+                  <p className="text-sm font-semibold text-text-primary">
+                    Đang chờ thu ngân lập hóa đơn
+                  </p>
+                  <p className="text-xs text-text-tertiary">
+                    Mã QR sẽ tự hiện ngay khi hóa đơn được lập. Bạn không cần bấm lại.
+                  </p>
+                </div>
+              ) : isUnconfiguredBankAccount ? (
+                <div className="flex max-w-[260px] flex-col items-center gap-3 px-3 py-8 text-center">
+                  <span className="flex size-12 items-center justify-center rounded-full bg-status-warning-subtle text-status-warning">
+                    <AlertTriangle className="size-6" />
+                  </span>
+                  <p className="text-sm font-semibold text-text-primary">
+                    Hiện chưa hỗ trợ chuyển khoản tại bàn
+                  </p>
+                  <p className="text-xs text-text-tertiary">
+                    Vui lòng thanh toán với thu ngân.
+                  </p>
+                </div>
+              ) : qrData?.qrImageUrl ? (
                 <img
                   src={qrData.qrImageUrl}
                   alt="VietQR Thanh toán"
@@ -190,12 +287,41 @@ export default function PaymentQrPage() {
             </div>
 
             {/* ---- Số tiền cần thanh toán ---- */}
-            <p className="mt-4 text-2xl sm:text-3xl font-extrabold tracking-tight text-brand-primary">
-              {formatVnd(amountToShow)}
-            </p>
+            {!isAwaitingCashierInvoice && (
+              <>
+                <p className="mt-4 text-2xl sm:text-3xl font-extrabold tracking-tight text-brand-primary">
+                  {formatVnd(amountToShow)}
+                </p>
+                
+                {/* ---- Breakdown nhỏ để khách thấy số tiền khớp với tạm tính ---- */}
+                {bill && (
+                  <div className="mt-3 w-full max-w-[280px] rounded-lg bg-white border border-border-default/40 px-3 py-2 text-xs">
+                    <div className="flex justify-between text-text-tertiary">
+                      <span>Tiền hàng</span>
+                      <span>{formatVnd(bill.grossSubTotal - bill.itemPromotionDiscount)}</span>
+                    </div>
+                    {bill.orderPromotionDiscount + bill.manualDiscount > 0 && (
+                      <div className="flex justify-between text-status-success mt-0.5">
+                        <span>Giảm giá</span>
+                        <span>-{formatVnd(bill.orderPromotionDiscount + bill.manualDiscount)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-text-tertiary mt-0.5">
+                      <span>Phí & VAT</span>
+                      <span>+{formatVnd(bill.serviceFee + bill.vatAmount)}</span>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
 
             {/* ---- Thẻ thông tin tài khoản chuyển khoản ---- */}
-            <div className="mt-5 w-full rounded-[20px] bg-[#F8F9FA] p-4 sm:p-5 text-left text-sm">
+            <div
+              className={cn(
+                "mt-5 w-full rounded-[20px] bg-[#F8F9FA] p-4 sm:p-5 text-left text-sm",
+                (isAwaitingCashierInvoice || isUnconfiguredBankAccount) && "hidden",
+              )}
+            >
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-xs sm:text-sm font-medium text-text-tertiary">Ngân hàng</span>
@@ -231,7 +357,11 @@ export default function PaymentQrPage() {
             {/* ---- Trạng thái đếm ngược ---- */}
             <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#FEF6EE] px-4 py-2 text-xs sm:text-[13px] font-semibold text-[#B54708]">
               <span className="size-2 shrink-0 rounded-full bg-[#F79009]" />
-              <span>Đang chờ xác nhận · hết hạn sau {countdownLabel}</span>
+              <span>
+                {hasQrCode
+                  ? `Đang chờ xác nhận · hết hạn sau ${countdownLabel}`
+                  : "Vui lòng chờ thu ngân · chưa tính hạn mã QR"}
+              </span>
             </div>
           </div>
         </div>

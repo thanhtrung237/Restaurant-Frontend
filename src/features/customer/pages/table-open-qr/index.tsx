@@ -128,7 +128,6 @@ export default function TableOpenQrPage() {
             sessionToken: `session-${existingSession.id}`,
             tableSession: existingSession,
           })
-          useCustomerSessionStore.getState().requestBill()
           navigate(
             generatePath(CUSTOMER_PATHS.INVOICE, { qrCode: qrCode ?? "" }),
             { replace: true }
