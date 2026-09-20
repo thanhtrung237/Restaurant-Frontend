@@ -83,6 +83,18 @@ export function useChangePassword() {
       changePassword(vars.id, vars.oldPassword, vars.newPassword),
   })
 }
+/**
+ * Quản trị viên đặt lại mật khẩu hộ (FR-ADM-01).
+ *
+ * BE **chưa** có cờ buộc đổi mật khẩu ở lần đăng nhập kế tiếp — `resetPassword` chỉ đổi hash
+ * (xem `docs/be-issues.md`). Giao diện phải nói đúng như vậy, không hứa điều BE không làm.
+ */
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: (vars: { id: number; newPassword: string }) =>
+      resetPassword(vars.id, vars.newPassword),
+  })
+}
 export function useDeleteAccount() {
   const qc = useQueryClient()
   return useMutation({
