@@ -29,12 +29,6 @@ export interface ManualDiscountInput {
 /** Ngưỡng chiết khấu tay không cần duyệt — vượt mức này phải gửi Quản lý chi nhánh (BR-10) */
 export const MANUAL_DISCOUNT_APPROVAL_THRESHOLD_RATIO = 0.1;
 
-export const AUTO_PROMO_LABEL = "Combo trưa tiết kiệm";
-export const AUTO_PROMO_AMOUNT = 40000;
-
-const SERVICE_FEE_RATE = 0.05;
-const VAT_RATE = 0.08;
-
 const INITIAL_ITEMS: CheckoutLineItem[] = [
   {
     id: 1,
@@ -59,12 +53,12 @@ export interface IssuedInvoice {
   cashierName: string;
   grandTotal: number;
   subTotal: number;
-  autoPromoLabel: string;
-  autoPromoAmount: number;
   manualDiscount: ManualDiscountState | null;
   serviceFee: number;
   vatAmount: number;
   items: CheckoutLineItem[];
+  promotionName?: string;
+  promotionAmount?: number;
 }
 
 interface CheckoutState {
@@ -81,6 +75,7 @@ interface CheckoutState {
 
   items: CheckoutLineItem[];
   manualDiscount: ManualDiscountState | null;
+  selectedPromotion: any | null;
 
   paymentMethod: PaymentMethod;
   cashTendered: number | null;
@@ -88,21 +83,14 @@ interface CheckoutState {
 
   lastInvoice: IssuedInvoice | null;
 
-  // ---- derived getters (tính trực tiếp, không cache) ----
-  getSubTotal: () => number;
-  getAfterAutoPromo: () => number;
-  getAfterManualDiscount: () => number;
-  getServiceFee: () => number;
-  getVatAmount: () => number;
-  getGrandTotal: () => number;
-
   // ---- actions ----
   setPaymentMethod: (method: PaymentMethod) => void;
   setCashTendered: (amount: number | null) => void;
+  setSelectedPromotion: (promo: any | null) => void;
+  setManualDiscount: (discount: ManualDiscountState | null) => void;
   applyManualDiscount: (input: ManualDiscountInput) => ManualDiscountState;
   removeManualDiscount: () => void;
   markQrPaid: () => void;
-  issueInvoice: () => IssuedInvoice;
   resetPaymentState: () => void;
 }
 
@@ -120,6 +108,7 @@ export const useCheckoutStore = create<CheckoutState>((set, get) => ({
 
   items: INITIAL_ITEMS,
   manualDiscount: null,
+  selectedPromotion: null,
 
   paymentMethod: "CASH",
   cashTendered: null,
@@ -127,48 +116,23 @@ export const useCheckoutStore = create<CheckoutState>((set, get) => ({
 
   lastInvoice: null,
 
-  getSubTotal: () => get().items.reduce((sum, i) => sum + i.lineTotal, 0),
-
-  getAfterAutoPromo: () => get().getSubTotal() - AUTO_PROMO_AMOUNT,
-
-  getAfterManualDiscount: () => {
-    const { manualDiscount } = get();
-    return get().getAfterAutoPromo() - (manualDiscount?.amount ?? 0);
-  },
-
-  getServiceFee: () =>
-    Math.round(get().getAfterManualDiscount() * SERVICE_FEE_RATE),
-
-  getVatAmount: () =>
-    Math.round(
-      (get().getAfterManualDiscount() + get().getServiceFee()) * VAT_RATE,
-    ),
-
-  getGrandTotal: () =>
-    get().getAfterManualDiscount() +
-    get().getServiceFee() +
-    get().getVatAmount(),
-
   setPaymentMethod: (method) => set({ paymentMethod: method }),
 
   setCashTendered: (amount) => set({ cashTendered: amount }),
 
-  applyManualDiscount: (input) => {
-    const base = get().getAfterAutoPromo();
-    const amount =
-      input.type === "PERCENTAGE"
-        ? Math.round((base * input.value) / 100)
-        : Math.min(input.value, base);
-    const requiresApproval =
-      amount > base * MANUAL_DISCOUNT_APPROVAL_THRESHOLD_RATIO;
+  setSelectedPromotion: (promo) => set({ selectedPromotion: promo }),
 
+  setManualDiscount: (discount) => set({ manualDiscount: discount }),
+
+  applyManualDiscount: (input) => {
+    // Số tiền sẽ được tính bởi BE
     const next: ManualDiscountState = {
       scope: input.scope,
       type: input.type,
       value: input.value,
       reason: input.reason,
-      amount,
-      requiresApproval,
+      amount: 0, // BE sẽ tính
+      requiresApproval: false, // BE sẽ quyết định
     };
     set({ manualDiscount: next });
     return next;
@@ -178,40 +142,10 @@ export const useCheckoutStore = create<CheckoutState>((set, get) => ({
 
   markQrPaid: () => set({ qrPaid: true }),
 
-  issueInvoice: () => {
-    const state = get();
-    const grandTotal = state.getGrandTotal();
-    const now = new Date();
-    const invoice: IssuedInvoice = {
-      invoiceId: state.tableSessionId,
-      invoiceNumber: `HD-QUAN1-${String(100000 + state.tableSessionId).slice(-6)}`,
-      issuedAt: `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()} · ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`,
-      method: state.paymentMethod,
-      amountTendered:
-        state.paymentMethod === "CASH"
-          ? (state.cashTendered ?? grandTotal)
-          : undefined,
-      changeAmount:
-        state.paymentMethod === "CASH" && state.cashTendered
-          ? Math.max(0, state.cashTendered - grandTotal)
-          : undefined,
-      cashierName: state.cashierName,
-      grandTotal,
-      subTotal: state.getSubTotal(),
-      autoPromoLabel: AUTO_PROMO_LABEL,
-      autoPromoAmount: AUTO_PROMO_AMOUNT,
-      manualDiscount: state.manualDiscount,
-      serviceFee: state.getServiceFee(),
-      vatAmount: state.getVatAmount(),
-      items: state.items,
-    };
-    set({ lastInvoice: invoice });
-    return invoice;
-  },
-
   resetPaymentState: () =>
     set({
       manualDiscount: null,
+      selectedPromotion: null,
       paymentMethod: "CASH",
       cashTendered: null,
       qrPaid: false,

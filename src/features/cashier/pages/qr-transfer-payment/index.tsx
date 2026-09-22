@@ -1,11 +1,18 @@
 import * as React from "react";
 import { useNavigate, useParams, generatePath } from "react-router-dom";
-import { Banknote, QrCode, Loader2 } from "lucide-react";
+import { Banknote, QrCode, Loader2, AlertTriangle } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
-import { CASHIER_PATHS } from "@/app/router/paths";
+import { usePageHeader } from "@/hooks/use-page-header";
+import { CASHIER_PATHS, BRANCH_MANAGER_PATHS } from "@/app/router/paths";
+import { getBankLabel } from "@/config/banks";
+import { useGoBack } from "@/hooks/use-go-back";
+import { useBill } from "@/hooks/useBill";
+import { ApiError, getErrorMessage, isApiStatus } from "@/lib/http";
+import { APP_ROLE } from "@/config/roles";
 import {
   useTableSession,
   useOrderDetailsBySession,
@@ -25,13 +32,11 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useAuthStore } from "@/stores/auth.store";
-import { useCheckoutStore, AUTO_PROMO_LABEL } from "@/features/cashier/store/checkout.store";
+import { useCheckoutStore } from "@/features/cashier/store/checkout.store";
 
 const formatVnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`;
 
-const SERVICE_FEE_RATE = 0.05;
-const VAT_RATE = 0.08;
-// Poll hóa đơn mỗi 3s để biết khi nào khách đã chuyển khoản xong — CÙNG cơ chế
+// Poll hóa đơn mỗi 1s để biết khi nào khách đã chuyển khoản xong — CÙNG cơ chế
 // với trang khách hàng (`payment-qr`), để 2 màn hình luôn phản ánh đúng 1 nguồn
 // sự thật duy nhất là dữ liệu trên backend, thay vì tự suy đoán ở mỗi phía.
 const POLL_INTERVAL_MS = 1000;
@@ -102,14 +107,15 @@ function PseudoQrCode({ seed, size = 220 }: { seed: string; size?: number }) {
  * Luồng ĐÚNG bây giờ (đồng bộ qua backend, không có state giả ở FE):
  * 1. Vào màn này → tạo Invoice NGAY (POST /invoices) thay vì đợi tới lúc bấm nút
  *    cuối cùng — để trang khách hàng có hóa đơn để GET và thanh toán vào.
- * 2. Poll GET /invoices/session/{id} mỗi 3s (giống hệt trang khách hàng).
+ * 2. Poll GET /invoices/session/{id} (giống hệt trang khách hàng).
  * 3. Khi khách thao tác xong ở trang `payment-qr` (tạo `Payment` đủ tiền),
  *    backend (`PaymentServiceImpl.processPayment`) tự set Invoice.status = PAID
  *    và tự đóng phiên bàn.
  * 4. Thu ngân CHỈ thấy "Đã nhận chuyển khoản" khi poll thấy invoice.status thực
  *    sự = PAID. Nút "Thu tiền & phát hành hoá đơn" lúc đó chỉ còn tác dụng điều
- *    hướng sang trang hoá đơn điện tử — không tạo lại invoice/payment/close vì
- *    backend đã làm xong hết rồi (giống lỗi 409 đã sửa ở trang tiền mặt).
+ *    hướng sang trang hoá đơn điện tử.
+ *
+ * Số tiền hiển thị lấy từ `useBill` / invoice của BE — FE KHÔNG tự tính.
  */
 export default function QrTransferPaymentPage() {
   const navigate = useNavigate();
@@ -119,44 +125,57 @@ export default function QrTransferPaymentPage() {
   const tableSessionId = sessionIdParam ? parseInt(sessionIdParam, 10) : undefined;
   const currentUser = useAuthStore((s) => s.account);
   const branchId = useAuthStore((s) => s.branchId);
+  const role = useAuthStore((s) => s.role);
+  // Chuyển khoản QR chỉ có route dưới /thu-ngan (xem app/router/index.tsx) → fallback cố định.
+  const goBack = useGoBack(CASHIER_PATHS.TABLE_MAP);
+  // Chỉ QL chi nhánh / Quản trị NH mới vào được trang Cấu hình chi nhánh (FR-BRN-02).
+  // Thu ngân thấy cảnh báo nhưng không thấy nút — bấm vào cũng chỉ ra trang 403.
+  const canConfigBranch =
+    role === APP_ROLE.BRANCH_MANAGER || role === APP_ROLE.RESTAURANT_ADMIN;
 
   const { data: session, isLoading: sessionLoading } = useTableSession(tableSessionId);
   const { data: orderDetails = [], isLoading: orderDetailsLoading } = useOrderDetailsBySession(tableSessionId);
   const { data: branch } = useBranch(branchId ?? undefined);
 
+  // Lấy bill từ BE
+  const { data: bill } = useBill(tableSessionId);
+
   const createInvoiceMutation = useCreateInvoice();
   const createManualDiscountMutation = useCreateManualDiscount();
 
-  const manualDiscount = useCheckoutStore((s) => s.manualDiscount);
+  // Đọc state từ trang checkout (nếu đi từ trang đó)
+  const storedManualDiscount = useCheckoutStore((s) => s.manualDiscount);
+  const storedPromotion = useCheckoutStore((s) => s.selectedPromotion);
   const setPaymentMethod = useCheckoutStore((s) => s.setPaymentMethod);
 
   // Nguồn sự thật DUY NHẤT cho việc "đã nhận chuyển khoản hay chưa": hóa đơn
   // thật lấy từ backend, poll liên tục — không dùng state cục bộ nào khác.
-  const { data: invoice } = useInvoiceBySession(tableSessionId, {
+  const { data: invoice, isFetched: invoiceFetched } = useInvoiceBySession(tableSessionId, {
     refetchInterval: POLL_INTERVAL_MS,
   });
   const qrPaid = invoice?.status === "PAID";
 
   // Lấy dữ liệu VietQR chính thức từ backend
-  const { data: qrData, isLoading: qrLoading } = useInvoiceQrCode(invoice?.id);
+  const { data: qrData, isLoading: qrLoading, error: qrError } = useInvoiceQrCode(invoice?.id);
 
-  // Chặn tạo invoice nhiều lần (StrictMode gọi effect 2 lần, hoặc poll trả về
-  // chưa kịp cập nhật cache) — dùng ref vì cần đồng bộ, không phụ thuộc re-render.
-  const invoiceCreationAttemptedRef = React.useRef(false);
+  /**
+   * Tạo hoá đơn ĐÚNG MỘT LẦN cho mỗi phiên.
+   *
+   * Bản trước: nhánh `catch` đặt lại cờ "đã thử" về `false`, mà effect lại phụ thuộc vào
+   * `invoice` / `session` (đang poll 1 giây/lần) và vào chính đối tượng mutation (đổi mỗi lần
+   * render) ⇒ lỗi là gọi lại ngay, lỗi tiếp là gọi lại tiếp. Đo được **444 lần `POST /invoices`
+   * trong 6 giây** khi backend trả lỗi.
+   *
+   * Nay: cờ ref giữ ID phiên đã thử và KHÔNG bao giờ tự đặt lại — chỉ Thu ngân bấm "Thử lại"
+   * mới gọi lần nữa. Mọi thứ hay đổi (dữ liệu poll, mutation) đọc qua `liveRef` nên effect chỉ
+   * phụ thuộc vào ID phiên / ID chi nhánh.
+   */
+  const invoiceAttemptedForSessionRef = React.useRef<number | null>(null);
+  const [invoiceCreating, setInvoiceCreating] = React.useState(false);
+  const [invoiceCreateError, setInvoiceCreateError] = React.useState<string | null>(null);
 
-  const subTotal = React.useMemo(
-    () => orderDetails.reduce((sum, d) => sum + (d.price || 0), 0),
-    [orderDetails],
-  );
-  const autoPromoAmount = 0; // TODO: Tính từ promotions
-  const afterAutoPromo = subTotal - autoPromoAmount;
-  const afterManualDiscount = afterAutoPromo - (manualDiscount?.amount || 0);
-  const serviceFee = Math.round(afterManualDiscount * SERVICE_FEE_RATE);
-  const vatAmount = Math.round((afterManualDiscount + serviceFee) * VAT_RATE);
-  
-  // Tính tổng tiền chuẩn xác của hóa đơn
-  const computedTotal = afterManualDiscount + serviceFee + vatAmount;
-  const grandTotal = invoice?.grandTotal ?? computedTotal;
+  // Số tiền: ưu tiên invoice thật, sau đó tới bill preview của BE
+  const grandTotal = invoice?.grandTotal ?? bill?.grandTotal ?? 0;
   const remainingAmount = qrData?.remainingAmount ?? invoice?.remainingAmount ?? grandTotal;
   const amountToCollect = remainingAmount > 0 ? remainingAmount : grandTotal;
 
@@ -164,56 +183,136 @@ export default function QrTransferPaymentPage() {
   const [isConfirming, setIsConfirming] = React.useState(false);
   const createPaymentMutation = useCreatePayment();
 
-  const bankAccountLabel =
-    qrData?.bankName && qrData?.accountNo
-      ? `${qrData.bankName} · ${qrData.accountNo}`
-      : branch?.bankName && branch?.bankAccountNo
-        ? `${branch.bankName} · ${branch.bankAccountNo}`
-        : "Vietcombank · 0071 0009 88888";
-  const bankAccountOwner = qrData?.accountName || branch?.restaurantName || branch?.name || "Nhà hàng Phở Việt";
+  /**
+   * Chi nhánh CHƯA cấu hình tài khoản thì KHÔNG được hiện mã QR.
+   *
+   * Hai lớp, cố ý giữ cả hai:
+   *  1. Dữ liệu chi nhánh — chặn được NGAY, không phải đợi gọi API sinh QR, và hiện được
+   *     nút mở màn Cấu hình chi nhánh.
+   *  2. Mã **409** từ `GET /invoices/{id}/qr-code` — backend nay từ chối sinh QR khi chi
+   *     nhánh chưa cấu hình (be-issues mục 5, đã bỏ tài khoản hardcode). Lớp này bắt cả
+   *     trường hợp dữ liệu chi nhánh ở FE đã cũ.
+   */
+  const isBankAccountNotConfigured = qrError instanceof ApiError && qrError.status === 409;
+  const hasBankConfig =
+    Boolean(branch?.bankAccountNo && branch?.bankName) && !isBankAccountNotConfigured;
+
+  const bankAccountLabel = hasBankConfig
+    ? `${getBankLabel(branch?.bankName)} · ${branch?.bankAccountNo}`
+    : "";
+  const bankAccountOwner = hasBankConfig
+    ? (qrData?.accountName || branch?.restaurantName || branch?.name || "")
+    : "";
   const transferContent = qrData?.transferContent || (invoice?.invoiceNumber ? `TT ${invoice.invoiceNumber.replace(/-/g, "")}` : "");
 
   React.useEffect(() => {
     setPaymentMethod("BANK_TRANSFER");
   }, [setPaymentMethod]);
 
-  // Tạo Invoice ngay khi vào màn hình QR — không đợi khách chuyển khoản xong.
-  // Nếu phiên đã có invoice rồi (ví dụ Thu ngân load lại trang, hoặc khách đã
-  // thanh toán trước đó) thì `invoice` sẽ có dữ liệu và effect này bỏ qua.
+  // Mọi giá trị HAY ĐỔI mà việc tạo hoá đơn cần đọc — để ngoài danh sách phụ thuộc của effect.
+  // Gán ngay trong thân render: lần gọi nào cũng thấy giá trị mới nhất, mà không kích hoạt effect.
+  const liveRef = React.useRef({
+    invoice,
+    session,
+    storedManualDiscount,
+    storedPromotion,
+    createInvoice: createInvoiceMutation.mutateAsync,
+    createManualDiscount: createManualDiscountMutation.mutateAsync,
+    toast,
+  });
+  // Cập nhật sau MỖI lần render (effect không có mảng phụ thuộc), và effect này khai trước
+  // effect tạo hoá đơn nên luôn chạy trước nó — `liveRef` không bao giờ đọc phải giá trị cũ.
   React.useEffect(() => {
-    if (!tableSessionId || !branchId) return;
-    if (invoice) return; // đã có invoice rồi, không tạo lại
-    if (session && session.status !== "WAITING_FOR_PAY") return; // phiên không hợp lệ để tạo hoá đơn
-    if (invoiceCreationAttemptedRef.current) return;
-    invoiceCreationAttemptedRef.current = true;
+    liveRef.current = {
+      invoice,
+      session,
+      storedManualDiscount,
+      storedPromotion,
+      createInvoice: createInvoiceMutation.mutateAsync,
+      createManualDiscount: createManualDiscountMutation.mutateAsync,
+      toast,
+    };
+  });
 
-    (async () => {
-      try {
-        const created = await createInvoiceMutation.mutateAsync({ branchId, tableSessionId });
-        if (manualDiscount) {
-          await createManualDiscountMutation.mutateAsync({
-            invoiceId: created.id,
-            type: manualDiscount.type,
-            value: manualDiscount.value,
-            reason: manualDiscount.reason,
-          });
-        }
-      } catch (error) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        if (errMsg.includes("đã tồn tại") || errMsg.includes("409")) {
-          // Hóa đơn đã được tạo từ trước — đây là bình thường, không báo lỗi
-          return;
-        }
-        console.error("Error creating invoice for QR payment:", error);
-        toast({
-          title: "Lỗi tạo hóa đơn",
-          description: error instanceof Error ? error.message : "Vui lòng thử lại",
-          variant: "danger",
-        });
-        invoiceCreationAttemptedRef.current = false;
+  const syncedPromoIdRef = React.useRef<number | null | undefined>(undefined);
+
+  /** Tạo hoặc đồng bộ hoá đơn cho phiên này. */
+  const createInvoiceForSession = React.useCallback(async () => {
+    if (!tableSessionId || !branchId) return;
+    const live = liveRef.current;
+    const targetPromoId = live.storedPromotion?.id ?? null;
+
+    if (live.invoice) {
+      if (live.invoice.status !== "PENDING") return;
+      // Không có KM chọn thủ công ở trang checkout → BE đã quyết định KM, không cần đồng bộ.
+      if (!live.storedPromotion) return;
+      if (live.invoice.promotionId === targetPromoId && syncedPromoIdRef.current === targetPromoId) {
+        return;
       }
-    })();
-  }, [tableSessionId, branchId, invoice, session, manualDiscount, createInvoiceMutation, createManualDiscountMutation, toast]);
+      if (live.invoice.promotionId === targetPromoId) {
+        syncedPromoIdRef.current = targetPromoId;
+        return;
+      }
+    }
+
+    // Phiên không ở CHỜ THANH TOÁN thì backend từ chối — đừng gọi cho phí một request.
+    if (live.session && live.session.status !== "WAITING_FOR_PAY") return;
+
+    setInvoiceCreating(true);
+    setInvoiceCreateError(null);
+    try {
+      const created = await live.createInvoice({
+        branchId,
+        tableSessionId,
+        promotionId: targetPromoId ?? undefined,
+      });
+      syncedPromoIdRef.current = targetPromoId;
+      if (live.storedManualDiscount && !live.invoice) {
+        await live.createManualDiscount({
+          invoiceId: created.id,
+          type: live.storedManualDiscount.type,
+          value: live.storedManualDiscount.value,
+          reason: live.storedManualDiscount.reason,
+        });
+      }
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      // Hoá đơn đã có sẵn (người khác vừa tạo, hoặc nhịp poll chưa kịp về) — không phải lỗi.
+      if (isApiStatus(error, 409) || errMsg.includes("đã tồn tại")) return;
+      setInvoiceCreateError(errMsg);
+      live.toast({
+        title: "Chưa tạo được hoá đơn",
+        description: `${errMsg} — bấm "Thử lại" để gọi lại.`,
+        variant: "danger",
+      });
+    } finally {
+      setInvoiceCreating(false);
+    }
+  }, [tableSessionId, branchId]);
+
+  /**
+   * Tạo hoặc đồng bộ khuyến mãi hoá đơn ngay khi vào màn QR — không đợi khách chuyển khoản xong.
+   */
+  React.useEffect(() => {
+    if (!tableSessionId || !branchId || !invoiceFetched) return;
+    const targetPromoId = storedPromotion?.id ?? null;
+    const needsPromoSync =
+      Boolean(storedPromotion) &&
+      invoice &&
+      invoice.status === "PENDING" &&
+      invoice.promotionId !== targetPromoId &&
+      syncedPromoIdRef.current !== targetPromoId;
+
+    if (invoiceAttemptedForSessionRef.current !== tableSessionId || needsPromoSync) {
+      invoiceAttemptedForSessionRef.current = tableSessionId;
+      void createInvoiceForSession();
+    }
+  }, [tableSessionId, branchId, invoiceFetched, createInvoiceForSession, storedPromotion, invoice?.status, invoice?.promotionId]);
+
+  /** Thu ngân bấm "Thử lại" — lần gọi lại DUY NHẤT do người dùng chủ động. */
+  function handleRetryCreateInvoice() {
+    void createInvoiceForSession();
+  }
 
   // Báo cho Thu ngân biết ngay khi backend xác nhận đã nhận đủ tiền
   const wasQrPaidRef = React.useRef(false);
@@ -252,14 +351,25 @@ export default function QrTransferPaymentPage() {
         currentInvoice = await createInvoiceMutation.mutateAsync({
           branchId: branchId || 1,
           tableSessionId,
+          promotionId: storedPromotion?.id, // Từ store
         });
+
+        // Áp manual discount nếu có từ store
+        if (storedManualDiscount) {
+          await createManualDiscountMutation.mutateAsync({
+            invoiceId: currentInvoice.id,
+            type: storedManualDiscount.type,
+            value: storedManualDiscount.value,
+            reason: storedManualDiscount.reason,
+          });
+        }
       }
 
-      // 2. Thu tiền (tạo Payment record BANK_TRANSFER)
+      // 2. Thu tiền (tạo Payment record BANK_TRANSFER) — DÙNG AMOUNT TỪ INVOICE
       await createPaymentMutation.mutateAsync({
         invoiceId: currentInvoice.id,
         method: "BANK_TRANSFER",
-        amount: amountToCollect,
+        amount: currentInvoice.remainingAmount || currentInvoice.grandTotal, // ← TỪ BE
       });
 
       toast({
@@ -284,6 +394,16 @@ export default function QrTransferPaymentPage() {
     }
   }
 
+  // Màn con — gọi TRƯỚC các nhánh return sớm (quy tắc hook).
+  usePageHeader({
+    title: session
+      ? `${session.tableName || `Bàn #${session.tableId}`} · Chuyển khoản`
+      : "Thanh toán chuyển khoản",
+    subtitle: session
+      ? `${session.guestCount || 0} khách · Phiên #${session.id}`
+      : undefined,
+  });
+
   if (sessionLoading || orderDetailsLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface-page">
@@ -303,7 +423,7 @@ export default function QrTransferPaymentPage() {
             <span className="text-2xl">⚠️</span>
           </div>
           <h2 className="text-lg font-bold text-text-primary">Không tìm thấy phiên bàn</h2>
-          <Button className="mt-6" onClick={() => navigate(-1)}>
+          <Button className="mt-6" onClick={goBack}>
             Quay lại
           </Button>
         </div>
@@ -320,12 +440,13 @@ export default function QrTransferPaymentPage() {
       {/* CỘT TRÁI: DANH SÁCH MÓN */}
       <div className="flex-1 p-6 sm:p-8">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
+          {/* Ẩn ở <md: tiêu đề đã lên MobileHeader (màn con, biến thể "back") */}
+          <div className="hidden md:block">
             <h1 className="text-2xl font-bold tracking-tight text-text-primary">
               {tableName} · Chốt bàn
             </h1>
             <p className="mt-1 text-sm text-text-tertiary">
-              {guestCount} khách · Phiên #{session.id} · Phục vụ: {waiterName}
+              {guestCount} khách · Phiên #{session.id} · Thu ngân: {waiterName}
             </p>
           </div>
           <StatusBadge type="tableSession" status={session.status} />
@@ -345,9 +466,16 @@ export default function QrTransferPaymentPage() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-text-primary">{detail.dishName}</p>
                   {detail.options && detail.options.length > 0 ? (
-                    <p className="mt-0.5 text-xs text-text-tertiary">
-                      {detail.options.map((opt) => opt.optionItemName).join(", ")}
-                    </p>
+                    <div className="mt-0.5 space-y-0.5">
+                      {detail.options.map((opt) => (
+                        <p key={opt.id} className="text-xs text-text-tertiary">
+                          + {opt.optionItemName}
+                          {opt.priceSnapshot > 0
+                            ? ` +${opt.priceSnapshot.toLocaleString("vi-VN")}đ`
+                            : " (Miễn phí)"}
+                        </p>
+                      ))}
+                    </div>
                   ) : null}
                   {detail.note ? (
                     <p className="mt-0.5 text-xs text-text-tertiary">{detail.note}</p>
@@ -356,9 +484,26 @@ export default function QrTransferPaymentPage() {
                     <StatusBadge type="orderDetail" status={detail.status} />
                   </div>
                 </div>
-                <span className="shrink-0 text-sm font-bold text-text-primary">
-                  {formatVnd(detail.price || 0)}
-                </span>
+                <div className="flex flex-col items-end shrink-0">
+                  {detail.promotionDiscountAmount && detail.promotionDiscountAmount > 0 ? (
+                    <>
+                      <span className="text-xs text-text-tertiary line-through">
+                        {formatVnd((detail.price || 0) + detail.promotionDiscountAmount)}
+                      </span>
+                      <span className="text-sm font-bold text-brand-primary">
+                        {formatVnd(detail.price || 0)}
+                      </span>
+                      <span className="text-[11px] font-semibold text-status-success">
+                        -{formatVnd(detail.promotionDiscountAmount)}
+                        {detail.promotionName ? ` (${detail.promotionName})` : ""}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="shrink-0 text-sm font-bold text-text-primary">
+                      {formatVnd(detail.price || 0)}
+                    </span>
+                  )}
+                </div>
               </div>
             ))
           )}
@@ -370,28 +515,54 @@ export default function QrTransferPaymentPage() {
         <h2 className="text-xl font-bold text-text-primary">Thanh toán</h2>
 
         <div className="mt-5 space-y-3">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-text-secondary">Tiền hàng</span>
-            <span className="font-medium text-text-primary">{formatVnd(subTotal)}</span>
-          </div>
-          {autoPromoAmount > 0 ? (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-status-success">{AUTO_PROMO_LABEL}</span>
-              <span className="font-medium text-status-success">−{formatVnd(autoPromoAmount)}</span>
-            </div>
-          ) : null}
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-text-secondary">Chiết khấu tay</span>
-            <span className="font-medium text-text-primary">−{formatVnd(manualDiscount?.amount ?? 0)}</span>
-          </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-text-secondary">Phí dịch vụ (5%)</span>
-            <span className="font-medium text-text-primary">{formatVnd(serviceFee)}</span>
-          </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-text-secondary">VAT (8%)</span>
-            <span className="font-medium text-text-primary">{formatVnd(vatAmount)}</span>
-          </div>
+          {bill && (
+            <>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-text-secondary">Tiền hàng</span>
+                <span className="font-medium text-text-primary">
+                  {formatVnd(bill.grossSubTotal - bill.itemPromotionDiscount)}
+                </span>
+              </div>
+
+              {bill.orderPromotionDiscount > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-status-success">
+                    Khuyến mãi đơn{bill.orderPromotionName ? ` (${bill.orderPromotionName})` : ""}
+                  </span>
+                  <span className="font-medium text-status-success">
+                    −{formatVnd(bill.orderPromotionDiscount)}
+                  </span>
+                </div>
+              )}
+
+              {bill.manualDiscount > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-text-secondary">Chiết khấu tay</span>
+                  <span className="font-medium text-text-primary">
+                    −{formatVnd(bill.manualDiscount)}
+                  </span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-text-secondary">
+                  Phí dịch vụ ({bill.serviceFeeRate.toFixed(0)}%)
+                </span>
+                <span className="font-medium text-text-primary">
+                  {formatVnd(bill.serviceFee)}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-text-secondary">
+                  VAT ({bill.vatRate.toFixed(0)}%)
+                </span>
+                <span className="font-medium text-text-primary">
+                  {formatVnd(bill.vatAmount)}
+                </span>
+              </div>
+            </>
+          )}
         </div>
 
         <Divider className="my-4" />
@@ -427,7 +598,53 @@ export default function QrTransferPaymentPage() {
         <div className="mt-6 flex flex-col items-center">
           <p className="text-sm font-semibold text-text-primary">Quét mã để chuyển khoản</p>
           <div className="mt-3 rounded-card border border-border-default p-2 bg-white flex items-center justify-center min-h-[220px]">
-            {qrData?.qrImageUrl ? (
+            {!hasBankConfig ? (
+              <div className="flex max-w-[260px] flex-col items-center gap-3 px-3 py-8 text-center">
+                <span className="flex size-12 items-center justify-center rounded-full bg-status-warning-subtle text-status-warning">
+                  <AlertTriangle className="size-6" />
+                </span>
+                <p className="text-sm font-semibold text-text-primary">
+                  Chi nhánh chưa cấu hình tài khoản ngân hàng
+                </p>
+                <p className="text-xs text-text-tertiary">
+                  Vào Cấu hình chi nhánh để thiết lập, rồi quay lại màn này.
+                </p>
+                {canConfigBranch ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-9 px-4 text-xs"
+                    onClick={() => navigate(BRANCH_MANAGER_PATHS.CONFIG)}
+                  >
+                    Mở Cấu hình chi nhánh
+                  </Button>
+                ) : null}
+              </div>
+            ) : invoiceCreateError && !invoice ? (
+              /* Tạo hoá đơn hỏng: DỪNG hẳn, nói lý do, chờ Thu ngân bấm "Thử lại".
+                 Không tự gọi lại — đó chính là cái đã gây vòng lặp ~74 request/giây. */
+              <div className="flex max-w-[260px] flex-col items-center gap-3 px-3 py-8 text-center">
+                <span className="flex size-12 items-center justify-center rounded-full bg-status-danger-subtle text-status-danger">
+                  <AlertTriangle className="size-6" />
+                </span>
+                <p className="text-sm font-semibold text-text-primary">Chưa tạo được hoá đơn</p>
+                <p className="text-xs text-text-tertiary">{invoiceCreateError}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-9 px-4 text-xs"
+                  onClick={handleRetryCreateInvoice}
+                  disabled={invoiceCreating}
+                >
+                  {invoiceCreating ? "Đang thử lại..." : "Thử lại"}
+                </Button>
+              </div>
+            ) : invoiceCreating && !invoice ? (
+              <div className="flex h-[200px] w-[200px] flex-col items-center justify-center gap-2">
+                <Loader2 className="size-7 animate-spin text-brand-primary" />
+                <span className="text-xs text-text-tertiary">Đang tạo hoá đơn...</span>
+              </div>
+            ) : qrData?.qrImageUrl ? (
               <img
                 src={qrData.qrImageUrl}
                 alt="VietQR Chuyển khoản"
@@ -457,6 +674,12 @@ export default function QrTransferPaymentPage() {
                 <span className="size-1.5 rounded-full bg-status-success" />
                 Đã nhận chuyển khoản
               </span>
+            ) : invoiceCreateError && !invoice ? (
+              /* Chưa có hoá đơn thì chưa có gì để khách chuyển — đừng báo "đang chờ khách". */
+              <span className="inline-flex items-center gap-1.5 rounded-pill bg-status-danger-subtle px-3 py-1.5 text-xs font-semibold text-status-danger">
+                <AlertTriangle className="size-3.5" />
+                Chưa tạo được hoá đơn
+              </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 rounded-pill bg-status-warning-subtle px-3 py-1.5 text-xs font-semibold text-status-warning">
                 <Loader2 className="size-3.5 animate-spin" />
@@ -474,6 +697,16 @@ export default function QrTransferPaymentPage() {
               onClick={handleIssueInvoice}
             >
               Phát hành hoá đơn điện tử
+            </Button>
+          ) : invoiceCreateError && !invoice ? (
+            <Button
+              className="w-full"
+              variant="outline"
+              size="lg"
+              onClick={handleRetryCreateInvoice}
+              disabled={invoiceCreating}
+            >
+              {invoiceCreating ? "Đang thử lại..." : "Thử lại tạo hoá đơn"}
             </Button>
           ) : (
             <Button
