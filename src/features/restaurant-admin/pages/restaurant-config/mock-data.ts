@@ -1,63 +1,21 @@
-import type {
-  RestaurantInfoConfig,
-  TaxAndFeeConfig,
-  StaffRoleSummary,
-} from "./types"
+import type { DefaultTaxAndFee } from "./types"
 
 /**
- * Dữ liệu mẫu Thông tin doanh nghiệp
- * Nguồn: QuanLy/Cấu hình.png
+ * Con số mặc định hệ thống dùng khi TẠO CHI NHÁNH MỚI.
+ *
+ * Trước đây file này giữ dữ liệu giả cho cả trang Cấu hình (tên nhà hàng, MST, danh sách vai
+ * trò). Nay trang đã nối API thật nên chỉ còn đúng phần này — và nó **không phải dữ liệu giả**,
+ * mà là hằng số mặc định:
+ *
+ *  - VAT 8% và phí dịch vụ 5% khớp `data.sql` khi khởi tạo chi nhánh;
+ *  - "phí dịch vụ chịu VAT" = bật, theo QĐ-17 (câu #7).
+ *
+ * Sửa thật sự cho từng chi nhánh làm ở trang **Cấu hình chi nhánh · Thuế & phí** (FR-BRN-02
+ * nhóm 2). Muốn chỉnh chính con số mặc định này thì phải thêm cột ở cấp nhà hàng — thuộc
+ * **đợt đổi schema** (`docs/todo.md` mục 25).
  */
-export const MOCK_RESTAURANT_INFO: RestaurantInfoConfig = {
-  restaurantName: "Nhà hàng Phở Việt",
-  taxCode: "0312345678",
-  logoText: "P",
-  logoSubtext: "PNG nền trong suốt",
-}
-
-/**
- * Dữ liệu mẫu Thuế & phí
- * Nguồn: QuanLy/Cấu hình.png
- */
-export const MOCK_TAX_AND_FEE: TaxAndFeeConfig = {
+export const DEFAULT_BRANCH_TAX_AND_FEE: DefaultTaxAndFee = {
   vatPercent: "8",
   serviceFeePercent: "5",
-  applyVatOnServiceFee: true,
+  vatAppliedOnServiceFee: true,
 }
-
-/**
- * Danh sách 5 vai trò nhân viên và số lượng nhân sự
- * Nguồn: QuanLy/Cấu hình.png
- */
-export const MOCK_STAFF_ROLES: StaffRoleSummary[] = [
-  {
-    id: "1",
-    roleKey: "platformAdmin",
-    name: "Quản trị nền tảng",
-    userCount: 1,
-  },
-  {
-    id: "2",
-    roleKey: "restaurantAdmin",
-    name: "Chủ nhà hàng",
-    userCount: 1,
-  },
-  {
-    id: "3",
-    roleKey: "branchManager",
-    name: "Quản lý chi nhánh",
-    userCount: 3,
-  },
-  {
-    id: "4",
-    roleKey: "cashier",
-    name: "Thu ngân",
-    userCount: 4,
-  },
-  {
-    id: "5",
-    roleKey: "waiter",
-    name: "Nhân viên phục vụ",
-    userCount: 8,
-  },
-]

@@ -12,6 +12,7 @@ export {
   useBranch, useBranchesByRestaurant, useCopyBranchConfig, useCreateBranch,
   useUpdateBranch, useUpdateBranchAdminConfig, useUpdateBranchManagerConfig,
 } from "@/api/branches.api"
+export { useChangeBranchStatus } from "./branches-status"
 export { useAreasByBranch } from "@/api/areas.api"
 export { useTablesByBranch, useCreateTable, useUpdateTable, useGenerateTableQrCode } from "@/api/tables.api"
 export {
@@ -29,9 +30,12 @@ export {
   useChangePromotionStatus, useCreatePromotion, usePromotionsByRestaurant, useUpdatePromotion,
 } from "@/api/promotions.api"
 export {
-  useAccountsByRestaurant, useChangeAccountStatus, useCreateAccount, useDeleteAccount, useUpdateAccount,
+  useAccountsByRestaurant, useChangeAccountStatus, useCreateAccount, useDeleteAccount,
+  useResetPassword, useUpdateAccount,
 } from "@/api/accounts.api"
 export { useCreateAssignment, useDeleteAssignment } from "@/api/assignments.api"
 export { useCreateRole, useDeleteRole, useRolesByRestaurant, useUpdateRole } from "@/api/roles.api"
-export { useAuditLogs, useAuditLogsByRestaurant } from "@/api/audit-logs.api"
+export {
+  useAuditLogs, useAuditLogsByBranch, useAuditLogsByPerformedBy, useAuditLogsByRestaurant,
+} from "@/api/audit-logs.api"
 export { useUploadDishImage, useUploadRestaurantLogo } from "@/api/upload.api"
