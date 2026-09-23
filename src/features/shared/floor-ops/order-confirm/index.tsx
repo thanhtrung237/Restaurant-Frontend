@@ -2,6 +2,7 @@ import { CheckCircle2, Clock, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
+import { PageHeader } from "@/components/layout/PageHeader"
 import { useAuthStore } from "@/stores/auth.store"
 import { useOrdersByBranch, useConfirmOrder, useCancelOrder } from "@/features/shared/floor-ops/api"
 import { ORDER_DETAIL_STATUS_LABEL } from "@/types/enums"
@@ -63,24 +64,28 @@ export default function OrderConfirmPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col min-h-screen bg-surface-page p-6 sm:p-8 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary">
-            Xác nhận order
-          </h1>
-          <p className="mt-1 text-sm text-text-tertiary">
-            {isLoading ? "Đang tải..." : `${orders.length} order đang chờ xác nhận`}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+    <div className="flex flex-1 flex-col min-h-screen bg-surface-page">
+      {/* Màn con — cặp nút Hủy/Xác nhận nằm trong TỪNG thẻ order nên không gom được
+          vào một thanh thao tác chung. */}
+      <PageHeader
+        title="Xác nhận order"
+        subtitle={
+          isLoading ? "Đang tải..." : `${orders.length} order đang chờ xác nhận`
+        }
+        actions={
           <Badge variant="outline" className="gap-1.5">
             <Clock className="size-3.5" />
             Tự động làm mới 1s
           </Badge>
-        </div>
-      </div>
+        }
+      />
+
+      <div className="flex flex-col gap-6 p-6 sm:p-8">
+      {/* <md: giữ lại chỉ báo tự làm mới dưới dạng dòng chữ nhỏ, không chiếm header */}
+      <p className="flex items-center gap-1.5 text-xs text-text-tertiary md:hidden">
+        <Clock className="size-3.5" />
+        Tự động làm mới 1s
+      </p>
 
       {/* Order List */}
       {isLoading ? (
@@ -109,6 +114,7 @@ export default function OrderConfirmPage() {
           ))}
         </div>
       )}
+      </div>
     </div>
   )
 }
@@ -171,9 +177,16 @@ function OrderCard({ order, onConfirm, onCancel, isConfirming, isCancelling }: O
                 {item.quantity}x {item.dishName}
               </p>
               {item.options && item.options.length > 0 ? (
-                <p className="text-xs text-text-tertiary mt-0.5">
-                  {item.options.map((opt) => opt.optionItemName).join(", ")}
-                </p>
+                <div className="mt-0.5 space-y-0.5">
+                  {item.options.map((opt) => (
+                    <p key={opt.id} className="text-xs text-text-tertiary">
+                      + {opt.optionItemName}
+                      {opt.priceSnapshot > 0
+                        ? ` +${opt.priceSnapshot.toLocaleString("vi-VN")}đ`
+                        : " (Miễn phí)"}
+                    </p>
+                  ))}
+                </div>
               ) : null}
               {item.note && (
                 <p className="text-xs text-text-tertiary italic mt-0.5">• {item.note}</p>

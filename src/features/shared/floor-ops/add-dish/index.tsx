@@ -1,11 +1,21 @@
 import * as React from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams, generatePath } from "react-router-dom";
 import { ChevronLeft, Search, ShoppingCart, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { QuantityStepper } from "@/components/common/QuantityStepper";
+import { StickyActionBar } from "@/components/layout/StickyActionBar";
 import { useToast } from "@/hooks/use-toast";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { useAuthStore } from "@/stores/auth.store";
+import { APP_ROLE } from "@/config/roles";
+import {
+  WAITER_PATHS,
+  BRANCH_MANAGER_PATHS,
+  RESTAURANT_ADMIN_PATHS,
+} from "@/app/router/paths";
+import { ROLE_HOME } from "@/app/router/RoleHomeRedirect";
+import { useGoBack } from "@/hooks/use-go-back";
 import { cn } from "@/lib/utils";
 import { useTableSession, useBranchMenu, useCreateOrder } from "@/features/shared/floor-ops/api";
 import type { BranchMenuItem } from "@/types/models";
@@ -39,12 +49,31 @@ interface SelectedLine {
  * customer/pages/cart — đây là giới hạn chung của BE, không phải riêng màn này).
  */
 export default function AddDishPage() {
-  const navigate = useNavigate();
   const { orderId } = useParams<{ orderId: string }>(); // Thực chất là tableSessionId
   const { toast } = useToast();
   const account = useAuthStore((s) => s.account);
 
   const tableSessionId = orderId ? Number.parseInt(orderId, 10) : undefined;
+
+  const role = useAuthStore((s) => s.role);
+  /**
+   * Nút "Quay lại" ở đây nói rõ "Về Order chi tiết", nên fallback cũng phải là Order chi tiết
+   * của ĐÚNG vai trò (màn này dùng chung cho Phục vụ / QL chi nhánh / Quản trị NH). Thiếu
+   * `:orderId` (không xảy ra khi đi đúng route) thì lùi về Sơ đồ bàn của vai trò.
+   */
+  const orderDetailPath =
+    role === APP_ROLE.BRANCH_MANAGER
+      ? BRANCH_MANAGER_PATHS.ORDER_DETAIL
+      : role === APP_ROLE.RESTAURANT_ADMIN
+        ? RESTAURANT_ADMIN_PATHS.ORDER_DETAIL
+        : WAITER_PATHS.ORDER_DETAIL;
+  const goBack = useGoBack(
+    orderId
+      ? generatePath(orderDetailPath, { orderId })
+      : role
+        ? ROLE_HOME[role]
+        : WAITER_PATHS.TABLE_MAP,
+  );
 
   const { data: session } = useTableSession(tableSessionId);
   const branchId = session?.branchId;
@@ -171,7 +200,7 @@ export default function AddDishPage() {
         description: `${totalQuantity} món · ${formatVnd(totalAmount)}`,
         variant: "success",
       });
-      navigate(-1);
+      goBack();
     } catch (error) {
       toast({
         title: "Không thể thêm món",
@@ -188,20 +217,19 @@ export default function AddDishPage() {
       {/* ============================================================
           1. HEADER
           ============================================================ */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border-default/60 bg-surface-card px-6 py-4 sm:px-8">
-        <div>
+      <PageHeader
+        title={`Thêm món vào bàn — ${tableName}`}
+        mobileSubtitle=""
+        actions={
           <button
             type="button"
-            onClick={() => navigate(-1)}
-            className="mb-1 inline-flex items-center gap-1 text-xs font-medium text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
+            onClick={goBack}
+            className="inline-flex items-center gap-1 text-sm font-medium text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
           >
-            <ChevronLeft className="size-3.5" /> Về Order chi tiết
+            <ChevronLeft className="size-4" /> Về Order chi tiết
           </button>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">
-            Thêm món vào bàn — {tableName}
-          </h1>
-        </div>
-      </div>
+        }
+      />
 
       <div className="flex flex-1 flex-col gap-6 p-6 sm:p-8 lg:flex-row items-start">
         {/* ============================================================
@@ -349,13 +377,14 @@ export default function AddDishPage() {
               </div>
             )}
 
-            <div className="mt-5 flex items-center justify-between border-t border-border-default/60 pt-4">
+            {/* Ẩn ở <md: tổng tiền + nút xác nhận đã nằm ở thanh thao tác cố định */}
+            <div className="mt-5 hidden items-center justify-between border-t border-border-default/60 pt-4 md:flex">
               <span className="text-sm font-bold text-text-secondary">Tổng cộng</span>
               <span className="text-xl font-bold text-text-primary">{formatVnd(totalAmount)}</span>
             </div>
 
             <Button
-              className="mt-4 h-12 w-full text-base font-bold"
+              className="mt-4 hidden h-12 w-full text-base font-bold md:inline-flex"
               disabled={selectedLines.length === 0 || createOrderMutation.isPending}
               onClick={handleConfirm}
             >
@@ -364,6 +393,26 @@ export default function AddDishPage() {
           </div>
         </div>
       </div>
+
+      {/* <md: giữ NGUYÊN tổng tiền cạnh nút xác nhận — bỏ tổng tiền thì nhân viên gửi
+          order mà không thấy số tiền sẽ cộng vào bàn. */}
+      <StickyActionBar>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-medium leading-tight text-text-tertiary">
+            Tổng cộng · {totalQuantity} món
+          </p>
+          <p className="truncate text-base font-bold leading-tight text-text-primary">
+            {formatVnd(totalAmount)}
+          </p>
+        </div>
+        <Button
+          className="h-11 shrink-0 px-5 font-bold"
+          disabled={selectedLines.length === 0 || createOrderMutation.isPending}
+          onClick={handleConfirm}
+        >
+          {createOrderMutation.isPending ? "Đang gửi..." : "Xác nhận thêm món"}
+        </Button>
+      </StickyActionBar>
     </div>
   );
 }

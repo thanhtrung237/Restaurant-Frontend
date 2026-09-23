@@ -1,6 +1,11 @@
 import * as React from "react";
 import { useNavigate, generatePath } from "react-router-dom";
 import { Bell, CalendarCheck, Plus } from "lucide-react";
+import { Chip } from "@/components/common/Chip";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { NotificationBell } from "@/components/layout/NotificationBell";
+import { FAB } from "@/components/common/FAB";
+import { FAB_POSITION_CLASS } from "@/components/layout/StickyActionBar";
 import {
   TableCard,
   type TableDisplayStatus,
@@ -17,12 +22,16 @@ import {
   RESTAURANT_ADMIN_PATHS,
 } from "@/app/router/paths";
 import { OpenTableModal } from "../OpenTableModal";
+import { ReservationModal } from "../ReservationModal";
+import { ReservationListPanel } from "../ReservationListPanel";
 import { cn } from "@/lib/utils";
 import {
   useTablesByBranch,
   useOpenSessionsByBranch,
+  useBranch,
 } from "@/features/shared/floor-ops/api";
 import type { DiningTable, TableSession } from "@/types/models";
+import { TABLE_DISPLAY_STATUS_LABEL } from "@/types/enums";
 
 /**
  * Kết hợp DiningTable + TableSession để tạo TableItem với displayStatus.
@@ -104,12 +113,26 @@ function mergeTableData(
       item.subtotal = "—";
     } else if (displayStatus === "AVAILABLE") {
       item.subLabel = "Nhấn để mở bàn";
-    } else if (displayStatus === "RESERVED" && session?.reservationTime) {
-      const time = new Date(session.reservationTime);
-      item.timeText = time.toLocaleTimeString("vi-VN", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+    } else if (displayStatus === "RESERVED") {
+      // FR-SRV-01: bàn ĐẶT TRƯỚC hiển thị kèm GIỜ HẸN và TÊN KHÁCH đã đặt.
+      // `reservationName` là cột của luồng đặt bàn qua phiên (POST /table-sessions);
+      // luồng cũ `POST /tables/{id}/reserve` ghi vào customer_name và KHÔNG được
+      // TableSessionResponse trả về — xem docs/be-issues.md.
+      if (session?.reservationTime) {
+        const time = new Date(session.reservationTime);
+        item.timeText = time.toLocaleTimeString("vi-VN", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      }
+      const reservedInfo = [
+        item.timeText,
+        session?.reservationName,
+        session?.guestCount ? `${session.guestCount} khách` : null,
+      ].filter(Boolean);
+      if (reservedInfo.length > 0) {
+        item.subLabel = reservedInfo.join(" · ");
+      }
     }
 
     // TODO: Tính subtotal từ orders của session (cần API GET /orders/session/{id})
@@ -130,6 +153,27 @@ const ORDER_DETAIL_PATH_BY_ROLE: Partial<Record<string, string>> = {
 };
 
 /**
+ * Bộ lọc nhanh dạng chip cho TABLET và MOBILE (Figma "Sơ đồ bàn · Tablet (834)" và
+ * "Sơ đồ bàn · Mobile (375)").
+ *
+ * Desktop dùng hàng chú giải có chấm màu (STATUS_LEGENDS bên dưới) vì còn chỗ hiển thị
+ * đủ 6 trạng thái; màn hẹp chỉ giữ 4 lựa chọn hay dùng nhất.
+ *
+ * `shortLabel` dành cho mobile 375px — Figma rút gọn "Đang phục vụ" thành "Phục vụ" và
+ * "Chờ thanh toán" thành "Chờ TT" để 4 chip nằm vừa một hàng.
+ */
+const QUICK_FILTERS: Array<{
+  status: TableDisplayStatus | "ALL";
+  label: string;
+  shortLabel: string;
+}> = [
+  { status: "ALL", label: "Tất cả", shortLabel: "Tất cả" },
+  { status: "AVAILABLE", label: "Trống", shortLabel: "Trống" },
+  { status: "OCCUPIED", label: "Đang phục vụ", shortLabel: "Phục vụ" },
+  { status: "AWAITING_PAYMENT", label: "Chờ thanh toán", shortLabel: "Chờ TT" },
+];
+
+/**
  * Danh mục chú giải trạng thái (Status Legend) hiển thị ở đầu sơ đồ bàn
  */
 const STATUS_LEGENDS: Array<{
@@ -137,12 +181,12 @@ const STATUS_LEGENDS: Array<{
   label: string;
   dotClass: string;
 }> = [
-  { status: "AVAILABLE", label: "Trống", dotClass: "bg-[#9CA3AF]" },
-  { status: "WAITING_OPEN", label: "Chờ mở bàn", dotClass: "bg-[#2E90FA]" },
-  { status: "OCCUPIED", label: "Đang phục vụ", dotClass: "bg-[#F0522B]" },
+  { status: "AVAILABLE", label: TABLE_DISPLAY_STATUS_LABEL.AVAILABLE, dotClass: "bg-[#9CA3AF]" },
+  { status: "WAITING_OPEN", label: TABLE_DISPLAY_STATUS_LABEL.WAITING_OPEN, dotClass: "bg-[#2E90FA]" },
+  { status: "OCCUPIED", label: TABLE_DISPLAY_STATUS_LABEL.OCCUPIED, dotClass: "bg-[#F0522B]" },
   {
     status: "AWAITING_PAYMENT",
-    label: "Chờ thanh toán",
+    label: TABLE_DISPLAY_STATUS_LABEL.AWAITING_PAYMENT,
     dotClass: "bg-[#F59E0B]",
   },
   { status: "RESERVED", label: "Đặt trước", dotClass: "bg-[#7F56D9]" },
@@ -163,6 +207,8 @@ export default function TableMapPage() {
   // State cho modal và filter
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [selectedTableForOpen, setSelectedTableForOpen] = React.useState<TableItem | null>(null);
+  const [isReservationModalOpen, setIsReservationModalOpen] = React.useState(false);
+  const [isReservationPanelOpen, setIsReservationPanelOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [selectedFilter, setSelectedFilter] = React.useState<TableDisplayStatus | "ALL">("ALL");
 
@@ -183,6 +229,23 @@ export default function TableMapPage() {
     [tablesData, sessionsData],
   );
 
+  // Cấu hình chi nhánh — cần `reservationHoldMinutes` để cảnh báo lịch sắp quá giờ (BR-29).
+  const { data: branch } = useBranch(branchId ?? undefined);
+  // Chi nhánh ngừng hoạt động (FR-BRN-01): không mở phiên mới, không nhận đặt bàn mới.
+  // BE chỉ chặn ở luồng khách quét QR nên FE phải ẩn/khoá các lối vào phía nhân viên.
+  const isBranchInactive = branch?.status === "INACTIVE";
+
+  // Bàn còn trống để đặt trước (BR-29: chỉ đặt được bàn không có phiên nào đang mở).
+  const availableTables = React.useMemo(
+    () => tables.filter((t) => t.displayStatus === "AVAILABLE"),
+    [tables],
+  );
+
+  const reservedCount = React.useMemo(
+    () => sessionsData.filter((s) => s.status === "RESERVED").length,
+    [sessionsData],
+  );
+
   // Thống kê số lượng
   const totalCount = tables.length;
   const occupiedCount = tables.filter(
@@ -192,6 +255,13 @@ export default function TableMapPage() {
     (t) => t.displayStatus === "AWAITING_PAYMENT",
   ).length;
 
+  // Dòng phụ của header mobile (StaffLayout) — Figma mobile hiển thị
+  // "12 bàn · 5 đang phục vụ" ngay dưới tiêu đề. Trên mobile header riêng của trang
+  // này bị ẩn nên số liệu phải đẩy lên header chung.
+  const headerSubtitle =
+    tablesLoading || sessionsLoading
+      ? "Đang tải..."
+      : `${totalCount} bàn · ${occupiedCount} đang phục vụ`;
   // Lọc danh sách bàn theo từ khóa tìm kiếm và trạng thái được chọn
   const filteredTables = React.useMemo(() => {
     return tables.filter((table) => {
@@ -248,6 +318,13 @@ export default function TableMapPage() {
     }
 
     // Bàn trống, chờ mở bàn, hoặc đặt trước — mở modal Mở bàn
+    if (isBranchInactive) {
+      toast({
+        title: "Chi nhánh đang ngừng hoạt động",
+        description: "Không thể mở bàn mới. Kích hoạt lại chi nhánh ở trang Chi nhánh.",
+      });
+      return;
+    }
     setSelectedTableForOpen(table);
     setIsModalOpen(true);
   }
@@ -258,30 +335,25 @@ export default function TableMapPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col min-h-screen bg-surface-page p-6 sm:p-8 space-y-6">
+    <div className="flex flex-1 flex-col min-h-screen bg-surface-page">
       {/* ============================================================
-          1. HEADER ROW: TIÊU ĐỀ + THỐNG KÊ + ACTIONS
+          1. HEADER BAR: TIÊU ĐỀ + THỐNG KÊ + ACTIONS
+          Theo Figma "Desktop / Sơ đồ bàn": vùng tiêu đề là thanh nền TRẮNG
+          (surface-card) có đường kẻ dưới, tách hẳn khỏi phần nội dung nền xám
+          (surface-page). Legend trạng thái và nhãn khu vực nằm dưới, trên nền xám.
           ============================================================ */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        {/* Tiêu đề & Subtitle thống kê */}
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary">
-            Sơ đồ bàn
-          </h1>
-          {tablesLoading || sessionsLoading ? (
-            <p className="mt-1 text-sm text-text-tertiary">Đang tải...</p>
-          ) : (
-            <p className="mt-1 text-sm text-text-tertiary">
-              {totalCount} bàn · {occupiedCount} đang phục vụ ·{" "}
-              {awaitingPaymentCount} chờ thanh toán
-            </p>
-          )}
-        </div>
-
-        {/* Action bar: Search, Bell notification, Danh sách đặt, Đặt bàn */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Ô tìm kiếm */}
-          <div className="w-56 sm:w-64">
+      <PageHeader
+        title="Sơ đồ bàn"
+        subtitle={
+          tablesLoading || sessionsLoading
+            ? "Đang tải..."
+            : `${totalCount} bàn · ${occupiedCount} đang phục vụ · ${awaitingPaymentCount} chờ thanh toán`
+        }
+        mobileSubtitle={headerSubtitle}
+        actions={
+          <>
+          {/* Ô tìm kiếm — ẩn ở tablet cho đỡ chật (Figma 834 không có ô này) */}
+          <div className="hidden w-56 lg:block lg:w-64">
             <SearchInput
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -292,66 +364,70 @@ export default function TableMapPage() {
             />
           </div>
 
-          {/* Chuông thông báo */}
-          <button
-            type="button"
-            className="relative flex size-10 items-center justify-center rounded-full border border-border-default bg-surface-card text-text-secondary transition-colors hover:bg-surface-muted hover:text-text-primary shadow-2xs"
-            title="Thông báo"
-          >
-            <Bell className="size-4" />
-            <span className="absolute -top-1 -right-1 flex size-4.5 items-center justify-center rounded-full bg-brand-primary text-[10px] font-bold text-text-on-brand shadow-xs">
-              4
-            </span>
-          </button>
+          {/* Chuông thông báo real-time qua WebSocket (FR-SRV-03, FR-CUS-10, FR-CUS-07) */}
+          <NotificationBell variant="header" />
 
-          {/* Nút Danh sách đặt */}
+          {/* Nút Danh sách đặt — số đếm lấy từ phiên ĐẶT TRƯỚC thật */}
           <Button
             type="button"
             variant="outline"
-            onClick={() =>
-              toast({
-                title: "Danh sách đặt bàn",
-                description: "Hiện có 3 lịch đặt trước trong ngày.",
-              })
-            }
-            className="h-10 rounded-pill border-border-strong bg-surface-card px-4 text-sm font-semibold text-text-primary hover:bg-surface-muted hover:text-text-primary gap-2 shadow-2xs"
+            onClick={() => setIsReservationPanelOpen(true)}
+            className="h-10 border-border-strong bg-surface-card px-4 text-sm font-semibold text-text-primary hover:bg-surface-muted hover:text-text-primary gap-2 shadow-2xs"
           >
             <CalendarCheck className="size-4 text-text-secondary" />
-            <span>Danh sách đặt</span>
-            <span className="flex size-5 items-center justify-center rounded-full bg-[#2E90FA] text-[11px] font-bold text-white">
-              3
-            </span>
+            {/* Tablet chỉ hiện icon + số đếm, desktop mới có chữ (Figma 834) */}
+            <span className="hidden lg:inline">Danh sách đặt</span>
+            <span className="sr-only lg:hidden">Danh sách đặt</span>
+            {reservedCount > 0 ? (
+              <span className="flex size-5 items-center justify-center rounded-full bg-[#2E90FA] text-[11px] font-bold text-white">
+                {reservedCount}
+              </span>
+            ) : null}
           </Button>
 
-          {/* Nút Đặt bàn */}
+          {isBranchInactive ? null : (
+          <>
+          {/* Nút Đặt bàn — mở modal ĐẶT TRƯỚC.
+              Trước đây nút này mở OpenTableModal, tức MỞ BÀN ngay cho khách vãng lai —
+              sai nghiệp vụ: đặt bàn là giữ chỗ theo giờ hẹn (FR-TBL-03). */}
           <Button
             type="button"
             onClick={() => {
-              const availableTable = tables.find(
-                (t) => t.displayStatus === "AVAILABLE",
-              );
-              if (availableTable) {
-                setSelectedTableForOpen(availableTable);
-                setIsModalOpen(true);
-              } else {
+              if (availableTables.length === 0) {
                 toast({
-                  title: "Thông báo",
-                  description: "Tất cả các bàn hiện đang có khách hoặc đã đặt.",
+                  title: "Không còn bàn trống",
+                  description: "Tất cả các bàn hiện đang có khách hoặc đã được đặt.",
                 });
+                return;
               }
+              setIsReservationModalOpen(true);
             }}
-            className="h-10 rounded-pill bg-brand-primary px-5 text-sm font-semibold text-text-on-brand hover:bg-brand-primary-hover shadow-xs gap-1.5"
+            className="h-10 bg-brand-primary px-5 text-sm font-semibold text-text-on-brand hover:bg-brand-primary-hover shadow-xs gap-1.5"
           >
             <Plus className="size-4" strokeWidth={2.5} />
             <span>Đặt bàn</span>
           </Button>
+          </>
+          )}
+          </>
+        }
+      />
+
+      {isBranchInactive ? (
+        <div
+          role="status"
+          className="mx-6 mt-6 rounded-xl border border-status-warning/40 bg-status-warning/10 px-4 py-3 text-sm text-text-primary sm:mx-8"
+        >
+          <strong>Chi nhánh đang ngừng hoạt động.</strong> Không thể mở bàn hoặc đặt bàn mới; dữ
+          liệu lịch sử vẫn xem được.
         </div>
-      </div>
+      ) : null}
 
       {/* ============================================================
           2. STATUS LEGEND / FILTER BAR
           ============================================================ */}
-      <div className="flex flex-wrap items-center gap-6 pt-1">
+      {/* Chú giải có chấm màu — chỉ desktop, màn hẹp dùng chip lọc bên dưới */}
+      <div className="hidden flex-wrap items-center gap-6 px-6 pt-6 sm:px-8 lg:flex">
         {STATUS_LEGENDS.map((legend) => {
           const isSelected = selectedFilter === legend.status;
           return (
@@ -393,10 +469,25 @@ export default function TableMapPage() {
         )}
       </div>
 
+      {/* Chip lọc nhanh — tablet & mobile */}
+      <div className="flex items-center gap-2 overflow-x-auto px-4 pt-4 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:px-8 lg:hidden [&::-webkit-scrollbar]:hidden">
+        {QUICK_FILTERS.map((filter) => (
+          <Chip
+            key={filter.status}
+            selected={selectedFilter === filter.status}
+            onClick={() => setSelectedFilter(filter.status)}
+            className="cursor-pointer"
+          >
+            <span className="sm:hidden">{filter.shortLabel}</span>
+            <span className="hidden sm:inline">{filter.label}</span>
+          </Chip>
+        ))}
+      </div>
+
       {/* ============================================================
           3. AREA SECTION & TABLE GRID
           ============================================================ */}
-      <div className="space-y-4 pt-2">
+      <div className="space-y-4 px-6 pb-6 pt-6 sm:px-8 sm:pb-8">
         {/* Phân khu */}
         <h2 className="text-xs font-bold uppercase tracking-wider text-text-tertiary">
           KHU VỰC TẦNG 1
@@ -462,6 +553,57 @@ export default function TableMapPage() {
         table={selectedTableForOpen}
         session={selectedTableForOpen?.session}
         onClose={handleCloseModal}
+      />
+
+      {/* FAB — CHỈ mobile. Tablet/PC đã có nút "Danh sách đặt" và "Đặt bàn" trên thanh
+          tiêu đề, nhưng ở mobile thanh đó bị ẩn nên đây là lối vào duy nhất.
+          Mở PANEL danh sách (không mở thẳng modal đặt bàn): theo FR-TBL-03, Phục vụ cần
+          nhận bàn từ màn hình đặt trước, nên xem danh sách là thao tác chính. Muốn đặt
+          mới thì bấm "Đặt bàn mới" ở chân panel.
+          Vị trí lấy từ hằng số chung để mọi FAB xếp tầng nhất quán với BottomNav. */}
+      <div className={FAB_POSITION_CLASS}>
+        <FAB
+          variant="circle"
+          aria-label={`Danh sách đặt bàn${reservedCount > 0 ? ` (${reservedCount} lịch)` : ""}`}
+          title="Danh sách đặt bàn"
+          icon={<CalendarCheck className="size-6 text-white" strokeWidth={2.5} />}
+          onClick={() => setIsReservationPanelOpen(true)}
+          className="shadow-lg"
+        />
+        {reservedCount > 0 ? (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-1 -top-1 flex min-w-5 items-center justify-center rounded-full bg-[#2E90FA] px-1.5 text-[11px] font-bold text-white shadow-xs"
+          >
+            {reservedCount}
+          </span>
+        ) : null}
+      </div>
+
+      {/* ============================================================
+          5. ĐẶT BÀN TRƯỚC (FR-TBL-03)
+          ============================================================ */}
+      <ReservationModal
+        isOpen={isReservationModalOpen}
+        availableTables={availableTables}
+        onClose={() => setIsReservationModalOpen(false)}
+      />
+
+      <ReservationListPanel
+        open={isReservationPanelOpen}
+        onOpenChange={setIsReservationPanelOpen}
+        sessions={sessionsData}
+        holdMinutes={branch?.reservationHoldMinutes}
+        onCreateReservation={isBranchInactive ? undefined : () => {
+          if (availableTables.length === 0) {
+            toast({
+              title: "Không còn bàn trống",
+              description: "Tất cả các bàn hiện đang có khách hoặc đã được đặt.",
+            });
+            return;
+          }
+          setIsReservationModalOpen(true);
+        }}
       />
     </div>
   );

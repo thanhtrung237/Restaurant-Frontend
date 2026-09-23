@@ -1,16 +1,18 @@
 import * as React from "react";
-import { useNavigate } from "react-router-dom";
 import { KDSTicket } from "@/components/common/KDSTicket";
 import { useToast } from "@/hooks/use-toast";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { useAuthStore } from "@/stores/auth.store";
-import { AUTH_PATHS } from "@/app/router/paths/auth.paths";
 import { cn } from "@/lib/utils";
-import { LogOut, Scale, X, RefreshCw } from "lucide-react";
+import { Scale, X, RefreshCw } from "lucide-react";
 import {
+  useBranch,
   useChangeOrderDetailStatus,
   useConfirmWeight,
+  useMarkServed,
   useOpenSessionsByBranch,
 } from "@/features/shared/floor-ops/api";
+import { ApiError, getErrorMessage } from "@/lib/http";
 import type { OrderDetail } from "@/types/models";
 import type { OrderDetailStatus } from "@/types/enums";
 import {
@@ -20,6 +22,19 @@ import {
   WEIGHT_INPUT_CONFIG,
   type WeightUnit,
 } from "@/lib/weight";
+
+/**
+ * Thời gian trôi qua trên thẻ KDS, theo Figma:
+ *  - dưới 1 phút  -> "vừa gửi"
+ *  - dưới 60 phút -> "N phút"
+ *  - từ 1 giờ     -> "Nh Mm"
+ * (Trước đây hiển thị "1h trước" — không khớp Figma và mất phần phút.)
+ */
+function formatTimeAgo(minutesAgo: number): string {
+  if (minutesAgo < 1) return "vừa gửi";
+  if (minutesAgo < 60) return `${minutesAgo} phút`;
+  return `${Math.floor(minutesAgo / 60)}h ${minutesAgo % 60}m`;
+}
 
 type KDSColumn = "AWAITING_CONFIRM" | "COOKING";
 type KDSFilter = "ALL" | "AWAITING_CONFIRM" | "COOKING";
@@ -54,12 +69,9 @@ interface KDSTicketItem {
  *      POST /order-details/{id}/mark-served
  */
 export default function KitchenDisplayPage() {
-  const navigate = useNavigate();
   const { toast } = useToast();
 
-  const account = useAuthStore((s) => s.account);
   const branchId = useAuthStore((s) => s.branchId);
-  const clearSession = useAuthStore((s) => s.clearSession);
 
   const [mobileTab, setMobileTab] = React.useState<KDSColumn>("AWAITING_CONFIRM");
   const [weighModalTicket, setWeighModalTicket] = React.useState<KDSTicketItem | null>(null);
@@ -80,7 +92,13 @@ export default function KitchenDisplayPage() {
   >([]);
 
   // Mutations
+  // PENDING → PREPARING vẫn dùng PUT /status: backend KHÔNG có endpoint riêng cho bước này.
   const changeStatusMutation = useChangeOrderDetailStatus();
+  // PREPARING → SERVED dùng POST /mark-served thay cho PUT /status, vì endpoint này:
+  //  - validate đúng chuyển trạng thái (chỉ nhận PREPARING, sai thì trả 409),
+  //  - đẩy WebSocket `notifyItemStatusChanged` để khách và Phục vụ thấy ngay (T-01).
+  // PUT /status không làm cả hai việc trên — nó set thẳng trạng thái, không kiểm tra gì.
+  const markServedMutation = useMarkServed();
   const confirmWeightMutation = useConfirmWeight();
 
   // Fetch order details cho tất cả sessions (làm mới mỗi 1 giây)
@@ -93,13 +111,9 @@ export default function KitchenDisplayPage() {
     const fetchInterval = setInterval(async () => {
       const promises = sessions.map(async (session) => {
         try {
+          // Endpoint này là public, không cần Authorization header
           const response = await fetch(
-            `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1"}/order-details/session/${session.id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${useAuthStore.getState().accessToken}`,
-              },
-            }
+            `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1"}/order-details/session/${session.id}`
           );
           if (!response.ok) return [];
           const data = await response.json();
@@ -114,20 +128,7 @@ export default function KitchenDisplayPage() {
       });
 
       const results = await Promise.all(promises);
-      const flattened = results.flat();
-      
-      // Debug: Log API response để kiểm tra options
-      if (flattened.length > 0) {
-        console.log("🍳 All Order Details from API:", 
-          flattened.map(item => ({ 
-            dishName: item.detail.dishName, 
-            hasOptions: !!item.detail.options && item.detail.options.length > 0,
-            options: item.detail.options 
-          }))
-        );
-      }
-      
-      setAllOrderDetails(flattened);
+      setAllOrderDetails(results.flat());
     }, 1000);
 
     // Initial fetch
@@ -155,20 +156,7 @@ export default function KitchenDisplayPage() {
       });
 
       const results = await Promise.all(promises);
-      const flattened = results.flat();
-      
-      // Debug: Initial fetch log
-      if (flattened.length > 0) {
-        console.log("🍳 Initial fetch - All Order Details:", 
-          flattened.map(item => ({ 
-            dishName: item.detail.dishName, 
-            hasOptions: !!item.detail.options && item.detail.options.length > 0,
-            options: item.detail.options 
-          }))
-        );
-      }
-      
-      setAllOrderDetails(flattened);
+      setAllOrderDetails(results.flat());
     })();
 
     return () => clearInterval(fetchInterval);
@@ -188,8 +176,7 @@ export default function KitchenDisplayPage() {
 
         const createdAt = detail.createdAt ? new Date(detail.createdAt) : new Date();
         const minutesAgo = Math.floor((Date.now() - createdAt.getTime()) / 60000);
-        const timeAgo =
-          minutesAgo < 1 ? "Vừa xong" : minutesAgo < 60 ? `${minutesAgo} phút trước` : `${Math.floor(minutesAgo / 60)}h trước`;
+        const timeAgo = formatTimeAgo(minutesAgo);
 
         return {
           id: detail.id,
@@ -202,7 +189,7 @@ export default function KitchenDisplayPage() {
           note: detail.note,
           hint:
             detail.status === "PENDING_WEIGHT"
-              ? "Bán theo cân · cần cân trước"
+              ? "Bán theo cân · cần cân trước khi gửi bếp"
               : detail.weightKg != null
                 ? `Khối lượng: ${formatWeight(detail.weightKg)}`
                 : undefined,
@@ -213,17 +200,6 @@ export default function KitchenDisplayPage() {
           status: detail.status,
         };
       });
-  
-  // Debug: Log để kiểm tra options
-  React.useEffect(() => {
-    if (tickets.length > 0) {
-      console.log("KDS Tickets with options:", tickets.map(t => ({ 
-        name: t.dishName, 
-        hasOptions: !!t.options && t.options.length > 0,
-        options: t.options 
-      })));
-    }
-  }, [tickets]);
   }, [allOrderDetails]);
 
   const totalCount = tickets.length;
@@ -242,6 +218,12 @@ export default function KitchenDisplayPage() {
 
   const totalProcessing = byColumn.AWAITING_CONFIRM.length + byColumn.COOKING.length;
 
+  // Subtitle theo Figma: "<Tên chi nhánh> · N dòng món đang xử lý".
+  // Bỏ phần tên nếu chưa tải xong để không hiện dấu "·" cụt.
+  const { data: branch } = useBranch(branchId ?? undefined);
+  const buildSubtitle = (count: number) =>
+    [branch?.name, `${count} dòng món đang xử lý`].filter(Boolean).join(" · ");
+
   const FILTER_TABS: Array<{ value: KDSFilter; label: string }> = [
     { value: "ALL", label: "Tất cả" },
     { value: "AWAITING_CONFIRM", label: "Chờ xác nhận" },
@@ -256,18 +238,27 @@ export default function KitchenDisplayPage() {
     {
       value: "AWAITING_CONFIRM",
       label: "Chờ xác nhận",
-      dotColor: "bg-[#2E90FA]",
+      dotColor: "bg-status-info",
     },
     {
       value: "COOKING",
       label: "Đang chế biến",
-      dotColor: "bg-[#F79009]",
+      dotColor: "bg-status-warning",
     },
   ];
 
-  function handleLogout() {
-    clearSession();
-    navigate(AUTH_PATHS.LOGIN, { replace: true });
+  /**
+   * Đưa 1 thẻ về đúng trạng thái trước khi bấm, dùng khi API từ chối.
+   * `ticket.status` là trạng thái đọc từ server ở nhịp poll gần nhất.
+   */
+  function revertTicketStatus(ticket: KDSTicketItem) {
+    setAllOrderDetails((prev) =>
+      prev.map((item) =>
+        item.detail.id === ticket.orderDetailId
+          ? { ...item, detail: { ...item.detail, status: ticket.status } }
+          : item
+      )
+    );
   }
 
   async function handleAction(ticket: KDSTicketItem) {
@@ -306,20 +297,25 @@ export default function KitchenDisplayPage() {
               : item
           )
         );
-        await changeStatusMutation.mutateAsync({
-          id: ticket.orderDetailId,
-          status: "SERVED",
-        });
+        await markServedMutation.mutateAsync(ticket.orderDetailId);
         toast({
-          title: "Đã đánh dấu xong",
-          description: `${ticket.dishName} (${ticket.tableName}) đã hoàn thành chế biến.`,
+          title: "Đã phục vụ",
+          description: `${ticket.dishName} (${ticket.tableName}) đã mang ra bàn khách.`,
           variant: "success",
         });
       }
     } catch (error) {
+      // Hoàn lại optimistic update: mark-served validate trạng thái ở server nên có thể
+      // từ chối (409) khi dòng món vừa bị đổi ở nơi khác — ví dụ Phục vụ huỷ món sau bếp.
+      // Không hoàn lại thì thẻ sẽ hiển thị sai cho tới nhịp poll kế tiếp.
+      revertTicketStatus(ticket);
+
+      const isConflict = error instanceof ApiError && error.status === 409;
       toast({
-        title: "Lỗi",
-        description: error instanceof Error ? error.message : "Không thể cập nhật trạng thái món.",
+        title: isConflict ? "Trạng thái món đã thay đổi" : "Lỗi",
+        description: isConflict
+          ? `${ticket.dishName} (${ticket.tableName}) vừa được cập nhật ở nơi khác. Danh sách đang được làm mới.`
+          : getErrorMessage(error),
         variant: "danger",
       });
     }
@@ -412,34 +408,9 @@ export default function KitchenDisplayPage() {
           A. GIAO DIỆN MOBILE (< md) - KHỚP MOCKUP 375PX
           ============================================================ */}
       <div className="flex flex-col md:hidden">
-        {/* 1. Mobile Header */}
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-[#EAECF0] bg-white px-4 py-3 select-none">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#F2F4F7] text-base font-bold text-[#101828]">
-              {account?.fullName ? account.fullName[0].toUpperCase() : "P"}
-            </div>
-            <div className="min-w-0">
-              <h1 className="truncate text-[15px] font-bold text-[#101828] leading-tight">
-                Hàng món chờ chế biến
-              </h1>
-              <p className="truncate text-xs text-[#667085] leading-tight mt-0.5">
-                {sessionsLoading ? "Đang tải..." : `${totalProcessing} dòng món đang xử lý`}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0 ml-2">
-            {/* Logout Icon Button */}
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="flex size-8.5 items-center justify-center rounded-full bg-[#F2F4F7] text-[#475467] transition-colors hover:bg-[#E4E7EC] active:scale-95"
-              title="Đăng xuất"
-            >
-              <LogOut className="size-4" />
-            </button>
-          </div>
-        </header>
+        {/* 1. Header riêng ĐÃ BỎ: trùng hoàn toàn với MobileHeader biến thể "app" của
+            StaffLayout (avatar · tiêu đề + dòng phụ · đăng xuất). Tiêu đề và dòng phụ
+            nay đẩy lên đó bằng usePageHeader. */}
 
         {/* 2. Mobile Pill Filter Tabs */}
         <div className="flex items-center gap-2 px-4 pt-3 pb-2 overflow-x-auto no-scrollbar select-none">
@@ -455,8 +426,8 @@ export default function KitchenDisplayPage() {
                 className={cn(
                   "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-xs font-bold transition-all shrink-0 cursor-pointer select-none",
                   isSelected
-                    ? "bg-[#2E90FA] text-white shadow-xs"
-                    : "border border-[#D0D5DD] bg-white text-[#344054] hover:bg-gray-50",
+                    ? "bg-status-info text-white shadow-xs"
+                    : "border border-border-strong bg-surface-card text-text-secondary hover:bg-surface-muted",
                 )}
               >
                 <span
@@ -483,41 +454,42 @@ export default function KitchenDisplayPage() {
                 return (
                   <div
                     key={ticket.id}
-                    className="flex flex-col rounded-[20px] border border-[#FEDDD2] bg-[#FFFAF5] p-4 shadow-2xs transition-all"
+                    className="flex flex-col rounded-[20px] border border-status-warning/50 bg-status-warning-subtle/40 p-4 shadow-2xs transition-all"
                   >
                     {/* Badge Chờ cân */}
                     <div className="mb-2">
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FEF3E2] px-2.5 py-0.5 text-xs font-bold text-[#D97706]">
-                        <span className="size-1.5 rounded-full bg-[#F59E0B]" />
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-status-warning-subtle px-2.5 py-0.5 text-xs font-bold text-status-warning">
+                        <span className="size-1.5 rounded-full bg-status-warning" />
                         Chờ cân
                       </span>
                     </div>
 
                     {/* Header: Bàn + Thời gian */}
                     <div className="flex items-center justify-between">
-                      <span className="rounded-md bg-[#F1F3F5] px-2.5 py-0.5 text-xs font-bold text-[#1D2939]">
+                      <span className="rounded-md bg-surface-muted px-2.5 py-0.5 text-xs font-bold text-text-primary">
                         {ticket.tableName}
                       </span>
-                      <span className="text-xs text-[#98A2B3]">
+                      <span className="text-xs text-text-tertiary">
                         {ticket.timeAgo}
                       </span>
                     </div>
 
                     {/* Món & Hướng dẫn */}
                     <div className="my-3 space-y-1">
-                      <h3 className="text-base font-bold text-[#101828]">
-                        {ticket.quantity && ticket.quantity > 1
-                          ? `${ticket.quantity}× `
-                          : "1× "}
-                        {ticket.dishName}
+                      <h3 className="text-base font-bold text-text-primary">
+                        {ticket.quantity ?? 1}× {ticket.dishName}
                       </h3>
                       {ticket.options && ticket.options.length > 0 ? (
-                        <p className="text-xs text-[#667085]">
-                          {ticket.options.map((opt) => opt.optionItemName).join(", ")}
-                        </p>
+                        <div className="space-y-0.5">
+                          {ticket.options.map((opt) => (
+                            <p key={opt.id} className="text-xs text-brand-primary">
+                              + {opt.optionItemName}
+                            </p>
+                          ))}
+                        </div>
                       ) : null}
-                      <p className="text-xs font-normal text-[#C4320A]">
-                        {ticket.hint || "Bán theo cân · cần cân trước"}
+                      <p className="text-xs font-normal text-brand-primary">
+                        {ticket.hint || "Bán theo cân · cần cân trước khi gửi bếp"}
                       </p>
                     </div>
 
@@ -529,7 +501,7 @@ export default function KitchenDisplayPage() {
                         setWeightUnit("kg");
                         setWeightInput("1.2");
                       }}
-                      className="flex h-11 w-full items-center justify-center rounded-[14px] bg-[#F0522B] text-sm font-bold text-white shadow-2xs transition-all hover:bg-[#E0441D] active:scale-[0.99] cursor-pointer"
+                      className="flex h-11 w-full items-center justify-center rounded-[14px] bg-status-danger text-sm font-bold text-white shadow-2xs transition-all hover:bg-status-danger/90 active:scale-[0.99] cursor-pointer"
                     >
                       Nhập số cân
                     </button>
@@ -541,38 +513,39 @@ export default function KitchenDisplayPage() {
               return (
                 <div
                   key={ticket.id}
-                  className="flex flex-col rounded-[20px] bg-white p-4 shadow-2xs transition-all border border-[#EAECF0]"
+                  className="flex flex-col rounded-[20px] bg-surface-card p-4 shadow-2xs transition-all border border-border-default"
                 >
                   {/* Header: Bàn + Thời gian */}
                   <div className="flex items-center justify-between">
-                    <span className="rounded-md bg-[#F1F3F5] px-2.5 py-0.5 text-xs font-bold text-[#1D2939]">
+                    <span className="rounded-md bg-surface-muted px-2.5 py-0.5 text-xs font-bold text-text-primary">
                       {ticket.tableName}
                     </span>
-                    <span className="text-xs text-[#667085]">
+                    <span className="text-xs text-text-tertiary">
                       {ticket.timeAgo}
                     </span>
                   </div>
 
                   {/* Món & Ghi chú */}
                   <div className="my-3 space-y-1">
-                    <h3 className="text-base font-bold text-[#101828]">
-                      {ticket.quantity && ticket.quantity > 1
-                        ? `${ticket.quantity}× `
-                        : "1× "}
-                      {ticket.dishName}
+                    <h3 className="text-base font-bold text-text-primary">
+                      {ticket.quantity ?? 1}× {ticket.dishName}
                     </h3>
                     {ticket.options && ticket.options.length > 0 ? (
-                      <p className="text-xs text-[#667085]">
-                        {ticket.options.map((opt) => opt.optionItemName).join(", ")}
-                      </p>
+                      <div className="space-y-0.5">
+                        {ticket.options.map((opt) => (
+                          <p key={opt.id} className="text-xs text-brand-primary">
+                            + {opt.optionItemName}
+                          </p>
+                        ))}
+                      </div>
                     ) : null}
                     {ticket.note ? (
-                      <p className="text-xs font-normal text-[#B54708]">
+                      <p className="text-xs font-normal text-brand-primary">
                         {ticket.note}
                       </p>
                     ) : null}
                     {ticket.weightKg != null ? (
-                      <p className="flex items-center gap-1 text-xs font-medium text-[#667085]">
+                      <p className="flex items-center gap-1 text-xs font-medium text-text-tertiary">
                         <Scale className="size-3" />
                         Khối lượng: {formatWeight(ticket.weightKg)}
                       </p>
@@ -584,7 +557,7 @@ export default function KitchenDisplayPage() {
                     <button
                       type="button"
                       onClick={() => handleAction(ticket)}
-                      className="flex h-11 w-full items-center justify-center rounded-[14px] bg-[#2E90FA] text-sm font-bold text-white shadow-2xs transition-all hover:bg-[#1570EF] active:scale-[0.99] cursor-pointer"
+                      className="flex h-11 w-full items-center justify-center rounded-[14px] bg-status-info text-sm font-bold text-white shadow-2xs transition-all hover:bg-status-info/90 active:scale-[0.99] cursor-pointer"
                     >
                       Xác nhận
                     </button>
@@ -593,16 +566,16 @@ export default function KitchenDisplayPage() {
                     <button
                       type="button"
                       onClick={() => handleAction(ticket)}
-                      className="flex h-11 w-full items-center justify-center rounded-[14px] bg-[#F79009] text-sm font-bold text-white shadow-2xs transition-all hover:bg-[#DC6803] active:scale-[0.99] cursor-pointer"
+                      className="flex h-11 w-full items-center justify-center rounded-[14px] bg-status-warning text-sm font-bold text-white shadow-2xs transition-all hover:bg-status-warning/90 active:scale-[0.99] cursor-pointer"
                     >
-                      Đánh dấu xong
+                      Đã phục vụ
                     </button>
                   )}
                 </div>
               );
             })
           ) : (
-            <div className="flex h-40 flex-col items-center justify-center rounded-[20px] border border-dashed border-[#D0D5DD] bg-white p-6 text-center text-xs text-[#667085]">
+            <div className="flex h-40 flex-col items-center justify-center rounded-[20px] border border-dashed border-border-strong bg-surface-card p-6 text-center text-xs text-text-tertiary">
               <p className="font-medium">Không có món nào trong mục này</p>
             </div>
           )}
@@ -612,45 +585,45 @@ export default function KitchenDisplayPage() {
       {/* ============================================================
           B. GIAO DIỆN DESKTOP (md+) - 3 CỘT KDS NGUYÊN BẢN
           ============================================================ */}
-      <div className="hidden md:flex flex-1 flex-col p-6 sm:p-8 space-y-6">
-        {/* Header Desktop */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-text-primary flex items-center gap-2">
-              Hàng món chờ chế biến
-              {sessionsLoading && <RefreshCw className="size-4 animate-spin text-text-tertiary" />}
-            </h1>
-            <p className="mt-1 text-sm text-text-tertiary">
-              {sessionsLoading ? "Đang tải..." : `${totalCount} dòng món đang xử lý`}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {FILTER_TABS.map((tab) => {
-              const isSelected = filter === tab.value;
-              return (
-                <button
-                  key={tab.value}
-                  type="button"
-                  onClick={() => setFilter(tab.value)}
-                  className={cn(
-                    "h-9 rounded-pill px-4 text-sm font-semibold transition-colors cursor-pointer",
-                    isSelected
-                      ? "bg-brand-primary text-text-on-brand shadow-xs"
-                      : "border border-border-default bg-surface-card text-text-secondary hover:border-border-strong hover:text-text-primary",
-                  )}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+      <div className="hidden md:flex flex-1 flex-col">
+        <PageHeader
+          className="md:block"
+          title="Hàng món chờ chế biến"
+          subtitle={
+            <span className="flex items-center gap-2">
+              {sessionsLoading ? "Đang tải..." : buildSubtitle(totalCount)}
+              {sessionsLoading && (
+                <RefreshCw className="size-3.5 animate-spin text-text-tertiary" />
+              )}
+            </span>
+          }
+          mobileSubtitle={
+            sessionsLoading ? "Đang tải..." : buildSubtitle(totalProcessing)
+          }
+          actions={FILTER_TABS.map((tab) => {
+            const isSelected = filter === tab.value;
+            return (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => setFilter(tab.value)}
+                className={cn(
+                  "h-9 rounded-pill px-4 text-sm font-semibold transition-colors cursor-pointer",
+                  isSelected
+                    ? "bg-brand-primary text-text-on-brand shadow-xs"
+                    : "border border-border-default bg-surface-card text-text-secondary hover:border-border-strong hover:text-text-primary",
+                )}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        />
 
         {/* 2 Cột KDS Desktop */}
         <div
           className={cn(
-            "grid flex-1 gap-6",
+            "grid flex-1 gap-6 px-6 py-6 sm:px-8 sm:py-8",
             visibleColumns.length === 1
               ? "grid-cols-1 max-w-3xl"
               : "grid-cols-1 md:grid-cols-2",
