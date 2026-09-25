@@ -1,89 +1,61 @@
 import React from "react"
-import { Check, Pencil } from "lucide-react"
-import type { PermissionFeatureRow, PermissionLevel } from "../types"
-import { ROLE_COLUMNS } from "../mock-data"
+import { PermissionBadge } from "./PermissionBadge"
+import type { PermissionMatrixSection } from "../types"
 
 interface PermissionMatrixTableProps {
-  data: PermissionFeatureRow[]
-  onEditRolePermissions?: (roleKey: string) => void
+  section: PermissionMatrixSection
 }
 
-function PermissionBadge({ level }: { level: PermissionLevel }) {
-  switch (level) {
-    case "allow":
-      return (
-        <span className="inline-flex size-6 items-center justify-center rounded-full bg-[#E6F9EE] text-[#12B76A] shadow-2xs">
-          <Check className="size-3.5 stroke-[2.5]" />
-        </span>
-      )
-    case "approval":
-      return (
-        <span className="inline-flex size-6 items-center justify-center rounded-md bg-[#FFF4ED] text-[#EA4A2A] font-bold text-xs">
-          A
-        </span>
-      )
-    case "readonly":
-      return (
-        <span className="inline-flex size-6 items-center justify-center rounded-md bg-[#F2F4F7] text-[#667085] font-bold text-xs">
-          R
-        </span>
-      )
-    case "none":
-    default:
-      return <span className="text-gray-300 text-sm font-light select-none">—</span>
-  }
-}
+/**
+ * Ma trận quyền dạng BẢNG — dùng ở md+.
+ *
+ * CHỈ ĐỌC: không có nút sửa quyền trên đầu cột. Backend không có bảng quyền nên không có
+ * gì để lưu; quyền cố định theo đặc tả (xem `permission-matrix.ts`).
+ */
+export const PermissionMatrixTable: React.FC<PermissionMatrixTableProps> = ({ section }) => {
+  const rowNotes = section.rows.filter((row) => row.cellNotes)
 
-export const PermissionMatrixTable: React.FC<PermissionMatrixTableProps> = ({
-  data,
-  onEditRolePermissions,
-}) => {
   return (
     <div className="w-full overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-xs">
+      <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-gray-100 bg-[#F9FAFB] px-6 py-3">
+        <h3 className="text-sm font-semibold text-gray-900">{section.title}</h3>
+        <span className="text-xs text-gray-500">{section.source}</span>
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-left">
           <thead>
-            <tr className="border-b border-gray-100 bg-[#F9FAFB]">
-              <th className="py-4 pl-6 pr-4 text-[11px] font-semibold tracking-wider text-gray-500 uppercase">
+            <tr className="border-b border-gray-100">
+              <th className="py-3.5 pl-6 pr-4 text-[11px] font-semibold tracking-wider text-gray-500">
                 CHỨC NĂNG
               </th>
-              {ROLE_COLUMNS.map((col) => (
+              {section.columns.map((col) => (
                 <th
                   key={col.key}
-                  className="py-4 px-4 text-center text-sm font-semibold text-gray-700 whitespace-nowrap"
+                  className="px-4 py-3.5 text-center text-sm font-semibold whitespace-nowrap text-gray-700"
                 >
-                  <div className="inline-flex items-center justify-center gap-1.5">
-                    <span>{col.label}</span>
-                    {col.canEdit && (
-                      <button
-                        type="button"
-                        onClick={() => onEditRolePermissions?.(col.key)}
-                        className="text-[#EA4A2A] hover:text-[#c4381b] p-0.5 rounded transition-colors cursor-pointer"
-                        title={`Chỉnh sửa quyền ${col.label}`}
-                      >
-                        <Pencil className="size-3.5 stroke-[2.2]" />
-                      </button>
-                    )}
-                  </div>
+                  {col.label}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-sm">
-            {data.map((row) => (
-              <tr
-                key={row.id}
-                className="hover:bg-gray-50/70 transition-colors"
-              >
-                {/* Tên chức năng */}
-                <td className="py-3.5 pl-6 pr-4 font-semibold text-gray-900">
-                  {row.feature}
+            {section.rows.map((row) => (
+              <tr key={row.id} className="transition-colors hover:bg-gray-50/70">
+                <td className="py-3.5 pl-6 pr-4">
+                  <span className="font-semibold text-gray-900">{row.feature}</span>
+                  {row.note ? (
+                    <span className="mt-0.5 block text-xs font-normal text-gray-400">
+                      {row.note}
+                    </span>
+                  ) : null}
                 </td>
-
-                {/* Các vai trò */}
-                {ROLE_COLUMNS.map((col) => (
-                  <td key={col.key} className="py-3.5 px-4 text-center">
-                    <PermissionBadge level={row.roles[col.key]} />
+                {section.columns.map((col) => (
+                  <td key={col.key} className="px-4 py-3.5 text-center">
+                    <PermissionBadge
+                      level={row.cells[col.key]}
+                      note={row.cellNotes?.[col.key]}
+                    />
                   </td>
                 ))}
               </tr>
@@ -91,6 +63,22 @@ export const PermissionMatrixTable: React.FC<PermissionMatrixTableProps> = ({
           </tbody>
         </table>
       </div>
+
+      {/* Chú thích của những ô có dấu * — đặc tả ghi thêm điều kiện ngay trong ô */}
+      {rowNotes.length > 0 ? (
+        <div className="space-y-1 border-t border-gray-100 bg-[#F9FAFB] px-6 py-3 text-xs text-gray-500">
+          {rowNotes.map((row) =>
+            section.columns
+              .filter((col) => row.cellNotes?.[col.key])
+              .map((col) => (
+                <p key={`${row.id}-${col.key}`}>
+                  <span className="font-bold text-[#EA4A2A]">*</span> {row.feature} ·{" "}
+                  {col.label}: {row.cellNotes?.[col.key]}
+                </p>
+              )),
+          )}
+        </div>
+      ) : null}
     </div>
   )
 }
