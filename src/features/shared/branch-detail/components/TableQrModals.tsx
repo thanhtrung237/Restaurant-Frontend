@@ -305,7 +305,12 @@ export function PrintSingleQrModal({
 
   const scanLink = `/ban/${table.qrCode || table.name}`
 
+  // Bàn chưa có mã QR thì thẻ in ra chỉ là khung rỗng — chặn in thay vì để nhân viên
+  // dán một tờ giấy không quét được lên bàn (FR-TBL-02).
+  const canPrint = Boolean(table.qrCode)
+
   function handlePrint() {
+    if (!canPrint) return
     window.print()
   }
 
@@ -337,8 +342,11 @@ export function PrintSingleQrModal({
             {table.qrCode ? (
               <DraggableTableQr qrCode={table.qrCode} tableName={table.name} size={192} />
             ) : (
-              <div className="size-48 flex items-center justify-center text-text-tertiary">
+              <div className="flex size-48 flex-col items-center justify-center gap-2 text-text-tertiary">
                 <QrCode className="size-16" />
+                <p className="px-2 text-center text-xs font-medium text-status-warning">
+                  {table.name} chưa có mã QR
+                </p>
               </div>
             )}
           </div>
@@ -353,6 +361,13 @@ export function PrintSingleQrModal({
 
         {/* Nút thao tác */}
         <div className="flex flex-col gap-2 pt-1">
+          {!canPrint ? (
+            <p className="rounded-lg bg-status-warning-subtle px-3 py-2 text-xs font-medium text-status-warning print:hidden">
+              Chưa in được: <strong>{table.name}</strong> chưa có mã QR. Sửa bàn để hệ thống
+              tạo mã, rồi in lại.
+            </p>
+          ) : null}
+
           <div className="grid grid-cols-2 gap-2.5">
             <Button
               type="button"
@@ -366,6 +381,7 @@ export function PrintSingleQrModal({
             <Button
               type="button"
               onClick={handlePrint}
+              disabled={!canPrint}
               className="h-10 rounded-xl bg-brand-primary hover:bg-brand-primary-hover text-white gap-1.5 text-xs font-bold"
             >
               <Printer className="size-3.5" />
@@ -391,7 +407,13 @@ export function PrintAllQrModal({
   tables,
   branchName = "Phở Việt",
 }: PrintAllQrModalProps) {
+  // Chỉ in bàn ĐÃ có mã QR. Bàn thiếu mã vẫn được nêu tên để người dùng biết phải xử lý
+  // bàn nào, thay vì in ra một tập thẻ trong đó vài tờ không quét được (FR-TBL-02).
+  const printableTables = tables.filter((t) => Boolean(t.qrCode))
+  const missingTables = tables.filter((t) => !t.qrCode)
+
   function handlePrint() {
+    if (printableTables.length === 0) return
     window.print()
   }
 
@@ -401,15 +423,16 @@ export function PrintAllQrModal({
         <DialogHeader className="flex flex-row items-center justify-between pb-2 border-b border-border-default">
           <div>
             <DialogTitle className="text-xl font-bold text-text-primary">
-              In QR hàng loạt ({tables.length} bàn)
+              In QR hàng loạt ({printableTables.length} bàn)
             </DialogTitle>
             <DialogDescription className="text-xs text-text-tertiary">
-              {branchName} · Chuẩn bị trang in cho toàn bộ bàn
+              {branchName} · Chuẩn bị trang in
             </DialogDescription>
           </div>
           <Button
             type="button"
             onClick={handlePrint}
+            disabled={printableTables.length === 0}
             className="h-10 px-5 rounded-xl bg-brand-primary hover:bg-brand-primary-hover text-white gap-1.5 font-semibold text-sm cursor-pointer shrink-0"
           >
             <Printer className="size-4" />
@@ -417,9 +440,31 @@ export function PrintAllQrModal({
           </Button>
         </DialogHeader>
 
-        {/* Lưới các thẻ QR để in */}
+        {/* print:hidden — cảnh báo là thông tin thao tác, không được lọt vào bản in */}
+        {missingTables.length > 0 ? (
+          <div className="mt-3 rounded-xl bg-status-warning-subtle px-3.5 py-2.5 print:hidden">
+            <p className="text-xs font-semibold text-status-warning">
+              {missingTables.length} bàn chưa in được — chưa có mã QR
+            </p>
+            <p className="mt-1 text-xs text-text-secondary">
+              {missingTables.map((t) => t.name).join(", ")}
+            </p>
+            <p className="mt-1 text-[11px] text-text-tertiary">
+              Các bàn còn lại vẫn in bình thường. Sửa từng bàn để hệ thống tạo mã QR, rồi
+              in lại những bàn này.
+            </p>
+          </div>
+        ) : null}
+
+        {printableTables.length === 0 ? (
+          <p className="py-10 text-center text-sm text-text-tertiary print:hidden">
+            Không có bàn nào in được — toàn bộ bàn của chi nhánh chưa có mã QR.
+          </p>
+        ) : null}
+
+        {/* Lưới CHỈ chứa bàn in được, nên window.print() không thể in nhầm thẻ rỗng */}
         <div id="printable-all-qr" className="grid grid-cols-2 sm:grid-cols-3 gap-4 py-4">
-          {tables.map((tbl) => {
+          {printableTables.map((tbl) => {
             return (
               <div
                 key={tbl.id}
@@ -435,14 +480,13 @@ export function PrintAllQrModal({
                   {tbl.capacity} chỗ · {tbl.areaName || "Khu vực"}
                 </p>
 
+                {/* `printableTables` đã lọc nên qrCode chắc chắn có giá trị */}
                 <div className="my-2 rounded-lg border border-gray-100 p-2 bg-white flex items-center justify-center">
-                  {tbl.qrCode ? (
-                    <DraggableTableQr qrCode={tbl.qrCode} tableName={tbl.name} size={120} />
-                  ) : (
-                    <div className="size-32 flex items-center justify-center text-text-tertiary">
-                      <QrCode className="size-10" />
-                    </div>
-                  )}
+                  <DraggableTableQr
+                    qrCode={tbl.qrCode as string}
+                    tableName={tbl.name}
+                    size={120}
+                  />
                 </div>
 
                 <p className="text-[10px] font-semibold text-text-secondary">

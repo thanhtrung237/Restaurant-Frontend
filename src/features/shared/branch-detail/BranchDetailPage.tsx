@@ -1,17 +1,24 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useCallback } from "react"
+import { Plus, Settings2 } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { BranchDetailHeader } from "./components/BranchDetailHeader"
+import { FAB } from "@/components/common/FAB"
+import { FAB_POSITION_CLASS } from "@/components/layout/StickyActionBar"
+import {
+  HeaderOverflowMenu,
+  type OverflowMenuAction,
+} from "@/components/layout/HeaderOverflowMenu"
+import { PageHeader } from "@/components/layout/PageHeader"
+import { BranchDetailHeaderActions } from "./components/BranchDetailHeader"
 import { BranchInfoTab } from "./components/BranchInfoTab"
-import { BranchMenuTab } from "./components/BranchMenuTab"
 import { BranchTableQrTab } from "./components/BranchTableQrTab"
+import { BranchMenuManagementTab } from "@/features/shared/branch-menu"
 import {
   AddTableModal,
   EditTableModal,
   PrintSingleQrModal,
   PrintAllQrModal,
 } from "./components/TableQrModals"
-import { MOCK_BRANCH_DETAILS, MOCK_BRANCH_MENU_ITEMS } from "./mock-data"
-import type { BranchMenuItem, BranchDetail } from "./types"
+import type { BranchDetail } from "./types"
 import type { DiningTable } from "@/types/models"
 import { useBranch } from "@/api/branches.api"
 import {
@@ -21,6 +28,9 @@ import {
   useGenerateTableQrCode,
 } from "@/api/tables.api"
 import { useAreasByBranch } from "@/api/areas.api"
+import { useAssignmentsByBranch } from "@/api/assignments.api"
+import { useAuthStore } from "@/stores/auth.store"
+import { APP_ROLE } from "@/config/roles"
 import { useToast } from "@/hooks/use-toast"
 
 interface BranchDetailPageProps {
@@ -41,11 +51,16 @@ interface BranchDetailPageProps {
  */
 export function BranchDetailPage({ branchId, onConfigBranch }: BranchDetailPageProps) {
   const { toast } = useToast()
+  const userRole = useAuthStore((state) => state.role)
 
   // 1. Fetch dữ liệu từ backend
   const { data: branchData } = useBranch(branchId)
   const { data: tables = [], isLoading: tablesLoading } = useTablesByBranch(branchId)
   const { data: areas = [] } = useAreasByBranch(branchId)
+  
+  // Lấy phân công nhân viên (chỉ MANAGER và BRANCH_MANAGER được gọi - BR-18)
+  const canViewAssignments = userRole === APP_ROLE.BRANCH_MANAGER || userRole === APP_ROLE.RESTAURANT_ADMIN
+  const { data: assignments = [] } = useAssignmentsByBranch(canViewAssignments ? branchId : undefined)
 
   // Mutations
   const createTableMutation = useCreateTable()
@@ -55,9 +70,6 @@ export function BranchDetailPage({ branchId, onConfigBranch }: BranchDetailPageP
   // Tab đang hoạt động: "info" | "menu" | "table-qr"
   const [activeTab, setActiveTab] = useState("table-qr")
 
-  // State danh sách món (Menu chi nhánh)
-  const [menuItems, setMenuItems] = useState<BranchMenuItem[]>(MOCK_BRANCH_MENU_ITEMS)
-
   // State các Modal Bàn & QR
   const [isAddTableOpen, setAddTableOpen] = useState(false)
   const [isPrintAllQrOpen, setPrintAllQrOpen] = useState(false)
@@ -65,35 +77,65 @@ export function BranchDetailPage({ branchId, onConfigBranch }: BranchDetailPageP
   const [printingTable, setPrintingTable] = useState<DiningTable | null>(null)
 
   // Map thông tin chi nhánh cho Header & InfoTab
-  const fallbackMock = MOCK_BRANCH_DETAILS[branchId] || MOCK_BRANCH_DETAILS[1]
   const branch: BranchDetail = useMemo(() => {
-    if (!branchData) return fallbackMock
+    if (!branchData) {
+      return {
+        id: branchId,
+        name: "",
+        status: "ACTIVE",
+        address: "",
+        managerName: "",
+        phone: "",
+        taxCode: "",
+        openingHours: "",
+        tableCount: 0,
+        staffCount: 0,
+        startDate: "",
+      }
+    }
+
+    // Tính toán managerName và staffCount từ assignments
+    let managerName = ""
+    let staffCount = 0
+    
+    if (canViewAssignments && assignments.length > 0) {
+      // Lấy tên manager từ các phân công có roleCode = "BRANCH_MANAGER"
+      const managers = assignments.filter(a => a.roleCode === "BRANCH_MANAGER")
+      if (managers.length > 0) {
+        managerName = managers.map(m => m.accountName).filter(Boolean).join(", ")
+      }
+      
+      // Đếm số tài khoản khác nhau
+      const uniqueAccountIds = new Set(assignments.map(a => a.accountId))
+      staffCount = uniqueAccountIds.size
+    }
+
     return {
       id: branchData.id,
       name: branchData.name,
       status: branchData.status,
-      address: branchData.address || fallbackMock.address,
-      managerName: fallbackMock.managerName,
-      phone: branchData.phone || fallbackMock.phone,
-      taxCode: branchData.taxCode || fallbackMock.taxCode,
+      address: branchData.address || "",
+      managerName: managerName || "", // Ẩn nếu không có dữ liệu
+      phone: branchData.phone || "",
+      taxCode: branchData.taxCode || "",
       openingHours:
         branchData.openingTime && branchData.closingTime
-          ? `${branchData.openingTime} - ${branchData.closingTime}`
-          : fallbackMock.openingHours,
-      tableCount: tables.length > 0 ? tables.length : fallbackMock.tableCount,
-      staffCount: fallbackMock.staffCount,
-      startDate: fallbackMock.startDate,
+          ? `${branchData.openingTime.slice(0, 5)} - ${branchData.closingTime.slice(0, 5)}`
+          : "",
+      tableCount: tables.length,
+      staffCount: staffCount,
+      startDate: "", // BE không có field này, bỏ
     }
-  }, [branchData, tables.length, fallbackMock])
+  }, [branchData, tables.length, assignments, canViewAssignments, branchId])
 
   // --- Handlers Bàn & QR ---
-  const handlePrintAllQr = () => {
+  const handlePrintAllQr = useCallback(() => {
     setPrintAllQrOpen(true)
-  }
+  }, [])
 
-  const handleAddTable = () => {
+  const handleAddTable = useCallback(() => {
     setAddTableOpen(true)
-  }
+  }, [])
 
   const handlePrintSingleQr = (table: DiningTable) => {
     setPrintingTable(table)
@@ -167,36 +209,60 @@ export function BranchDetailPage({ branchId, onConfigBranch }: BranchDetailPageP
     }
   }
 
-  // Handlers Tab Menu
-  const handleCreateCustomDish = () => {
-    const nextId = menuItems.length + 1
-    const newDish: BranchMenuItem = {
-      id: Date.now(),
-      name: `Món riêng chi nhánh #${nextId}`,
-      category: "Món chính",
-      originalPrice: null,
-      branchPrice: 50000,
-      diffText: "món riêng",
-      status: "CUSTOM",
+  // --- Header mobile: tiêu đề đổi theo tab đang mở (Figma "Quản lý bàn & QR · Mobile"
+  // dùng riêng nhãn "Bàn & Mã QR" chứ không phải tên chi nhánh) ---
+  const headerMeta = useMemo(() => {
+    if (activeTab === "table-qr") {
+      return {
+        title: "Bàn & Mã QR",
+        subtitle: `${tables.length} bàn · QR tự tạo khi thêm bàn`,
+      }
     }
-    setMenuItems((prev) => [newDish, ...prev])
-  }
+    if (activeTab === "menu") {
+      return { title: "Menu chi nhánh", subtitle: branch.name }
+    }
+    return { title: branch.name, subtitle: branch.address }
+  }, [activeTab, tables.length, branch.name, branch.address])
 
-  const handleEditDish = (dish: BranchMenuItem) => {
-    console.log("Chỉnh sửa món:", dish.name)
-  }
+  // "Cấu hình chi nhánh" (FR-BRN-02) là chức năng đặc tả yêu cầu — ở <md nó vào menu "⋯"
+  // thay vì biến mất cùng thanh tiêu đề.
+  const overflowActions = useMemo<OverflowMenuAction[]>(
+    () => [
+      {
+        key: "config-branch",
+        label: "Cấu hình chi nhánh",
+        icon: Settings2,
+        onSelect: onConfigBranch,
+      },
+    ],
+    [onConfigBranch],
+  )
+  const headerOverflow = useMemo(
+    () => <HeaderOverflowMenu actions={overflowActions} />,
+    [overflowActions],
+  )
+
 
   return (
-    <div className="flex flex-col min-h-full bg-surface-page p-6 lg:p-8 space-y-6">
-      {/* 1. Header chung cho toàn bộ trang */}
-      <BranchDetailHeader
-        branch={branch}
-        activeTab={activeTab}
-        onConfigBranch={onConfigBranch}
-        onPrintAllQr={handlePrintAllQr}
-        onAddTable={handleAddTable}
+    <div className="flex min-h-full flex-col bg-surface-page">
+      {/* "In QR hàng loạt" cũng vào đầu tab Bàn & QR ở <md, "Thêm bàn" thành FAB,
+          "Cấu hình chi nhánh" vào menu "⋯" trên MobileHeader. */}
+      <PageHeader
+        title={branch.name}
+        subtitle={`${branch.address} · Quản lý: ${branch.managerName}`}
+        mobileSubtitle={headerMeta.subtitle}
+        mobileHeaderActions={headerOverflow}
+        actions={
+          <BranchDetailHeaderActions
+            activeTab={activeTab}
+            onConfigBranch={onConfigBranch}
+            onPrintAllQr={handlePrintAllQr}
+            onAddTable={handleAddTable}
+          />
+        }
       />
 
+      <div className="flex flex-col gap-6 p-6 lg:p-8">
       {/* 2. 3 Tab: Thông tin, Menu chi nhánh, Bàn & QR */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="w-full justify-start gap-8 h-auto pb-0 bg-transparent rounded-none border-b border-border-default">
@@ -218,10 +284,9 @@ export function BranchDetailPage({ branchId, onConfigBranch }: BranchDetailPageP
 
         {/* Tab 2: Menu chi nhánh */}
         <TabsContent value="menu" className="mt-0">
-          <BranchMenuTab
-            menuItems={menuItems}
-            onCreateCustomDish={handleCreateCustomDish}
-            onEditDish={handleEditDish}
+          <BranchMenuManagementTab 
+            branchId={branchId} 
+            editable={userRole === APP_ROLE.BRANCH_MANAGER}
           />
         </TabsContent>
 
@@ -233,9 +298,24 @@ export function BranchDetailPage({ branchId, onConfigBranch }: BranchDetailPageP
             loading={tablesLoading}
             onPrintQr={handlePrintSingleQr}
             onEditTable={handleEditTable}
+            onPrintAllQr={handlePrintAllQr}
           />
         </TabsContent>
       </Tabs>
+
+      </div>
+
+      {/* "Thêm bàn" (FR-TBL-01) — FAB ở <md, chỉ trên tab Bàn & QR cho đúng ngữ cảnh */}
+      {activeTab === "table-qr" ? (
+        <FAB
+          variant="circle"
+          aria-label="Thêm bàn"
+          title="Thêm bàn"
+          icon={<Plus className="size-6 text-white" strokeWidth={2.5} />}
+          onClick={handleAddTable}
+          className={FAB_POSITION_CLASS}
+        />
+      ) : null}
 
       {/* Modals hỗ trợ quản lý bàn & QR */}
       <AddTableModal

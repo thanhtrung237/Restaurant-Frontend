@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from "react"
 import { Chip } from "@/components/common/Chip"
 import { TableCard } from "@/components/common/TableCard"
+import { Button } from "@/components/ui/button"
 import type { DiningTable, Area } from "@/types/models"
-import { Loader2 } from "lucide-react"
+import { Loader2, Printer } from "lucide-react"
 
 interface BranchTableQrTabProps {
   tables: DiningTable[]
@@ -10,6 +11,12 @@ interface BranchTableQrTabProps {
   loading?: boolean
   onPrintQr?: (table: DiningTable) => void
   onEditTable?: (table: DiningTable) => void
+  /**
+   * In QR hàng loạt. Ở md+ nút này nằm trên thanh tiêu đề trang; ở <md Figma
+   * "Quản lý bàn & QR · Mobile (375)" đưa nó xuống đầu vùng nội dung dạng nút full-width
+   * — KHÔNG bỏ, vì FR-TBL-02 yêu cầu in được hàng loạt.
+   */
+  onPrintAllQr?: () => void
 }
 
 /**
@@ -24,6 +31,7 @@ export const BranchTableQrTab: React.FC<BranchTableQrTabProps> = ({
   loading = false,
   onPrintQr,
   onEditTable,
+  onPrintAllQr,
 }) => {
   const [selectedArea, setSelectedArea] = useState("Tất cả khu vực")
 
@@ -66,8 +74,21 @@ export const BranchTableQrTab: React.FC<BranchTableQrTabProps> = ({
 
   return (
     <div className="space-y-5 pt-1">
-      {/* Thanh lọc khu vực dạng Chip */}
-      <div className="flex flex-wrap items-center gap-2">
+      {/* <md: "In QR hàng loạt" đứng đầu nội dung (Figma mobile) */}
+      {onPrintAllQr ? (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onPrintAllQr}
+          className="h-11 w-full gap-2 font-semibold md:hidden"
+        >
+          <Printer className="size-4" />
+          In QR hàng loạt
+        </Button>
+      ) : null}
+
+      {/* Thanh lọc khu vực dạng Chip — cuộn ngang ở màn hẹp */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] md:flex-wrap md:overflow-visible md:pb-0 [&::-webkit-scrollbar]:hidden">
         {filterAreas.map((area) => (
           <Chip
             key={area}

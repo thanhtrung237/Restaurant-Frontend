@@ -60,19 +60,39 @@ export interface BranchTableItem {
 }
 
 /**
- * Cấu hình vận hành chi nhánh (trang "Cấu hình" — FR-BRN-02)
- * Dùng chung bởi cả Quản lý chi nhánh (trang "Cấu hình" riêng, sửa chi nhánh mình)
- * và Quản trị nhà hàng (nút "Cấu hình chi nhánh" trên trang chi tiết chi nhánh, sửa 1 chi nhánh bất kỳ).
+ * Cấu hình vận hành chi nhánh — Nhóm 1 (FR-BRN-02)
+ * Dùng chung bởi cả Quản lý chi nhánh và Quản trị nhà hàng.
+ * Lưu qua PUT /branches/{id}/config/manager
  */
 export interface BranchConfigData {
-  /** Số điện thoại hotline chi nhánh */
-  hotline: string
-  /** Địa chỉ chi nhánh */
-  address: string
-  /** Khung giờ mở cửa */
+  /** Khung giờ mở cửa (hiển thị, không lưu riêng) */
   openingHours: string
+  /** Giờ bắt đầu ngày kinh doanh, "HH:mm" (BR-06) */
+  businessDayStartTime: string
+  /** Số tài khoản nhận chuyển khoản của chi nhánh (FR-PAY-03) */
+  bankAccountNo: string
+  /** Mã ngân hàng — xem `BANK_OPTIONS` trong config/banks.ts */
+  bankName: string
   /** Thời gian tự huỷ CHỜ MỞ BÀN (phút) */
   autoCancelWaitingMinutes: number | string
   /** Thời gian giữ chỗ đặt bàn (phút) */
   reservationHoldingMinutes: number | string
+}
+
+/**
+ * Cấu hình quản trị chi nhánh — Nhóm 2 (FR-BRN-02)
+ * CHỈ Quản trị nhà hàng mới sửa được.
+ * Lưu qua PUT /branches/{id}/config/admin
+ */
+export interface BranchAdminConfigData {
+  /** Thuế VAT (0-100) */
+  vatRate: number
+  /** Phí dịch vụ (0-100) */
+  serviceFeeRate: number
+  /** VAT có áp dụng trên phí dịch vụ không */
+  vatAppliedOnServiceFee: boolean
+  /** Ngưỡng chiết khấu cần duyệt (≥ 0) */
+  discountApprovalThreshold: number
+  /** Mã số thuế riêng của chi nhánh (để trống = dùng MST nhà hàng, BR-20) */
+  taxCode: string
 }

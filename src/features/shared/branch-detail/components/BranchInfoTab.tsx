@@ -10,18 +10,23 @@ interface BranchInfoTabProps {
 /**
  * Tab "Thông tin" — Hiển thị thẻ THÔNG TIN CHI NHÁNH
  * Chuẩn theo file: Chi tiết chi nhánh -Thông tin chi nhánh.png
+ * 
+ * Lưu ý: managerName/staffCount ẨN nếu không có dữ liệu (403 hoặc không gọi được API)
+ * startDate bỏ vì BE không có field này
  */
 export const BranchInfoTab: React.FC<BranchInfoTabProps> = ({ branch }) => {
   const infoRows = [
     { label: "Địa chỉ", value: branch.address },
-    { label: "Quản lý phụ trách", value: branch.managerName },
+    // Chỉ hiện nếu có dữ liệu (không gọi được API thì ẩn)
+    branch.managerName ? { label: "Quản lý phụ trách", value: branch.managerName } : null,
     { label: "Số điện thoại", value: branch.phone },
     { label: "Mã số thuế", value: branch.taxCode },
     { label: "Giờ mở cửa", value: branch.openingHours },
     { label: "Số bàn", value: `${branch.tableCount} bàn` },
-    { label: "Số nhân viên", value: `${branch.staffCount} nhân viên` },
-    { label: "Ngày bắt đầu hoạt động", value: branch.startDate },
-  ]
+    // Chỉ hiện nếu có dữ liệu
+    branch.staffCount > 0 ? { label: "Số nhân viên", value: `${branch.staffCount} nhân viên` } : null,
+    // startDate bỏ vì BE không có
+  ].filter(Boolean) as Array<{ label: string; value: string }>
 
   return (
     <div className="pt-2">

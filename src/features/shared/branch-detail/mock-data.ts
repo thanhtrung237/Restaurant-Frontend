@@ -123,26 +123,32 @@ export const MOCK_BRANCH_TABLES: BranchTableItem[] = [
 
 /**
  * Cấu hình vận hành mặc định theo chi nhánh (trang Cấu hình — FR-BRN-02)
+ * 
+ * LƯU Ý: Mock data này KHÔNG CÒN DÙNG sau khi nối API thật.
+ * Chỉ giữ lại để tránh lỗi compile nếu có code cũ còn import.
  */
 export const MOCK_BRANCH_CONFIGS: Record<number, BranchConfigData> = {
   1: {
-    hotline: "1900 6868",
-    address: "12 Nguyễn Huệ, Quận 1, TP.HCM",
     openingHours: "08:00 – 22:00",
+    businessDayStartTime: "",
+    bankAccountNo: "",
+    bankName: "",
     autoCancelWaitingMinutes: 10,
     reservationHoldingMinutes: 15,
   },
   2: {
-    hotline: "1900 6869",
-    address: "45 Võ Văn Tần, Quận 3, TP.HCM",
     openingHours: "09:00 – 23:00",
+    businessDayStartTime: "",
+    bankAccountNo: "",
+    bankName: "",
     autoCancelWaitingMinutes: 10,
     reservationHoldingMinutes: 15,
   },
   3: {
-    hotline: "1900 6870",
-    address: "200 Võ Văn Ngân, TP.Thủ Đức",
     openingHours: "10:00 – 22:00",
+    businessDayStartTime: "",
+    bankAccountNo: "",
+    bankName: "",
     autoCancelWaitingMinutes: 10,
     reservationHoldingMinutes: 15,
   },
