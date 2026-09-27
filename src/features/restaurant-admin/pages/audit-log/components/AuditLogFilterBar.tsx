@@ -6,122 +6,116 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { AUDIT_ACTION_TYPE, AUDIT_ACTION_TYPE_LABEL } from "@/types/models"
+import { AUDIT_DATE_RANGES } from "../lib"
+import type {
+  AuditActionFilter,
+  AuditDateRangeId,
+  AuditPerformerFilter,
+} from "../types"
 
-interface AuditLogFilterBarProps {
-  selectedAction: string
-  onActionChange: (action: string) => void
-  selectedStaff: string
-  onStaffChange: (staff: string) => void
-  selectedDateRange: string
-  onDateRangeChange: (range: string) => void
+export interface AuditPerformerOption {
+  value: AuditPerformerFilter
+  label: string
 }
 
-const ACTION_OPTIONS = [
-  "Tất cả thao tác",
-  "Chiết khấu",
-  "Đổi giá",
-  "Hủy món",
-  "Mở bàn",
-  "Đổi vai trò",
-  "Đóng bàn",
+interface AuditLogFilterBarProps {
+  selectedAction: AuditActionFilter
+  onActionChange: (action: AuditActionFilter) => void
+  performerOptions: AuditPerformerOption[]
+  selectedPerformer: AuditPerformerFilter
+  onPerformerChange: (performer: AuditPerformerFilter) => void
+  selectedDateRange: AuditDateRangeId
+  onDateRangeChange: (range: AuditDateRangeId) => void
+}
+
+const ACTION_OPTIONS: { value: AuditActionFilter; label: string }[] = [
+  { value: "ALL", label: "Tất cả thao tác" },
+  // Danh sách lấy từ hằng của BE (AuditAction) — không tự khai thêm giá trị nào.
+  ...AUDIT_ACTION_TYPE.map((action) => ({
+    value: action as AuditActionFilter,
+    label: AUDIT_ACTION_TYPE_LABEL[action],
+  })),
 ]
 
-const STAFF_OPTIONS = [
-  "Mọi nhân viên",
-  "Lê Minh Quân",
-  "Nguyễn Văn Long",
-  "Trần Ngọc Anh",
-  "Nguyễn Văn An",
-]
+function FilterDropdown<T extends string | number>({
+  label,
+  options,
+  selected,
+  onSelect,
+  width,
+}: {
+  label: string
+  options: { value: T; label: string }[]
+  selected: T
+  onSelect: (value: T) => void
+  width: string
+}) {
+  const current = options.find((option) => option.value === selected)?.label ?? label
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-1.5 text-sm font-medium whitespace-nowrap text-gray-700 transition-colors hover:bg-gray-50"
+        >
+          <span>{current}</span>
+          <ChevronDown className="ml-0.5 size-3.5 text-gray-400" />
+        </button>
+      </DropdownMenuTrigger>
+      {/*
+        `align` của `DropdownMenuContent` tự viết trong repo chỉ nhận "left" | "right" | "center"
+        (mặc định "right"). Ba bộ lọc này nằm ở mép trái nên neo "left".
+      */}
+      <DropdownMenuContent align="left" className={width}>
+        {options.map((option) => (
+          <DropdownMenuItem
+            key={String(option.value)}
+            onClick={() => onSelect(option.value)}
+            className="cursor-pointer text-sm"
+          >
+            {option.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
 
-const DATE_RANGE_OPTIONS = [
-  "Hôm nay",
-  "7 ngày qua",
-  "30 ngày qua",
-  "Tháng này",
-]
-
+/** Ba bộ lọc bắt buộc của FR-LOG-01: loại thao tác, người thực hiện, khoảng thời gian. */
 export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
   selectedAction,
   onActionChange,
-  selectedStaff,
-  onStaffChange,
+  performerOptions,
+  selectedPerformer,
+  onPerformerChange,
   selectedDateRange,
   onDateRangeChange,
 }) => {
   return (
-    <div className="flex items-center gap-3 py-1 flex-wrap">
-      {/* 1. Thao tác dropdown */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
-          >
-            <span>{selectedAction}</span>
-            <ChevronDown className="size-3.5 text-gray-400 ml-0.5" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="left" className="w-44">
-          {ACTION_OPTIONS.map((action) => (
-            <DropdownMenuItem
-              key={action}
-              onClick={() => onActionChange(action)}
-              className="cursor-pointer text-sm"
-            >
-              {action}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* 2. Nhân viên dropdown */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
-          >
-            <span>{selectedStaff}</span>
-            <ChevronDown className="size-3.5 text-gray-400 ml-0.5" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="left" className="w-44">
-          {STAFF_OPTIONS.map((staff) => (
-            <DropdownMenuItem
-              key={staff}
-              onClick={() => onStaffChange(staff)}
-              className="cursor-pointer text-sm"
-            >
-              {staff}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* 3. Thời gian dropdown */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
-          >
-            <span>{selectedDateRange}</span>
-            <ChevronDown className="size-3.5 text-gray-400 ml-0.5" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="left" className="w-40">
-          {DATE_RANGE_OPTIONS.map((range) => (
-            <DropdownMenuItem
-              key={range}
-              onClick={() => onDateRangeChange(range)}
-              className="cursor-pointer text-sm"
-            >
-              {range}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+    // <md: cuộn ngang thay vì xuống dòng, giữ đủ 3 bộ lọc
+    <div className="flex items-center gap-3 overflow-x-auto py-1 [-ms-overflow-style:none] [scrollbar-width:none] md:flex-wrap md:overflow-visible [&::-webkit-scrollbar]:hidden">
+      <FilterDropdown
+        label="Tất cả thao tác"
+        options={ACTION_OPTIONS}
+        selected={selectedAction}
+        onSelect={onActionChange}
+        width="w-48"
+      />
+      <FilterDropdown
+        label="Mọi nhân viên"
+        options={performerOptions}
+        selected={selectedPerformer}
+        onSelect={onPerformerChange}
+        width="w-56"
+      />
+      <FilterDropdown
+        label="Khoảng thời gian"
+        options={AUDIT_DATE_RANGES.map((range) => ({ value: range.id, label: range.label }))}
+        selected={selectedDateRange}
+        onSelect={onDateRangeChange}
+        width="w-44"
+      />
     </div>
   )
 }
