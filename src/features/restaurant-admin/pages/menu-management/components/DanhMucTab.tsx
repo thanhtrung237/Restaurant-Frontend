@@ -15,6 +15,18 @@ interface DanhMucTabProps {
  * Tab "Danh mục" — Quản lý danh mục món ăn
  * Chuẩn theo file: QuanLy/Quản lý danh mục.png
  */
+/**
+ * Lý do khoá nút xoá. Nêu rõ khi phần chênh lệch đến từ món RIÊNG chi nhánh, vì người
+ * dùng nhìn tab "Món" (chỉ món cấp nhà hàng) sẽ không hiểu vì sao danh mục "trống" mà
+ * vẫn không xoá được.
+ */
+function buildBlockedDeleteHint(cat: CategoryItem): string {
+  const branchOnly = cat.totalDishCount - cat.dishCount
+  const suffix =
+    branchOnly > 0 ? ` (trong đó ${branchOnly} món riêng chi nhánh)` : ""
+  return `Danh mục còn ${cat.totalDishCount} món${suffix}, chuyển hoặc ngừng bán món trước`
+}
+
 export const DanhMucTab: React.FC<DanhMucTabProps> = ({
   categories,
   onToggleStatus,
@@ -37,14 +49,11 @@ export const DanhMucTab: React.FC<DanhMucTabProps> = ({
                 {cat.order}
               </div>
 
-              <div className="min-w-0">
-                <p className="font-semibold text-text-primary text-sm tracking-tight leading-snug truncate">
-                  {cat.name}
-                </p>
-                <p className="text-xs text-text-tertiary mt-0.5 truncate">
-                  {cat.description}
-                </p>
-              </div>
+              {/* Figma có dòng mô tả nhưng CategoryResponse của BE không có trường này
+                  — bỏ khỏi UI thay vì hiện rỗng (xem docs/todo.md). */}
+              <p className="min-w-0 truncate text-sm font-semibold leading-snug tracking-tight text-text-primary">
+                {cat.name}
+              </p>
             </div>
 
             {/* Cụm phải: Số món + Switch Hiện/Ẩn + Nút Sửa / Xoá */}
@@ -74,26 +83,38 @@ export const DanhMucTab: React.FC<DanhMucTabProps> = ({
               <div className="flex items-center gap-1">
                 <IconButton
                   type="button"
-                  variant="subtle"
-                  size="sm"
+                  variant="row"
+                  size="row"
                   onClick={() => onEditCategory?.(cat)}
-                  className="rounded-xl text-text-secondary hover:text-text-primary cursor-pointer size-8.5"
+                  className="cursor-pointer"
                   title="Chỉnh sửa danh mục"
                   aria-label="Chỉnh sửa danh mục"
                 >
-                  <Pencil className="size-3.5" />
+                  <Pencil />
                 </IconButton>
 
+                {/* FR-MNU-01: không cho xoá danh mục còn món. Backend KHÔNG chặn —
+                    deleteCategory soft-delete kéo theo toàn bộ món — nên chốt chặn ở đây.
+                    Đếm theo TỔNG số món (kể cả món riêng chi nhánh) vì BE xoá cả chúng. */}
                 <IconButton
                   type="button"
-                  variant="ghost"
-                  size="sm"
+                  variant="row-danger"
+                  size="row"
+                  disabled={cat.totalDishCount > 0}
                   onClick={() => onDeleteCategory?.(cat)}
-                  className="rounded-xl text-status-danger hover:bg-status-danger-subtle hover:text-status-danger cursor-pointer size-8.5"
-                  title="Xoá danh mục"
-                  aria-label="Xoá danh mục"
+                  className="cursor-pointer"
+                  title={
+                    cat.totalDishCount > 0
+                      ? buildBlockedDeleteHint(cat)
+                      : "Xoá danh mục"
+                  }
+                  aria-label={
+                    cat.totalDishCount > 0
+                      ? buildBlockedDeleteHint(cat)
+                      : `Xoá danh mục ${cat.name}`
+                  }
                 >
-                  <Trash2 className="size-3.5" />
+                  <Trash2 />
                 </IconButton>
               </div>
             </div>

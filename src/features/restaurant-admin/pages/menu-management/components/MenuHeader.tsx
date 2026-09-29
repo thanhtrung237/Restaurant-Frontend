@@ -9,7 +9,6 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select"
-import { MOCK_BRANCH_OPTIONS } from "../mock-data"
 import type { MenuTabType } from "../types"
 
 interface MenuHeaderProps {
@@ -18,106 +17,91 @@ interface MenuHeaderProps {
   onSearchChange: (value: string) => void
   onAddDish?: () => void
   onAddCategory?: () => void
-  selectedBranch: string
-  onBranchChange: (branch: string) => void
-  totalDishes?: number
-  totalCategories?: number
+  onAddOptionGroup?: () => void
+  branches: { id: number; name: string }[]
+  selectedBranchId: number | null
+  onBranchChange: (branchId: number) => void
 }
 
 /**
  * Header màn hình Thực đơn
  * Tự động thích ứng tiêu đề, mô tả và cụm công cụ bên phải theo từng tab (Món, Danh mục, Menu chi nhánh)
  */
-export const MenuHeader: React.FC<MenuHeaderProps> = ({
+export const MenuHeaderActions: React.FC<MenuHeaderProps> = ({
   activeTab,
   searchTerm,
   onSearchChange,
   onAddDish,
   onAddCategory,
-  selectedBranch,
+  onAddOptionGroup,
+  branches,
+  selectedBranchId,
   onBranchChange,
-  totalDishes = 42,
-  totalCategories = 6,
 }) => {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
-      {/* Cột trái: Tiêu đề và mô tả */}
-      <div>
-        {activeTab === "mon" ? (
-          <>
-            <h1 className="text-2xl font-bold text-text-primary tracking-tight">Thực đơn</h1>
-            <p className="text-sm text-text-tertiary mt-0.5">
-              {totalDishes} món · {totalCategories} danh mục
-            </p>
-          </>
-        ) : activeTab === "danh-muc" ? (
-          <>
-            <h1 className="text-2xl font-bold text-text-primary tracking-tight">Danh mục</h1>
-            <p className="text-sm text-text-tertiary mt-0.5">
-              {totalCategories} danh mục · dùng chung mọi chi nhánh · kéo–thả để sắp thứ tự
-            </p>
-          </>
-        ) : (
-          <>
-            <h1 className="text-2xl font-bold text-text-primary tracking-tight">Menu chi nhánh</h1>
-            <p className="text-sm text-text-tertiary mt-0.5">
-              Đè giá / tạm ẩn / thêm món riêng cho chi nhánh (BR-17)
-            </p>
-          </>
-        )}
-      </div>
+    // CHỈ cụm điều khiển bên phải — tiêu đề/dòng phụ do PageHeader lo.
+    <>
+      {activeTab === "mon" ? (
+        <>
+          <div className="w-56 sm:w-64">
+            <SearchInput
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
+              onClear={() => onSearchChange("")}
+              placeholder="Tìm món..."
+              variant="pill"
+              size="default"
+            />
+          </div>
 
-      {/* Cột phải: Công cụ theo từng tab */}
-      <div className="flex items-center gap-3">
-        {activeTab === "mon" ? (
-          <>
-            <div className="w-56 sm:w-64">
-              <SearchInput
-                value={searchTerm}
-                onChange={(e) => onSearchChange(e.target.value)}
-                onClear={() => onSearchChange("")}
-                placeholder="Tìm món..."
-                variant="pill"
-                size="default"
-              />
-            </div>
-
-            <Button
-              type="button"
-              onClick={onAddDish}
-              className="cursor-pointer gap-1.5 h-10 px-4 rounded-xl text-sm font-semibold shrink-0"
-            >
-              <Plus className="size-4 stroke-[2.5]" />
-              <span>Thêm món</span>
-            </Button>
-          </>
-        ) : activeTab === "danh-muc" ? (
-          <Button
-            type="button"
-            onClick={onAddCategory}
-            className="cursor-pointer gap-1.5 h-10 px-4 rounded-xl text-sm font-semibold shrink-0"
-          >
+          <Button type="button" onClick={onAddDish} className="h-10 shrink-0 gap-1.5 px-4">
             <Plus className="size-4 stroke-[2.5]" />
-            <span>Thêm danh mục</span>
+            <span>Thêm món</span>
           </Button>
-        ) : (
-          <Select value={selectedBranch} onValueChange={onBranchChange}>
-            <SelectTrigger className="w-52 sm:w-56 h-10 rounded-xl border-border-default bg-surface-card text-text-primary font-medium hover:border-border-strong cursor-pointer">
-              <div className="flex items-center gap-2 truncate">
-                <MapPin className="size-4 text-text-tertiary shrink-0" />
-                <SelectValue placeholder="Chọn chi nhánh" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              {MOCK_BRANCH_OPTIONS.map((branch) => (
-                <SelectItem key={branch} value={branch} className="cursor-pointer">
-                  {branch}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-      </div>
-    </div>
+        </>
+      ) : activeTab === "danh-muc" ? (
+        <Button type="button" onClick={onAddCategory} className="h-10 shrink-0 gap-1.5 px-4">
+          <Plus className="size-4 stroke-[2.5]" />
+          <span>Thêm danh mục</span>
+        </Button>
+      ) : activeTab === "tuy-chon" ? (
+        <>
+          <div className="w-56 sm:w-64">
+            <SearchInput
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
+              onClear={() => onSearchChange("")}
+              placeholder="Tìm nhóm tùy chọn..."
+              variant="pill"
+              size="default"
+            />
+          </div>
+
+          <Button type="button" onClick={onAddOptionGroup} className="h-10 shrink-0 gap-1.5 px-4">
+            <Plus className="size-4 stroke-[2.5]" />
+            <span>Thêm nhóm tùy chọn</span>
+          </Button>
+        </>
+      ) : (
+        <Select
+          value={selectedBranchId?.toString() ?? ""}
+          onValueChange={(val) => onBranchChange(Number(val))}
+        >
+          <SelectTrigger className="h-10 w-52 rounded-xl border-border-default bg-surface-card font-medium text-text-primary hover:border-border-strong sm:w-56">
+            <div className="flex items-center gap-2 truncate">
+              <MapPin className="size-4 shrink-0 text-text-tertiary" />
+              <SelectValue placeholder="Chọn chi nhánh" />
+            </div>
+          </SelectTrigger>
+          <SelectContent>
+            {branches.map((branch) => (
+              <SelectItem key={branch.id} value={branch.id.toString()} className="cursor-pointer">
+                {branch.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+    </>
   )
 }

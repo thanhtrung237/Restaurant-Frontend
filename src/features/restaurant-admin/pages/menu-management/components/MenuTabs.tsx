@@ -2,26 +2,34 @@ import React from "react"
 import { cn } from "@/lib/utils"
 import type { MenuTabType } from "../types"
 
+import { useAuthStore } from "@/stores/auth.store"
+import { APP_ROLE } from "@/config/roles"
+
 interface MenuTabsProps {
   activeTab: MenuTabType
   onTabChange: (tab: MenuTabType) => void
+  showOptionGroupTab?: boolean
 }
-
-const TABS: { id: MenuTabType; label: string }[] = [
-  { id: "mon", label: "Món" },
-  { id: "danh-muc", label: "Danh mục" },
-  { id: "menu-chi-nhanh", label: "Menu chi nhánh" },
-]
 
 /**
  * Thanh chuyển đổi Tab trên màn hình Thực đơn
  * Khớp chuẩn cấu trúc như StaffTabs trong staff-management
  */
-export const MenuTabs: React.FC<MenuTabsProps> = ({ activeTab, onTabChange }) => {
+export const MenuTabs: React.FC<MenuTabsProps> = ({ activeTab, onTabChange, showOptionGroupTab }) => {
+  const role = useAuthStore((s) => s.role)
+  const canSeeOptionGroups = showOptionGroupTab ?? (role === APP_ROLE.RESTAURANT_ADMIN)
+
+  const tabs: { id: MenuTabType; label: string }[] = [
+    { id: "mon", label: "Món" },
+    { id: "danh-muc", label: "Danh mục" },
+    { id: "menu-chi-nhanh", label: "Menu chi nhánh" },
+    ...(canSeeOptionGroups ? [{ id: "tuy-chon" as const, label: "Tùy chọn món" }] : []),
+  ]
   return (
-    <div className="border-b border-border-default">
-      <nav className="flex space-x-8" aria-label="Tabs">
-        {TABS.map((tab) => {
+    // KHÔNG tự vẽ border-b: dải tab của PageHeader đã có đường kẻ dưới.
+    <div>
+      <nav className="flex space-x-8 overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Tabs">
+        {tabs.map((tab) => {
           const isActive = activeTab === tab.id
           return (
             <button

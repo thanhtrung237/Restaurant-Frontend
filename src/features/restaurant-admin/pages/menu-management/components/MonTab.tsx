@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react"
-import { Pencil, Trash2, Utensils } from "lucide-react"
+import { Pencil, Utensils } from "lucide-react"
 import { Chip } from "@/components/common/Chip"
 import { Switch } from "@/components/ui/switch"
 import { IconButton } from "@/components/ui/icon-button"
@@ -16,12 +16,14 @@ import type { DishItem } from "../types"
 interface MonTabProps {
   dishes: DishItem[]
   searchTerm: string
+  /** Tên danh mục lấy từ API, KHÔNG hard-code (FR-MNU-01: danh mục cấp nhà hàng). */
+  categoryNames: string[]
   onToggleStatus?: (dishId: number, newStatus: boolean) => void
   onEditDish?: (dish: DishItem) => void
-  onDeleteDish?: (dish: DishItem) => void
 }
 
-const CATEGORIES = ["Tất cả", "Khai vị", "Món chính", "Lẩu", "Đồ uống"]
+/** Nhãn chip "tất cả" — không phải tên danh mục thật. */
+const ALL_CATEGORIES = "Tất cả"
 
 /**
  * Tab "Món" — Quản lý danh sách món ăn gốc
@@ -30,17 +32,21 @@ const CATEGORIES = ["Tất cả", "Khai vị", "Món chính", "Lẩu", "Đồ u�
 export const MonTab: React.FC<MonTabProps> = ({
   dishes,
   searchTerm,
+  categoryNames,
   onToggleStatus,
   onEditDish,
-  onDeleteDish,
 }) => {
-  const [selectedCategory, setSelectedCategory] = useState("Tất cả")
+  const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORIES)
+  const categoryChips = useMemo(
+    () => [ALL_CATEGORIES, ...categoryNames],
+    [categoryNames],
+  )
 
   // Lọc món theo danh mục và từ khoá tìm kiếm
   const filteredDishes = useMemo(() => {
     return dishes.filter((dish) => {
       // 1. Lọc theo danh mục
-      if (selectedCategory !== "Tất cả" && dish.category !== selectedCategory) {
+      if (selectedCategory !== ALL_CATEGORIES && dish.category !== selectedCategory) {
         return false
       }
       // 2. Lọc theo từ khoá
@@ -63,7 +69,7 @@ export const MonTab: React.FC<MonTabProps> = ({
     <div className="space-y-4 pt-1">
       {/* 1. Thanh lọc Chip theo danh mục */}
       <div className="flex flex-wrap items-center gap-2">
-        {CATEGORIES.map((cat) => (
+        {categoryChips.map((cat) => (
           <Chip
             key={cat}
             selected={selectedCategory === cat}
@@ -139,7 +145,9 @@ export const MonTab: React.FC<MonTabProps> = ({
                     {formatPrice(dish.price)}
                   </TableCell>
 
-                  {/* Cột Trạng thái: Switch Còn hàng / Hết hàng */}
+                  {/* Cột Trạng thái: Đang bán / Ngừng bán (DishStatus cấp NHÀ HÀNG).
+                      KHÁC với "Còn hàng / Hết hàng" của Menu chi nhánh — cái đó là
+                      BranchDishStock theo từng chi nhánh (FR-MNU-03). */}
                   <TableCell className="py-3.5 px-4">
                     <div className="flex items-center gap-2.5">
                       <Switch
@@ -152,37 +160,30 @@ export const MonTab: React.FC<MonTabProps> = ({
                           dish.isAvailable ? "text-status-success" : "text-text-tertiary"
                         }`}
                       >
-                        {dish.isAvailable ? "Còn hàng" : "Hết hàng"}
+                        {dish.isAvailable ? "Đang bán" : "Ngừng bán"}
                       </span>
                     </div>
                   </TableCell>
 
-                  {/* Cột Thao tác: Sửa / Xoá */}
+                  {/* Cột Thao tác: CHỈ Sửa.
+                      KHÔNG có "Xoá món" — FR-MNU-02: "Món đã từng lên hóa đơn ở BẤT KỲ
+                      chi nhánh nào KHÔNG xóa, chỉ ngừng bán". FE không biết món đã lên
+                      hoá đơn chưa và BE cũng không chặn, nên bỏ hẳn khỏi thao tác thường
+                      ngày; dùng công tắc Ngừng bán / Bán lại ở cột Trạng thái. */}
                   <TableCell className="py-3.5 pr-6 pl-4 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <IconButton
                         type="button"
-                        variant="subtle"
-                        size="sm"
+                        variant="row"
+                        size="row"
                         onClick={() => onEditDish?.(dish)}
-                        className="rounded-xl text-text-secondary hover:text-text-primary cursor-pointer size-8.5"
+                        className="cursor-pointer"
                         title="Chỉnh sửa món"
                         aria-label="Chỉnh sửa món"
                       >
-                        <Pencil className="size-3.5" />
+                        <Pencil />
                       </IconButton>
 
-                      <IconButton
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onDeleteDish?.(dish)}
-                        className="rounded-xl text-status-danger hover:bg-status-danger-subtle hover:text-status-danger cursor-pointer size-8.5"
-                        title="Xoá món"
-                        aria-label="Xoá món"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </IconButton>
                     </div>
                   </TableCell>
                 </TableRow>
