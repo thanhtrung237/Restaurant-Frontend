@@ -13,6 +13,7 @@ import {
   SlidersHorizontal,
   Package,
   CreditCard,
+  Clock,
 } from "lucide-react";
 import { APP_ROLE, type AppRole } from "@/config/roles";
 import {
@@ -26,9 +27,32 @@ import { type PermissionKey, hasPermission } from "./permissions";
 
 export interface NavItem {
   label: string;
+  /**
+   * Nhãn rút gọn cho BottomNav (mobile 375px) — Figma dùng "Đơn món" thay vì
+   * "Gọi món & Chế biến". Bỏ trống thì BottomNav dùng luôn `label`.
+   * Cố ý để ở đây thay vì tạo bảng nhãn riêng, để menu vẫn chỉ có MỘT nguồn.
+   */
+  shortLabel?: string;
   path: string;
   icon: LucideIcon;
   permission?: PermissionKey;
+  /**
+   * Chỉ hiện ở điều hướng MOBILE (NavDrawer / BottomNav), ẩn khỏi Sidebar và SidebarRail
+   * của desktop.
+   *
+   * Dùng cho mục mà bản Figma Desktop cố ý không đưa vào sidebar vì đã có lối vào khác
+   * ngay trong trang (vd "Nhật ký hoạt động" của Quản trị NH là một tab trong trang Nhân
+   * viên), nhưng bản Mobile lại cần vì ở đó không có hàng tab đó.
+   */
+  mobileOnly?: boolean;
+  /**
+   * Các đường dẫn khác cũng làm mục này sáng trên Sidebar.
+   *
+   * Dùng cho màn là TAB bên trong một mục menu: Figma Desktop cho thấy khi ở
+   * "Vai trò & phân quyền" hay "Nhật ký hoạt động", mục sáng vẫn là "Nhân viên" — vì hai
+   * màn đó là tab trong trang Nhân viên, không phải mục menu riêng.
+   */
+  activeAlsoOn?: string[];
 }
 
 export interface NavGroup {
@@ -49,9 +73,12 @@ export const RESTAURANT_MANAGEMENT_NAV: NavItem[] = [
   },
   {
     label: "Gọi món & Chế biến",
+    shortLabel: "Đơn món",
     path: RESTAURANT_ADMIN_PATHS.ORDER_AND_PREP,
     icon: ChefHat,
     permission: "ORDER_AND_PREP",
+    // "Order chi tiết" / "Thêm món" là màn con — Figma vẫn sáng mục này
+    activeAlsoOn: [RESTAURANT_ADMIN_PATHS.ORDER_DETAIL],
   },
   {
     label: "Thực đơn",
@@ -82,12 +109,29 @@ export const RESTAURANT_MANAGEMENT_NAV: NavItem[] = [
     path: RESTAURANT_ADMIN_PATHS.STAFF,
     icon: Users,
     permission: "STAFF",
+    // "Vai trò & phân quyền" và "Nhật ký hoạt động" là TAB trong trang Nhân viên
+    activeAlsoOn: [
+      RESTAURANT_ADMIN_PATHS.ROLES_PERMISSIONS,
+      RESTAURANT_ADMIN_PATHS.AUDIT_LOG,
+    ],
   },
   {
     label: "Cấu hình",
     path: RESTAURANT_ADMIN_PATHS.CONFIG,
     icon: SlidersHorizontal,
     permission: "CONFIG",
+  },
+  // CHỈ mobile: Figma "Menu Drawer · Mobile" có mục thứ 9 này, nhưng Figma Desktop
+  // ("Quản lý thực đơn.png" và các màn khác) KHÔNG có nó trong sidebar — với Quản trị NH,
+  // nhật ký là một tab trong trang Nhân viên. Bản mobile không có hàng tab đó nên cần lối
+  // vào riêng. QL chi nhánh thì khác: nhật ký chi nhánh mình là mục độc lập ở CẢ hai.
+  {
+    label: "Nhật ký hoạt động",
+    shortLabel: "Nhật ký",
+    path: RESTAURANT_ADMIN_PATHS.AUDIT_LOG,
+    icon: Clock,
+    permission: "AUDIT_LOG",
+    mobileOnly: true,
   },
 ];
 
@@ -115,12 +159,15 @@ export const NAV_ITEMS_BY_ROLE: Record<
         // "Gọi món & Chế biến" mở thẳng bảng Bếp (KDS) — đã gộp, không còn mục "Bếp" tách riêng.
         {
           label: "Gọi món & Chế biến",
+          shortLabel: "Đơn món",
           path: WAITER_PATHS.ORDER_AND_PREP,
           icon: ChefHat,
           permission: "ORDER_AND_PREP",
+          activeAlsoOn: [WAITER_PATHS.ORDER_DETAIL],
         },
         {
           label: "Chuyển / gộp bàn",
+          shortLabel: "Chuyển bàn",
           path: WAITER_PATHS.TRANSFER_MERGE_TABLE,
           icon: LayoutGrid,
           permission: "TABLE_MAP",
@@ -141,6 +188,7 @@ export const NAV_ITEMS_BY_ROLE: Record<
         },
         {
           label: "Chuyển / gộp bàn",
+          shortLabel: "Chuyển bàn",
           path: CASHIER_PATHS.TRANSFER_MERGE_TABLE,
           icon: LayoutGrid,
           permission: "TABLE_MAP",
@@ -149,12 +197,13 @@ export const NAV_ITEMS_BY_ROLE: Record<
     },
   ],
 
-  // Quản lý chi nhánh — sidebar hiển thị GIỐNG HỆT Quản trị nhà hàng (cùng 1 nhóm, cùng
-  // 8 mục, cùng label/icon/thứ tự), chỉ khác path trỏ về phạm vi chi nhánh của mình
-  // (BRANCH_MANAGER_PATHS). Lưu ý: dữ liệu hiển thị trong từng trang vẫn hẹp hơn Quản trị
-  // NH (Chi nhánh đi thẳng vào chi tiết chi nhánh mình; Cấu hình chỉ có cấu hình chi nhánh;
-  // Nhân viên chỉ 2 tab, không có Vai trò & phân quyền; Báo cáo không có tab So sánh chi
-  // nhánh) — xem chú thích trong config/permissions.ts. Đây CHỈ là sidebar, không đổi route.
+  // Quản lý chi nhánh — phạm vi CHI NHÁNH được phân công (BR-18).
+  // Theo Bảng 4.3, cột "QL chi nhánh" để TRỐNG ở: Menu nhà hàng, danh mục, nhóm tuỳ chọn,
+  // Khuyến mãi, Quản lý nhân viên, Vai trò & phân quyền ⇒ KHÔNG có mục "Khuyến mãi" và
+  // "Nhân viên" trong menu. Mục "Thực đơn" ở đây là MENU CHI NHÁNH (đè giá / ẩn món /
+  // món riêng / báo hết món) nên dùng khoá BRANCH_MENU, không phải MENU.
+  // Nhật ký chi nhánh mình là quyền CHỈ ĐỌC (R) nên tách thành mục riêng — trước đây
+  // vào được nhờ mục "Nhân viên", nhưng mục đó đã bị bỏ theo đặc tả.
   [APP_ROLE.BRANCH_MANAGER]: [
     {
       items: [
@@ -166,21 +215,17 @@ export const NAV_ITEMS_BY_ROLE: Record<
         },
         {
           label: "Gọi món & Chế biến",
+          shortLabel: "Đơn món",
           path: BRANCH_MANAGER_PATHS.ORDER_AND_PREP,
           icon: ChefHat,
           permission: "ORDER_AND_PREP",
+          activeAlsoOn: [BRANCH_MANAGER_PATHS.ORDER_DETAIL],
         },
         {
           label: "Thực đơn",
           path: BRANCH_MANAGER_PATHS.MENU,
           icon: BookOpen,
-          permission: "MENU",
-        },
-        {
-          label: "Khuyến mãi",
-          path: BRANCH_MANAGER_PATHS.PROMOTIONS,
-          icon: Tag,
-          permission: "PROMOTIONS",
+          permission: "BRANCH_MENU",
         },
         {
           label: "Báo cáo",
@@ -195,16 +240,17 @@ export const NAV_ITEMS_BY_ROLE: Record<
           permission: "BRANCHES",
         },
         {
-          label: "Nhân viên",
-          path: BRANCH_MANAGER_PATHS.STAFF,
-          icon: Users,
-          permission: "STAFF",
-        },
-        {
           label: "Cấu hình",
           path: BRANCH_MANAGER_PATHS.CONFIG,
           icon: SlidersHorizontal,
           permission: "CONFIG",
+        },
+        {
+          label: "Nhật ký hoạt động",
+          shortLabel: "Nhật ký",
+          path: BRANCH_MANAGER_PATHS.AUDIT_LOG,
+          icon: Clock,
+          permission: "AUDIT_LOG",
         },
       ],
     },
@@ -247,19 +293,22 @@ export const NAV_ITEMS_BY_ROLE: Record<
 /**
  * Lấy danh sách menu items hiển thị cho vai trò cụ thể, đã lọc qua quyền (permissions).
  */
-export function getNavGroupsForRole(role: AppRole): NavGroup[] {
+/** Bề mặt điều hướng đang hỏi menu — quyết định có áp `mobileOnly` hay không. */
+export type NavSurface = "desktop" | "mobile";
+
+export function getNavGroupsForRole(
+  role: AppRole,
+  surface: NavSurface = "mobile",
+): NavGroup[] {
   const groups = NAV_ITEMS_BY_ROLE[role as Exclude<AppRole, "CUSTOMER">] || [];
 
-  // Nếu là Quản trị nhà hàng, luôn cho phép hiển thị đầy đủ
-  if (role === APP_ROLE.RESTAURANT_ADMIN) {
-    return groups;
-  }
-
-  // Với các role khác, tự động lọc bỏ các menu item mà role không có quyền
+  // Lọc theo quyền cho MỌI vai trò, kể cả Quản trị NH — ROLE_PERMISSIONS đã liệt kê
+  // đủ quyền của vai trò này nên không cần (và không nên) có lối tắt bỏ qua bộ lọc.
   return groups
     .map((group) => ({
       ...group,
       items: group.items.filter((item) => {
+        if (surface === "desktop" && item.mobileOnly) return false;
         if (!item.permission) return true;
         return hasPermission(role, item.permission);
       }),

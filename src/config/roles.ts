@@ -35,12 +35,6 @@ export const APP_ROLE_LABEL: Record<AppRole, string> = {
   PLATFORM_ADMIN: "Quản trị nền tảng",
 }
 
-console.log('APP_ROLE:', APP_ROLE)
-console.log('STAFF_ROLES:', STAFF_ROLES)
-
-const STAFF_ROLE_SET = new Set<string>(STAFF_ROLES)
-console.log('STAFF_ROLE_SET initialized:', STAFF_ROLE_SET)
-
 /**
  * Map Role.code từ backend sang AppRole cho frontend.
  * 
@@ -53,12 +47,10 @@ console.log('STAFF_ROLE_SET initialized:', STAFF_ROLE_SET)
  * Hàm này xử lý cả mapping trực tiếp và các alias.
  */
 export function mapRoleCodeToAppRole(code?: string | null): AppRole | null {
-  console.log('mapRoleCodeToAppRole input:', code)
   if (!code) return null
-  
+
   const normalized = code.trim().toUpperCase().replace(/[\s-]+/g, "_")
-  console.log('Normalized code:', normalized)
-  
+
   // Bảng mapping: Backend code → Frontend APP_ROLE
   const roleMapping: Record<string, AppRole> = {
     'MANAGER': APP_ROLE.RESTAURANT_ADMIN,  // Backend dùng MANAGER
@@ -69,9 +61,5 @@ export function mapRoleCodeToAppRole(code?: string | null): AppRole | null {
     'PLATFORM_ADMIN': APP_ROLE.PLATFORM_ADMIN,
   }
   
-  const mappedRole = roleMapping[normalized]
-  console.log('Mapped role:', mappedRole)
-  console.log('Is valid staff role:', mappedRole && STAFF_ROLE_SET.has(mappedRole))
-  
-  return mappedRole || null
+  return roleMapping[normalized] || null
 }
