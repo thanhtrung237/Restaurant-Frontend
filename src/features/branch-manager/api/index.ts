@@ -17,7 +17,11 @@ export { useCategoriesByRestaurant } from "@/api/categories.api"
 export {
   useCreateDishOverride, useDeleteDishOverride, useDishOverridesByBranch, useUpdateDishOverride,
 } from "@/api/dish-overrides.api"
-export { useBranchStock, useOutOfStock, useRestoreAllStock, useToggleDishStock } from "@/api/branch-dish-stocks.api"
+export {
+  useOutOfStockDishes as useOutOfStock,
+  useRestoreAllBranchStock as useRestoreAllStock,
+  useToggleBranchDishStock as useToggleDishStock,
+} from "@/api/branch-dish-stocks.api"
 export {
   useAssignPromotionToBranch, useCreatePromotion, usePromotionsByBranch, usePromotionsByRestaurant,
 } from "@/api/promotions.api"

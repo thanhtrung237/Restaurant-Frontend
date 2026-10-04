@@ -1,14 +1,17 @@
-import React, { useState } from "react"
+import React from "react"
+import { Controller, useForm, useWatch, type Control } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import { FormField } from "@/components/common/FormField"
 import {
   Select,
@@ -17,199 +20,304 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import type { BranchItem, BranchFormData } from "../types"
-import type { BranchStatus } from "@/types/enums"
+import type { BranchListItem } from "@/types/models"
+import { buildBranchSchema, parseRate, type BranchFormValues } from "../lib"
+import type { BranchSaveResult, BranchSubmitData } from "../types"
 
 interface BranchModalProps {
   isOpen: boolean
   onClose: () => void
-  onSave: (data: BranchFormData) => void
-  initialData?: BranchItem | null
+  /** Trả `{ codeError }` để modal gắn lỗi vào ô mã và giữ nguyên form (409 trùng mã). */
+  onSubmit: (data: BranchSubmitData) => Promise<BranchSaveResult>
+  /** null = tạo mới. */
+  initialData?: BranchListItem | null
+  /** Toàn bộ chi nhánh hiện có — làm nguồn cho "Sao chép từ chi nhánh có sẵn". */
+  branches: BranchListItem[]
+  isSaving?: boolean
 }
 
-interface BranchFormProps {
-  initialData?: BranchItem | null
-  onSave: (data: BranchFormData) => void
-  onClose: () => void
-}
+interface BranchFormProps extends Omit<BranchModalProps, "isOpen"> {}
 
 const BranchFormContent: React.FC<BranchFormProps> = ({
   initialData,
-  onSave,
+  branches,
+  onSubmit,
   onClose,
+  isSaving = false,
 }) => {
   const isEdit = Boolean(initialData)
+  const canCopy = !isEdit && branches.length > 0
+  const schema = React.useMemo(() => buildBranchSchema(isEdit), [isEdit])
 
-  const [name, setName] = useState(initialData?.name || "")
-  const [status, setStatus] = useState<BranchStatus>(initialData?.status || "ACTIVE")
-  const [address, setAddress] = useState(initialData?.address || "")
-  const [managerName, setManagerName] = useState(initialData?.managerName || "")
-  const [tableCount, setTableCount] = useState<number>(initialData?.tableCount ?? 10)
-  const [taxCode, setTaxCode] = useState(initialData?.taxCode || "")
-  const [openingHours, setOpeningHours] = useState(initialData?.openingHours || "08:00 – 22:00")
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const {
+    register,
+    control,
+    handleSubmit,
+    setError,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<BranchFormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      code: initialData?.code ?? "",
+      name: initialData?.name ?? "",
+      address: initialData?.address ?? "",
+      phone: initialData?.phone ?? "",
+      vatRate: "",
+      serviceFeeRate: "",
+      copyEnabled: false,
+      sourceBranchId: "",
+      copyOpeningHours: true,
+      copyFeeRates: true,
+      copyBankInfo: true,
+    },
+  })
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const copyEnabled = useWatch({ control, name: "copyEnabled" })
+  const copyFeeRates = useWatch({ control, name: "copyFeeRates" })
+  // Chọn sao chép phí thì VAT/phí dịch vụ lấy từ chi nhánh nguồn → không nhập tay nữa.
+  const feesFromSource = canCopy && copyEnabled && copyFeeRates
+  // PUT /branches/{id} có nhận VAT/phí nhưng danh sách không trả về giá trị hiện tại;
+  // sửa VAT/phí đi qua trang "Thuế & phí" (có cảnh báo phiên đang mở) nên ô này chỉ có khi tạo mới.
+  const showRates = !isEdit && !feesFromSource
 
-    const newErrors: Record<string, string> = {}
-    if (!name.trim()) {
-      newErrors.name = "Vui lòng nhập tên chi nhánh"
-    }
-    if (!address.trim()) {
-      newErrors.address = "Vui lòng nhập địa chỉ chi nhánh"
-    }
-    if (tableCount < 1) {
-      newErrors.tableCount = "Số bàn tối thiểu là 1"
-    }
+  const busy = isSaving || isSubmitting
 
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors)
-      return
-    }
-
-    onSave({
-      name: name.trim(),
-      status,
-      address: address.trim(),
-      managerName: managerName.trim() || undefined,
-      tableCount: Number(tableCount) || 0,
-      taxCode: taxCode.trim() || "(dùng MST nhà hàng)",
-      openingHours: openingHours.trim() || "08:00 – 22:00",
+  const submit = handleSubmit(async (values) => {
+    const result = await onSubmit({
+      code: values.code,
+      name: values.name,
+      address: values.address,
+      phone: values.phone,
+      vatRate: showRates ? parseRate(values.vatRate) : undefined,
+      serviceFeeRate: showRates ? parseRate(values.serviceFeeRate) : undefined,
+      copy:
+        canCopy && values.copyEnabled
+          ? {
+              sourceBranchId: Number(values.sourceBranchId),
+              copyOpeningHours: values.copyOpeningHours,
+              copyFeeRates: values.copyFeeRates,
+              copyBankInfo: values.copyBankInfo,
+            }
+          : null,
     })
-
-    onClose()
-  }
+    if (result && result.codeError) {
+      setError("code", { type: "server", message: result.codeError }, { shouldFocus: true })
+    }
+  })
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 py-2">
-      {/* Tên chi nhánh & Trạng thái */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="sm:col-span-2">
-          <FormField label="Tên chi nhánh" required error={errors.name}>
-            <Input
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value)
-                if (errors.name) setErrors((prev) => ({ ...prev, name: "" }))
-              }}
-              placeholder="VD: Chi nhánh Quận 1"
-            />
-          </FormField>
-        </div>
+    <form onSubmit={submit} className="space-y-4 py-2" noValidate>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <FormField
+          label="Mã chi nhánh"
+          required={!isEdit}
+          htmlFor="branch-code"
+          error={errors.code?.message}
+          helperText={isEdit ? "Mã chi nhánh không thể thay đổi sau khi tạo." : "Duy nhất trong nhà hàng."}
+        >
+          <Input
+            id="branch-code"
+            {...register("code")}
+            disabled={isEdit}
+            maxLength={50}
+            placeholder="VD: Q1"
+            autoComplete="off"
+          />
+        </FormField>
 
-        <div>
-          <FormField label="Trạng thái">
-            <Select
-              value={status}
-              onValueChange={(val) => setStatus(val as BranchStatus)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Chọn trạng thái" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ACTIVE">Hoạt động</SelectItem>
-                <SelectItem value="INACTIVE">Tạm nghỉ</SelectItem>
-              </SelectContent>
-            </Select>
-          </FormField>
-        </div>
+        <FormField
+          label="Tên chi nhánh"
+          required
+          htmlFor="branch-name"
+          error={errors.name?.message}
+          className="sm:col-span-2"
+        >
+          <Input
+            id="branch-name"
+            {...register("name")}
+            placeholder="VD: Chi nhánh Quận 1"
+            autoComplete="off"
+          />
+        </FormField>
       </div>
 
-      {/* Địa chỉ */}
-      <FormField label="Địa chỉ" required error={errors.address}>
+      <FormField label="Địa chỉ" htmlFor="branch-address" error={errors.address?.message}>
         <Input
-          value={address}
-          onChange={(e) => {
-            setAddress(e.target.value)
-            if (errors.address) setErrors((prev) => ({ ...prev, address: "" }))
-          }}
+          id="branch-address"
+          {...register("address")}
           placeholder="VD: 12 Nguyễn Huệ, P.Bến Nghé, Q.1"
+          autoComplete="off"
         />
       </FormField>
 
-      {/* Quản lý & Số bàn */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <FormField label="Quản lý chi nhánh" helperText="Tên quản lý phụ trách (nếu có)">
-          <Input
-            value={managerName}
-            onChange={(e) => setManagerName(e.target.value)}
-            placeholder="VD: Nguyễn Văn An"
-          />
-        </FormField>
+      <FormField label="Số điện thoại" htmlFor="branch-phone" error={errors.phone?.message}>
+        <Input id="branch-phone" {...register("phone")} placeholder="VD: 0281234567" autoComplete="off" />
+      </FormField>
 
-        <FormField label="Số bàn" required error={errors.tableCount}>
-          <Input
-            type="number"
-            min={1}
-            value={tableCount}
-            onChange={(e) => {
-              setTableCount(Number(e.target.value))
-              if (errors.tableCount) setErrors((prev) => ({ ...prev, tableCount: "" }))
-            }}
-            placeholder="Số lượng bàn"
-          />
-        </FormField>
-      </div>
+      {showRates ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <FormField
+            label="Thuế VAT (%)"
+            htmlFor="branch-vat"
+            error={errors.vatRate?.message}
+            helperText="Từ 0 đến 100. Để trống nếu chưa cấu hình."
+          >
+            <Input id="branch-vat" {...register("vatRate")} inputMode="decimal" placeholder="VD: 8" />
+          </FormField>
+          <FormField
+            label="Phí dịch vụ (%)"
+            htmlFor="branch-service-fee"
+            error={errors.serviceFeeRate?.message}
+            helperText="Từ 0 đến 100. Để trống nếu chưa cấu hình."
+          >
+            <Input
+              id="branch-service-fee"
+              {...register("serviceFeeRate")}
+              inputMode="decimal"
+              placeholder="VD: 5"
+            />
+          </FormField>
+        </div>
+      ) : null}
 
-      {/* Mã số thuế & Giờ mở cửa */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <FormField label="Mã số thuế" helperText="Để trống nếu dùng MST nhà hàng">
-          <Input
-            value={taxCode}
-            onChange={(e) => setTaxCode(e.target.value)}
-            placeholder="VD: 0312345678-001"
+      {canCopy ? (
+        <div className="space-y-3 rounded-xl border border-border-default bg-surface-muted/40 p-4">
+          <Controller
+            control={control}
+            name="copyEnabled"
+            render={({ field }) => (
+              <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-text-primary">
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={(checked) => {
+                    field.onChange(checked === true)
+                    if (checked === true && copyFeeRates) {
+                      setValue("vatRate", "")
+                      setValue("serviceFeeRate", "")
+                    }
+                  }}
+                />
+                Sao chép từ chi nhánh có sẵn
+              </label>
+            )}
           />
-        </FormField>
 
-        <FormField label="Giờ mở cửa">
-          <Input
-            value={openingHours}
-            onChange={(e) => setOpeningHours(e.target.value)}
-            placeholder="VD: 08:00 – 22:00"
-          />
-        </FormField>
-      </div>
+          {copyEnabled ? (
+            <div className="space-y-3">
+              <FormField
+                label="Chi nhánh nguồn"
+                required
+                error={errors.sourceBranchId?.message}
+              >
+                <Controller
+                  control={control}
+                  name="sourceBranchId"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Chọn chi nhánh nguồn" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {branches.map((b) => (
+                          <SelectItem key={b.id} value={String(b.id)}>
+                            {b.name} ({b.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </FormField>
+
+              <div className="space-y-2">
+                <CopyCheckbox
+                  control={control}
+                  name="copyOpeningHours"
+                  label="Giờ mở/đóng cửa và thời gian chờ"
+                  hint="Giờ mở cửa, giờ đóng cửa, giờ bắt đầu ngày kinh doanh, hạn chờ xác nhận mở bàn, thời gian giữ bàn."
+                />
+                <CopyCheckbox
+                  control={control}
+                  name="copyFeeRates"
+                  label="Thuế VAT, phí dịch vụ và ngưỡng duyệt chiết khấu"
+                  onChange={(checked) => {
+                    if (checked) {
+                      setValue("vatRate", "")
+                      setValue("serviceFeeRate", "")
+                    }
+                  }}
+                />
+                <CopyCheckbox control={control} name="copyBankInfo" label="Thông tin ngân hàng" />
+                {errors.copyOpeningHours?.message ? (
+                  <p className="text-xs text-status-danger">{errors.copyOpeningHours.message}</p>
+                ) : null}
+              </div>
+
+              <p className="text-xs text-text-tertiary">
+                Không sao chép giá riêng của món (bản đè giá). Khu vực và bàn cần khai báo riêng cho chi nhánh mới.
+              </p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <DialogFooter className="pt-3">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onClose}
-          className="cursor-pointer"
-        >
+        <Button type="button" variant="outline" onClick={onClose} disabled={busy} className="cursor-pointer">
           Hủy
         </Button>
-        <Button type="submit" className="cursor-pointer">
-          {isEdit ? "Cập nhật" : "Thêm chi nhánh"}
+        <Button type="submit" disabled={busy} className="cursor-pointer">
+          {busy ? "Đang lưu..." : isEdit ? "Cập nhật" : "Thêm chi nhánh"}
         </Button>
       </DialogFooter>
     </form>
   )
 }
 
-/**
- * Modal tạo mới hoặc chỉnh sửa thông tin chi nhánh
- */
-export const BranchModal: React.FC<BranchModalProps> = ({
-  isOpen,
-  onClose,
-  onSave,
-  initialData,
-}) => {
+interface CopyCheckboxProps {
+  control: Control<BranchFormValues>
+  name: "copyOpeningHours" | "copyFeeRates" | "copyBankInfo"
+  label: string
+  hint?: string
+  onChange?: (checked: boolean) => void
+}
+
+const CopyCheckbox: React.FC<CopyCheckboxProps> = ({ control, name, label, hint, onChange }) => (
+  <Controller
+    control={control}
+    name={name}
+    render={({ field }) => (
+      <label className="flex cursor-pointer items-start gap-2 text-sm text-text-primary">
+        <Checkbox
+          className="mt-0.5"
+          checked={field.value}
+          onCheckedChange={(checked) => {
+            field.onChange(checked === true)
+            onChange?.(checked === true)
+          }}
+        />
+        <span>
+          {label}
+          {hint ? <span className="block text-xs text-text-tertiary">{hint}</span> : null}
+        </span>
+      </label>
+    )}
+  />
+)
+
+/** Modal tạo mới / chỉnh sửa chi nhánh — `POST /branches` và `PUT /branches/{id}`. */
+export const BranchModal: React.FC<BranchModalProps> = ({ isOpen, onClose, initialData, ...rest }) => {
   const isEdit = Boolean(initialData)
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-lg">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && !rest.isSaving && onClose()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>
-            {isEdit ? "Chỉnh sửa chi nhánh" : "Thêm chi nhánh mới"}
-          </DialogTitle>
+          <DialogTitle>{isEdit ? "Chỉnh sửa chi nhánh" : "Thêm chi nhánh mới"}</DialogTitle>
           <DialogDescription>
             {isEdit
-              ? "Cập nhật các thông tin cơ bản cho chi nhánh này."
-              : "Điền các thông tin để thiết lập một chi nhánh mới trong hệ thống."}
+              ? "Cập nhật tên, địa chỉ và số điện thoại. Thuế/phí và cấu hình khác chỉnh ở trang cấu hình chi nhánh."
+              : "Điền thông tin để thiết lập một chi nhánh mới trong nhà hàng."}
           </DialogDescription>
         </DialogHeader>
 
@@ -217,8 +325,8 @@ export const BranchModal: React.FC<BranchModalProps> = ({
           <BranchFormContent
             key={initialData ? `edit-${initialData.id}` : "add-new"}
             initialData={initialData}
-            onSave={onSave}
             onClose={onClose}
+            {...rest}
           />
         ) : null}
       </DialogContent>

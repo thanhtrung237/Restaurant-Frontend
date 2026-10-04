@@ -1,110 +1,110 @@
 import React from "react"
-import { MapPin, Pencil, Trash2 } from "lucide-react"
+import { MapPin, Pencil, Power, PowerOff } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { IconButton } from "@/components/ui/icon-button"
 import { StatusBadge } from "@/components/common/StatusBadge"
-import type { BranchItem } from "../types"
+import { cn } from "@/lib/utils"
+import type { BranchListItem } from "@/types/models"
 
 interface BranchCardProps {
-  branch: BranchItem
+  branch: BranchListItem
   onView: (branchId: number) => void
-  onEdit: (branch: BranchItem) => void
-  onDelete: (branch: BranchItem) => void
+  onEdit: (branch: BranchListItem) => void
+  /** Mở hộp thoại xác nhận ngừng hoạt động / kích hoạt lại. */
+  onToggleStatus: (branch: BranchListItem) => void
 }
 
 /**
- * Card hiển thị thông tin từng chi nhánh trong danh sách Grid
- * Chuẩn theo thiết kế: Desktop / Quản lý chi nhánh.png
+ * Card 1 chi nhánh — hiển thị thông tin cơ bản và cấu hình chính
  */
-export const BranchCard: React.FC<BranchCardProps> = ({
-  branch,
-  onView,
-  onEdit,
-  onDelete,
-}) => {
+export const BranchCard: React.FC<BranchCardProps> = ({ branch, onView, onEdit, onToggleStatus }) => {
+  const isActive = branch.status === "ACTIVE"
+
   return (
-    <Card className="p-6 flex flex-col justify-between shadow-2xs hover:shadow-xs transition-shadow">
+    <Card
+      className={cn(
+        "flex flex-col justify-between p-6 shadow-2xs transition-shadow hover:shadow-xs",
+        !isActive && "bg-surface-muted/60",
+      )}
+    >
       <div>
-        {/* Hàng trên cùng: Tên chi nhánh & Badge trạng thái */}
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-base font-bold text-text-primary tracking-tight truncate">
-            {branch.name}
-          </h3>
+          <h3 className="truncate text-base font-bold tracking-tight text-text-primary">{branch.name}</h3>
           <StatusBadge type="branch" status={branch.status} />
         </div>
 
-        {/* Địa chỉ chi nhánh */}
-        <div className="flex items-center gap-1.5 mt-2 text-xs text-text-tertiary">
-          <MapPin className="size-3.5 shrink-0 text-text-tertiary" />
-          <span className="truncate">{branch.address}</span>
+        <div className="mt-2 flex items-center gap-1.5 text-xs text-text-tertiary">
+          <MapPin className="size-3.5 shrink-0" />
+          <span className="truncate">{branch.address || "Chưa có địa chỉ"}</span>
         </div>
 
-        {/* Thông tin chi tiết 4 dòng: Quản lý / Số bàn / Mã số thuế / Giờ mở cửa */}
-        <div className="mt-5 space-y-3 pt-1">
+        <div className="mt-4 space-y-3 border-t border-border-default pt-4">
           <div className="flex items-center justify-between text-sm">
             <span className="text-text-tertiary">Quản lý</span>
-            <span className="font-semibold text-text-primary text-right truncate max-w-[60%]">
+            <span className="max-w-[60%] truncate text-right font-semibold text-text-primary">
               {branch.managerName || "Chưa phân công"}
             </span>
           </div>
-
           <div className="flex items-center justify-between text-sm">
             <span className="text-text-tertiary">Số bàn</span>
-            <span className="font-semibold text-text-primary text-right">
-              {branch.tableCount} bàn
+            <span className="max-w-[60%] truncate text-right font-semibold text-text-primary">
+              {branch.tableCount !== undefined && branch.tableCount !== null
+                ? `${branch.tableCount} bàn`
+                : "—"}
             </span>
           </div>
-
           <div className="flex items-center justify-between text-sm">
             <span className="text-text-tertiary">Mã số thuế</span>
-            <span className="font-semibold text-text-primary text-right truncate max-w-[60%]">
-              {branch.taxCode}
+            <span className="max-w-[60%] truncate text-right text-sm font-semibold text-text-primary">
+              {branch.taxCode ? (
+                branch.taxCode
+              ) : (
+                <>
+                  <span className="text-text-tertiary">(dùng MST nhà hàng)</span>
+                </>
+              )}
             </span>
           </div>
-
           <div className="flex items-center justify-between text-sm">
             <span className="text-text-tertiary">Giờ mở cửa</span>
-            <span className="font-semibold text-text-primary text-right">
-              {branch.openingHours}
+            <span className="max-w-[60%] truncate text-right font-semibold text-text-primary">
+              {branch.openingHours || "08:00 - 22:00"}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Hàng thao tác dưới cùng: Cấu hình chi nhánh / Sửa / Xoá */}
-      <div className="mt-6 pt-2 flex items-center gap-2">
+      <div className="mt-6 flex items-center gap-2 border-t border-border-default pt-4">
         <Button
           type="button"
           variant="outline"
           onClick={() => onView(branch.id)}
-          className="flex-1 h-10 rounded-xl border-border-default bg-surface-card text-text-primary font-medium hover:bg-surface-muted hover:border-border-strong hover:text-text-primary transition-colors cursor-pointer"
+          className="h-10 flex-1 cursor-pointer rounded-xl border-border-default bg-surface-card font-medium text-text-primary transition-colors hover:border-border-strong hover:bg-surface-muted hover:text-text-primary"
         >
-          Xem chi tiết
+          Cấu hình chi nhánh
         </Button>
 
         <IconButton
-          type="button"
-          variant="subtle"
-          size="default"
+          variant="row"
+          size="row"
           onClick={() => onEdit(branch)}
-          className="rounded-xl text-text-secondary hover:text-text-primary cursor-pointer"
+          className="cursor-pointer"
           title="Chỉnh sửa chi nhánh"
-          aria-label="Chỉnh sửa chi nhánh"
+          aria-label={`Chỉnh sửa ${branch.name}`}
         >
-          <Pencil className="size-4" />
+          <Pencil />
         </IconButton>
 
         <IconButton
-          type="button"
-          variant="ghost"
-          size="default"
-          onClick={() => onDelete(branch)}
-          className="rounded-xl text-status-danger hover:bg-status-danger-subtle hover:text-status-danger cursor-pointer"
-          title="Xoá chi nhánh"
-          aria-label="Xoá chi nhánh"
+          variant={isActive ? "row-danger" : "row"}
+          size="row"
+          onClick={() => onToggleStatus(branch)}
+          className="cursor-pointer"
+          title={isActive ? "Ngừng hoạt động" : "Kích hoạt lại"}
+          aria-label={`${isActive ? "Ngừng hoạt động" : "Kích hoạt lại"} ${branch.name}`}
         >
-          <Trash2 className="size-4" />
+          {isActive ? <PowerOff /> : <Power />}
         </IconButton>
       </div>
     </Card>
