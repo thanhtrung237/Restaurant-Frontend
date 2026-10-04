@@ -76,6 +76,24 @@ export function useUpdateDish() {
     },
   })
 }
+/**
+ * Số chi nhánh bị ảnh hưởng khi NGỪNG BÁN món gốc — FR-MNU-04:
+ * *"Món gốc bị nhà hàng ngừng bán ⇒ biến mất ở mọi chi nhánh, kể cả chi nhánh đang đè giá.
+ * Hệ thống cảnh báo TRƯỚC cho người thực hiện: số chi nhánh bị ảnh hưởng."*
+ *
+ * ⚠️ Backend chỉ đếm số bản ghi `DishOverride` (chi nhánh ĐANG ĐÈ GIÁ), nên `0` KHÔNG có
+ * nghĩa là không chi nhánh nào bị ảnh hưởng — món vẫn biến mất ở mọi chi nhánh. Vì vậy hộp
+ * xác nhận luôn hiện, con số chỉ là thông tin thêm. Xem `docs/be-issues.md`.
+ *
+ * `enabled` để nơi gọi bật khi thực sự cần (lúc bấm Ngừng bán), tránh gọi thừa mỗi dòng.
+ */
+export function useCountAffectedBranches(id?: number, enabled = true) {
+  return useQuery({
+    queryKey: qk.dishes.affectedBranches(id as number),
+    queryFn: () => countAffectedBranches(id as number),
+    enabled: typeof id === "number" && enabled,
+  })
+}
 export function useChangeDishStatus() {
   const qc = useQueryClient()
   return useMutation({

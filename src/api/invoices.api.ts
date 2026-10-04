@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { apiDelete, apiGet, apiPost } from "@/lib/http"
+import { apiDelete, apiGet, apiPost, retryUnlessStatus } from "@/lib/http"
 import { qk } from "@/lib/query-keys"
 import type { Invoice, InvoiceListItem } from "@/types/models"
 import type { InvoiceStatus } from "@/types/enums"
@@ -58,6 +58,8 @@ export function useInvoice(id?: number, options?: { refetchInterval?: number }) 
     queryFn: () => getInvoice(id as number),
     enabled: typeof id === "number",
     refetchInterval: options?.refetchInterval,
+    // 404 = hoá đơn không tồn tại: câu trả lời cuối cùng, thử lại cũng vậy.
+    retry: retryUnlessStatus([404]),
   })
 }
 /**
@@ -66,13 +68,18 @@ export function useInvoice(id?: number, options?: { refetchInterval?: number }) 
  */
 export function useInvoiceBySession(
   tableSessionId?: number,
-  options?: { refetchInterval?: number; enabled?: boolean }
+  options?: { refetchInterval?: number; enabled?: boolean; retry?: boolean | number }
 ) {
   return useQuery({
     queryKey: qk.invoices.bySession(tableSessionId as number),
     queryFn: () => getInvoiceBySession(tableSessionId as number),
     enabled: options?.enabled !== false && typeof tableSessionId === "number",
     refetchInterval: options?.refetchInterval,
+    // Phiên chưa được Thu ngân lập hoá đơn thì endpoint trả **404** — đó là trạng thái bình
+    // thường ("chưa có"), không phải lỗi mạng. Mặc định của react-query (`retry: 1`) sẽ thử
+    // lại kèm backoff, làm màn hình treo ở vòng xoay vài giây dù backend đã trả lời xong.
+    // Nên mặc định ở đây là KHÔNG thử lại với 404; lỗi thật (mất mạng, 500) vẫn thử lại 1 lần.
+    retry: options?.retry ?? retryUnlessStatus([404]),
   })
 }
 export function useInvoicesByBranch(branchId?: number, status?: InvoiceStatus) {
@@ -109,6 +116,9 @@ export function useInvoiceQrCode(id?: number) {
     queryKey: ["invoices", id, "qr-code"],
     queryFn: () => getInvoiceQrCode(id as number),
     enabled: typeof id === "number",
+    // 409 = chi nhánh chưa cấu hình tài khoản ngân hàng (be-issues mục 5), 404 = không có hoá
+    // đơn. Cả hai là câu trả lời của backend, màn hình hiện thông báo riêng — đừng thử lại.
+    retry: retryUnlessStatus([404, 409]),
   })
 }
 
@@ -120,5 +130,8 @@ export function useInvoiceQrCodeBySession(
     queryKey: ["invoices", "session", tableSessionId, "qr-code"],
     queryFn: () => getInvoiceQrCodeBySession(tableSessionId as number),
     enabled: options?.enabled !== false && typeof tableSessionId === "number",
+    // 409 = "Chưa có hoá đơn, vui lòng chờ thu ngân" (be-issues mục 17 — endpoint này CHỈ ĐỌC),
+    // 404 = phiên không có hoá đơn. Màn khách poll lại theo nhịp riêng nên không cần retry.
+    retry: retryUnlessStatus([404, 409]),
   })
 }

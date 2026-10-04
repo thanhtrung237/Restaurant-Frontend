@@ -3,6 +3,7 @@ import { RouterProvider } from "react-router-dom"
 import { router } from "@/app/router"
 import QueryProvider from "@/app/providers/QueryProvider"
 import { Toaster } from "@/components/ui/toaster"
+import { Toaster as SonnerToaster } from "sonner"
 import { setUnauthorizedHandler } from "@/lib/auth-token"
 import { useAuthStore } from "@/stores/auth.store"
 
@@ -31,6 +32,7 @@ function App() {
         <RouterProvider router={router} />
       </Suspense>
       <Toaster />
+      <SonnerToaster position="top-right" />
     </QueryProvider>
   )
 }

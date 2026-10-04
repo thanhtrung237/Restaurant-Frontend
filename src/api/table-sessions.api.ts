@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/http"
+import { apiDelete, apiGet, apiPost, apiPut, retryUnlessStatus } from "@/lib/http"
 import { qk } from "@/lib/query-keys"
 import type { TableSession } from "@/types/models"
 import type {
@@ -53,8 +53,12 @@ export function getSessionsByTable(tableId: number) {
 export function closeSession(id: number) {
   return apiPost<TableSession>(`/table-sessions/${id}/close`)
 }
-export function cancelSession(id: number) {
-  return apiPost<TableSession>(`/table-sessions/${id}/cancel`)
+/**
+ * Huỷ phiên bàn. Bảng 2.2 của đặc tả: **bắt buộc có lý do**, backend ghi nhật ký.
+ * Lý do lưu vào cột `note` của phiên.
+ */
+export function cancelSession(id: number, reason: string) {
+  return apiPost<TableSession>(`/table-sessions/${id}/cancel`, { reason })
 }
 export function deleteSession(id: number) {
   return apiDelete<void>(`/table-sessions/${id}`)
@@ -70,6 +74,9 @@ export function useTableSession(id?: number, options?: { refetchInterval?: numbe
     queryFn: () => getTableSession(id as number),
     enabled: typeof id === "number",
     refetchInterval: options?.refetchInterval,
+    // 404 = phiên không tồn tại (id sai, phiên đã bị xoá): câu trả lời cuối cùng. Màn hình
+    // hiện "Không tìm thấy phiên bàn" ngay thay vì xoay thêm vài giây rồi mới hiện.
+    retry: retryUnlessStatus([404]),
   })
 }
 export function useOpenSessionsByBranch(branchId?: number, options?: { refetchInterval?: number }) {
@@ -115,7 +122,15 @@ export function useCloseSession() {
 }
 export function useCancelSession() {
   const qc = useQueryClient()
-  return useMutation({ mutationFn: cancelSession, onSuccess: () => invalidateSessionScope(qc) })
+  return useMutation({
+    mutationFn: (vars: { id: number; reason: string }) => cancelSession(vars.id, vars.reason),
+    onSuccess: () => invalidateSessionScope(qc),
+  })
+}
+
+export function useReopenSession() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: reopenSession, onSuccess: () => invalidateSessionScope(qc) })
 }
 export function useCancelReservation() {
   const qc = useQueryClient()
@@ -125,3 +140,13 @@ export function useCancelReservation() {
     onSuccess: () => invalidateSessionScope(qc),
   })
 }
+
+/** Khách bấm "Gọi nhân viên" — gửi WS STAFF_CALL đến nhân viên chi nhánh kèm số bàn */
+export function callStaff(tableSessionId: number) {
+  return apiPost<void>(`/table-sessions/${tableSessionId}/call-staff`)
+}
+
+export function useCallStaff() {
+  return useMutation({ mutationFn: callStaff })
+}
+

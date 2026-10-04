@@ -1,56 +1,97 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { apiGet, apiPut } from "@/lib/http"
-import { qk } from "@/lib/query-keys"
-import type { BranchDishStock } from "@/types/models"
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiPut, apiGet } from '@/lib/http';
+import type { BranchDishStock } from '@/types/models';
 
-export function getBranchStock(branchId: number) {
-  return apiGet<BranchDishStock[]>(`/branch-dish-stocks/branch/${branchId}`)
-}
-/** Chỉ các món đang HẾT — dùng cho màn "Cảnh báo món hết". */
-export function getOutOfStock(branchId: number) {
-  return apiGet<BranchDishStock[]>(`/branch-dish-stocks/branch/${branchId}/out-of-stock`)
-}
-/** Đảo trạng thái còn ↔ hết của 1 món tại 1 chi nhánh (không cần body). */
-export function toggleDishStock(branchId: number, dishId: number) {
-  return apiPut<BranchDishStock>(`/branch-dish-stocks/branch/${branchId}/dish/${dishId}/toggle`)
-}
-/** Mở lại tất cả món (thường chạy đầu ngày). */
-export function restoreAllStock(branchId: number) {
-  return apiPut<void>(`/branch-dish-stocks/branch/${branchId}/restore-all`)
+// ============================================================================
+// Query Keys
+// ============================================================================
+
+export const branchDishStocksKeys = {
+  all: ['branch-dish-stocks'] as const,
+  byBranch: (branchId: number) => [...branchDishStocksKeys.all, 'branch', branchId] as const,
+  outOfStock: (branchId: number) => [...branchDishStocksKeys.byBranch(branchId), 'out-of-stock'] as const,
+};
+
+// ============================================================================
+// API Functions
+// ============================================================================
+
+/**
+ * Toggle stock status for a dish at a specific branch.
+ * BE toggles inStock: true <-> false. No explicit value sent.
+ * Requires: MANAGER or BRANCH_MANAGER (for assigned branch only)
+ */
+async function toggleBranchDishStock(branchId: number, dishId: number): Promise<BranchDishStock> {
+  return apiPut<BranchDishStock>(
+    `/branch-dish-stocks/branch/${branchId}/dish/${dishId}/toggle`
+  );
 }
 
-export function useBranchStock(branchId?: number) {
-  return useQuery({
-    queryKey: qk.branchDishStocks.byBranch(branchId as number),
-    queryFn: () => getBranchStock(branchId as number),
-    enabled: typeof branchId === "number",
-  })
+/**
+ * Restore all out-of-stock dishes for a branch.
+ * Sets inStock = true for all dishes at the branch.
+ * Requires: MANAGER or BRANCH_MANAGER (for assigned branch only)
+ */
+async function restoreAllBranchStock(branchId: number): Promise<void> {
+  return apiPut<void>(`/branch-dish-stocks/branch/${branchId}/restore-all`);
 }
-export function useOutOfStock(branchId?: number) {
-  return useQuery({
-    queryKey: qk.branchDishStocks.outOfStock(branchId as number),
-    queryFn: () => getOutOfStock(branchId as number),
-    enabled: typeof branchId === "number",
-  })
+
+/**
+ * Get list of out-of-stock dishes for a branch.
+ * Returns dishes where inStock = false.
+ * Requires: MANAGER or BRANCH_MANAGER (for assigned branch only)
+ */
+async function getOutOfStockDishes(branchId: number): Promise<BranchDishStock[]> {
+  return apiGet<BranchDishStock[]>(
+    `/branch-dish-stocks/branch/${branchId}/out-of-stock`
+  );
 }
-export function useToggleDishStock() {
-  const qc = useQueryClient()
+
+// ============================================================================
+// React Query Hooks
+// ============================================================================
+
+/**
+ * Hook to toggle stock status (in stock <-> out of stock).
+ * Invalidates branch menu overview and out-of-stock list.
+ */
+export function useToggleBranchDishStock() {
+  const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: (vars: { branchId: number; dishId: number }) => toggleDishStock(vars.branchId, vars.dishId),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: qk.branchDishStocks.all })
-      // Thực đơn khách cũng đổi theo (món hết sẽ hiện khác) → làm mới luôn.
-      void qc.invalidateQueries({ queryKey: qk.branchMenu.all })
+    mutationFn: ({ branchId, dishId }: { branchId: number; dishId: number }) =>
+      toggleBranchDishStock(branchId, dishId),
+    onSuccess: (_, { branchId }) => {
+      // Invalidate branch menu overview to reflect stock changes
+      queryClient.invalidateQueries({ queryKey: ['branch-menu', 'overview', branchId] });
+      // Invalidate out-of-stock list
+      queryClient.invalidateQueries({ queryKey: branchDishStocksKeys.outOfStock(branchId) });
     },
-  })
+  });
 }
-export function useRestoreAllStock() {
-  const qc = useQueryClient()
+
+/**
+ * Hook to restore all out-of-stock dishes to in-stock.
+ */
+export function useRestoreAllBranchStock() {
+  const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: restoreAllStock,
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: qk.branchDishStocks.all })
-      void qc.invalidateQueries({ queryKey: qk.branchMenu.all })
+    mutationFn: (branchId: number) => restoreAllBranchStock(branchId),
+    onSuccess: (_, branchId) => {
+      queryClient.invalidateQueries({ queryKey: ['branch-menu', 'overview', branchId] });
+      queryClient.invalidateQueries({ queryKey: branchDishStocksKeys.outOfStock(branchId) });
     },
-  })
+  });
+}
+
+/**
+ * Hook to get list of out-of-stock dishes.
+ */
+export function useOutOfStockDishes(branchId?: number) {
+  return useQuery({
+    queryKey: branchDishStocksKeys.outOfStock(branchId ?? -1),
+    queryFn: () => getOutOfStockDishes(branchId as number),
+    enabled: !!branchId,
+  });
 }
