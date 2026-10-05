@@ -42,14 +42,24 @@ export function removePromotionFromBranch(id: number) {
   return apiDelete<void>(`/promotion-branches/${id}`)
 }
 
+export function usePromotion(id?: number) {
+  return useQuery({
+    queryKey: qk.promotions.detail(id as number),
+    queryFn: () => getPromotion(id as number),
+    enabled: typeof id === "number" && !Number.isNaN(id),
+  })
+}
+
 export function usePromotionsByRestaurant(
   restaurantId?: number,
   params?: PageParams & { status?: PromotionStatus },
+  options?: { refetchInterval?: number },
 ) {
   return useQuery({
     queryKey: qk.promotions.byRestaurant(restaurantId as number, params),
     queryFn: () => getPromotionsByRestaurant(restaurantId as number, params),
     enabled: typeof restaurantId === "number",
+    refetchInterval: options?.refetchInterval,
   })
 }
 export function usePromotionsByBranch(branchId?: number) {
@@ -80,6 +90,13 @@ export function useChangePromotionStatus() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.promotions.all }),
   })
 }
+export function useDeletePromotion() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => deletePromotion(id),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.promotions.all }),
+  })
+}
 export function useAssignPromotionToBranch() {
   const qc = useQueryClient()
   return useMutation({
@@ -87,3 +104,19 @@ export function useAssignPromotionToBranch() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.promotionBranches.all }),
   })
 }
+
+export function getActivePromotionsByBranch(branchId: number) {
+  return apiGet<Promotion[]>(`/promotions/branch/${branchId}/active`)
+}
+
+export function getPromotionByBranchAndCode(branchId: number, code: string) {
+  return apiGet<Promotion>(`/promotions/branch/${branchId}/code/${encodeURIComponent(code)}`)
+}
+
+export function useActivePromotionsByBranch(branchId?: number) {
+  return useQuery({
+    queryKey: qk.promotions.byBranchActive(branchId as number),
+    queryFn: () => getActivePromotionsByBranch(branchId as number),
+    enabled: typeof branchId === "number",
+  })
+}

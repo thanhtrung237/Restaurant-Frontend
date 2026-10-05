@@ -105,3 +105,11 @@ export function useAddOrderDetail() {
     onSuccess: () => invalidateDetailScope(qc),
   })
 }
+
+/** FR-CUS-07: Khách bấm "Báo nhân viên" — gửi WS STAFF_CALL đến nhân viên chi nhánh */
+export function staffCall(id: number) {
+  return apiPost<void>(`/order-details/${id}/staff-call`)
+}
+export function useStaffCall() {
+  return useMutation({ mutationFn: staffCall })
+}

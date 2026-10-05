@@ -71,12 +71,11 @@ async function requestNewAccessToken(): Promise<string> {
 
   // Gọi bằng axios "trần" chứ không qua `http` để không lọt vào interceptor 401 này.
   //
-  // ⚠️ BACKEND CẦN SỬA: `AuthController.refreshToken` đọc token từ header `Refresh-Token`,
-  // nhưng `SecurityConfig.corsConfigurationSource()` mới chỉ cho phép
-  // `allowedHeaders = ["Authorization", "Content-Type"]`. Trình duyệt sẽ CHẶN header
-  // `Refresh-Token` ở bước preflight → refresh luôn fail khi chạy từ browser.
-  // BE chỉ cần thêm "Refresh-Token" vào `setAllowedHeaders(...)` là chạy được.
-  // (Fallback cookie `refreshToken` ở BE cũng không dùng được vì BE không hề set cookie đó.)
+  // `AuthController.refreshToken` đọc token từ header `Refresh-Token`. Header này đã được
+  // thêm vào `SecurityConfig.corsConfigurationSource().setAllowedHeaders(...)` ở BE — trước
+  // đó browser chặn ngay từ preflight nên luồng refresh không bao giờ chạy được.
+  // (Fallback cookie `refreshToken` ở BE vẫn không dùng được vì BE không set cookie đó —
+  // refresh token được trả trong body của `LoginResponse`.)
   const res = await axios.post<ResponseSuccess<RefreshTokenResponse>>(
     `${API_BASE_URL}/auth/refresh-token`,
     null,
@@ -168,6 +167,27 @@ export async function apiPut<T>(url: string, body?: unknown, config?: AxiosReque
 export async function apiDelete<T = void>(url: string, config?: AxiosRequestConfig): Promise<T> {
   const res = await http.delete<ResponseSuccess<T>>(url, config)
   return unwrap(res.data)
+}
+
+/** Mã lỗi nào đó có phải là mã này không — dùng để phân biệt "kết quả hợp lệ" với "lỗi thật". */
+export function isApiStatus(error: unknown, ...statuses: number[]): boolean {
+  return error instanceof ApiError && statuses.includes(error.status)
+}
+
+/**
+ * Hàm `retry` cho react-query ở những endpoint mà một số mã 4xx là **KẾT QUẢ hợp lệ**,
+ * không phải lỗi mạng.
+ *
+ * Ví dụ `GET /invoices/session/{id}` trả **404** khi phiên chưa được thu ngân lập hoá đơn —
+ * đó là câu trả lời "chưa có", đúng và cuối cùng. Để mặc định (`retry: 1`) thì react-query vẫn
+ * thử lại kèm backoff, nên `isLoading` còn `true` thêm vài giây và người dùng chỉ thấy vòng xoay
+ * trong khi backend đã trả lời xong từ lâu.
+ *
+ * Các mã còn lại (mất mạng, 500) vẫn được thử lại `maxRetries` lần như cũ.
+ */
+export function retryUnlessStatus(statuses: number[], maxRetries = 1) {
+  return (failureCount: number, error: unknown) =>
+    !isApiStatus(error, ...statuses) && failureCount < maxRetries
 }
 
 /** Lấy message lỗi để hiển thị toast, an toàn với mọi kiểu lỗi. */

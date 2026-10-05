@@ -37,18 +37,20 @@ src/features/*/api/      re-export phần mà feature đó dùng (đọc file n�
 
 Đừng viết sẵn API client đoán đường dẫn cho các mục trên — chốt với đội backend trước.
 
-## Việc backend cần sửa trước khi luồng refresh token chạy được
+## Luồng refresh token (đã thông)
 
-`AuthController.refreshToken` đọc token từ header `Refresh-Token`, nhưng
-`SecurityConfig.corsConfigurationSource()` mới cho phép
-`allowedHeaders = ["Authorization", "Content-Type"]`. Trình duyệt sẽ chặn header
-`Refresh-Token` ngay ở bước preflight.
-
-Backend chỉ cần sửa 1 dòng:
+`AuthController.refreshToken` đọc token từ header `Refresh-Token`. Trước đây
+`SecurityConfig.corsConfigurationSource()` chỉ cho phép
+`allowedHeaders = ["Authorization", "Content-Type"]` nên browser chặn header này ngay ở
+preflight → refresh luôn fail khi chạy từ trình duyệt. Đã sửa ở BE:
 
 ```java
 config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Refresh-Token"));
 ```
 
-(Fallback đọc cookie `refreshToken` ở backend cũng không dùng được, vì backend không hề
-set cookie đó — `refreshToken` được trả trong body của `LoginResponse`.)
+`logout()` trong `auth.api.ts` cũng đã được sửa để GỬI header `Refresh-Token` — trước đó nó
+không gửi gì, nên `AuthServiceImpl.getRefreshTokenFromRequest()` luôn nhận null và refresh
+token không bao giờ bị thu hồi phía server.
+
+Fallback đọc cookie `refreshToken` ở backend vẫn không dùng được, vì backend không hề set
+cookie đó — `refreshToken` được trả trong body của `LoginResponse`.

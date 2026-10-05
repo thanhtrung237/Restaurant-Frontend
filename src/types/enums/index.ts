@@ -28,11 +28,11 @@ export const CATEGORY_STATUS = ["INACTIVE", "ACTIVE"] as const
 export type CategoryStatus = (typeof CATEGORY_STATUS)[number]
 
 // DiningTableStatus.java — INACTIVE(0), AVAILABLE(1), OCCUPIED(2), RESERVED(3)
-// LƯU Ý: BE chỉ có đúng 4 giá trị này. "Chờ xác nhận" / "Chờ thanh toán" KHÔNG
+// LƯU Ý: BE chỉ có đúng 4 giá trị này. "Chờ mở bàn" / "Chờ thanh toán" KHÔNG
 // phải trạng thái của bàn (DiningTable) mà là trạng thái của PHIÊN BÀN
 // (TableSessionStatus.WAITING_FOR_OPEN / WAITING_FOR_PAY bên dưới). FE trước đây
-// nhầm 2 khái niệm này — xem TableDisplayStatus (TableCard.tsx) để biết cách suy
-// ra trạng thái hiển thị mở rộng (kết hợp DiningTableStatus + TableSessionStatus).
+// nhầm 2 khái niệm này — xem `TableDisplayStatus` + `TABLE_DISPLAY_STATUS_LABEL`
+// bên dưới để biết cách suy ra trạng thái hiển thị mở rộng.
 export const DINING_TABLE_STATUS = ["INACTIVE", "AVAILABLE", "OCCUPIED", "RESERVED"] as const
 export type DiningTableStatus = (typeof DINING_TABLE_STATUS)[number]
 
@@ -45,8 +45,10 @@ export type CancelReason = (typeof CANCEL_REASON)[number]
 export const DISCOUNT_TYPE = ["PERCENTAGE", "FIXED_AMOUNT"] as const
 export type DiscountType = (typeof DISCOUNT_TYPE)[number]
 
-// InvoiceStatus.java — PENDING(0), PAID(1), CANCELLED(2), REFUNDED(3)
-export const INVOICE_STATUS = ["PENDING", "PAID", "CANCELLED", "REFUNDED"] as const
+// InvoiceStatus.java — PENDING(0), PAID(1), CANCELLED(2), REFUNDED(3), ISSUED(4)
+// ISSUED = đã phát hành HĐĐT lên cơ quan thuế. Trước đây FE THIẾU giá trị này, trong khi
+// `GET /invoices/branch/{id}` vẫn trả về — nên mọi so sánh với "ISSUED" đều bị TS báo lỗi.
+export const INVOICE_STATUS = ["PENDING", "PAID", "ISSUED", "CANCELLED", "REFUNDED"] as const
 export type InvoiceStatus = (typeof INVOICE_STATUS)[number]
 
 // DishStatus.java — INACTIVE(0), ACTIVE(1)
@@ -119,6 +121,23 @@ export const DINING_TABLE_STATUS_LABEL: Record<DiningTableStatus, string> = {
   RESERVED: "Đã đặt",
 }
 
+/**
+ * ============================================================================
+ * NHÃN TRẠNG THÁI — ĐỌC KỸ TRƯỚC KHI SỬA
+ * ============================================================================
+ * Đặc tả tách BẠCH hai khái niệm rất dễ nhầm (FR-SRV-01 ghi rõ yêu cầu này):
+ *
+ *   - PHIÊN BÀN (Mục 2.1) : CHỜ MỞ BÀN / ĐANG PHỤC VỤ / CHỜ THANH TOÁN / ...
+ *   - DÒNG MÓN  (Mục 2.3) : CHỜ XÁC NHẬN / ĐANG CHẾ BIẾN / ĐÃ PHỤC VỤ / ...
+ *
+ * "Chờ mở bàn" là của PHIÊN BÀN (sơ đồ bàn). "Chờ xác nhận" là của DÒNG MÓN
+ * (màn bếp / order). KHÔNG dùng lẫn: trước đây sơ đồ bàn hiển thị "Chờ xác nhận"
+ * cho phiên bàn, gây hiểu nhầm giữa hai khái niệm khác hẳn nhau.
+ *
+ * Mọi nơi hiển thị nhãn phải lấy từ các map dưới đây, không viết chuỗi trực tiếp.
+ */
+
+/** Nhãn trạng thái DÒNG MÓN (Mục 2.3) — dùng ở màn bếp, order, món đã gọi. */
 export const ORDER_DETAIL_STATUS_LABEL: Record<OrderDetailStatus, string> = {
   PENDING: "Chờ xác nhận",
   PREPARING: "Đang chế biến",
@@ -127,14 +146,39 @@ export const ORDER_DETAIL_STATUS_LABEL: Record<OrderDetailStatus, string> = {
   PENDING_WEIGHT: "Chờ cân",
 }
 
+/** Nhãn trạng thái PHIÊN BÀN (Mục 2.1) — dùng ở sơ đồ bàn, màn khách chờ mở bàn. */
 export const TABLE_SESSION_STATUS_LABEL: Record<TableSessionStatus, string> = {
-  WAITING_FOR_OPEN: "Chờ xác nhận mở bàn",
+  WAITING_FOR_OPEN: "Chờ mở bàn",
   SERVING: "Đang phục vụ",
   WAITING_FOR_PAY: "Chờ thanh toán",
   CLOSED: "Đã đóng",
   CANCELLED: "Đã huỷ",
   RESERVED: "Đã đặt trước",
   MERGED: "Đã gộp bàn",
+}
+
+/**
+ * Trạng thái HIỂN THỊ của thẻ bàn trên sơ đồ = `DiningTableStatus` (trạng thái vật lý
+ * của bàn) mở rộng thêm mấy trạng thái suy ra từ phiên bàn. KHÔNG phải enum của backend.
+ */
+export type TableDisplayStatus =
+  | DiningTableStatus
+  | "WAITING_OPEN"
+  | "AWAITING_PAYMENT"
+  | "MERGED"
+
+/**
+ * Nhãn cho thẻ bàn + legend + bộ lọc ở sơ đồ bàn.
+ * Các trạng thái bắt nguồn từ phiên bàn lấy thẳng nhãn của phiên để không lệch chữ.
+ */
+export const TABLE_DISPLAY_STATUS_LABEL: Record<TableDisplayStatus, string> = {
+  AVAILABLE: "Trống",
+  INACTIVE: "Ngưng dùng",
+  OCCUPIED: "Đang phục vụ",
+  RESERVED: "Đặt trước",
+  WAITING_OPEN: TABLE_SESSION_STATUS_LABEL.WAITING_FOR_OPEN,
+  AWAITING_PAYMENT: TABLE_SESSION_STATUS_LABEL.WAITING_FOR_PAY,
+  MERGED: "Đã gộp",
 }
 
 export const CANCEL_REASON_LABEL: Record<CancelReason, string> = {
@@ -145,6 +189,7 @@ export const CANCEL_REASON_LABEL: Record<CancelReason, string> = {
 export const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = {
   PENDING: "Chờ thanh toán",
   PAID: "Đã thanh toán",
+  ISSUED: "Đã phát hành HĐĐT",
   CANCELLED: "Đã huỷ",
   REFUNDED: "Đã hoàn tiền",
 }

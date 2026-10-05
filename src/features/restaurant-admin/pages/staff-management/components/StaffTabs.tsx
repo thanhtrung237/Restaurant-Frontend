@@ -21,8 +21,13 @@ const DEFAULT_TABS: { id: StaffTabType; label: string }[] = [
 
 export const StaffTabs: React.FC<StaffTabsProps> = ({ activeTab, onTabChange, tabs = DEFAULT_TABS }) => {
   return (
-    <div className="border-b border-gray-200">
-      <nav className="flex space-x-8" aria-label="Tabs">
+    // KHÔNG tự vẽ border-b: dải tab của PageHeader đã có đường kẻ dưới.
+    <div>
+      {/* Cuộn ngang ở màn hẹp để 3 tab không bị xuống dòng / tràn ngang trang */}
+      <nav
+        className="flex space-x-8 overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        aria-label="Tabs"
+      >
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id
           return (

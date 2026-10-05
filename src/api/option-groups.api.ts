@@ -45,3 +45,10 @@ export function useUpdateOptionGroup() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.optionGroups.all }),
   })
 }
+export function useDeleteOptionGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: deleteOptionGroup,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.optionGroups.all }),
+  })
+}

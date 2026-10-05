@@ -1,11 +1,16 @@
 import * as React from "react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
-import { ReportHeader } from "./components/ReportHeader"
+import { PageHeader } from "@/components/layout/PageHeader"
+import { ReportHeaderActions } from "./components/ReportHeader"
 import { DailyReportTab } from "./components/DailyReportTab"
 import { HourlyReportTab } from "./components/HourlyReportTab"
 import { BranchCompareTab } from "./components/BranchCompareTab"
-import { MOCK_BRANCHES, MOCK_TIME_RANGES } from "./mock-data"
+import { TimeRangeDropdown } from "./components/TimeRangeDropdown"
+import { HourlyTimePicker } from "./components/HourlyTimePicker"
+import { useAuthStore } from "@/stores/auth.store"
+import { useBranchesByRestaurant } from "@/api/branches.api"
+import { APP_ROLE } from "@/config/roles"
 
 const TAB_HEADER_META: Record<
   string,
@@ -32,10 +37,40 @@ interface ReportDashboardProps {
 
 export function ReportDashboard({ showBranchCompare = true }: ReportDashboardProps = {}) {
   const { toast } = useToast()
+  const { account, role, branchId } = useAuthStore()
   const [currentTab, setCurrentTab] = React.useState<string>("daily")
-  const [selectedBranch, setSelectedBranch] = React.useState<string>(MOCK_BRANCHES[0].name)
-  const [selectedTime, setSelectedTime] = React.useState<string>(MOCK_TIME_RANGES[0].label)
+  const [selectedBranchIds, setSelectedBranchIds] = React.useState<number[]>([])
+  const [selectedDate, setSelectedDate] = React.useState<string>(() => {
+    // Initialize with today's date in dd/MM/yyyy format
+    const today = new Date()
+    const day = String(today.getDate()).padStart(2, '0')
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const year = today.getFullYear()
+    return `${day}/${month}/${year}`
+  })
   const [selectedMetric, setSelectedMetric] = React.useState<string>("Theo doanh thu")
+  const [hourlyStartHour, setHourlyStartHour] = React.useState<number>(0)
+  const [hourlyEndHour, setHourlyEndHour] = React.useState<number>(23)
+
+  // Determine if user is Branch Manager
+  const isBranchManager = role === APP_ROLE.BRANCH_MANAGER
+  const restaurantId = account?.restaurantId
+
+  // Fetch branches for Restaurant Admin
+  const { data: branchesData, isLoading: branchesLoading } = useBranchesByRestaurant(
+    restaurantId,
+  )
+
+  // Initialize selectedBranchIds based on role
+  React.useEffect(() => {
+    if (isBranchManager && branchId) {
+      // Branch Manager: lock to their branch
+      setSelectedBranchIds([branchId])
+    } else if (branchesData && branchesData.length > 0 && selectedBranchIds.length === 0) {
+      // Restaurant Admin: default to all branches
+      setSelectedBranchIds(branchesData.map((b) => b.id))
+    }
+  }, [branchesData, selectedBranchIds.length, isBranchManager, branchId])
 
   const handleExport = () => {
     toast({
@@ -46,25 +81,119 @@ export function ReportDashboard({ showBranchCompare = true }: ReportDashboardPro
 
   const headerMeta = TAB_HEADER_META[currentTab] || TAB_HEADER_META.daily
 
-  // Khi chuyển sang tab so sánh chi nhánh, tự động đổi thời gian mặc định sang "Tháng này" nếu đang ở "Hôm nay"
-  const activeTimeLabel = currentTab === "branch" && selectedTime === "Hôm nay" ? "Tháng này" : selectedTime
+  // Handle branch selection
+  const handleSelectBranches = (branchIds: number[]) => {
+    if (!isBranchManager) {
+      setSelectedBranchIds(branchIds)
+    }
+  }
+
+  // Handle date change - receives date string in dd/MM/yyyy format
+  const handleDateChange = (dateString: string) => {
+    setSelectedDate(dateString)
+  }
+
+  // Convert selected date (dd/MM/yyyy) to ISO datetime string base for API
+  const selectedDateBase = React.useMemo(() => {
+    try {
+      const [day, month, year] = selectedDate.split("/")
+      const date = new Date(Number(year), Number(month) - 1, Number(day))
+      const yyyy = date.getFullYear()
+      const mm = String(date.getMonth() + 1).padStart(2, '0')
+      const dd = String(date.getDate()).padStart(2, '0')
+      return `${yyyy}-${mm}-${dd}` // Returns "YYYY-MM-DD"
+    } catch {
+      // Fallback to today
+      const today = new Date()
+      const yyyy = today.getFullYear()
+      const mm = String(today.getMonth() + 1).padStart(2, '0')
+      const dd = String(today.getDate()).padStart(2, '0')
+      return `${yyyy}-${mm}-${dd}`
+    }
+  }, [selectedDate])
+
+  // Create full ISO datetime strings for Daily and Branch tabs
+  const selectedDateFrom = React.useMemo(() => {
+    return `${selectedDateBase}T00:00:00`
+  }, [selectedDateBase])
+
+  const selectedDateTo = React.useMemo(() => {
+    return `${selectedDateBase}T23:59:59`
+  }, [selectedDateBase])
+
+  // Create hourly datetime range for Hourly tab
+  const hourlyDateTimeRange = React.useMemo(() => {
+    const startHourPadded = String(hourlyStartHour).padStart(2, '0')
+    const endHourPadded = String(hourlyEndHour).padStart(2, '0')
+    return {
+      from: `${selectedDateBase}T${startHourPadded}:00:00`,
+      to: `${selectedDateBase}T${endHourPadded}:59:59`,
+    }
+  }, [selectedDateBase, hourlyStartHour, hourlyEndHour])
+
+  // Figma "Báo cáo · Mobile (375)": bộ chọn kỳ nằm TRONG header, cạnh chip chi nhánh.
+  // Phải memo hoá — usePageHeader so sánh headerActions bằng tham chiếu.
+  const headerActions = React.useMemo(
+    () => (
+      <div className="flex items-center gap-2">
+        <TimeRangeDropdown
+          variant="chip"
+          value={selectedDate}
+          onChange={handleDateChange}
+        />
+        {currentTab === "hourly" && (
+          <HourlyTimePicker
+            variant="chip"
+            startHour={hourlyStartHour}
+            endHour={hourlyEndHour}
+            onStartHourChange={setHourlyStartHour}
+            onEndHourChange={setHourlyEndHour}
+          />
+        )}
+      </div>
+    ),
+    [selectedDate, currentTab, hourlyStartHour, hourlyEndHour],
+  )
+
+  // Show loading indicator while branches are being fetched for Restaurant Admin
+  if (!isBranchManager && branchesLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface-page">
+        <div className="text-center">
+          <p className="text-text-secondary">Đang tải dữ liệu chi nhánh...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-surface-page p-8 space-y-6">
-      {/* 1. Top Header Component dùng chung */}
-      <ReportHeader
+    <div className="flex min-h-screen flex-col bg-surface-page">
+      <PageHeader
         title={headerMeta.title}
         subtitle={headerMeta.subtitle}
-        currentTab={currentTab}
-        selectedBranch={selectedBranch}
-        onSelectBranch={setSelectedBranch}
-        selectedTime={activeTimeLabel}
-        onSelectTime={setSelectedTime}
-        selectedMetric={selectedMetric}
-        onSelectMetric={setSelectedMetric}
-        onExport={handleExport}
+        mobileSubtitle=""
+        mobileHeaderActions={headerActions}
+        actions={
+          <ReportHeaderActions
+            currentTab={currentTab}
+            branches={branchesData || []}
+            selectedBranchIds={selectedBranchIds}
+            onSelectBranchIds={handleSelectBranches}
+            isBranchManager={isBranchManager}
+            selectedTime={selectedDate}
+            onSelectTime={handleDateChange}
+            selectedMetric={selectedMetric}
+            onSelectMetric={setSelectedMetric}
+            onExport={handleExport}
+            hourlyStartHour={hourlyStartHour}
+            hourlyEndHour={hourlyEndHour}
+            onHourlyStartHourChange={setHourlyStartHour}
+            onHourlyEndHourChange={setHourlyEndHour}
+          />
+        }
       />
 
+      <div className="flex flex-col gap-6 p-6 lg:p-8">
       {/* 2. Tabs Navigation & Content */}
       <Tabs
         value={currentTab}
@@ -96,21 +225,35 @@ export function ReportDashboard({ showBranchCompare = true }: ReportDashboardPro
 
         {/* Tab 1: Theo ngày */}
         <TabsContent value="daily" className="outline-none">
-          <DailyReportTab />
+          <DailyReportTab
+            branchIds={selectedBranchIds}
+            from={selectedDateFrom}
+            to={selectedDateTo}
+            groupBy="DAY"
+          />
         </TabsContent>
 
         {/* Tab 2: Theo khung giờ */}
         <TabsContent value="hourly" className="outline-none">
-          <HourlyReportTab />
+          <HourlyReportTab
+            branchIds={selectedBranchIds}
+            from={hourlyDateTimeRange.from}
+            to={hourlyDateTimeRange.to}
+          />
         </TabsContent>
 
         {/* Tab 3: So sánh chi nhánh — chỉ Quản trị NH (mục 4.3) */}
-        {showBranchCompare && (
+        {showBranchCompare && restaurantId && (
           <TabsContent value="branch" className="outline-none">
-            <BranchCompareTab />
+            <BranchCompareTab
+              restaurantId={restaurantId}
+              from={selectedDateFrom}
+              to={selectedDateTo}
+            />
           </TabsContent>
         )}
       </Tabs>
+      </div>
     </div>
   )
 }

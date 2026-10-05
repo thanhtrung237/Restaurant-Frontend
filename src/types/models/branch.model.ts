@@ -59,4 +59,7 @@ export interface BranchListItem extends BaseResponse {
   phone?: string
   status: BranchStatus
   tableCount?: number
+  managerName?: string
+  taxCode?: string
+  openingHours?: string
 }

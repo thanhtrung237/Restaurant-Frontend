@@ -1,53 +1,84 @@
 import { APP_ROLE, type AppRole } from "./roles"
 
+/**
+ * Khoá phân quyền theo PHÂN HỆ màn hình.
+ *
+ * Lưu ý phân biệt hai khoá dễ nhầm (đặc tả Bảng 4.3 tách rất rõ):
+ *  - `MENU`        = Menu NHÀ HÀNG: món gốc, danh mục, nhóm tuỳ chọn → CHỈ Quản trị NH.
+ *  - `BRANCH_MENU` = Menu CHI NHÁNH: đè giá, ẩn món, món riêng, báo hết món → QL chi nhánh + Quản trị NH.
+ */
 export const PERMISSION_KEYS = {
   TABLE_MAP: "TABLE_MAP",
   ORDER_AND_PREP: "ORDER_AND_PREP",
+  /** Menu NHÀ HÀNG (món gốc / danh mục / nhóm tuỳ chọn) — chỉ Quản trị NH. */
   MENU: "MENU",
+  /** Menu CHI NHÁNH (đè giá / ẩn món / món riêng / báo hết món). */
+  BRANCH_MENU: "BRANCH_MENU",
   PROMOTIONS: "PROMOTIONS",
   REPORTS: "REPORTS",
   BRANCHES: "BRANCHES",
   STAFF: "STAFF",
   CONFIG: "CONFIG",
+  /** Nhật ký hoạt động. QL chi nhánh chỉ ĐỌC và chỉ chi nhánh mình (R, FR-LOG-01). */
+  AUDIT_LOG: "AUDIT_LOG",
 } as const
 
 export type PermissionKey = keyof typeof PERMISSION_KEYS
 
 /**
- * Ma trận phân quyền theo vai trò (Role-Based Access Control - RBAC) — theo đúng mục 4
- * (4.2 Quyền cấp chi nhánh, 4.3 Quyền cấp nhà hàng và nền tảng) của đặc tả.
- * - RESTAURANT_ADMIN: Có toàn quyền trên tất cả 8 phân hệ chính.
- * - BRANCH_MANAGER: Có đủ 8 phân hệ chính NHƯNG mỗi trang chỉ thao tác trong PHẠM VI chi nhánh
- *   của mình và với phạm vi hẹp hơn Quản trị NH (theo bảng phân quyền theo màn hình):
- *     · Chi nhánh: đi thẳng vào chi tiết chi nhánh của mình (không có danh sách nhiều chi nhánh)
- *     · Cấu hình: chỉ xem/sửa cấu hình CHI NHÁNH (giờ giấc, TK ngân hàng, tự huỷ phiên — FR-BRN-02),
- *       KHÔNG có cấu hình nhà hàng (VAT/phí DV/ngưỡng chiết khấu/MST — chỉ Quản trị NH, mục 4.3)
- *     · Nhân viên: chỉ xem 2 tab (Nhân viên + Nhật ký) của chi nhánh mình, KHÔNG có
- *       "Vai trò & phân quyền" (chỉ Quản trị NH)
- *     · Báo cáo: có tab Theo ngày/Theo khung giờ, KHÔNG có tab "So sánh chi nhánh" (chỉ Quản trị NH)
- * - WAITER: Chỉ thao tác sơ đồ bàn và gọi món/chế biến.
- * - CASHIER: Chỉ xem sơ đồ bàn (để xem tạm tính) và thanh toán hóa đơn.
+ * Ma trận phân quyền theo vai trò (RBAC) — bám đặc tả mục 4.2 (quyền cấp chi nhánh)
+ * và 4.3 (quyền cấp nhà hàng / nền tảng).
+ *
+ * Chú giải của đặc tả: X = được phép · A = được phép nhưng cần duyệt · R = chỉ đọc ·
+ * trống = KHÔNG được phép.
+ *
+ * QUẢN TRỊ NHÀ HÀNG — toàn quyền cấp nhà hàng (Bảng 4.3).
+ *
+ * QUẢN LÝ CHI NHÁNH — chỉ chi nhánh được phân công (BR-18). Được:
+ *   · Vận hành sàn/bếp như Phục vụ (Bảng 4.2: mở bàn, xác nhận order, nhập số cân,
+ *     đánh dấu đã phục vụ, huỷ món — đều X)
+ *   · Menu CHI NHÁNH: đè giá, ẩn món, tạo món riêng, báo hết món (Bảng 4.2)
+ *   · Quản lý bàn & mã QR (Bảng 4.2)
+ *   · Cấu hình chi nhánh nhóm 1 — giờ giấc, TK ngân hàng, thời gian tự huỷ phiên (FR-BRN-02)
+ *   · Báo cáo chi nhánh mình
+ *   · Nhật ký chi nhánh mình — CHỈ ĐỌC (R)
+ * KHÔNG được (Bảng 4.3 để trống cho cột QL chi nhánh):
+ *   · Menu nhà hàng / danh mục / nhóm tuỳ chọn món
+ *   · Khuyến mãi
+ *   · Quản lý nhân viên, Vai trò & phân quyền
+ *   · Cấu hình chi nhánh nhóm 2 — VAT, phí dịch vụ, ngưỡng chiết khấu, MST riêng
+ *   · So sánh chi nhánh trong Báo cáo
+ *
+ * PHỤC VỤ — chỉ sơ đồ bàn và gọi món/chế biến (Bảng 4.2). Không báo cáo, thực đơn,
+ * khuyến mãi, nhân viên, cấu hình.
+ *
+ * THU NGÂN — chỉ sơ đồ bàn (để xem tạm tính và vào thanh toán từ thẻ bàn). Không mở bàn,
+ * không xác nhận order. Thanh toán KHÔNG có mục menu riêng: vào từ thẻ bàn trên Sơ đồ bàn.
  */
 export const ROLE_PERMISSIONS: Record<AppRole, PermissionKey[]> = {
   [APP_ROLE.RESTAURANT_ADMIN]: [
     "TABLE_MAP",
     "ORDER_AND_PREP",
     "MENU",
+    "BRANCH_MENU",
     "PROMOTIONS",
     "REPORTS",
     "BRANCHES",
     "STAFF",
     "CONFIG",
+    "AUDIT_LOG",
   ],
   [APP_ROLE.BRANCH_MANAGER]: [
     "TABLE_MAP",
     "ORDER_AND_PREP",
-    "MENU",
-    "PROMOTIONS",
+    // Menu CHI NHÁNH — KHÔNG có "MENU" (menu nhà hàng) theo Bảng 4.3
+    "BRANCH_MENU",
     "REPORTS",
     "BRANCHES",
-    "STAFF",
     "CONFIG",
+    // Chỉ đọc nhật ký chi nhánh mình (R)
+    "AUDIT_LOG",
+    // KHÔNG có: MENU, PROMOTIONS, STAFF
   ],
   [APP_ROLE.WAITER]: [
     "TABLE_MAP",
@@ -68,8 +99,9 @@ export function hasPermission(
   permission: PermissionKey
 ): boolean {
   if (!role) return false
-  // Quản trị nhà hàng luôn có toàn quyền truy cập
-  if (role === APP_ROLE.RESTAURANT_ADMIN) return true
+  // Không còn lối tắt "Quản trị NH luôn true": ROLE_PERMISSIONS ở trên đã liệt kê đủ
+  // quyền của vai trò này. Giữ lối tắt sẽ khiến ma trận không còn là nguồn sự thật
+  // duy nhất, và khoá mới thêm về sau tự động lọt quyền mà không ai nhận ra.
   const permissions = ROLE_PERMISSIONS[role] || []
   return permissions.includes(permission)
 }

@@ -1,5 +1,5 @@
 import React from "react"
-import { Filter, MapPin, User, ChevronDown } from "lucide-react"
+import { ChevronDown, MapPin, User } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   DropdownMenu,
@@ -7,50 +7,60 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import type { StaffStatusFilter } from "../types"
+import { ACCOUNT_STATUS_LABEL, type StaffStatusFilter } from "../types"
+
+/** "ALL" = không lọc. Số = id chi nhánh / vai trò lấy từ API. */
+export type StaffFilterValue = "ALL" | number
+
+export interface StaffFilterOption {
+  value: StaffFilterValue
+  label: string
+}
 
 interface StaffFilterBarProps {
   statusFilter: StaffStatusFilter
   onStatusFilterChange: (status: StaffStatusFilter) => void
-  selectedBranch: string
-  onBranchChange: (branch: string) => void
-  selectedRole: string
-  onRoleChange: (role: string) => void
-  onToggleFilter?: () => void
+  branchOptions: StaffFilterOption[]
+  selectedBranch: StaffFilterValue
+  onBranchChange: (value: StaffFilterValue) => void
+  roleOptions: StaffFilterOption[]
+  selectedRole: StaffFilterValue
+  onRoleChange: (value: StaffFilterValue) => void
 }
 
 const STATUS_OPTIONS: { id: StaffStatusFilter; label: string }[] = [
   { id: "ALL", label: "Tất cả" },
-  { id: "ACTIVE", label: "Đang hoạt động" },
-  { id: "LOCKED", label: "Tạm khoá" },
+  { id: "ACTIVE", label: ACCOUNT_STATUS_LABEL.ACTIVE },
+  { id: "INACTIVE", label: ACCOUNT_STATUS_LABEL.INACTIVE },
 ]
 
-const BRANCH_OPTIONS = [
-  "Tất cả chi nhánh",
-  "Quận 1",
-  "Quận 3",
-  "Thủ Đức",
-]
+function labelOf(options: StaffFilterOption[], value: StaffFilterValue, fallback: string): string {
+  return options.find((option) => option.value === value)?.label ?? fallback
+}
 
-const ROLE_OPTIONS = [
-  "Tất cả vai trò",
-  "Phục vụ",
-  "Thu ngân",
-  "Quản lý chi nhánh",
-]
-
+/**
+ * Thanh lọc của bảng Nhân viên.
+ *
+ * Hai dropdown lấy danh sách TỪ API (`useBranchesByRestaurant`, `useRolesByRestaurant`) và
+ * lọc theo **id**, không theo chuỗi nhãn: lọc theo chuỗi sẽ hỏng ngay khi một tài khoản có
+ * nhiều chi nhánh.
+ *
+ * Đã bỏ nút "Bộ lọc" cũ: `onToggleFilter` là prop optional mà không trang nào truyền vào và
+ * cũng chưa có panel nào để mở.
+ */
 export const StaffFilterBar: React.FC<StaffFilterBarProps> = ({
   statusFilter,
   onStatusFilterChange,
+  branchOptions,
   selectedBranch,
   onBranchChange,
+  roleOptions,
   selectedRole,
   onRoleChange,
-  onToggleFilter,
 }) => {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
-      {/* Status pills */}
+    <div className="flex flex-col justify-between gap-3 py-1 sm:flex-row sm:items-center">
+      {/* Chip trạng thái */}
       <div className="flex items-center gap-2">
         {STATUS_OPTIONS.map((option) => {
           const isActive = statusFilter === option.id
@@ -59,11 +69,12 @@ export const StaffFilterBar: React.FC<StaffFilterBarProps> = ({
               key={option.id}
               type="button"
               onClick={() => onStatusFilterChange(option.id)}
+              aria-pressed={isActive}
               className={cn(
-                "px-4 py-1.5 rounded-full text-sm font-medium transition-colors cursor-pointer",
+                "cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
                 isActive
                   ? "bg-[#EA4A2A] text-white shadow-xs"
-                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+                  : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50",
               )}
             >
               {option.label}
@@ -72,38 +83,32 @@ export const StaffFilterBar: React.FC<StaffFilterBarProps> = ({
         })}
       </div>
 
-      {/* Filter controls */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {/* Bộ lọc button */}
-        <button
-          type="button"
-          onClick={onToggleFilter}
-          className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
-        >
-          <Filter className="size-4 text-gray-500" />
-          <span>Bộ lọc</span>
-        </button>
-
+      <div className="flex flex-wrap items-center gap-2">
         {/* Dropdown Chi nhánh */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
+              className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
             >
               <MapPin className="size-4 text-gray-500" />
-              <span>{selectedBranch}</span>
-              <ChevronDown className="size-3.5 text-gray-400 ml-0.5" />
+              <span>{labelOf(branchOptions, selectedBranch, "Tất cả chi nhánh")}</span>
+              <ChevronDown className="ml-0.5 size-3.5 text-gray-400" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="right" className="w-44">
-            {BRANCH_OPTIONS.map((branch) => (
+          {/*
+            `DropdownMenuContent` ở repo này là component TỰ VIẾT (components/ui/dropdown-menu.tsx),
+            KHÔNG phải Radix: `align` chỉ nhận "left" | "right" | "center" và mặc định "right".
+            Nên "right" là giá trị ĐÚNG, còn "start"/"end" kiểu Radix là lỗi kiểu.
+          */}
+          <DropdownMenuContent align="right" className="w-56">
+            {branchOptions.map((option) => (
               <DropdownMenuItem
-                key={branch}
-                onClick={() => onBranchChange(branch)}
+                key={String(option.value)}
+                onClick={() => onBranchChange(option.value)}
                 className="cursor-pointer text-sm"
               >
-                {branch}
+                {option.label}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
@@ -114,21 +119,21 @@ export const StaffFilterBar: React.FC<StaffFilterBarProps> = ({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
+              className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
             >
               <User className="size-4 text-gray-500" />
-              <span>{selectedRole}</span>
-              <ChevronDown className="size-3.5 text-gray-400 ml-0.5" />
+              <span>{labelOf(roleOptions, selectedRole, "Tất cả vai trò")}</span>
+              <ChevronDown className="ml-0.5 size-3.5 text-gray-400" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="right" className="w-44">
-            {ROLE_OPTIONS.map((role) => (
+          <DropdownMenuContent align="right" className="w-56">
+            {roleOptions.map((option) => (
               <DropdownMenuItem
-                key={role}
-                onClick={() => onRoleChange(role)}
+                key={String(option.value)}
+                onClick={() => onRoleChange(option.value)}
                 className="cursor-pointer text-sm"
               >
-                {role}
+                {option.label}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>

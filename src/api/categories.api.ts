@@ -45,6 +45,19 @@ export function useUpdateCategory() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.categories.all }),
   })
 }
+export function useChangeCategoryStatus() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: { id: number; status: CategoryStatus }) =>
+      changeCategoryStatus(vars.id, vars.status),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: qk.categories.all })
+      // Danh mục ẩn thì món trong đó cũng biến mất khỏi menu khách (FR-MNU-01)
+      void qc.invalidateQueries({ queryKey: qk.dishes.all })
+      void qc.invalidateQueries({ queryKey: qk.branchMenu.all })
+    },
+  })
+}
 export function useDeleteCategory() {
   const qc = useQueryClient()
   return useMutation({

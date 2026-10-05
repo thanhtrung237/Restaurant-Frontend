@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation } from "@tanstack/react-query"
 import { apiPost } from "@/lib/http"
 
 /**
@@ -17,7 +17,6 @@ export function reprintKitchenTicket(orderId: number) {
  * Hook để in lại phiếu bếp
  */
 export function useReprintKitchenTicket() {
-  const qc = useQueryClient()
   return useMutation({
     mutationFn: reprintKitchenTicket,
     onSuccess: () => {

@@ -52,6 +52,11 @@ export function useDeleteAssignment() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: deleteAssignment,
-    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.assignments.all }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: qk.assignments.all })
+      // Danh sách tài khoản mang theo `assignments`, nên gỡ phân công là bảng Nhân viên
+      // cũng phải đọc lại — thiếu dòng này thì chip vai trò vẫn còn trên màn hình.
+      void qc.invalidateQueries({ queryKey: qk.accounts.all })
+    },
   })
 }

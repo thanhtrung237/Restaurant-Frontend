@@ -3,7 +3,8 @@ import { Check } from "lucide-react"
 
 export const PermissionLegend: React.FC = () => {
   return (
-    <div className="flex items-center gap-6 py-1 text-sm text-gray-700 flex-wrap">
+    // <md: khoảng cách và chữ nhỏ hơn để 4 mục nằm gọn một hàng ở 375px (Figma mobile)
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-1 text-xs text-gray-700 md:gap-6 md:text-sm">
       {/* 1. Được phép */}
       <div className="flex items-center gap-2">
         <span className="inline-flex size-5 items-center justify-center rounded-full bg-[#E6F9EE] text-[#12B76A]">

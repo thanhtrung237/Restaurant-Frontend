@@ -37,10 +37,8 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       assignmentId: null,
       isAuthenticated: false,
-      setSession: ({ account, role, branchId, accessToken, assignmentId }) => {
-        console.log('Setting session with:', { account, role, branchId, accessToken, assignmentId })
-        set({ account, role, branchId, accessToken, assignmentId, isAuthenticated: true })
-      },
+      setSession: ({ account, role, branchId, accessToken, assignmentId }) =>
+        set({ account, role, branchId, accessToken, assignmentId, isAuthenticated: true }),
       clearSession: () =>
         set({
           account: null,

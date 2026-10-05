@@ -13,8 +13,9 @@
  *    - 1 assignment         → vào thẳng, không cần chọn.
  *    - >1 assignment        → hiện bước "Chọn vai trò / chi nhánh" (tài khoản có thể
  *      được phân nhiều vai trò ở nhiều chi nhánh khác nhau).
- * 4. `setSession()` vào `useAuthStore` rồi điều hướng theo `ROLE_HOME[role]`
- *    (hoặc quay lại trang người dùng định vào trước khi bị `RequireAuth` chặn).
+ * 4. `setSession()` vào `useAuthStore` rồi điều hướng bằng `resolvePostLoginTarget`:
+ *    quay lại trang bị `RequireAuth` chặn CHỈ KHI trang đó thuộc khu vực của vai trò
+ *    vừa chọn và không phải trang auth / trang 403; ngược lại về `ROLE_HOME[role]`.
  */
 
 import * as React from "react"
@@ -30,7 +31,7 @@ import { getErrorMessage } from "@/lib/http"
 import { clearTokens } from "@/lib/auth-token"
 import { useAuthStore } from "@/stores/auth.store"
 import { mapRoleCodeToAppRole, APP_ROLE_LABEL, type AppRole } from "@/config/roles"
-import { ROLE_HOME } from "@/app/router/RoleHomeRedirect"
+import { resolvePostLoginTarget } from "@/app/router/post-login-target"
 import { AUTH_PATHS } from "@/app/router/paths"
 import type { Account, Assignment } from "@/types/models"
 
@@ -93,9 +94,10 @@ export default function LoginPage() {
       accessToken,
       assignmentId: choice.assignment.id,
     })
-    const fallback = ROLE_HOME[choice.role]
-    const target = redirectTarget ? `${redirectTarget.pathname}${redirectTarget.search ?? ""}` : fallback
-    navigate(target || fallback, { replace: true })
+    // Đích sau đăng nhập phải hợp lệ với vai trò VỪA CHỌN, không chỉ là trang cũ —
+    // xem resolvePostLoginTarget. Dùng chung cho cả luồng 1 phân công và luồng chọn
+    // phân công, vì cả hai đều đi qua finalizeSession.
+    navigate(resolvePostLoginTarget(choice.role, redirectTarget), { replace: true })
   }
 
   async function handleSubmit(e: React.FormEvent) {

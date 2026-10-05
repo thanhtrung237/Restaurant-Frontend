@@ -8,7 +8,6 @@ import type {
   BranchOption,
   TimeRangeOption,
 } from "./types"
-
 export const MOCK_SUMMARY_DATA: ReportSummaryData = {
   revenue: {
     value: "12.4tr đ",
@@ -27,7 +26,6 @@ export const MOCK_SUMMARY_DATA: ReportSummaryData = {
     trend: { value: "12% so với hôm qua", direction: "up" },
   },
 }
-
 export const MOCK_HOURLY_SUMMARY: HourlySummaryData = {
   peakHours: {
     label: "Khung giờ cao điểm",
@@ -45,7 +43,6 @@ export const MOCK_HOURLY_SUMMARY: HourlySummaryData = {
     note: "so với 4 bàn giờ thấp",
   },
 }
-
 export const MOCK_DAILY_REVENUE: DailyRevenueItem[] = [
   { day: "T2", fullDay: "Thứ 2", date: "2026-07-20", revenue: 4800000 },
   { day: "T3", fullDay: "Thứ 3", date: "2026-07-21", revenue: 6200000 },
@@ -60,7 +57,6 @@ export const MOCK_DAILY_REVENUE: DailyRevenueItem[] = [
   },
   { day: "CN", fullDay: "Chủ nhật", date: "2026-07-26", revenue: 7100000 },
 ]
-
 export const MOCK_HOURLY_REVENUE: HourlyRevenueItem[] = [
   { hour: "8h", timeRange: "08:00 – 09:00", revenue: 580000 },
   { hour: "9h", timeRange: "09:00 – 10:00", revenue: 820000 },
@@ -99,7 +95,6 @@ export const MOCK_HOURLY_REVENUE: HourlyRevenueItem[] = [
   { hour: "22h", timeRange: "22:00 – 23:00", revenue: 1100000 },
   { hour: "23h", timeRange: "23:00 – 24:00", revenue: 620000 },
 ]
-
 export const MOCK_BRANCH_COMPARISON: BranchComparisonItem[] = [
   {
     rank: 1,
@@ -133,13 +128,11 @@ export const MOCK_BRANCH_COMPARISON: BranchComparisonItem[] = [
     vsAverage: { value: "-38%", direction: "down" },
   },
 ]
-
 export const MOCK_COMPARE_METRICS = [
   { value: "revenue", label: "Theo doanh thu" },
   { value: "orders", label: "Theo số hóa đơn" },
   { value: "cancelRate", label: "Theo tỷ lệ hủy" },
 ]
-
 export const MOCK_TOP_SELLING_DISHES: TopSellingDishItem[] = [
   {
     rank: 1,
@@ -166,13 +159,11 @@ export const MOCK_TOP_SELLING_DISHES: TopSellingDishItem[] = [
     totalAmount: 1845000,
   },
 ]
-
 export const MOCK_BRANCHES: BranchOption[] = [
   { id: 1, name: "Chi nhánh Quận 1", code: "CN-Q1" },
   { id: 2, name: "Chi nhánh Quận 3", code: "CN-Q3" },
   { id: 3, name: "Chi nhánh Thủ Đức", code: "CN-TD" },
 ]
-
 export const MOCK_TIME_RANGES: TimeRangeOption[] = [
   { value: "today", label: "Hôm nay" },
   { value: "yesterday", label: "Hôm qua" },

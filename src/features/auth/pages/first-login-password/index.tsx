@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button"
 import { useChangePassword } from "@/api/accounts.api"
 import { getErrorMessage } from "@/lib/http"
 import { useAuthStore } from "@/stores/auth.store"
+import { useLogout } from "@/features/auth/hooks/useLogout"
 import { AUTH_PATHS } from "@/app/router/paths"
 import { useToast } from "@/hooks/use-toast"
 
@@ -33,7 +34,7 @@ export default function FirstLoginPasswordPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const account = useAuthStore((s) => s.account)
-  const clearSession = useAuthStore((s) => s.clearSession)
+  const { logout } = useLogout()
   const changePasswordMutation = useChangePassword()
 
   const [oldPassword, setOldPassword] = React.useState("")
@@ -84,9 +85,10 @@ export default function FirstLoginPasswordPage() {
         description: "Vui lòng đăng nhập lại với mật khẩu mới.",
       })
 
-      // Đăng xuất và quay về trang đăng nhập
-      clearSession()
-      navigate(AUTH_PATHS.LOGIN, { replace: true })
+      // Đăng xuất và quay về trang đăng nhập.
+      // Dùng useLogout để refresh token cũ bị THU HỒI phía server — đổi mật khẩu xong
+      // mà token cũ còn hiệu lực thì mật khẩu mới không có tác dụng bảo vệ.
+      await logout()
     } catch (err) {
       setError(getErrorMessage(err))
     }

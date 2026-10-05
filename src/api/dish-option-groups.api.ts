@@ -28,6 +28,13 @@ export function useDishOptionGroups(dishId?: number) {
     enabled: typeof dishId === "number",
   })
 }
+export function useDishOptionGroupsByOptionGroup(optionGroupId?: number) {
+  return useQuery({
+    queryKey: qk.dishOptionGroups.byOptionGroup(optionGroupId as number),
+    queryFn: () => getDishOptionGroupsByOptionGroup(optionGroupId as number),
+    enabled: typeof optionGroupId === "number",
+  })
+}
 export function useLinkDishToOptionGroup() {
   const qc = useQueryClient()
   return useMutation({

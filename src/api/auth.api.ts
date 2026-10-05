@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { apiPost } from "@/lib/http"
-import { clearTokens, setTokens } from "@/lib/auth-token"
+import { clearTokens, getRefreshToken, setTokens } from "@/lib/auth-token"
 import type { LoginResponse, RefreshTokenResponse } from "@/types/models"
 import type { LoginRequest } from "@/types/requests"
 
@@ -20,13 +20,16 @@ export function refreshToken(token: string) {
 }
 
 /**
- * `POST /auth/logout` — BE đọc refresh token từ header/cookie để thu hồi.
- * Xem ghi chú CORS trong `lib/http.ts`: header `Refresh-Token` hiện bị chặn,
- * nên logout có thể không thu hồi được token ở phía server cho tới khi BE sửa CORS.
- * FE vẫn phải clear token phía client trong mọi trường hợp.
+ * `POST /auth/logout` — BE đọc refresh token từ header `Refresh-Token` để thu hồi
+ * (`AuthServiceImpl.getRefreshTokenFromRequest`). Trước đây hàm này KHÔNG gửi header
+ * nào cả nên BE luôn nhận null → refresh token không bao giờ bị thu hồi phía server.
+ * FE vẫn phải clear token phía client trong mọi trường hợp (xem `useLogoutMutation`).
  */
 export function logout() {
-  return apiPost<void>("/auth/logout")
+  const token = getRefreshToken()
+  return apiPost<void>("/auth/logout", null, {
+    headers: token ? { "Refresh-Token": token } : undefined,
+  })
 }
 
 export function useLoginMutation() {
