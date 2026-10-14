@@ -55,3 +55,26 @@ export interface InvoiceListItem extends BaseResponse {
   status: InvoiceStatus
   createdAt?: string
 }
+
+export interface BillPreviewResponse {
+  tableSessionId: number
+  sessionStatus: string
+  invoiceId?: number
+  invoiceStatus?: InvoiceStatus
+  grossSubTotal?: number
+  itemPromotionDiscount?: number
+  orderPromotionDiscount?: number
+  orderPromotionId?: number
+  orderPromotionName?: string
+  manualDiscount?: number
+  amountAfterDiscount?: number
+  serviceFeeRate?: number
+  serviceFee?: number
+  vatRate?: number
+  vatOnServiceFee?: boolean
+  vatBase?: number
+  vatAmount?: number
+  grandTotal?: number
+  hasPendingWeight?: boolean
+}
+

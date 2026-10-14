@@ -259,16 +259,22 @@ export interface DishOptionGroupAddRequest {
 /**
  * `POST /table-sessions` — luồng CHÍNH.
  * Chỉ cần `tableId` để mở phiên ngay (phiên vào trạng thái WAITING_FOR_OPEN).
- * Nếu truyền nhóm `reservation*` thì đây là ĐẶT BÀN TRƯỚC (phiên vào trạng thái RESERVED).
  */
 export interface TableSessionCreateRequest {
   tableId: number
-  /** Số khách khách tự chọn khi quét QR (luồng WAITING_FOR_OPEN, không phải đặt trước). */
+  /** Số khách khách tự chọn khi quét QR (luồng WAITING_FOR_OPEN). */
   guestCount?: number
-  reservationName?: string
-  reservationPhone?: string
-  reservationTime?: string
-  reservedGuestCount?: number
+}
+/**
+ * `POST /table-sessions/reserve` — đặt bàn trước (FR-TBL-03).
+ * Tạo phiên RESERVED với đầy đủ thông tin khách.
+ */
+export interface TableSessionReservationRequest {
+  tableId: number
+  reservationName: string
+  reservationPhone: string
+  reservationTime: string // LocalDateTime
+  guestCount?: number
   reservationNote?: string
 }
 /** `POST /table-sessions/{id}/confirm-open` — Phục vụ xác nhận mở bàn cho khách. */
@@ -295,6 +301,15 @@ export interface TableSessionUpdateRequest {
   guestCount?: number
   note?: string
   customerIdRef?: string
+}
+/** `POST /table-sessions/{id}/transfer` — Chuyển bàn (FR-SRV-06, BR-28). */
+export interface TableSessionTransferRequest {
+  targetTableId: number
+}
+/** `POST /table-sessions/merge` — Gộp bàn (FR-SRV-06, BR-26, BR-28). */
+export interface TableSessionMergeRequest {
+  sourceSessionId: number
+  targetSessionId: number
 }
 
 // ---------------------------------------------------------------- Order
@@ -334,6 +349,10 @@ export interface OrderDetailConfirmWeightRequest {
 /** `POST /order-details/{id}/cancel-after-kitchen` — huỷ món ĐÃ vào bếp, bắt buộc có lý do. */
 export interface OrderDetailCancelRequest {
   cancelReason: CancelReason
+}
+/** `POST /order-details/batch-confirm` — xác nhận nhiều món cùng lúc (chuyển sang PREPARING). */
+export interface OrderDetailBatchConfirmRequest {
+  orderDetailIds: number[]
 }
 
 // ---------------------------------------------------------------- Invoice / Payment / Discount
