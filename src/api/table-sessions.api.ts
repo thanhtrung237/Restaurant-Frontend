@@ -1,19 +1,26 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiDelete, apiGet, apiPost, apiPut, retryUnlessStatus } from "@/lib/http"
 import { qk } from "@/lib/query-keys"
-import type { TableSession } from "@/types/models"
+import type { TableSession, BillPreviewResponse } from "@/types/models"
 import type {
   TableSessionCancelReservationRequest, TableSessionConfirmOpenRequest,
   TableSessionCreateRequest, TableSessionOpenRequest, TableSessionUpdateRequest,
+  TableSessionReservationRequest, TableSessionTransferRequest, TableSessionMergeRequest,
 } from "@/types/requests"
 
 /**
  * `POST /table-sessions` — luồng chuẩn.
  * - Chỉ có `tableId` → mở phiên mới, trạng thái WAITING_FOR_OPEN (chờ Phục vụ xác nhận).
- * - Có thêm nhóm `reservation*` → đặt bàn trước, trạng thái RESERVED.
  */
 export function createTableSession(body: TableSessionCreateRequest) {
   return apiPost<TableSession>("/table-sessions", body)
+}
+/**
+ * `POST /table-sessions/reserve` — đặt bàn trước (FR-TBL-03).
+ * Tạo phiên RESERVED với tên/SĐT/giờ hẹn/số khách.
+ */
+export function reserveTableSession(body: TableSessionReservationRequest) {
+  return apiPost<TableSession>("/table-sessions/reserve", body)
 }
 /** Phục vụ xác nhận mở bàn → phiên chuyển sang SERVING. */
 export function confirmOpenSession(id: number, body: TableSessionConfirmOpenRequest) {
@@ -49,6 +56,10 @@ export function getOpenSessionsByBranch(branchId: number) {
 }
 export function getSessionsByTable(tableId: number) {
   return apiGet<TableSession[]>(`/table-sessions/table/${tableId}`)
+}
+/** Tạm tính của phiên bàn (BR-13) — GET /table-sessions/{id}/bill-preview. */
+export function getBillPreview(id: number) {
+  return apiGet<BillPreviewResponse>(`/table-sessions/${id}/bill-preview`)
 }
 export function closeSession(id: number) {
   return apiPost<TableSession>(`/table-sessions/${id}/close`)
@@ -88,6 +99,15 @@ export function useOpenSessionsByBranch(branchId?: number, options?: { refetchIn
   })
 }
 
+export function useBillPreview(id?: number, options?: { refetchInterval?: number; enabled?: boolean }) {
+  return useQuery({
+    queryKey: qk.tableSessions.billPreview(id as number),
+    queryFn: () => getBillPreview(id as number),
+    enabled: typeof id === "number" && (options?.enabled ?? true),
+    refetchInterval: options?.refetchInterval,
+  })
+}
+
 /** Sau khi đổi phiên thì Sơ đồ bàn và trạng thái bàn đều phải làm mới. */
 function invalidateSessionScope(qc: ReturnType<typeof useQueryClient>) {
   void qc.invalidateQueries({ queryKey: qk.tableSessions.all })
@@ -97,6 +117,10 @@ function invalidateSessionScope(qc: ReturnType<typeof useQueryClient>) {
 export function useCreateTableSession() {
   const qc = useQueryClient()
   return useMutation({ mutationFn: createTableSession, onSuccess: () => invalidateSessionScope(qc) })
+}
+export function useReserveTableSession() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: reserveTableSession, onSuccess: () => invalidateSessionScope(qc) })
 }
 export function useConfirmOpenSession() {
   const qc = useQueryClient()
@@ -148,5 +172,32 @@ export function callStaff(tableSessionId: number) {
 
 export function useCallStaff() {
   return useMutation({ mutationFn: callStaff })
+}
+
+/** Chuyển bàn: di chuyển phiên sang bàn trống khác (FR-SRV-06, BR-28). */
+export function transferTable(id: number, body: TableSessionTransferRequest) {
+  return apiPost<TableSession>(`/table-sessions/${id}/transfer`, body)
+}
+
+export function useTransferTable() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: { id: number; body: TableSessionTransferRequest }) =>
+      transferTable(vars.id, vars.body),
+    onSuccess: () => invalidateSessionScope(qc),
+  })
+}
+
+/** Gộp bàn: gộp phiên nguồn vào phiên đích (FR-SRV-06, BR-26, BR-28). */
+export function mergeTable(body: TableSessionMergeRequest) {
+  return apiPost<TableSession>("/table-sessions/merge", body)
+}
+
+export function useMergeTable() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: TableSessionMergeRequest) => mergeTable(body),
+    onSuccess: () => invalidateSessionScope(qc),
+  })
 }
 

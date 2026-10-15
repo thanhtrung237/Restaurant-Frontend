@@ -6,6 +6,7 @@ import type { OrderDetailStatus } from "@/types/enums"
 import type {
   OrderDetailAddRequest, OrderDetailCancelRequest,
   OrderDetailConfirmWeightRequest, OrderDetailUpdateRequest,
+  OrderDetailBatchConfirmRequest,
 } from "@/types/requests"
 
 /** Thêm món vào 1 order đã tồn tại (khác `POST /orders` là tạo lượt gọi mới). */
@@ -27,6 +28,10 @@ export function updateOrderDetail(id: number, body: OrderDetailUpdateRequest) {
 }
 export function changeOrderDetailStatus(id: number, status: OrderDetailStatus) {
   return apiPut<OrderDetail>(`/order-details/${id}/status`, null, { params: { status } })
+}
+/** Xác nhận hàng loạt món chờ chế biến (PENDING → PREPARING). */
+export function batchConfirmOrderDetails(body: OrderDetailBatchConfirmRequest) {
+  return apiPost<OrderDetail[]>("/order-details/batch-confirm", body)
 }
 /** Bếp cân xong món bán theo cân → thoát trạng thái PENDING_WEIGHT. */
 export function confirmWeight(id: number, body: OrderDetailConfirmWeightRequest) {
@@ -73,6 +78,13 @@ export function useChangeOrderDetailStatus() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (vars: { id: number; status: OrderDetailStatus }) => changeOrderDetailStatus(vars.id, vars.status),
+    onSuccess: () => invalidateDetailScope(qc),
+  })
+}
+export function useBatchConfirmOrderDetails() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: OrderDetailBatchConfirmRequest) => batchConfirmOrderDetails(body),
     onSuccess: () => invalidateDetailScope(qc),
   })
 }

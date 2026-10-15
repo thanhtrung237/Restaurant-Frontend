@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { apiGet } from "@/lib/http"
+import { apiGet, http } from "@/lib/http"
 import { qk } from "@/lib/query-keys"
 import type {
   RevenueReportResponse,
@@ -115,4 +115,65 @@ export function useBranchComparison(params?: {
     queryFn: () => getBranchComparison(restaurantId!, from!, to!),
     enabled: !!restaurantId && !!from && !!to,
   })
+}
+
+// ── FR-RPT-05: Export Report (.xlsx / .csv) ─────────────────────────
+
+export interface ExportReportParams {
+  type: "REVENUE" | "HOURLY" | "BRANCH_COMPARISON"
+  format: "xlsx" | "csv"
+  branchIds?: number[]
+  restaurantId?: number
+  from: string
+  to: string
+  groupBy?: "DAY" | "MONTH"
+}
+
+export async function downloadReportFile(params: ExportReportParams): Promise<void> {
+  const response = await http.get("/reports/export", {
+    params: {
+      type: params.type,
+      format: params.format,
+      branchIds: params.branchIds && params.branchIds.length > 0 ? params.branchIds.join(",") : undefined,
+      restaurantId: params.restaurantId,
+      from: params.from,
+      to: params.to,
+      groupBy: params.groupBy ?? "DAY",
+    },
+    responseType: "blob",
+  })
+
+  // Trích xuất tên file từ header Content-Disposition nếu có
+  let filename = ""
+  const disposition = response.headers?.["content-disposition"] ?? response.headers?.["Content-Disposition"]
+  if (disposition && typeof disposition === "string") {
+    const filenameMatch = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+    if (filenameMatch && filenameMatch[1]) {
+      filename = filenameMatch[1].replace(/['"]/g, "").trim()
+    }
+  }
+
+  if (!filename) {
+    const dateStr = params.from.split("T")[0] || new Date().toISOString().split("T")[0]
+    const base = params.type === "HOURLY"
+      ? `bao-cao-khung-gio-${dateStr}`
+      : params.type === "BRANCH_COMPARISON"
+      ? `bao-cao-so-sanh-chi-nhanh-${dateStr}`
+      : `bao-cao-doanh-thu-${dateStr}`
+    filename = `${base}.${params.format}`
+  }
+
+  const mimeType = params.format === "csv"
+    ? "text/csv;charset=utf-8"
+    : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+  const blob = new Blob([response.data], { type: mimeType })
+  const blobUrl = window.URL.createObjectURL(blob)
+  const anchor = document.createElement("a")
+  anchor.href = blobUrl
+  anchor.download = filename
+  document.body.appendChild(anchor)
+  anchor.click()
+  document.body.removeChild(anchor)
+  window.URL.revokeObjectURL(blobUrl)
 }

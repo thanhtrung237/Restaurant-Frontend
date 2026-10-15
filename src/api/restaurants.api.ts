@@ -39,6 +39,13 @@ export function useRestaurant(id?: number) {
 export function useRestaurantsPage(params?: PageParams & { keyword?: string; status?: RestaurantStatus }) {
   return useQuery({ queryKey: qk.restaurants.list(params), queryFn: () => listRestaurants(params) })
 }
+export function useCreateRestaurant() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: RestaurantAddRequest) => createRestaurant(body),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.restaurants.all }),
+  })
+}
 export function useUpdateRestaurant() {
   const qc = useQueryClient()
   return useMutation({
@@ -53,3 +60,11 @@ export function useChangeRestaurantStatus() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.restaurants.all }),
   })
 }
+export function useDeleteRestaurant() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => deleteRestaurant(id),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.restaurants.all }),
+  })
+}
+
