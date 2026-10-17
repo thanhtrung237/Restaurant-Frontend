@@ -10,7 +10,13 @@
  * 2 màn còn lại nối được ngay: danh sách/chi tiết nhà hàng và nhật ký hệ thống.
  */
 export {
-  useChangeRestaurantStatus, useRestaurant, useRestaurantsPage, useUpdateRestaurant,
+  useChangeRestaurantStatus,
+  useCreateRestaurant,
+  useDeleteRestaurant,
+  useRestaurant,
+  useRestaurantsPage,
+  useUpdateRestaurant,
 } from "@/api/restaurants.api"
 export { useBranchesByRestaurant } from "@/api/branches.api"
 export { useAuditLogs } from "@/api/audit-logs.api"
+
