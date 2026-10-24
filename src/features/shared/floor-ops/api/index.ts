@@ -22,8 +22,9 @@
 export { useTablesByBranch, changeTableStatus, useGenerateTableQrCode } from "@/api/tables.api"
 export {
   openSessionLegacy, useCancelReservation, useCancelSession, useCloseSession,
-  useConfirmOpenSession, useCreateTableSession, useOpenSessionsByBranch,
-  useReopenSession, useRequestPayment, useTableSession,
+  useConfirmOpenSession, useCreateTableSession, useReserveTableSession, useOpenSessionsByBranch,
+  useReopenSession, useRequestPayment, useTableSession, useTransferTable, useMergeTable,
+  useBillPreview,
 } from "@/api/table-sessions.api"
 /** Hoá đơn của phiên — dùng để biết đã phát hành chưa (nút Đóng bàn / Hủy phiên). */
 export { useInvoiceBySession } from "@/api/invoices.api"
@@ -33,7 +34,7 @@ export {
 } from "@/api/orders.api"
 export {
   useAddOrderDetail, useCancelAfterKitchen, useCancelBeforeKitchen,
-  useChangeOrderDetailStatus, useConfirmWeight, useMarkServed, useOrderDetailsBySession,
+  useChangeOrderDetailStatus, useBatchConfirmOrderDetails, useConfirmWeight, useMarkServed, useOrderDetailsBySession,
 } from "@/api/order-details.api"
 export { useBranchMenu } from "@/api/branch-menu.api"
 /** Tên chi nhánh cho subtitle màn KDS: "<Tên chi nhánh> · N dòng món đang xử lý". */

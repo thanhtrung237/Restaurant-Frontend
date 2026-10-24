@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useNavigate, generatePath } from "react-router-dom";
-import { Bell, CalendarCheck, Plus } from "lucide-react";
+import { Bell, CalendarCheck, Plus, ArrowRightLeft } from "lucide-react";
 import { Chip } from "@/components/common/Chip";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { NotificationBell } from "@/components/layout/NotificationBell";
@@ -383,6 +383,28 @@ export default function TableMapPage() {
                 {reservedCount}
               </span>
             ) : null}
+          </Button>
+
+          {/* Nút Chuyển / Gộp bàn (FR-SRV-06) */}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              const transferPath =
+                role === APP_ROLE.BRANCH_MANAGER
+                  ? BRANCH_MANAGER_PATHS.TRANSFER_MERGE_TABLE
+                  : role === APP_ROLE.RESTAURANT_ADMIN
+                    ? RESTAURANT_ADMIN_PATHS.TRANSFER_MERGE_TABLE
+                    : role === APP_ROLE.CASHIER
+                      ? CASHIER_PATHS.TRANSFER_MERGE_TABLE
+                      : WAITER_PATHS.TRANSFER_MERGE_TABLE;
+              navigate(transferPath);
+            }}
+            className="h-10 border-border-strong bg-surface-card px-4 text-sm font-semibold text-text-primary hover:bg-surface-muted hover:text-text-primary gap-2 shadow-2xs"
+          >
+            <ArrowRightLeft className="size-4 text-text-secondary" />
+            <span className="hidden lg:inline">Chuyển / Gộp bàn</span>
+            <span className="sr-only lg:hidden">Chuyển / Gộp bàn</span>
           </Button>
 
           {isBranchInactive ? null : (
