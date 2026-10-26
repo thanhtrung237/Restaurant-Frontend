@@ -4,10 +4,12 @@ import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useAuthStore } from "@/stores/auth.store";
 import { cn } from "@/lib/utils";
-import { Scale, X, RefreshCw } from "lucide-react";
+import { Scale, X, RefreshCw, Utensils, CheckSquare, Printer } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   useBranch,
   useChangeOrderDetailStatus,
+  useBatchConfirmOrderDetails,
   useConfirmWeight,
   useMarkServed,
   useOpenSessionsByBranch,
@@ -34,6 +36,158 @@ function formatTimeAgo(minutesAgo: number): string {
   if (minutesAgo < 1) return "vừa gửi";
   if (minutesAgo < 60) return `${minutesAgo} phút`;
   return `${Math.floor(minutesAgo / 60)}h ${minutesAgo % 60}m`;
+}
+
+/**
+ * In phiếu bếp trực tiếp thông qua cửa sổ in trình duyệt (hỗ trợ máy in nhiệt 80mm/58mm)
+ */
+function printKitchenSlip(params: {
+  branchName?: string;
+  tableName: string;
+  items: KDSTicketItem[];
+}) {
+  const { branchName = "Phở Việt", tableName, items } = params;
+  if (!items.length) return;
+
+  const now = new Date();
+  const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(
+    now.getMinutes()
+  ).padStart(2, "0")} ${String(now.getDate()).padStart(2, "0")}/${String(
+    now.getMonth() + 1
+  ).padStart(2, "0")}/${now.getFullYear()}`;
+
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.right = "0";
+  iframe.style.bottom = "0";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  iframe.style.border = "0";
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentWindow?.document;
+  if (!doc) return;
+
+  const itemsHtml = items
+    .map((item) => {
+      const optionsHtml =
+        item.options && item.options.length > 0
+          ? `<div style="font-size: 11px; color: #555; padding-left: 8px;">+ ${item.options
+              .map((o) => o.optionItemName)
+              .join(", ")}</div>`
+          : "";
+      const noteHtml = item.note
+        ? `<div style="font-size: 11px; font-style: italic; color: #d00; padding-left: 8px;">* Ghi chú: ${item.note}</div>`
+        : "";
+      const weightHtml =
+        item.weightKg != null ? ` (${item.weightKg} kg)` : "";
+
+      return `
+        <tr style="border-bottom: 1px dashed #ccc;">
+          <td style="padding: 6px 0; font-size: 14px; font-weight: bold; vertical-align: top;">
+            ${item.dishName}${weightHtml}
+            ${optionsHtml}
+            ${noteHtml}
+          </td>
+          <td style="padding: 6px 0; text-align: right; font-size: 15px; font-weight: bold; vertical-align: top; width: 40px;">
+            x${item.quantity}
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  doc.open();
+  doc.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Phiếu Bếp - ${tableName}</title>
+        <style>
+          @page {
+            size: 80mm auto;
+            margin: 3mm;
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            color: #000;
+            margin: 0;
+            padding: 8px;
+            font-size: 12px;
+          }
+          .header {
+            text-align: center;
+            border-bottom: 2px dashed #000;
+            padding-bottom: 6px;
+            margin-bottom: 8px;
+          }
+          .title {
+            font-size: 18px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            margin: 2px 0;
+          }
+          .meta {
+            font-size: 13px;
+            margin: 3px 0;
+          }
+          .table-name {
+            font-size: 20px;
+            font-weight: 900;
+            margin: 4px 0;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+          .footer {
+            text-align: center;
+            border-top: 2px dashed #000;
+            padding-top: 6px;
+            margin-top: 10px;
+            font-size: 11px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div style="font-size: 12px; font-weight: 600; text-transform: uppercase;">${branchName}</div>
+          <div class="title">*** PHIẾU BẾP ***</div>
+          <div class="table-name">BÀN: ${tableName}</div>
+          <div class="meta">Giờ in: ${timeStr}</div>
+        </div>
+        <table>
+          <thead>
+            <tr style="border-bottom: 1px solid #000; font-size: 12px;">
+              <th style="text-align: left; padding-bottom: 4px;">TÊN MÓN</th>
+              <th style="text-align: right; padding-bottom: 4px;">SL</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+          </tbody>
+        </table>
+        <div class="footer">
+          Tổng số món: <strong>${items.length} món</strong><br/>
+          <em>--- Chúc quý khách ngon miệng ---</em>
+        </div>
+      </body>
+    </html>
+  `);
+  doc.close();
+
+  setTimeout(() => {
+    try {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    } catch (e) {
+      console.error("Print kitchen slip failed:", e);
+    } finally {
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 2000);
+    }
+  }, 300);
 }
 
 type KDSColumn = "AWAITING_CONFIRM" | "COOKING";
@@ -79,6 +233,15 @@ export default function KitchenDisplayPage() {
   const [weightUnit, setWeightUnit] = React.useState<WeightUnit>("kg");
   const [filter, setFilter] = React.useState<KDSFilter>("ALL");
 
+  // Modal xác nhận nhiều món cùng bàn
+  const [batchModalState, setBatchModalState] = React.useState<{
+    isOpen: boolean;
+    tableName: string;
+    tableSessionId: number;
+    items: KDSTicketItem[];
+    selectedIds: Set<number>;
+  } | null>(null);
+
   // Fetch all open sessions (làm mới mỗi 1 giây)
   const { data: sessions = [], isLoading: sessionsLoading } = useOpenSessionsByBranch(
     branchId ?? undefined,
@@ -92,8 +255,9 @@ export default function KitchenDisplayPage() {
   >([]);
 
   // Mutations
-  // PENDING → PREPARING vẫn dùng PUT /status: backend KHÔNG có endpoint riêng cho bước này.
+  // PENDING → PREPARING vẫn dùng PUT /status hoặc batchConfirm:
   const changeStatusMutation = useChangeOrderDetailStatus();
+  const batchConfirmMutation = useBatchConfirmOrderDetails();
   // PREPARING → SERVED dùng POST /mark-served thay cho PUT /status, vì endpoint này:
   //  - validate đúng chuyển trạng thái (chỉ nhận PREPARING, sai thì trả 409),
   //  - đẩy WebSocket `notifyItemStatusChanged` để khách và Phục vụ thấy ngay (T-01).
@@ -268,25 +432,52 @@ export default function KitchenDisplayPage() {
           setWeighModalTicket(ticket);
           setWeightUnit("kg");
           setWeightInput("1.2");
-        } else {
-          // Chuyển từ PENDING → PREPARING
-          // Cập nhật giao diện ngay lập tức
-          setAllOrderDetails((prev) =>
-            prev.map((item) =>
-              item.detail.id === ticket.orderDetailId
-                ? { ...item, detail: { ...item.detail, status: "PREPARING" } }
-                : item
-            )
-          );
-          await changeStatusMutation.mutateAsync({
-            id: ticket.orderDetailId,
-            status: "PREPARING",
-          });
-          toast({
-            title: "Đã xác nhận món",
-            description: `${ticket.dishName} (${ticket.tableName}) đã chuyển sang Đang chế biến.`,
-          });
+          return;
         }
+
+        // Kiểm tra xem bàn này còn những món nào đang ở trạng thái CHỜ XÁC NHẬN (PENDING)
+        // Lấy tất cả món chờ xác nhận cùng tableSessionId (loại trừ các món cần cân riêng)
+        const tablePendingItems = tickets.filter(
+          (t) =>
+            t.tableSessionId === ticket.tableSessionId &&
+            t.column === "AWAITING_CONFIRM" &&
+            !t.requiresWeighing
+        );
+
+        // Nếu bàn có nhiều hơn 1 món đang chờ xác nhận -> mở modal chọn các món cần xác nhận
+        // Riêng món vừa bấm thì tích sẵn
+        if (tablePendingItems.length > 1) {
+          setBatchModalState({
+            isOpen: true,
+            tableName: ticket.tableName,
+            tableSessionId: ticket.tableSessionId,
+            items: tablePendingItems,
+            selectedIds: new Set([ticket.orderDetailId]),
+          });
+          return;
+        }
+
+        // Nếu bàn chỉ có đúng 1 món chờ xác nhận -> xác nhận ngay lập tức
+        setAllOrderDetails((prev) =>
+          prev.map((item) =>
+            item.detail.id === ticket.orderDetailId
+              ? { ...item, detail: { ...item.detail, status: "PREPARING" } }
+              : item
+          )
+        );
+        await changeStatusMutation.mutateAsync({
+          id: ticket.orderDetailId,
+          status: "PREPARING",
+        });
+        printKitchenSlip({
+          branchName: branch?.name,
+          tableName: ticket.tableName,
+          items: [ticket],
+        });
+        toast({
+          title: "Đã xác nhận & In phiếu",
+          description: `${ticket.dishName} (${ticket.tableName}) đã chuyển sang Đang chế biến.`,
+        });
       } else if (ticket.column === "COOKING") {
         // Chuyển từ PREPARING → SERVED
         // Cập nhật giao diện ngay lập tức
@@ -316,6 +507,92 @@ export default function KitchenDisplayPage() {
         description: isConflict
           ? `${ticket.dishName} (${ticket.tableName}) vừa được cập nhật ở nơi khác. Danh sách đang được làm mới.`
           : getErrorMessage(error),
+        variant: "danger",
+      });
+    }
+  }
+
+  // Toggle chọn/bỏ chọn món trong modal xác nhận theo bàn
+  function handleToggleBatchItem(id: number) {
+    if (!batchModalState) return;
+    setBatchModalState((prev) => {
+      if (!prev) return null;
+      const next = new Set(prev.selectedIds);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return { ...prev, selectedIds: next };
+    });
+  }
+
+  // Chọn tất cả hoặc bỏ chọn tất cả món trong modal
+  function handleToggleSelectAllBatch() {
+    if (!batchModalState) return;
+    const allSelected = batchModalState.selectedIds.size === batchModalState.items.length;
+    setBatchModalState((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        selectedIds: allSelected ? new Set() : new Set(prev.items.map((i) => i.orderDetailId)),
+      };
+    });
+  }
+
+  // Thực hiện xác nhận hàng loạt các món đã chọn trong modal
+  async function handleBatchConfirmSubmit() {
+    if (!batchModalState || batchModalState.selectedIds.size === 0) {
+      toast({
+        title: "Chưa chọn món",
+        description: "Vui lòng chọn ít nhất một món để xác nhận.",
+        variant: "danger",
+      });
+      return;
+    }
+
+    const selectedList = Array.from(batchModalState.selectedIds);
+    const tableName = batchModalState.tableName;
+    const selectedCount = selectedList.length;
+
+    try {
+      // Optimistic update cho các món đã chọn
+      setAllOrderDetails((prev) =>
+        prev.map((item) =>
+          batchModalState.selectedIds.has(item.detail.id)
+            ? { ...item, detail: { ...item.detail, status: "PREPARING" } }
+            : item
+        )
+      );
+
+      // Gọi API batch confirm ở backend
+      await batchConfirmMutation.mutateAsync({
+        orderDetailIds: selectedList,
+      });
+
+      // Lấy danh sách các món thực tế được chọn để in phiếu bếp
+      const selectedItemsToPrint = batchModalState.items.filter((item) =>
+        batchModalState.selectedIds.has(item.orderDetailId)
+      );
+
+      // In phiếu bếp qua trình duyệt (hỗ trợ máy in nhiệt 80mm/58mm)
+      printKitchenSlip({
+        branchName: branch?.name,
+        tableName: tableName,
+        items: selectedItemsToPrint,
+      });
+
+      toast({
+        title: "Đã xác nhận & In phiếu bếp",
+        description: `Đã xác nhận và in phiếu cho ${selectedCount} món của ${tableName}.`,
+        variant: "success",
+      });
+
+      setBatchModalState(null);
+    } catch (error) {
+      toast({
+        title: "Lỗi xác nhận món",
+        description: getErrorMessage(error),
         variant: "danger",
       });
     }
@@ -794,6 +1071,147 @@ export default function KitchenDisplayPage() {
                 className="h-11 flex-1 rounded-xl bg-[#F0522B] text-sm font-bold text-white hover:bg-[#E0441D] cursor-pointer"
               >
                 Xác nhận & Gửi bếp
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal xác nhận nhiều món cùng bàn */}
+      {batchModalState && batchModalState.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl flex flex-col max-h-[85vh]">
+            {/* Header */}
+            <div className="flex items-start justify-between pb-4 border-b border-[#EAECF0]">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EFF8FF] text-[#175CD3]">
+                  <Utensils className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#101828]">
+                    Xác nhận món theo bàn — {batchModalState.tableName}
+                  </h3>
+                  <p className="text-xs text-[#667085] mt-0.5">
+                    Bàn này có {batchModalState.items.length} món đang chờ. Bạn có thể xác nhận nhiều món cùng lúc:
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBatchModalState(null)}
+                className="rounded-lg p-1 text-[#98A2B3] hover:bg-gray-100 cursor-pointer transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Sub-header: Chọn tất cả */}
+            <div className="flex items-center justify-between py-3 px-1 border-b border-[#F2F4F7]">
+              <label
+                className="flex items-center gap-2 text-xs font-semibold text-[#344054] cursor-pointer select-none"
+                onClick={handleToggleSelectAllBatch}
+              >
+                <Checkbox
+                  checked={
+                    batchModalState.selectedIds.size === batchModalState.items.length
+                      ? true
+                      : batchModalState.selectedIds.size > 0
+                        ? "indeterminate"
+                        : false
+                  }
+                  onCheckedChange={handleToggleSelectAllBatch}
+                />
+                <span>Chọn tất cả ({batchModalState.items.length} món)</span>
+              </label>
+              <span className="text-xs text-[#475467] font-medium">
+                Đã chọn: <strong className="text-[#175CD3]">{batchModalState.selectedIds.size}</strong> món
+              </span>
+            </div>
+
+            {/* List items */}
+            <div className="flex-1 overflow-y-auto divide-y divide-[#F2F4F7] my-2 pr-1">
+              {batchModalState.items.map((item) => {
+                const isChecked = batchModalState.selectedIds.has(item.orderDetailId);
+                return (
+                  <div
+                    key={item.orderDetailId}
+                    onClick={() => handleToggleBatchItem(item.orderDetailId)}
+                    className={cn(
+                      "flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-colors border my-1",
+                      isChecked
+                        ? "border-[#B2DDFF] bg-[#F5FAFF]"
+                        : "border-transparent bg-white hover:bg-gray-50"
+                    )}
+                  >
+                    <Checkbox
+                      checked={isChecked}
+                      onCheckedChange={() => handleToggleBatchItem(item.orderDetailId)}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold text-sm text-[#101828] truncate">
+                          {item.dishName}
+                        </span>
+                        <span className="shrink-0 text-xs font-bold px-2 py-0.5 rounded-full bg-[#E0F2FE] text-[#026AA2]">
+                          x{item.quantity}
+                        </span>
+                      </div>
+
+                      {/* Options nếu có */}
+                      {item.options && item.options.length > 0 && (
+                        <div className="text-xs text-[#667085] mt-1 flex flex-wrap gap-1">
+                          {item.options.map((opt) => (
+                            <span
+                              key={opt.id}
+                              className="inline-block bg-[#F2F4F7] px-1.5 py-0.5 rounded text-[11px]"
+                            >
+                              +{opt.optionItemName}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Note nếu có */}
+                      {item.note && (
+                        <p className="text-xs text-[#D92D20] mt-1 italic font-medium">
+                          Ghi chú: {item.note}
+                        </p>
+                      )}
+
+                      <div className="text-[11px] text-[#98A2B3] mt-1">
+                        Thời gian gọi: {item.timeAgo}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer actions */}
+            <div className="flex gap-3 pt-3 border-t border-[#EAECF0]">
+              <button
+                type="button"
+                onClick={() => setBatchModalState(null)}
+                className="h-11 flex-1 rounded-xl border border-[#D0D5DD] bg-white text-sm font-bold text-[#344054] hover:bg-gray-50 cursor-pointer transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleBatchConfirmSubmit}
+                disabled={batchModalState.selectedIds.size === 0 || batchConfirmMutation.isPending}
+                className={cn(
+                  "h-11 flex-1 rounded-xl text-sm font-bold text-white transition-colors cursor-pointer flex items-center justify-center gap-2",
+                  batchModalState.selectedIds.size === 0 || batchConfirmMutation.isPending
+                    ? "bg-[#D0D5DD] cursor-not-allowed"
+                    : "bg-[#2E90FA] hover:bg-[#1570EF]"
+                )}
+              >
+                <Printer className="h-4 w-4" />
+                {batchConfirmMutation.isPending
+                  ? "Đang xử lý..."
+                  : `Xác nhận & In ${batchModalState.selectedIds.size} món`}
               </button>
             </div>
           </div>

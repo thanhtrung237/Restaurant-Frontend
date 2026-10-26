@@ -509,7 +509,19 @@ export default function OrderDetailPage() {
         key: "transfer",
         label: "Chuyển / Gộp bàn",
         icon: ArrowRightLeft,
-        onSelect: () => setIsTransferModalOpen(true),
+        onSelect: () => {
+          const transferPath =
+            role === APP_ROLE.BRANCH_MANAGER
+              ? BRANCH_MANAGER_PATHS.TRANSFER_MERGE_TABLE
+              : role === APP_ROLE.RESTAURANT_ADMIN
+                ? RESTAURANT_ADMIN_PATHS.TRANSFER_MERGE_TABLE
+                : role === APP_ROLE.CASHIER
+                  ? CASHIER_PATHS.TRANSFER_MERGE_TABLE
+                  : WAITER_PATHS.TRANSFER_MERGE_TABLE;
+          navigate(transferPath, {
+            state: { sourceTableId: session?.tableId, sourceSessionId: tableSessionId },
+          });
+        },
       },
     ];
     if (canCloseTable && tableActionMode !== "none") {
@@ -569,7 +581,19 @@ export default function OrderDetailPage() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setIsTransferModalOpen(true)}
+              onClick={() => {
+                const transferPath =
+                  role === APP_ROLE.BRANCH_MANAGER
+                    ? BRANCH_MANAGER_PATHS.TRANSFER_MERGE_TABLE
+                    : role === APP_ROLE.RESTAURANT_ADMIN
+                      ? RESTAURANT_ADMIN_PATHS.TRANSFER_MERGE_TABLE
+                      : role === APP_ROLE.CASHIER
+                        ? CASHIER_PATHS.TRANSFER_MERGE_TABLE
+                        : WAITER_PATHS.TRANSFER_MERGE_TABLE;
+                navigate(transferPath, {
+                  state: { sourceTableId: session?.tableId, sourceSessionId: tableSessionId },
+                });
+              }}
               className="h-10 border-border-default px-4 text-text-secondary hover:bg-surface-muted hover:text-text-primary"
             >
               Chuyển / Gộp bàn
