@@ -1,5 +1,5 @@
 import * as React from "react"
-import { ChevronDown, Check } from "lucide-react"
+import { ChevronDown, Check, Download, FileSpreadsheet, FileText, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -24,7 +24,8 @@ interface ReportHeaderProps {
   onSelectTime: (timeLabel: string) => void
   selectedMetric?: string
   onSelectMetric?: (metric: string) => void
-  onExport: () => void
+  onExport: (format: "xlsx" | "csv") => void
+  isExporting?: boolean
   hourlyStartHour?: number
   hourlyEndHour?: number
   onHourlyStartHourChange?: (hour: number) => void
@@ -42,6 +43,7 @@ export function ReportHeaderActions({
   selectedMetric = "Theo doanh thu",
   onSelectMetric,
   onExport,
+  isExporting = false,
   hourlyStartHour = 0,
   hourlyEndHour = 23,
   onHourlyStartHourChange,
@@ -192,15 +194,50 @@ export function ReportHeaderActions({
           />
         )}
 
-        {/* Export Button (Chỉ hiện ở Tab Theo ngày và Theo khung giờ) */}
-        {!isBranchCompareTab && (
-          <Button
-            onClick={onExport}
-            className="rounded-xl bg-brand-primary px-5 py-2 text-sm font-semibold text-text-on-brand shadow-2xs hover:bg-brand-primary-hover active:scale-[0.99] transition-all"
-          >
-            Xuất báo cáo
-          </Button>
-        )}
+        {/* Export Button & Dropdown (FR-RPT-05: Xuất .xlsx / .csv) */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              disabled={isExporting}
+              className="rounded-xl bg-brand-primary px-4 py-2 text-sm font-semibold text-text-on-brand shadow-2xs hover:bg-brand-primary-hover active:scale-[0.99] transition-all flex items-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  <span>Đang xuất...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="size-4" />
+                  <span>Xuất báo cáo</span>
+                  <ChevronDown className="size-3.5 opacity-80" />
+                </>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuItem
+              onClick={() => onExport("xlsx")}
+              className="cursor-pointer flex items-center gap-2.5 py-2 text-text-primary hover:bg-surface-muted"
+            >
+              <FileSpreadsheet className="size-4 text-emerald-600" />
+              <div className="flex flex-col">
+                <span className="font-medium text-sm">Xuất Excel (.xlsx)</span>
+                <span className="text-[11px] text-text-tertiary">Đầy đủ định dạng & bảng tính</span>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onExport("csv")}
+              className="cursor-pointer flex items-center gap-2.5 py-2 text-text-primary hover:bg-surface-muted"
+            >
+              <FileText className="size-4 text-blue-600" />
+              <div className="flex flex-col">
+                <span className="font-medium text-sm">Xuất CSV (.csv)</span>
+                <span className="text-[11px] text-text-tertiary">Mã hóa UTF-8 có dấu</span>
+              </div>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </>
   )

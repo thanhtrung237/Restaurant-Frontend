@@ -172,6 +172,7 @@ export function RevenueBarChart({
                 fill="#FDD7C7"
                 radius={[8, 8, 8, 8]}
                 maxBarSize={36}
+                minPointSize={6}
                 cursor="pointer"
                 activeBar={<CustomActiveBar />}
               />

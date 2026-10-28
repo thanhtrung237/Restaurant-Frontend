@@ -10,6 +10,8 @@ import { TimeRangeDropdown } from "./components/TimeRangeDropdown"
 import { HourlyTimePicker } from "./components/HourlyTimePicker"
 import { useAuthStore } from "@/stores/auth.store"
 import { useBranchesByRestaurant } from "@/api/branches.api"
+import { downloadReportFile } from "@/api/reports.api"
+import { getErrorMessage } from "@/lib/http"
 import { APP_ROLE } from "@/config/roles"
 
 const TAB_HEADER_META: Record<
@@ -72,11 +74,49 @@ export function ReportDashboard({ showBranchCompare = true }: ReportDashboardPro
     }
   }, [branchesData, selectedBranchIds.length, isBranchManager, branchId])
 
-  const handleExport = () => {
-    toast({
-      title: "Xuất báo cáo",
-      description: `Đang tải xuống dữ liệu báo cáo [${TAB_HEADER_META[currentTab]?.title || "Doanh thu"}]...`,
-    })
+  const [isExporting, setIsExporting] = React.useState<boolean>(false)
+
+  const handleExport = async (format: "xlsx" | "csv" = "xlsx") => {
+    try {
+      setIsExporting(true)
+      const tabTitle = TAB_HEADER_META[currentTab]?.title || "Báo cáo"
+      toast({
+        title: "Đang xuất báo cáo",
+        description: `Hệ thống đang chuẩn bị dữ liệu [${tabTitle}] và tạo file ${format.toUpperCase()}...`,
+      })
+
+      const type = currentTab === "hourly"
+        ? "HOURLY"
+        : currentTab === "branch"
+        ? "BRANCH_COMPARISON"
+        : "REVENUE"
+
+      const from = currentTab === "hourly" ? hourlyDateTimeRange.from : selectedDateFrom
+      const to = currentTab === "hourly" ? hourlyDateTimeRange.to : selectedDateTo
+
+      await downloadReportFile({
+        type,
+        format,
+        branchIds: selectedBranchIds,
+        restaurantId,
+        from,
+        to,
+        groupBy: "DAY",
+      })
+
+      toast({
+        title: "Xuất báo cáo thành công",
+        description: `Đã tải xuống file báo cáo [${tabTitle}] (.${format}).`,
+      })
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Xuất báo cáo thất bại",
+        description: getErrorMessage(error) || "Không thể xuất file báo cáo, vui lòng thử lại.",
+      })
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   const headerMeta = TAB_HEADER_META[currentTab] || TAB_HEADER_META.daily
@@ -170,7 +210,7 @@ export function ReportDashboard({ showBranchCompare = true }: ReportDashboardPro
     <div className="flex min-h-screen flex-col bg-surface-page">
       <PageHeader
         title={headerMeta.title}
-        subtitle={headerMeta.subtitle}
+        subtitle={currentTab === "daily" ? `Ngày ${selectedDate}` : headerMeta.subtitle}
         mobileSubtitle=""
         mobileHeaderActions={headerActions}
         actions={
@@ -185,6 +225,7 @@ export function ReportDashboard({ showBranchCompare = true }: ReportDashboardPro
             selectedMetric={selectedMetric}
             onSelectMetric={setSelectedMetric}
             onExport={handleExport}
+            isExporting={isExporting}
             hourlyStartHour={hourlyStartHour}
             hourlyEndHour={hourlyEndHour}
             onHourlyStartHourChange={setHourlyStartHour}

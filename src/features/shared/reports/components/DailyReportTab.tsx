@@ -3,7 +3,7 @@ import { RevenueBarChart } from "./RevenueBarChart"
 import { TopDishesCard } from "./TopDishesCard"
 import { useRevenueReport, useTopDishes } from "@/api/reports.api"
 import { computeGrowthTrend, formatCurrency, formatNumber } from "@/lib/format"
-import { format as formatDate } from "date-fns"
+import { format as formatDate, subDays } from "date-fns"
 import type { DailyRevenueItem, TopSellingDishItem } from "../types"
 
 interface DailyReportTabProps {
@@ -30,14 +30,19 @@ export function DailyReportTab({
   const previousFrom = formatDate(previousFromDate, "yyyy-MM-dd'T'HH:mm:ss")
   const previousTo = formatDate(previousToDate, "yyyy-MM-dd'T'HH:mm:ss")
 
-  // Fetch current period data
+  // Compute 7-day range ending at toDate for "Doanh thu 7 ngày qua" chart
+  const sevenDaysStartDate = subDays(toDate, 6)
+  const sevenDaysFrom = formatDate(sevenDaysStartDate, "yyyy-MM-dd'T'00:00:00")
+  const sevenDaysTo = formatDate(toDate, "yyyy-MM-dd'T'23:59:59")
+
+  // Fetch current period data (for stat cards & today metrics)
   const {
     data: currentData,
     isLoading: isLoadingCurrent,
     error: errorCurrent,
   } = useRevenueReport({ branchIds, from, to, groupBy })
 
-  // Fetch previous period data
+  // Fetch previous period data (for comparison trends)
   const {
     data: previousData,
     isLoading: isLoadingPrevious,
@@ -49,6 +54,17 @@ export function DailyReportTab({
     groupBy,
   })
 
+  // Fetch 7-day data specifically for the 7-day revenue chart
+  const {
+    data: sevenDaysData,
+    isLoading: isLoadingSevenDays,
+  } = useRevenueReport({
+    branchIds,
+    from: sevenDaysFrom,
+    to: sevenDaysTo,
+    groupBy: "DAY",
+  })
+
   // Fetch top dishes
   const {
     data: topDishesData,
@@ -56,7 +72,7 @@ export function DailyReportTab({
     error: errorTopDishes,
   } = useTopDishes({ branchIds, from, to, topN: 4 })
 
-  const isLoading = isLoadingCurrent || isLoadingPrevious || isLoadingTopDishes
+  const isLoading = isLoadingCurrent || isLoadingPrevious || isLoadingTopDishes || isLoadingSevenDays
   const error = errorCurrent || errorPrevious || errorTopDishes
 
   // Show loading skeleton
@@ -118,30 +134,41 @@ export function DailyReportTab({
     previousData.totalGuests
   )
 
-  // Map trend data to DailyRevenueItem[] for bar chart
-  const dailyRevenueData: DailyRevenueItem[] = currentData.trend.map((point) => {
-    const pointDate = new Date(point.label)
-    const dayOfWeek = pointDate.getDay()
-    
-    // Convert to Vietnamese day abbreviation
-    const dayAbbreviations = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"]
-    const fullDayNames = [
-      "Chủ nhật",
-      "Thứ 2",
-      "Thứ 3",
-      "Thứ 4",
-      "Thứ 5",
-      "Thứ 6",
-      "Thứ 7",
-    ]
-    
-    return {
+  // Convert to Vietnamese day abbreviation
+  const dayAbbreviations = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"]
+  const fullDayNames = [
+    "Chủ nhật",
+    "Thứ 2",
+    "Thứ 3",
+    "Thứ 4",
+    "Thứ 5",
+    "Thứ 6",
+    "Thứ 7",
+  ]
+
+  // Map 7-day trend data from backend by date string (YYYY-MM-DD)
+  const trendMap = new Map<string, number>()
+  if (sevenDaysData?.trend) {
+    for (const point of sevenDaysData.trend) {
+      const dateKey = point.label.split("T")[0].trim()
+      trendMap.set(dateKey, parseFloat(point.revenue) || 0)
+    }
+  }
+
+  // Generate all 7 consecutive days ending at toDate (T-6 to T)
+  const dailyRevenueData: DailyRevenueItem[] = []
+  for (let i = 6; i >= 0; i--) {
+    const d = subDays(toDate, i)
+    const dateKey = formatDate(d, "yyyy-MM-dd")
+    const dayOfWeek = d.getDay()
+
+    dailyRevenueData.push({
       day: dayAbbreviations[dayOfWeek],
       fullDay: fullDayNames[dayOfWeek],
-      date: point.label,
-      revenue: parseFloat(point.revenue),
-    }
-  })
+      date: dateKey,
+      revenue: trendMap.get(dateKey) ?? 0,
+    })
+  }
 
   // Map top dishes data to TopSellingDishItem[]
   const topDishesItems: TopSellingDishItem[] =

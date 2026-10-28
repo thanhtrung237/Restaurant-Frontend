@@ -116,7 +116,7 @@ function CustomXAxisTick(props: any) {
 
 export function HourlyRevenueBarChart({
   data,
-  title = "Doanh thu theo giờ (hôm nay)",
+  title = "Doanh thu theo giờ",
 }: HourlyRevenueBarChartProps) {
   const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null)
 
