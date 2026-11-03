@@ -68,6 +68,10 @@ export default function LoginPage() {
   })
   const [error, setError] = React.useState<string | null>(null)
   const [isResolving, setIsResolving] = React.useState(false)
+  const [showRestaurantField, setShowRestaurantField] = React.useState(() => {
+    // Chỉ ẩn field nếu đã có restaurant code được lưu
+    return !localStorage.getItem("saved_restaurant_code")
+  })
 
   // Bước 2 (chỉ xuất hiện khi tài khoản có >1 Assignment hợp lệ)
   const [pendingAccount, setPendingAccount] = React.useState<Account | null>(null)
@@ -98,6 +102,15 @@ export default function LoginPage() {
     // xem resolvePostLoginTarget. Dùng chung cho cả luồng 1 phân công và luồng chọn
     // phân công, vì cả hai đều đi qua finalizeSession.
     navigate(resolvePostLoginTarget(choice.role, redirectTarget), { replace: true })
+  }
+
+  function handleChangeRestaurant() {
+    setShowRestaurantField(true)
+    setRestaurantCode("")
+    // Focus vào field restaurant code sau khi hiện
+    setTimeout(() => {
+      document.getElementById("restaurantCode")?.focus()
+    }, 0)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -278,24 +291,49 @@ export default function LoginPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 {error ? <ErrorBanner message={error} /> : null}
 
-                {/* Mã nhà hàng */}
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="restaurantCode"
-                    className="text-sm font-semibold text-[#212529]"
-                  >
-                    Mã nhà hàng
-                  </label>
-                  <Input
-                    id="restaurantCode"
-                    placeholder="VD: PHOVIET"
-                    autoComplete="organization"
-                    value={restaurantCode}
-                    onChange={(e) => setRestaurantCode(e.target.value)}
-                    disabled={isSubmitting}
-                    className="h-11 rounded-xl border-neutral-200 bg-white px-3.5 text-sm transition-colors focus:border-[#F0522B] focus:ring-1 focus:ring-[#F0522B]"
-                  />
-                </div>
+                {/* Mã nhà hàng - Ẩn nếu đã lưu */}
+                {showRestaurantField ? (
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="restaurantCode"
+                      className="text-sm font-semibold text-[#212529]"
+                    >
+                      Mã nhà hàng
+                    </label>
+                    <Input
+                      id="restaurantCode"
+                      placeholder="VD: NH001"
+                      autoComplete="organization"
+                      value={restaurantCode}
+                      onChange={(e) => {
+                        setRestaurantCode(e.target.value)
+                        setError(null)
+                      }}
+                      disabled={isSubmitting}
+                      className="h-11 rounded-xl border-neutral-200 bg-white px-3.5 text-sm transition-colors focus:border-[#F0522B] focus:ring-1 focus:ring-[#F0522B]"
+                    />
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3.5">
+                    <div className="flex items-center justify-between">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-neutral-500 mb-0.5">
+                          Đăng nhập vào
+                        </p>
+                        <p className="text-sm font-semibold text-[#212529] truncate">
+                          Mã nhà hàng: {restaurantCode}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleChangeRestaurant}
+                        className="ml-3 shrink-0 text-xs font-medium text-[#F0522B] hover:underline"
+                      >
+                        Đổi
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Email hoặc số điện thoại */}
                 <div className="space-y-1.5">
@@ -303,14 +341,17 @@ export default function LoginPage() {
                     htmlFor="username"
                     className="text-sm font-semibold text-[#212529]"
                   >
-                    Email hoặc số điện thoại
+                    Tên đăng nhập
                   </label>
                   <Input
                     id="username"
-                    placeholder="user@phoviet.vn hoặc tên đăng nhập"
+                    placeholder="Nhập tên đăng nhập"
                     autoComplete="username"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    onChange={(e) => {
+                      setUsername(e.target.value)
+                      setError(null)
+                    }}
                     disabled={isSubmitting}
                     className="h-11 rounded-xl border-neutral-200 bg-white px-3.5 text-sm transition-colors focus:border-[#F0522B] focus:ring-1 focus:ring-[#F0522B]"
                   />
@@ -328,17 +369,26 @@ export default function LoginPage() {
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
+                      placeholder="Nhập mật khẩu"
                       autoComplete="current-password"
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => {
+                        setPassword(e.target.value)
+                        setError(null)
+                      }}
                       disabled={isSubmitting}
                       className="h-11 rounded-xl border-neutral-200 bg-white px-3.5 pr-10 text-sm transition-colors focus:border-[#F0522B] focus:ring-1 focus:ring-[#F0522B]"
+                      onKeyDown={(e) => {
+                        // Enter để submit
+                        if (e.key === "Enter" && !isSubmitting) {
+                          handleSubmit(e as any)
+                        }
+                      }}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword((v) => !v)}
-                      className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-neutral-400 hover:text-neutral-700"
+                      className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-neutral-400 hover:text-neutral-700 transition-colors"
                       tabIndex={-1}
                       title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                     >
@@ -349,14 +399,14 @@ export default function LoginPage() {
 
                 {/* Hàng tiện ích: Ghi nhớ đăng nhập & Quên mật khẩu */}
                 <div className="flex items-center justify-between pt-1">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <label className="flex items-center gap-2 cursor-pointer select-none group">
                     <Checkbox
                       id="rememberMe"
                       checked={rememberMe}
                       onCheckedChange={(checked) => setRememberMe(Boolean(checked))}
                       className="size-4 rounded-md data-[state=checked]:bg-[#F0522B] data-[state=checked]:border-[#F0522B]"
                     />
-                    <span className="text-sm text-neutral-600 font-normal">
+                    <span className="text-sm text-neutral-600 font-normal group-hover:text-neutral-900 transition-colors">
                       Ghi nhớ đăng nhập
                     </span>
                   </label>
@@ -364,7 +414,8 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => navigate(AUTH_PATHS.FORGOT_PASSWORD)}
-                    className="text-sm font-medium text-[#F0522B] hover:underline"
+                    className="text-sm font-medium text-[#F0522B] hover:underline transition-all"
+                    tabIndex={-1}
                   >
                     Quên mật khẩu?
                   </button>
