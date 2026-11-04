@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useNavigate, useParams, generatePath } from "react-router-dom"
-import { Search, Bell, ClipboardList, Lock } from "lucide-react"
+import { Search, Bell, ClipboardList, Lock, Gift, X, Clock, Tag, TrendingUp } from "lucide-react"
 import { MenuItemCard } from "@/components/common/MenuItemCard"
 import { useToast } from "@/hooks/use-toast"
 import { CUSTOMER_PATHS } from "@/app/router/paths"
@@ -19,7 +19,7 @@ import {
 import { useActivePromotionsByBranch } from "@/api/promotions.api"
 import { findBestPromotionForItem, formatPromotionBadge } from "@/lib/promotion-display"
 import { calculatePromoDiscount } from "@/features/cashier/components/PromotionSelectModal"
-import type { BranchMenuItem } from "@/types/models"
+import type { BranchMenuItem, Promotion } from "@/types/models"
 import { cn } from "@/lib/utils"
 
 /** Tab ảo "Phổ biến" — không tương ứng categoryId thật nào, chỉ gom hiển thị tất cả món. */
@@ -124,6 +124,12 @@ export default function MenuPage() {
   // dùng cùng 1 nguồn dữ liệu — tránh lệch giá giữa menu và lúc gửi order.
   const { data: activePromotions = [] } = useActivePromotionsByBranch(branchId)
 
+  // Debug: Log promotions
+  React.useEffect(() => {
+    console.log("🎁 Active Promotions:", activePromotions)
+    console.log("🎁 Branch ID:", branchId)
+  }, [activePromotions, branchId])
+
   // KM cấp HÓA ĐƠN: hiển thị dải thông báo ở đầu menu thay vì gạch giá từng món
   const invoicePromos = React.useMemo(
     () => activePromotions.filter((p) => p.applyLevel === "INVOICE"),
@@ -138,7 +144,16 @@ export default function MenuPage() {
   )
 
   const [activeCategoryId, setActiveCategoryId] = React.useState<string>(POPULAR_CATEGORY_ID)
-  const [searchText] = React.useState("")
+  const [searchInput, setSearchInput] = React.useState("") // User đang gõ
+  const [searchText, setSearchText] = React.useState("") // Text thật sự dùng để filter
+  const searchInputRef = React.useRef<HTMLInputElement>(null)
+  const [showPromotionsModal, setShowPromotionsModal] = React.useState(false)
+
+  // Handle Enter key or button click to search
+  function handleSearchSubmit(e?: React.FormEvent) {
+    e?.preventDefault()
+    setSearchText(searchInput.trim())
+  }
 
   // Chỉ hiển thị món chưa bị ẩn ở chi nhánh này
   const visibleItems = React.useMemo(
@@ -169,12 +184,7 @@ export default function MenuPage() {
   const dishes = React.useMemo(() => {
     let filtered = visibleItems
 
-    // Filter theo category (nếu không phải "popular")
-    if (activeCategoryId !== POPULAR_CATEGORY_ID) {
-      filtered = filtered.filter((d) => d.categoryId === Number(activeCategoryId))
-    }
-
-    // Filter theo search text
+    // Filter theo search text TRƯỚC
     if (searchText.trim()) {
       const search = searchText.toLowerCase().trim()
       filtered = filtered.filter(
@@ -182,10 +192,30 @@ export default function MenuPage() {
           d.dishName.toLowerCase().includes(search) ||
           d.description?.toLowerCase().includes(search)
       )
+      // Khi đang search, bỏ qua filter category để hiển thị tất cả kết quả
+      return filtered
+    }
+
+    // Filter theo category (nếu không phải "popular" và không đang search)
+    if (activeCategoryId !== POPULAR_CATEGORY_ID) {
+      filtered = filtered.filter((d) => d.categoryId === Number(activeCategoryId))
     }
 
     return filtered
   }, [visibleItems, activeCategoryId, searchText])
+
+  // Clear search khi nhấn ESC
+  React.useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && (searchInput || searchText)) {
+        setSearchInput("")
+        setSearchText("")
+        searchInputRef.current?.blur()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [searchInput, searchText])
 
   const cartItems = useCustomerCartStore((s) => s.items)
   const quickAdd = useCustomerCartStore((s) => s.quickAdd)
@@ -318,6 +348,22 @@ export default function MenuPage() {
               </h1>
             </div>
             <div className="shrink-0 flex items-center gap-2 pt-0.5">
+              {/* Nút Khuyến mãi */}
+              {activePromotions.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowPromotionsModal(true)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[#F79009] bg-[#FEF6EE] px-3 py-1.5 text-xs font-semibold text-[#B54708] shadow-2xs hover:bg-[#FEF0C7] transition-all active:scale-95 cursor-pointer"
+                  title="Xem khuyến mãi"
+                >
+                  <Gift className="size-3.5" />
+                  <span>Khuyến mãi</span>
+                  <span className="flex min-w-4 h-4 px-1 items-center justify-center rounded-full bg-[#F79009] text-[10px] font-bold text-white">
+                    {activePromotions.length}
+                  </span>
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => goToQrPath(CUSTOMER_PATHS.ORDERED_ITEMS)}
@@ -362,39 +408,65 @@ export default function MenuPage() {
             </div>
           ) : null}
 
-          {/* Ô tìm kiếm dạng nút bấm */}
+          {/* Ô tìm kiếm - Debounced search với nút submit */}
           <div className="px-4 pb-3">
-            <button
-              type="button"
-              onClick={() => goToQrPath(CUSTOMER_PATHS.SEARCH_DISH)}
-              className="flex h-11 w-full items-center gap-2.5 rounded-full bg-[#F1F3F5] px-4 text-left text-sm text-text-tertiary transition-colors hover:bg-border-default"
-            >
-              <Search className="size-4 shrink-0 text-text-tertiary" />
-              <span>Tìm món trong thực đơn...</span>
-            </button>
+            <form onSubmit={handleSearchSubmit} className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-text-tertiary pointer-events-none" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Tìm món trong thực đơn..."
+                className="flex h-11 w-full items-center rounded-full bg-[#F1F3F5] pl-11 pr-24 text-sm text-text-primary placeholder:text-text-tertiary transition-colors focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+              />
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchInput("")
+                    setSearchText("")
+                    searchInputRef.current?.focus()
+                  }}
+                  className="absolute right-[68px] top-1/2 -translate-y-1/2 flex size-6 items-center justify-center rounded-full bg-text-tertiary/10 text-text-tertiary hover:bg-text-tertiary/20 transition-colors"
+                  title="Xóa"
+                >
+                  <span className="text-xs">✕</span>
+                </button>
+              )}
+              <button
+                type="submit"
+                className="absolute right-2 top-1/2 -translate-y-1/2 flex h-[36px] items-center gap-1.5 rounded-full bg-brand-primary px-3.5 text-xs font-semibold text-white hover:bg-brand-primary-hover transition-colors active:scale-95"
+              >
+                <Search className="size-3.5" />
+                <span>Tìm</span>
+              </button>
+            </form>
           </div>
 
-          {/* Danh mục — cuộn ngang, ẩn thanh cuộn để gọn trên mobile */}
-          <div className="flex gap-2.5 overflow-x-auto px-4 pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {categoryTabs.map((category) => {
-              const isSelected = category.id === activeCategoryId
-              return (
-                <button
-                  key={category.id}
-                  type="button"
-                  onClick={() => setActiveCategoryId(category.id)}
-                  className={cn(
-                    "h-[38px] shrink-0 rounded-[20px] px-5 text-sm transition-all whitespace-nowrap",
-                    isSelected
-                      ? "bg-brand-primary font-bold text-white shadow-xs"
-                      : "border border-border-default bg-white font-medium text-text-secondary hover:border-border-strong hover:text-text-primary"
-                  )}
-                >
-                  {category.label}
-                </button>
-              )
-            })}
-          </div>
+          {/* Danh mục — ẩn khi đang search */}
+          {!searchText && (
+            <div className="flex gap-2.5 overflow-x-auto px-4 pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {categoryTabs.map((category) => {
+                const isSelected = category.id === activeCategoryId
+                return (
+                  <button
+                    key={category.id}
+                    type="button"
+                    onClick={() => setActiveCategoryId(category.id)}
+                    className={cn(
+                      "h-[38px] shrink-0 rounded-[20px] px-5 text-sm transition-all whitespace-nowrap",
+                      isSelected
+                        ? "bg-brand-primary font-bold text-white shadow-xs"
+                        : "border border-border-default bg-white font-medium text-text-secondary hover:border-border-strong hover:text-text-primary"
+                    )}
+                  >
+                    {category.label}
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -452,17 +524,39 @@ export default function MenuPage() {
           ) : null}
 
           <p className="mb-3 text-xs font-bold tracking-wider text-text-tertiary">
-            Món {activeCategory?.label ?? ""}
+            {searchText.trim() 
+              ? `Kết quả tìm kiếm "${searchText}" (${dishes.length})`
+              : `Món ${activeCategory?.label ?? ""}`}
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {dishes.length === 0 ? (
               <div className="col-span-full flex flex-col items-center justify-center py-12 text-center">
-                <p className="text-sm text-text-tertiary">
-                  {searchText.trim()
-                    ? "Không tìm thấy món phù hợp"
-                    : "Không có món nào trong danh mục này"}
-                </p>
+                {searchText.trim() ? (
+                  <>
+                    <span className="text-4xl mb-3">🔍</span>
+                    <p className="text-sm font-semibold text-text-primary mb-1">
+                      Không tìm thấy "{searchText}"
+                    </p>
+                    <p className="text-xs text-text-tertiary">
+                      Thử tìm với từ khóa khác hoặc xem tất cả món
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchInput("")
+                        setSearchText("")
+                      }}
+                      className="mt-4 rounded-full bg-brand-primary px-4 py-2 text-xs font-semibold text-white hover:bg-brand-primary-hover transition-colors"
+                    >
+                      Xem tất cả món
+                    </button>
+                  </>
+                ) : (
+                  <p className="text-sm text-text-tertiary">
+                    Không có món nào trong danh mục này
+                  </p>
+                )}
               </div>
             ) : (
               dishes.map((dish) => {
@@ -561,6 +655,279 @@ export default function MenuPage() {
           </div>
         </div>
       ) : null}
+
+      {/* Modal Khuyến mãi */}
+      {showPromotionsModal && (
+        <PromotionsModal
+          promotions={activePromotions}
+          cartSubtotal={cartSubtotal}
+          onClose={() => setShowPromotionsModal(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+/**
+ * Modal hiển thị danh sách khuyến mãi đang có
+ */
+interface PromotionsModalProps {
+  promotions: Promotion[]
+  cartSubtotal: number
+  onClose: () => void
+}
+
+function PromotionsModal({ promotions, cartSubtotal, onClose }: PromotionsModalProps) {
+  const itemPromos = promotions.filter((p) => p.applyLevel === "ITEM")
+  const invoicePromos = promotions.filter((p) => p.applyLevel === "INVOICE")
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Modal content */}
+      <div className="relative w-full max-w-2xl bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[85vh] flex flex-col animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 duration-300">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border-default">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#F79009] to-[#DC6803] shadow-sm">
+              <Gift className="size-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-text-primary">
+                Khuyến mãi đang có
+              </h2>
+              <p className="text-xs text-text-tertiary">
+                {promotions.length} chương trình
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex size-9 items-center justify-center rounded-full hover:bg-surface-muted transition-colors"
+          >
+            <X className="size-5 text-text-secondary" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          {/* Khuyến mãi cấp MÓN */}
+          {itemPromos.length > 0 && (
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <Tag className="size-4 text-brand-primary" />
+                <h3 className="text-sm font-bold text-text-primary">
+                  Giảm giá theo món ({itemPromos.length})
+                </h3>
+              </div>
+              <div className="space-y-3">
+                {itemPromos.map((promo) => (
+                  <PromotionCard key={promo.id} promotion={promo} type="item" />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Khuyến mãi cấp HÓA ĐƠN */}
+          {invoicePromos.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingUp className="size-4 text-status-success" />
+                <h3 className="text-sm font-bold text-text-primary">
+                  Giảm giá hóa đơn ({invoicePromos.length})
+                </h3>
+              </div>
+              <div className="space-y-3">
+                {invoicePromos.map((promo) => {
+                  const { discount } = calculatePromoDiscount(promo, cartSubtotal)
+                  return (
+                    <PromotionCard
+                      key={promo.id}
+                      promotion={promo}
+                      type="invoice"
+                      currentDiscount={discount}
+                      cartSubtotal={cartSubtotal}
+                    />
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {promotions.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-surface-muted">
+                <Gift className="size-8 text-text-tertiary" />
+              </div>
+              <p className="text-sm font-medium text-text-secondary">
+                Hiện chưa có khuyến mãi nào
+              </p>
+              <p className="text-xs text-text-tertiary mt-1">
+                Vui lòng quay lại sau
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-border-default bg-surface-page/50">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full h-12 rounded-xl bg-brand-primary text-white font-semibold hover:bg-brand-primary-hover transition-colors"
+          >
+            Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Card hiển thị 1 khuyến mãi
+ */
+interface PromotionCardProps {
+  promotion: Promotion
+  type: "item" | "invoice"
+  currentDiscount?: number
+  cartSubtotal?: number
+}
+
+function PromotionCard({ promotion, type, currentDiscount, cartSubtotal }: PromotionCardProps) {
+  const isInvoicePromo = type === "invoice"
+  const hasCondition = promotion.conditionMinAmount && promotion.conditionMinAmount > 0
+  const meetsCondition = cartSubtotal ? cartSubtotal >= (promotion.conditionMinAmount || 0) : false
+
+  // Check if this promotion is currently applied
+  const isApplied = isInvoicePromo && meetsCondition && currentDiscount && currentDiscount > 0
+
+  // Parse action để lấy discount info
+  let discountText = ""
+  try {
+    const action = JSON.parse(promotion.action)
+    if (action.discountType === "PERCENTAGE") {
+      discountText = `Giảm ${action.discountValue}%`
+      if (action.maxDiscountAmount) {
+        discountText += ` (tối đa ${action.maxDiscountAmount.toLocaleString("vi-VN")}đ)`
+      }
+    } else if (action.discountType === "FIXED_AMOUNT") {
+      discountText = `Giảm ${action.discountValue.toLocaleString("vi-VN")}đ`
+    }
+  } catch {
+    discountText = "Giảm giá"
+  }
+
+  return (
+    <div className={cn(
+      "rounded-2xl border-2 p-4 transition-all relative",
+      isApplied
+        ? "border-status-success bg-status-success-subtle/50 shadow-sm"
+        : isInvoicePromo
+          ? "border-status-success/30 bg-status-success-subtle/30"
+          : "border-brand-primary/30 bg-brand-primary-subtle/30"
+    )}>
+      {/* Badge "Đang áp dụng" */}
+      {isApplied && (
+        <div className="absolute top-3 right-3 flex items-center gap-1 px-2.5 py-1 rounded-full bg-status-success text-white text-xs font-bold shadow-sm">
+          <span className="text-xs">✓</span>
+          <span>Đang áp dụng</span>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 mb-2.5">
+        <div className="flex-1 min-w-0 pr-20">
+          <h4 className="text-base font-bold text-text-primary line-clamp-2">
+            {promotion.name}
+          </h4>
+          <p className={cn(
+            "text-sm font-semibold mt-1",
+            isApplied 
+              ? "text-status-success"
+              : isInvoicePromo 
+                ? "text-status-success" 
+                : "text-brand-primary"
+          )}>
+            {discountText}
+          </p>
+        </div>
+        {!isApplied && promotion.remainingUsageLimit !== null && promotion.remainingUsageLimit > 0 && (
+          <div className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-full bg-white/80 border border-border-default">
+            <Clock className="size-3 text-text-tertiary" />
+            <span className="text-xs font-semibold text-text-secondary">
+              Còn {promotion.remainingUsageLimit}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Description */}
+      {promotion.description && (
+        <p className="text-xs text-text-secondary leading-relaxed mb-3">
+          {promotion.description}
+        </p>
+      )}
+
+      {/* Conditions */}
+      {hasCondition && (
+        <div className={cn(
+          "flex items-start gap-2 px-3 py-2 rounded-xl border mb-2",
+          isApplied
+            ? "bg-status-success-subtle/70 border-status-success/30"
+            : meetsCondition
+              ? "bg-status-success-subtle/50 border-status-success/20"
+              : "bg-white border-border-default"
+        )}>
+          <span className="text-sm shrink-0">
+            {isApplied || meetsCondition ? "✅" : "ℹ️"}
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-text-secondary">
+              Điều kiện: Hóa đơn từ {promotion.conditionMinAmount?.toLocaleString("vi-VN")}đ
+            </p>
+            {isInvoicePromo && cartSubtotal && (
+              <p className={cn(
+                "text-xs font-semibold mt-1",
+                isApplied || meetsCondition ? "text-status-success" : "text-text-tertiary"
+              )}>
+                {isApplied
+                  ? `✨ Đang giảm ${currentDiscount?.toLocaleString("vi-VN")}đ`
+                  : meetsCondition
+                    ? `Đạt điều kiện · Giảm ${currentDiscount?.toLocaleString("vi-VN")}đ`
+                    : `Hiện tại: ${cartSubtotal.toLocaleString("vi-VN")}đ · Còn thiếu ${((promotion.conditionMinAmount || 0) - cartSubtotal).toLocaleString("vi-VN")}đ`
+                }
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* How to use */}
+      <div className={cn(
+        "flex items-start gap-2 px-3 py-2 rounded-xl",
+        isApplied ? "bg-white/60" : "bg-white/80"
+      )}>
+        <span className="text-sm shrink-0">💡</span>
+        <p className="text-xs text-text-secondary leading-relaxed">
+          {isInvoicePromo ? (
+            <>
+              <strong>Tự động áp dụng</strong> khi thanh toán nếu đạt điều kiện. 
+              {isApplied && <span className="text-status-success font-semibold"> Đang được áp dụng cho đơn hàng này!</span>}
+            </>
+          ) : (
+            <>
+              <strong>Tự động giảm giá</strong> khi thêm món có khuyến mãi vào giỏ. Giá đã bao gồm giảm giá.
+            </>
+          )}
+        </p>
+      </div>
     </div>
   )
 }

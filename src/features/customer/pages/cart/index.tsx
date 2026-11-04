@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useNavigate, useParams, generatePath } from "react-router-dom"
-import { ChevronLeft, Plus, Trash2, ShoppingCart, Tag, Lock, Info } from "lucide-react"
+import { ChevronLeft, Plus, Trash2, ShoppingCart, Tag, Lock, Info, Gift, X, Clock, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -27,7 +27,8 @@ import {
 import { useCustomerSessionStore } from "@/features/customer/store/session.store"
 import { useBillLocked } from "@/features/customer/hooks/use-bill-locked"
 import { useGoBack } from "@/hooks/use-go-back"
-import { formatVnd } from "@/features/customer/lib/pricing"
+import type { Promotion } from "@/types/models"
+import { cn } from "@/lib/utils"
 
 type CartModal =
   | { kind: "none" }
@@ -69,6 +70,7 @@ export default function CartPage() {
 
   const [promoCode, setPromoCode] = React.useState("")
   const [modal, setModal] = React.useState<CartModal>({ kind: "none" })
+  const [showPromotionsModal, setShowPromotionsModal] = React.useState(false)
 
   const createOrderMutation = useCreateOrder()
 
@@ -561,13 +563,27 @@ export default function CartPage() {
                   </div>
 
                   {/* Gợi ý mã khuyến mãi đang có tại chi nhánh */}
-                  {activePromotions.filter((p) => p.code).length > 0 ? (
-                    <div className="flex flex-wrap items-center gap-1.5 pt-1 pl-1">
-                      <span className="text-xs text-text-tertiary font-medium">Gợi ý mã:</span>
-                      {activePromotions
-                        .filter((p) => p.code)
-                        .slice(0, 3)
-                        .map((p) => (
+                  {(() => {
+                    const sortedPromotions = activePromotions
+                      .filter((p) => p.code)
+                      .sort((a, b) => {
+                        // Ưu tiên % discount trước, sau đó đến amount
+                        const aValue = a.discountPercentage || (a.discountAmount || 0) / 1000
+                        const bValue = b.discountPercentage || (b.discountAmount || 0) / 1000
+                        return bValue - aValue
+                      })
+                    
+                    const topThreeCodes = sortedPromotions.slice(0, 3)
+                    const remainingCount = sortedPromotions.length - 3
+
+                    if (sortedPromotions.length === 0) return null
+
+                    return (
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1 pl-1">
+                        <span className="text-xs text-text-tertiary font-medium">
+                          Gợi ý mã ({sortedPromotions.length}):
+                        </span>
+                        {topThreeCodes.map((p) => (
                           <button
                             key={p.id}
                             type="button"
@@ -578,8 +594,18 @@ export default function CartPage() {
                             <span>{p.code}</span>
                           </button>
                         ))}
-                    </div>
-                  ) : null}
+                        {remainingCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setShowPromotionsModal(true)}
+                            className="text-xs font-semibold text-brand-primary underline underline-offset-2 hover:text-brand-primary-hover transition-colors"
+                          >
+                            +{remainingCount} mã khác
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })()}
                 </div>
               )}
             </div>
@@ -800,6 +826,16 @@ export default function CartPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Modal Khuyến mãi */}
+      {showPromotionsModal && (
+        <PromotionsModal
+          promotions={activePromotions}
+          cartSubtotal={subtotal}
+          onClose={() => setShowPromotionsModal(false)}
+          onApplyCode={handleApplyPromoWithCode}
+        />
+      )}
     </div>
   )
 }
@@ -895,6 +931,318 @@ function CartLineRow({
           <p className="text-xs text-[#B54708] font-medium leading-tight">{hint}</p>
         </div>
       ) : null}
+    </div>
+  )
+}
+
+/**
+ * Modal hiển thị danh sách khuyến mãi đang có
+ */
+interface PromotionsModalProps {
+  promotions: Promotion[]
+  cartSubtotal: number
+  onClose: () => void
+  onApplyCode?: (code: string) => void
+}
+
+function PromotionsModal({ promotions, cartSubtotal, onClose, onApplyCode }: PromotionsModalProps) {
+  const itemPromos = promotions.filter((p) => p.applyLevel === "ITEM")
+  const invoicePromos = promotions.filter((p) => p.applyLevel === "INVOICE")
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Modal content */}
+      <div className="relative w-full max-w-2xl bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[85vh] flex flex-col animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 duration-300">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border-default">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#F79009] to-[#DC6803] shadow-sm">
+              <Gift className="size-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-text-primary">
+                Khuyến mãi đang có
+              </h2>
+              <p className="text-xs text-text-tertiary">
+                {promotions.length} chương trình
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex size-9 items-center justify-center rounded-full hover:bg-surface-muted transition-colors"
+          >
+            <X className="size-5 text-text-secondary" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          {/* Khuyến mãi cấp MÓN */}
+          {itemPromos.length > 0 && (
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <Tag className="size-4 text-brand-primary" />
+                <h3 className="text-sm font-bold text-text-primary">
+                  Giảm giá theo món ({itemPromos.length})
+                </h3>
+              </div>
+              <div className="space-y-3">
+                {itemPromos.map((promo) => (
+                  <PromotionCard 
+                    key={promo.id} 
+                    promotion={promo} 
+                    type="item"
+                    onApplyCode={onApplyCode}
+                    onClose={onClose}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Khuyến mãi cấp HÓA ĐƠN */}
+          {invoicePromos.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingUp className="size-4 text-status-success" />
+                <h3 className="text-sm font-bold text-text-primary">
+                  Giảm giá hóa đơn ({invoicePromos.length})
+                </h3>
+              </div>
+              <div className="space-y-3">
+                {invoicePromos.map((promo) => {
+                  const { discount } = calculatePromoDiscount(promo, cartSubtotal)
+                  return (
+                    <PromotionCard
+                      key={promo.id}
+                      promotion={promo}
+                      type="invoice"
+                      currentDiscount={discount}
+                      cartSubtotal={cartSubtotal}
+                      onApplyCode={onApplyCode}
+                      onClose={onClose}
+                    />
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {promotions.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-surface-muted">
+                <Gift className="size-8 text-text-tertiary" />
+              </div>
+              <p className="text-sm font-medium text-text-secondary">
+                Hiện chưa có khuyến mãi nào
+              </p>
+              <p className="text-xs text-text-tertiary mt-1">
+                Vui lòng quay lại sau
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-border-default bg-surface-page/50">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full h-12 rounded-xl bg-brand-primary text-white font-semibold hover:bg-brand-primary-hover transition-colors"
+          >
+            Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Card hiển thị 1 khuyến mãi
+ */
+interface PromotionCardProps {
+  promotion: Promotion
+  type: "item" | "invoice"
+  currentDiscount?: number
+  cartSubtotal?: number
+  onApplyCode?: (code: string) => void
+  onClose?: () => void
+}
+
+function PromotionCard({ promotion, type, currentDiscount, cartSubtotal, onApplyCode, onClose }: PromotionCardProps) {
+  const isInvoicePromo = type === "invoice"
+  const hasCondition = promotion.conditionMinAmount && promotion.conditionMinAmount > 0
+  const meetsCondition = cartSubtotal ? cartSubtotal >= (promotion.conditionMinAmount || 0) : false
+
+  // Check if this promotion is currently applied
+  const isApplied = isInvoicePromo && meetsCondition && currentDiscount && currentDiscount > 0
+
+  // Check if this promotion has a code and can be applied
+  const hasCode = !!promotion.code
+  const canApply = hasCode && onApplyCode && !isApplied
+
+  const handleClick = () => {
+    if (canApply && promotion.code) {
+      onApplyCode(promotion.code)
+      onClose?.() // Close modal after applying
+    }
+  }
+
+  // Parse action để lấy discount info
+  let discountText = ""
+  try {
+    const action = JSON.parse(promotion.action)
+    if (action.discountType === "PERCENTAGE") {
+      discountText = `Giảm ${action.discountValue}%`
+      if (action.maxDiscountAmount) {
+        discountText += ` (tối đa ${action.maxDiscountAmount.toLocaleString("vi-VN")}đ)`
+      }
+    } else if (action.discountType === "FIXED_AMOUNT") {
+      discountText = `Giảm ${action.discountValue.toLocaleString("vi-VN")}đ`
+    }
+  } catch {
+    discountText = "Giảm giá"
+  }
+
+  return (
+    <div 
+      onClick={handleClick}
+      className={cn(
+        "rounded-2xl border-2 p-4 transition-all relative",
+        canApply && "cursor-pointer hover:shadow-md active:scale-[0.98]",
+        isApplied
+          ? "border-status-success bg-status-success-subtle/50 shadow-sm"
+          : isInvoicePromo
+          ? "border-status-success/30 bg-status-success-subtle/30"
+          : "border-brand-primary/30 bg-brand-primary-subtle/30"
+    )}>
+      {/* Badge "Đang áp dụng" */}
+      {isApplied && (
+        <div className="absolute top-3 right-3 flex items-center gap-1 px-2.5 py-1 rounded-full bg-status-success text-white text-xs font-bold shadow-sm">
+          <span className="text-xs">✓</span>
+          <span>Đang áp dụng</span>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 mb-2.5">
+        <div className="flex-1 min-w-0 pr-20">
+          <h4 className="text-base font-bold text-text-primary line-clamp-2">
+            {promotion.name}
+          </h4>
+          <p className={cn(
+            "text-sm font-semibold mt-1",
+            isApplied 
+              ? "text-status-success"
+              : isInvoicePromo 
+                ? "text-status-success" 
+                : "text-brand-primary"
+          )}>
+            {discountText}
+          </p>
+        </div>
+        {!isApplied && promotion.remainingUsageLimit !== null && promotion.remainingUsageLimit > 0 && (
+          <div className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-full bg-white/80 border border-border-default">
+            <Clock className="size-3 text-text-tertiary" />
+            <span className="text-xs font-semibold text-text-secondary">
+              Còn {promotion.remainingUsageLimit}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Description */}
+      {promotion.description && (
+        <p className="text-xs text-text-secondary leading-relaxed mb-3">
+          {promotion.description}
+        </p>
+      )}
+
+      {/* Conditions */}
+      {hasCondition && (
+        <div className={cn(
+          "flex items-start gap-2 px-3 py-2 rounded-xl border mb-2",
+          isApplied
+            ? "bg-status-success-subtle/70 border-status-success/30"
+            : meetsCondition
+              ? "bg-status-success-subtle/50 border-status-success/20"
+              : "bg-white border-border-default"
+        )}>
+          <span className="text-sm shrink-0">
+            {isApplied || meetsCondition ? "✅" : "ℹ️"}
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-text-secondary">
+              Điều kiện: Hóa đơn từ {promotion.conditionMinAmount?.toLocaleString("vi-VN")}đ
+            </p>
+            {isInvoicePromo && cartSubtotal && (
+              <p className={cn(
+                "text-xs font-semibold mt-1",
+                isApplied || meetsCondition ? "text-status-success" : "text-text-tertiary"
+              )}>
+                {isApplied
+                  ? `✨ Đang giảm ${currentDiscount?.toLocaleString("vi-VN")}đ`
+                  : meetsCondition
+                    ? `Đạt điều kiện · Giảm ${currentDiscount?.toLocaleString("vi-VN")}đ`
+                    : `Hiện tại: ${cartSubtotal.toLocaleString("vi-VN")}đ · Còn thiếu ${((promotion.conditionMinAmount || 0) - cartSubtotal).toLocaleString("vi-VN")}đ`
+                }
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Promotion Code - chỉ hiện khi có mã */}
+      {hasCode && (
+        <div className={cn(
+          "flex items-center justify-between px-3 py-2.5 rounded-xl mb-2",
+          canApply 
+            ? "bg-brand-primary-subtle/50 border-2 border-dashed border-brand-primary/40" 
+            : "bg-surface-muted/50 border border-border-default"
+        )}>
+          <div className="flex items-center gap-2">
+            <Tag className="size-4 text-brand-primary" />
+            <div>
+              <p className="text-xs font-medium text-text-tertiary">Mã khuyến mãi</p>
+              <p className="text-sm font-bold text-brand-primary">{promotion.code}</p>
+            </div>
+          </div>
+          {canApply && (
+            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-brand-primary text-white">
+              <span className="text-xs font-bold">Nhấn để áp dụng</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* How to use */}
+      <div className={cn(
+        "flex items-start gap-2 px-3 py-2 rounded-xl",
+        isApplied ? "bg-white/60" : "bg-white/80"
+      )}>
+        <span className="text-sm shrink-0">💡</span>
+        <p className="text-xs text-text-secondary leading-relaxed">
+          {isInvoicePromo ? (
+            <>
+              <strong>Tự động áp dụng</strong> khi thanh toán nếu đạt điều kiện. 
+              {isApplied && <span className="text-status-success font-semibold"> Đang được áp dụng cho đơn hàng này!</span>}
+            </>
+          ) : (
+            <>
+              <strong>Tự động giảm giá</strong> khi thêm món có khuyến mãi vào giỏ. Giá đã bao gồm giảm giá.
+            </>
+          )}
+        </p>
+      </div>
     </div>
   )
 }

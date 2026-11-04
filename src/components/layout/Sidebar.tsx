@@ -40,7 +40,7 @@ export function Sidebar() {
       .toUpperCase() || "QL";
 
   return (
-    <aside className="hidden lg:flex h-screen w-60 shrink-0 flex-col border-r border-border-default/80 bg-surface-card select-none">
+    <aside className="hidden lg:flex h-screen w-60 shrink-0 flex-col border-r border-border-default/80 bg-surface-card select-none sticky top-0">
       {/* Brand & Branch Switcher */}
       <div className="flex h-16 items-center justify-between border-b border-border-default/60 px-4">
         <div className="flex items-center gap-3 min-w-0">
