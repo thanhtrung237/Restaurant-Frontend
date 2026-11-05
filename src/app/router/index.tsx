@@ -84,12 +84,15 @@ const TransferMergeTablePage = lazy(
   () => import("@/features/shared/floor-ops/transfer-merge-table"),
 );
 
-// ---- Cashier pages (Desktop / Thu ngân) ----
-const CheckoutPage = lazy(() => import("@/features/cashier/pages/checkout"));
+const InvoiceListPage = lazy(
+  () => import("@/features/shared/invoices/InvoiceListPage"),
+)
 const QrTransferPaymentPage = lazy(
   () => import("@/features/cashier/pages/qr-transfer-payment"),
 );
 const EInvoicePage = lazy(() => import("@/features/cashier/pages/e-invoice"));
+const CheckoutPage = lazy(() => import("@/features/cashier/pages/checkout"));
+
 
 // ---- Branch manager pages (Desktop / Quản lý chi nhánh) ----
 // "Chi nhánh" và "Cấu hình" dùng chung component với Quản trị NH — @/features/shared/branch-detail
@@ -280,6 +283,8 @@ export const router = createBrowserRouter([
                 element: <QrTransferPaymentPage />,
               }, // QR_TRANSFER_PAYMENT
               { path: "hoa-don-dien-tu/:invoiceId", element: <EInvoicePage /> }, // E_INVOICE
+              { path: "hoa-don", element: <InvoiceListPage /> }, // CASHIER_PATHS.INVOICES
+
             ],
           },
         ],
@@ -342,8 +347,11 @@ export const router = createBrowserRouter([
               { path: "cau-hinh", element: <BranchManagerBranchConfigPage /> }, // CONFIG — chỉ cấu hình chi nhánh mình
               { path: "chiet-khau-thu-cong", element: <ManualDiscountPage /> }, // MANUAL_DISCOUNT
               { path: "nhat-ky", element: <RestaurantAuditLogPage /> }, // AUDIT_LOG (tương thích ngược) — chỉ đọc (R)
+              { path: "hoa-don", element: <InvoiceListPage /> }, // BRANCH_MANAGER_PATHS.INVOICES
+              { path: "hoa-don/:invoiceId", element: <EInvoicePage /> }, // BRANCH_MANAGER_PATHS.E_INVOICE
               // KHÔNG có: "Vai trò & phân quyền" và cấu hình cấp NHÀ HÀNG (VAT/phí DV/MST)
               // — các quyền này chỉ Quản trị NH mới có (mục 4.3).
+
             ],
           },
         ],

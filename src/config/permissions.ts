@@ -21,6 +21,8 @@ export const PERMISSION_KEYS = {
   CONFIG: "CONFIG",
   /** Nhật ký hoạt động. QL chi nhánh chỉ ĐỌC và chỉ chi nhánh mình (R, FR-LOG-01). */
   AUDIT_LOG: "AUDIT_LOG",
+  /** Danh sách hóa đơn — Thu ngân (tra cứu) + QL chi nhánh (tra cứu + giám sát). */
+  INVOICES: "INVOICES",
 } as const
 
 export type PermissionKey = keyof typeof PERMISSION_KEYS
@@ -78,6 +80,8 @@ export const ROLE_PERMISSIONS: Record<AppRole, PermissionKey[]> = {
     "CONFIG",
     // Chỉ đọc nhật ký chi nhánh mình (R)
     "AUDIT_LOG",
+    // Danh sách hóa đơn chi nhánh mình (tra cứu + giám sát)
+    "INVOICES",
     // KHÔNG có: MENU, PROMOTIONS, STAFF
   ],
   [APP_ROLE.WAITER]: [
@@ -86,6 +90,8 @@ export const ROLE_PERMISSIONS: Record<AppRole, PermissionKey[]> = {
   ],
   [APP_ROLE.CASHIER]: [
     "TABLE_MAP",
+    // Hóa đơn — tra cứu lại hóa đơn sau khi chốt bàn
+    "INVOICES",
   ],
   [APP_ROLE.PLATFORM_ADMIN]: [],
   [APP_ROLE.CUSTOMER]: [],

@@ -26,6 +26,8 @@ export const SUB_SCREEN_ROUTE_PATTERNS: readonly string[] = [
   "/thu-ngan/thanh-toan/:tableSessionId",
   "/thu-ngan/thanh-toan/:tableSessionId/chuyen-khoan-qr",
   "/thu-ngan/hoa-don-dien-tu/:invoiceId",
+  // Hóa đơn điện tử của QL chi nhánh — vào từ danh sách hóa đơn
+  "/quan-ly-chi-nhanh/hoa-don/:invoiceId",
   // Tạo khuyến mãi — vào từ FAB trên màn Khuyến mãi
   "/:roleBase/khuyen-mai/tao-moi",
   // Chi tiết chi nhánh của Quản trị NH — vào từ thẻ trên danh sách Chi nhánh.

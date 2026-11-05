@@ -78,14 +78,9 @@ export default function RequireTableSession() {
     return <Outlet />
   }
 
-  // 2. Phiên đang chờ xác nhận: Đưa về trang Chờ mở bàn
+  // 2. Phiên đang chờ xác nhận: Cho phép xem trước thực đơn (read-only preview)
   if (resolvedStatus === "WAITING_FOR_OPEN") {
-    return (
-      <Navigate
-        to={CUSTOMER_PATHS.WAITING_TABLE_OPEN.replace(":qrCode", qrCode ?? "")}
-        replace
-      />
-    )
+    return <Outlet />
   }
 
   // 3. Phiên đang chờ thanh toán: Cho phép vào hoá đơn / thanh toán

@@ -14,6 +14,7 @@ import {
   Package,
   CreditCard,
   Clock,
+  ReceiptText,
 } from "lucide-react";
 import { APP_ROLE, type AppRole } from "@/config/roles";
 import {
@@ -193,6 +194,12 @@ export const NAV_ITEMS_BY_ROLE: Record<
           icon: LayoutGrid,
           permission: "TABLE_MAP",
         },
+        {
+          label: "Hóa đơn",
+          path: CASHIER_PATHS.INVOICES,
+          icon: ReceiptText,
+          permission: "INVOICES",
+        },
       ],
     },
   ],
@@ -251,6 +258,12 @@ export const NAV_ITEMS_BY_ROLE: Record<
           path: BRANCH_MANAGER_PATHS.AUDIT_LOG,
           icon: Clock,
           permission: "AUDIT_LOG",
+        },
+        {
+          label: "Hóa đơn",
+          path: BRANCH_MANAGER_PATHS.INVOICES,
+          icon: ReceiptText,
+          permission: "INVOICES",
         },
       ],
     },
