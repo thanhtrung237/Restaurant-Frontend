@@ -18,6 +18,8 @@ import { StickyActionBar } from "@/components/layout/StickyActionBar";
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { CASHIER_PATHS } from "@/app/router/paths/cashier.paths";
+import { BRANCH_MANAGER_PATHS } from "@/app/router/paths/branch-manager.paths";
+import { APP_ROLE } from "@/config/roles";
 import { useGoBack } from "@/hooks/use-go-back";
 import { PAYMENT_METHOD_LABEL, type PaymentMethod } from "@/types/enums";
 import {
@@ -42,20 +44,33 @@ const REFUND_REASONS = [
 /**
  * Hoá đơn điện tử — kết nối thực với backend.
  *
- * Luồng:
- *  1. Đọc invoiceId từ URL params (:invoiceId)
- *  2. Gọi GET /invoices/{id} → lấy thông tin hóa đơn (số HĐ, tổng tiền, trạng thái, payments)
- *  3. Gọi GET /order-details/session/{tableSessionId} → lấy danh sách món
- *  4. Nếu invoice.status = PAID (chưa phát hành HĐĐT), tự động gọi POST /invoices/{id}/issue
- *  5. Hiển thị thông tin thực từ BE, thay thế toàn bộ mock data / store cũ
+ * Nút quay lại thông minh: dùng `navigate(-1)` nếu có trang trước trong app.
+ * - Đến từ Checkout (lần đầu thanh toán) → quay về Sơ đồ bàn
+ * - Đến từ Danh sách hóa đơn → quay về Danh sách hóa đơn
+ * - Mở trực tiếp URL → về fallback theo role
  */
 export default function EInvoicePage() {
   const navigate = useNavigate();
   const { invoiceId: invoiceIdParam } = useParams<{ invoiceId: string }>();
   const { toast } = useToast();
   const currentUser = useAuthStore((s) => s.account);
-  // Hoá đơn điện tử chỉ có route dưới /thu-ngan, nên fallback cố định là Sơ đồ bàn thu ngân.
-  const goBack = useGoBack(CASHIER_PATHS.TABLE_MAP);
+  const role = useAuthStore((s) => s.role);
+
+  // Fallback khi mở trực tiếp URL (không có trang trước trong app)
+  const fallbackPath =
+    role === APP_ROLE.BRANCH_MANAGER
+      ? BRANCH_MANAGER_PATHS.INVOICES
+      : CASHIER_PATHS.TABLE_MAP;
+  const goBack = useGoBack(fallbackPath);
+
+  // Nhãn nút: dựa vào trang trước thực tế (history.state.idx)
+  // idx = 0 → đây là trang đầu tiên (mở trực tiếp URL hoặc redirect sau checkout)
+  // idx > 0 → đã có trang trước → dùng navigate(-1), nhãn theo trang đó
+  const hasPreviousPage =
+    typeof (window.history.state as { idx?: unknown } | null)?.idx === "number"
+      ? ((window.history.state as { idx: number }).idx > 0)
+      : true
+  const backLabel = hasPreviousPage ? "Quay lại" : "Về sơ đồ bàn"
 
   const invoiceId = invoiceIdParam ? parseInt(invoiceIdParam, 10) : undefined;
 
@@ -122,8 +137,9 @@ export default function EInvoicePage() {
   }
 
   function handleBackToTableMap() {
-    navigate(CASHIER_PATHS.TABLE_MAP);
+    goBack()
   }
+
 
   function handlePrint() {
     toast({
@@ -285,7 +301,7 @@ export default function EInvoicePage() {
             </Button>
 
             <Button type="button" onClick={handleBackToTableMap} className="h-10 px-5">
-              Về sơ đồ bàn
+              {backLabel}
             </Button>
           </>
         }
@@ -658,7 +674,7 @@ export default function EInvoicePage() {
       {/* <md: hành động chính của màn — quay về sơ đồ bàn để phục vụ bàn tiếp theo */}
       <StickyActionBar>
         <Button className="h-11 w-full font-semibold" onClick={handleBackToTableMap}>
-          Về sơ đồ bàn
+          {backLabel}
         </Button>
       </StickyActionBar>
     </div>

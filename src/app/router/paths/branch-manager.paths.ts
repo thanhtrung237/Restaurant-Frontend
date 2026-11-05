@@ -45,4 +45,6 @@ export const BRANCH_MANAGER_PATHS = {
   BRANCH_CONFIG: `${BRANCH_MANAGER_BASE}/cau-hinh`, // Alias của CONFIG
   MANUAL_DISCOUNT: `${BRANCH_MANAGER_BASE}/chiet-khau-thu-cong`, // Chiết khấu tay
   AUDIT_LOG: `${BRANCH_MANAGER_BASE}/nhat-ky`, // Nhật ký hoạt động chi nhánh mình — chỉ đọc (R, FR-LOG-01), tab trong Nhân viên
+  INVOICES: `${BRANCH_MANAGER_BASE}/hoa-don`, // Danh sách hóa đơn
+  E_INVOICE: `${BRANCH_MANAGER_BASE}/hoa-don/:invoiceId`, // Chi tiết hóa đơn điện tử (đọc lại từ danh sách)
 } as const

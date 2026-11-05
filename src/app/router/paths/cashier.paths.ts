@@ -11,4 +11,5 @@ export const CASHIER_PATHS = {
   CHECKOUT: `${CASHIER_BASE}/thanh-toan/:tableSessionId`, // Chốt bàn, tính phí DV/VAT, chiết khấu tay, đóng phiên
   QR_TRANSFER_PAYMENT: `${CASHIER_BASE}/thanh-toan/:tableSessionId/chuyen-khoan-qr`,
   E_INVOICE: `${CASHIER_BASE}/hoa-don-dien-tu/:invoiceId`, // Hóa đơn điện tử đã phát hành
+  INVOICES: `${CASHIER_BASE}/hoa-don`, // Danh sách hóa đơn
 } as const
