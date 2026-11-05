@@ -1,5 +1,5 @@
 import * as React from "react"
-import { CalendarCheck, Minus, Plus } from "lucide-react"
+import { CalendarCheck, Minus, Plus, AlertTriangle } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { getErrorMessage } from "@/lib/http"
-import { useCreateTableSession } from "@/features/shared/floor-ops/api"
+import { useReserveTableSession } from "@/features/shared/floor-ops/api"
 import type { DiningTable } from "@/types/models"
 
 interface ReservationModalProps {
@@ -21,6 +21,11 @@ interface ReservationModalProps {
   /** Bàn chọn sẵn khi mở modal từ một thẻ bàn cụ thể. */
   defaultTableId?: number
   onClose: () => void
+  /**
+   * Số phút giữ chỗ sau giờ hẹn, lấy từ cấu hình chi nhánh (BR-29, mặc định 15).
+   * Dùng để hiển thị cảnh báo thông tin cho nhân viên.
+   */
+  holdMinutes?: number
 }
 
 /** `datetime-local` cần chuỗi "YYYY-MM-DDTHH:mm" theo giờ ĐỊA PHƯƠNG, không phải ISO/UTC. */
@@ -33,23 +38,37 @@ function toLocalInputValue(date: Date): string {
 }
 
 /**
+ * Giới hạn giờ hẹn tối đa trong ngày hôm nay lúc 23:59.
+ * Phù hợp với hướng 1 (BR-29): đặt bàn là công cụ giữ chỗ GẦN GIỜ,
+ * không phải lịch đặt theo ngày. Bàn bị khoá ngay khi đặt nên không
+ * nên cho đặt quá ngày.
+ */
+function getTodayEndOfDay(): string {
+  const end = new Date()
+  end.setHours(23, 59, 0, 0)
+  return toLocalInputValue(end)
+}
+
+/**
+ * Cảnh báo khi giờ hẹn quá xa so với hiện tại (> 2 tiếng).
+ * Bàn bị khoá ngay từ lúc đặt nên nhân viên cần biết điều này.
+ */
+const FAR_AHEAD_THRESHOLD_MINUTES = 120
+
+/**
  * Modal "Đặt bàn trước" (FR-TBL-03).
  *
- * Dùng luồng đặt bàn theo PHIÊN (`POST /table-sessions` kèm nhóm `reservation*`).
- * KHÔNG dùng `POST /tables/{id}/reserve`: luồng đó ghi tên/SĐT vào cột `customer_name`
- * / `customer_phone` mà `TableSessionResponse` không trả về, nên sơ đồ bàn và panel danh
- * sách đặt sẽ trống cột khách — xem docs/be-issues.md mục 2.
- *
- * Hai ràng buộc backend KHÔNG kiểm, phải chặn tại đây:
- *  1. Bàn phải đang trống (BR-29). Backend chỉ chặn khi bàn còn phiên đang hoạt động.
- *  2. Giờ hẹn không được ở quá khứ. Backend không validate, mà `TableSessionScheduler`
- *     sẽ tự huỷ phiên quá giờ giữ chỗ trong vòng 1 phút ⇒ lịch biến mất không báo gì.
+ * Phù hợp hướng 1 (BR-29): công cụ giữ chỗ GẦN GIỜ cho nhà hàng.
+ * - Chỉ cho đặt trong ngày hôm nay (max 23:59) vì bàn bị khoá ngay khi đặt.
+ * - Cảnh báo nếu giờ hẹn > 2 tiếng tới để nhân viên cân nhắc.
+ * - Hiển thị rõ thời gian giữ chỗ sau giờ hẹn để nhân viên thông báo cho khách.
  */
 export function ReservationModal({
   isOpen,
   availableTables,
   defaultTableId,
   onClose,
+  holdMinutes = 15,
 }: ReservationModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -57,12 +76,11 @@ export function ReservationModal({
         showCloseButton={false}
         className="w-full max-w-md rounded-2xl border border-border-default/60 bg-surface-card p-6 shadow-xl sm:max-w-md gap-0"
       >
-        {/* Form đặt ở component con: mỗi lần mở modal là một lần mount mới nên state tự
-            khởi tạo lại, không cần effect reset. */}
         <ReservationForm
           availableTables={availableTables}
           defaultTableId={defaultTableId}
           onClose={onClose}
+          holdMinutes={holdMinutes}
         />
       </DialogContent>
     </Dialog>
@@ -73,28 +91,41 @@ function ReservationForm({
   availableTables,
   defaultTableId,
   onClose,
+  holdMinutes = 15,
 }: Omit<ReservationModalProps, "isOpen">) {
   const { toast } = useToast()
-  const createSessionMutation = useCreateTableSession()
+  const reserveMutation = useReserveTableSession()
 
-  // Khởi tạo một lần lúc mount.
   const [minTime] = React.useState(() => toLocalInputValue(new Date()))
+  const [maxTime] = React.useState(() => getTodayEndOfDay())
+
   const [tableId, setTableId] = React.useState<number | undefined>(
     () => defaultTableId ?? availableTables[0]?.id,
   )
   const [customerName, setCustomerName] = React.useState("")
   const [customerPhone, setCustomerPhone] = React.useState("")
   const [reservationTime, setReservationTime] = React.useState(() => {
-    // Mặc định hẹn sau 1 tiếng cho tròn số, nhân viên sửa lại được.
+    // Mặc định hẹn sau 1 tiếng, nhân viên sửa lại được.
     const inOneHour = new Date(Date.now() + 60 * 60 * 1000)
     inOneHour.setSeconds(0, 0)
-    return toLocalInputValue(inOneHour)
+    // Không vượt quá 23:59 hôm nay
+    const endOfDay = new Date()
+    endOfDay.setHours(23, 59, 0, 0)
+    return toLocalInputValue(inOneHour > endOfDay ? endOfDay : inOneHour)
   })
   const [guestCount, setGuestCount] = React.useState(2)
   const [note, setNote] = React.useState("")
   const [error, setError] = React.useState<string | null>(null)
 
   const selectedTable = availableTables.find((t) => t.id === tableId)
+
+  // Tính số phút từ bây giờ đến giờ hẹn để hiện cảnh báo
+  const minutesUntilReservation = React.useMemo(() => {
+    if (!reservationTime) return 0
+    return Math.round((new Date(reservationTime).getTime() - Date.now()) / 60_000)
+  }, [reservationTime])
+
+  const showFarAheadWarning = minutesUntilReservation > FAR_AHEAD_THRESHOLD_MINUTES
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -117,23 +148,22 @@ function ReservationForm({
       return
     }
     if (new Date(reservationTime).getTime() < Date.now()) {
-      setError("Giờ hẹn phải ở tương lai. Lịch đặt quá giờ sẽ bị hệ thống tự huỷ.")
+      setError("Giờ hẹn phải ở tương lai.")
       return
     }
 
     try {
-      await createSessionMutation.mutateAsync({
+      await reserveMutation.mutateAsync({
         tableId,
         reservationName: customerName.trim(),
         reservationPhone: customerPhone.trim(),
-        // Backend nhận LocalDateTime nên gửi nguyên chuỗi giờ địa phương, không đổi sang UTC.
         reservationTime,
-        reservedGuestCount: guestCount,
+        guestCount,
         reservationNote: note.trim() || undefined,
       })
       toast({
         title: "Đã đặt bàn",
-        description: `${selectedTable?.name ?? "Bàn"} · ${customerName.trim()}`,
+        description: `${selectedTable?.name ?? "Bàn"} · ${customerName.trim()} · ${new Date(reservationTime).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`,
         variant: "success",
       })
       onClose()
@@ -150,8 +180,8 @@ function ReservationForm({
           Đặt bàn trước
         </DialogTitle>
         <DialogDescription className="text-sm font-normal text-text-secondary">
-          Giữ chỗ cho khách theo giờ hẹn. Bàn sẽ bị khoá cho tới khi khách đến hoặc quá
-          giờ giữ chỗ.
+          Giữ chỗ cho khách trong ngày hôm nay. Bàn bị khoá ngay từ lúc đặt và tự giải
+          phóng sau {holdMinutes} phút kể từ giờ hẹn nếu khách chưa đến.
         </DialogDescription>
       </DialogHeader>
 
@@ -185,7 +215,7 @@ function ReservationForm({
           )}
         </div>
 
-        {/* Tên + SĐT khách — backend bắt buộc cả hai */}
+        {/* Tên + SĐT khách */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <label
@@ -221,7 +251,7 @@ function ReservationForm({
           </div>
         </div>
 
-        {/* Giờ hẹn */}
+        {/* Giờ hẹn — giới hạn trong ngày hôm nay */}
         <div className="space-y-2">
           <label
             htmlFor="reservation-time"
@@ -234,9 +264,21 @@ function ReservationForm({
             type="datetime-local"
             value={reservationTime}
             min={minTime}
+            max={maxTime}
             onChange={(e) => setReservationTime(e.target.value)}
             className="h-11 rounded-lg border-border-strong/80 text-sm"
           />
+          {/* Cảnh báo khi giờ hẹn quá xa — bàn bị khoá ngay từ lúc đặt */}
+          {showFarAheadWarning ? (
+            <div className="flex items-start gap-2 rounded-lg border border-status-warning/30 bg-status-warning-subtle px-3 py-2.5">
+              <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-status-warning" />
+              <p className="text-xs text-status-warning">
+                Bàn sẽ bị khoá ngay bây giờ trong khoảng{" "}
+                <span className="font-semibold">{Math.round(minutesUntilReservation / 60)} tiếng</span>.
+                Cân nhắc đặt gần giờ khách đến hơn để không lãng phí công suất bàn.
+              </p>
+            </div>
+          ) : null}
         </div>
 
         {/* Số khách dự kiến */}
@@ -292,7 +334,7 @@ function ReservationForm({
         ) : null}
 
         <div className="flex items-center justify-between border-t border-border-default/60 pt-4">
-          <span className="text-sm text-text-secondary">Bàn sẽ chuyển sang trạng</span>
+          <span className="text-sm text-text-secondary">Bàn sẽ chuyển sang trạng thái</span>
           <span className="inline-flex items-center gap-1.5 rounded-pill border border-[#7F56D9]/40 bg-[#FAF8FF] px-2.5 py-1 text-xs font-semibold text-[#6941C6]">
             <span className="size-1.5 rounded-full bg-[#7F56D9]" />
             Đặt trước
@@ -306,9 +348,9 @@ function ReservationForm({
         </Button>
         <Button
           type="submit"
-          disabled={createSessionMutation.isPending || availableTables.length === 0}
+          disabled={reserveMutation.isPending || availableTables.length === 0}
         >
-          {createSessionMutation.isPending ? "Đang lưu..." : "Xác nhận đặt bàn"}
+          {reserveMutation.isPending ? "Đang lưu..." : "Xác nhận đặt bàn"}
         </Button>
       </div>
     </form>

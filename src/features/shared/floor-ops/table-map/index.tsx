@@ -608,6 +608,7 @@ export default function TableMapPage() {
       <ReservationModal
         isOpen={isReservationModalOpen}
         availableTables={availableTables}
+        holdMinutes={branch?.reservationHoldMinutes}
         onClose={() => setIsReservationModalOpen(false)}
       />
 

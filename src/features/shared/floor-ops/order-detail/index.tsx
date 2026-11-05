@@ -356,14 +356,7 @@ export default function OrderDetailPage() {
 
   function handleTableAction() {
     if (tableActionMode === "checkout") {
-      // Moi vai tro co route Thanh toan rieng - dung nham la dinh trang 403.
-      const checkoutPattern =
-        role === APP_ROLE.BRANCH_MANAGER
-          ? BRANCH_MANAGER_PATHS.CHECKOUT
-          : role === APP_ROLE.RESTAURANT_ADMIN
-            ? RESTAURANT_ADMIN_PATHS.CHECKOUT
-            : CASHIER_PATHS.CHECKOUT;
-      navigate(generatePath(checkoutPattern, { tableSessionId: String(tableSessionId) }));
+      handleCheckout();
       return;
     }
     if (tableActionMode === "cancel-session") {
@@ -456,9 +449,23 @@ export default function OrderDetailPage() {
   async function proceedToCheckout() {
     if (!tableSessionId) return;
     setIsProcessingPay(true);
+
+    // Moi vai tro co route Thanh toan rieng - dung nham la dinh trang 403.
+    const checkoutPattern =
+      role === APP_ROLE.BRANCH_MANAGER
+        ? BRANCH_MANAGER_PATHS.CHECKOUT
+        : role === APP_ROLE.RESTAURANT_ADMIN
+          ? RESTAURANT_ADMIN_PATHS.CHECKOUT
+          : CASHIER_PATHS.CHECKOUT;
+
     try {
+      // Phiên đã ở WAITING_FOR_PAY: không cần requestPayment nữa, navigate thẳng
+      if (sessionStatus === "WAITING_FOR_PAY") {
+        navigate(generatePath(checkoutPattern, { tableSessionId: String(tableSessionId) }));
+        return;
+      }
       await requestPaymentMutation.mutateAsync(tableSessionId);
-      navigate(`/cashier/checkout/${tableSessionId}`);
+      navigate(generatePath(checkoutPattern, { tableSessionId: String(tableSessionId) }));
     } catch (error) {
       toast({
         title: "Lỗi chuyển sang thanh toán",
