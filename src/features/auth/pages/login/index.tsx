@@ -30,7 +30,7 @@ import { getAssignmentsByAccount } from "@/api/assignments.api"
 import { getErrorMessage } from "@/lib/http"
 import { clearTokens } from "@/lib/auth-token"
 import { useAuthStore } from "@/stores/auth.store"
-import { mapRoleCodeToAppRole, APP_ROLE_LABEL, type AppRole } from "@/config/roles"
+import { mapRoleCodeToAppRole, APP_ROLE_LABEL, APP_ROLE, type AppRole } from "@/config/roles"
 import { resolvePostLoginTarget } from "@/app/router/post-login-target"
 import { AUTH_PATHS } from "@/app/router/paths"
 import type { Account, Assignment } from "@/types/models"
@@ -83,7 +83,7 @@ export default function LoginPage() {
   function finalizeSession(account: Account, choice: AssignmentChoice, accessToken: string) {
     if (rememberMe) {
       localStorage.setItem("remember_login", "true")
-      localStorage.setItem("saved_restaurant_code", restaurantCode.trim())
+      localStorage.setItem("saved_restaurant_code", restaurantCode.trim() || "")
       localStorage.setItem("saved_username", username.trim())
     } else {
       localStorage.removeItem("remember_login")
@@ -117,14 +117,14 @@ export default function LoginPage() {
     e.preventDefault()
     setError(null)
 
-    if (!restaurantCode.trim() || !username.trim() || !password) {
-      setError("Vui lòng nhập đầy đủ Mã nhà hàng, Email/Số điện thoại và Mật khẩu.")
+    if (!username.trim() || !password) {
+      setError("Vui lòng nhập đầy đủ Tên đăng nhập và Mật khẩu.")
       return
     }
 
     try {
       const loginRes = await loginMutation.mutateAsync({
-        restaurantCode: restaurantCode.trim(),
+        restaurantCode: restaurantCode.trim() || null,
         username: username.trim(),
         password,
         deviceInfo: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
@@ -144,12 +144,58 @@ export default function LoginPage() {
         return
       }
 
-      const validChoices: AssignmentChoice[] = assignments
+      let validChoices: AssignmentChoice[] = assignments
         .map((assignment) => {
           const role = mapRoleCodeToAppRole(assignment.roleCode)
           return role ? { assignment, role } : null
         })
         .filter((c): c is AssignmentChoice => c !== null)
+
+      // Fallback an toàn cho Quản trị nền tảng (Platform Admin) nếu chưa có assignment trong DB
+      if (
+        validChoices.length === 0 &&
+        (loginRes.roles?.includes("PLATFORM_ADMIN") || !account.restaurantId)
+      ) {
+        validChoices = [
+          {
+            assignment: {
+              id: 100,
+              accountId: account.id,
+              roleId: 100,
+              roleName: "Quản trị nền tảng",
+              roleCode: "PLATFORM_ADMIN",
+              roleScope: "PLATFORM" as any,
+              branchId: undefined,
+              branchName: undefined,
+            },
+            role: APP_ROLE.PLATFORM_ADMIN,
+          },
+        ]
+      }
+
+      // Fallback an toàn cho Quản trị nhà hàng (Chủ nhà hàng / Manager) nếu chưa có assignment trong DB
+      if (
+        validChoices.length === 0 &&
+        (loginRes.roles?.includes("MANAGER") ||
+          loginRes.roles?.includes("RESTAURANT_ADMIN") ||
+          Boolean(account.restaurantId))
+      ) {
+        validChoices = [
+          {
+            assignment: {
+              id: 200,
+              accountId: account.id,
+              roleId: 200,
+              roleName: "Quản trị nhà hàng",
+              roleCode: "MANAGER",
+              roleScope: "RESTAURANT" as any,
+              branchId: undefined,
+              branchName: undefined,
+            },
+            role: APP_ROLE.RESTAURANT_ADMIN,
+          },
+        ]
+      }
 
       if (validChoices.length === 0) {
         clearTokens()
@@ -302,7 +348,7 @@ export default function LoginPage() {
                     </label>
                     <Input
                       id="restaurantCode"
-                      placeholder="VD: NH001"
+                      placeholder="VD: NH001 (Để trống nếu là Quản trị nền tảng)"
                       autoComplete="organization"
                       value={restaurantCode}
                       onChange={(e) => {
@@ -312,6 +358,9 @@ export default function LoginPage() {
                       disabled={isSubmitting}
                       className="h-11 rounded-xl border-neutral-200 bg-white px-3.5 text-sm transition-colors focus:border-[#F0522B] focus:ring-1 focus:ring-[#F0522B]"
                     />
+                    <p className="text-xs text-neutral-500 mt-1">
+                      💡 Quản trị nền tảng không cần nhập mã nhà hàng
+                    </p>
                   </div>
                 ) : (
                   <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3.5">

@@ -18,9 +18,9 @@ import type {
 } from "../enums"
 
 // ---------------------------------------------------------------- Auth
-/** `POST /auth/login`. Hệ thống multi-tenant nên BẮT BUỘC có `restaurantCode`. */
+/** `POST /auth/login`. Platform Admin để restaurantCode = null, nhân viên nhà hàng bắt buộc. */
 export interface LoginRequest {
-  restaurantCode: string
+  restaurantCode: string | null
   username: string
   password: string
   deviceInfo?: string
