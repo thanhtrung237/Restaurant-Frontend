@@ -182,9 +182,6 @@ const PlatformConfigPage = lazy(
 const SystemAuditLogPage = lazy(
   () => import("@/features/platform-admin/pages/system-audit-log"),
 );
-const SubscriptionBillingPage = lazy(
-  () => import("@/features/platform-admin/pages/subscription-billing"),
-);
 
 /**
  * Cây route của toàn hệ thống. Mỗi nhánh dưới đây tương ứng 1-1 với 1 file
@@ -429,10 +426,6 @@ export const router = createBrowserRouter([
               }, // RESTAURANT_DETAIL
               { path: "cau-hinh", element: <PlatformConfigPage /> }, // PLATFORM_CONFIG
               { path: "nhat-ky-he-thong", element: <SystemAuditLogPage /> }, // SYSTEM_AUDIT_LOG
-              {
-                path: "goi-va-thanh-toan",
-                element: <SubscriptionBillingPage />,
-              }, // SUBSCRIPTION_BILLING
             ],
           },
         ],

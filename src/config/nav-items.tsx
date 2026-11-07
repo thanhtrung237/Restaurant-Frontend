@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutGrid,
+  LayoutDashboard,
   ChefHat,
   Building2,
   Settings2,
@@ -11,8 +12,6 @@ import {
   ScrollText,
   Store,
   SlidersHorizontal,
-  Package,
-  CreditCard,
   Clock,
   ReceiptText,
 } from "lucide-react";
@@ -274,29 +273,24 @@ export const NAV_ITEMS_BY_ROLE: Record<
     {
       items: [
         {
+          label: "Dashboard",
+          path: PLATFORM_ADMIN_PATHS.DASHBOARD,
+          icon: LayoutDashboard,
+        },
+        {
           label: "Nhà hàng",
           path: PLATFORM_ADMIN_PATHS.RESTAURANT_LIST,
           icon: Store,
         },
         {
-          label: "Gói dịch vụ",
-          path: PLATFORM_ADMIN_PATHS.SUBSCRIPTION,
-          icon: Package,
-        },
-        {
-          label: "Thanh toán",
-          path: PLATFORM_ADMIN_PATHS.BILLING,
-          icon: CreditCard,
+          label: "Nhật ký hệ thống",
+          path: PLATFORM_ADMIN_PATHS.SYSTEM_AUDIT_LOG,
+          icon: ScrollText,
         },
         {
           label: "Cấu hình nền tảng",
           path: PLATFORM_ADMIN_PATHS.PLATFORM_CONFIG,
           icon: Settings2,
-        },
-        {
-          label: "Nhật ký hệ thống",
-          path: PLATFORM_ADMIN_PATHS.SYSTEM_AUDIT_LOG,
-          icon: ScrollText,
         },
       ],
     },
