@@ -17,6 +17,7 @@ export {
   useRestaurantsPage,
   useUpdateRestaurant,
 } from "@/api/restaurants.api"
-export { useBranchesByRestaurant } from "@/api/branches.api"
+export { useBranchesByRestaurant, useBranchesPage } from "@/api/branches.api"
 export { useAuditLogs } from "@/api/audit-logs.api"
+export { useAccountsByRestaurant, usePlatformAdmins, useCreateAccount } from "@/api/accounts.api"
 

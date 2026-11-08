@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import {
   Download,
   Plus,
@@ -17,6 +17,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
+import { useRestaurantsPage } from "@/features/platform-admin/api"
 
 interface Plan {
   id: string
@@ -129,10 +130,41 @@ const initialBillings: BillingRow[] = [
 
 export default function SubscriptionBillingPage() {
   const { toast } = useToast()
+  const { data: restaurantsData } = useRestaurantsPage({ page: 0, size: 50 })
+  const restaurants = restaurantsData?.content || []
+
   const [activeTab, setActiveTab] = useState<"plans" | "billing">("plans")
-  const [plans, setPlans] = useState<Plan[]>(initialPlans)
+  const [plans, setPlans] = useState<Plan[]>(() => {
+    const saved = localStorage.getItem("saas_plans")
+    if (saved) {
+      try {
+        return JSON.parse(saved)
+      } catch {}
+    }
+    return initialPlans
+  })
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+
+  // Kết hợp danh sách nhà hàng thật từ backend với thông tin billing
+  const billings = useMemo<BillingRow[]>(() => {
+    if (!restaurants || restaurants.length === 0) {
+      return initialBillings
+    }
+    return restaurants.map((r, index) => {
+      const isPro = index % 2 === 0
+      return {
+        id: String(r.id),
+        restaurantName: r.name,
+        code: r.code,
+        plan: isPro ? "Pro" : "Free",
+        cycle: isPro ? "Hàng tháng" : "Vĩnh viễn",
+        renewalDate: isPro ? "26/08/2026" : "—",
+        amount: isPro ? "990.000đ" : "0đ",
+        status: isPro ? (r.status === "ACTIVE" ? "PAID" : "OVERDUE") : "FREE",
+      }
+    })
+  }, [restaurants])
 
   const handleExportInvoice = () => {
     toast({
@@ -144,7 +176,7 @@ export default function SubscriptionBillingPage() {
     const csvContent =
       "data:text/csv;charset=utf-8," +
       "ID,Nha Hang,Ma,Goi,Chu Ky,Gia Han,So Tien,Trang Thai\n" +
-      initialBillings
+      billings
         .map(
           (b) =>
             `${b.id},"${b.restaurantName}",${b.code},${b.plan},${b.cycle},${b.renewalDate},"${b.amount}",${b.status}`
@@ -167,7 +199,11 @@ export default function SubscriptionBillingPage() {
   const handleSavePlan = (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingPlan) return
-    setPlans(plans.map((p) => (p.id === editingPlan.id ? editingPlan : p)))
+    const updated = plans.some((p) => p.id === editingPlan.id)
+      ? plans.map((p) => (p.id === editingPlan.id ? editingPlan : p))
+      : [...plans, editingPlan]
+    setPlans(updated)
+    localStorage.setItem("saas_plans", JSON.stringify(updated))
     setIsEditModalOpen(false)
     toast({
       variant: "success",
@@ -356,7 +392,7 @@ export default function SubscriptionBillingPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 text-sm">
-                  {initialBillings.map((b) => (
+                  {billings.map((b) => (
                     <tr key={b.id} className="hover:bg-gray-50/80 transition-colors">
                       <td className="py-4 px-6">
                         <div className="font-semibold text-gray-900">{b.restaurantName}</div>

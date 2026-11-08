@@ -60,6 +60,12 @@ export function useBranchesByRestaurant(restaurantId?: number) {
     enabled: typeof restaurantId === "number",
   })
 }
+export function useBranchesPage(params?: PageParams & { restaurantId?: number; status?: BranchStatus }) {
+  return useQuery({
+    queryKey: qk.branches.list(params),
+    queryFn: () => listBranches(params),
+  })
+}
 export function useCreateBranch() {
   const qc = useQueryClient()
   return useMutation({

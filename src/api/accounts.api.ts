@@ -18,6 +18,9 @@ export function listAccounts(params?: AccountListParams) {
 export function getAccountsByRestaurant(restaurantId: number) {
   return apiGet<Account[]>(`/accounts/restaurant/${restaurantId}`)
 }
+export function getPlatformAdmins() {
+  return apiGet<Account[]>("/accounts/platform-admins")
+}
 export function createAccount(body: AccountAddRequest) {
   return apiPost<Account>("/accounts", body)
 }
@@ -51,6 +54,12 @@ export function useAccountsByRestaurant(restaurantId?: number) {
     queryKey: qk.accounts.byRestaurant(restaurantId as number),
     queryFn: () => getAccountsByRestaurant(restaurantId as number),
     enabled: typeof restaurantId === "number",
+  })
+}
+export function usePlatformAdmins() {
+  return useQuery({
+    queryKey: ["accounts", "platform-admins"],
+    queryFn: () => getPlatformAdmins(),
   })
 }
 export function useAccountsPage(params?: AccountListParams) {
