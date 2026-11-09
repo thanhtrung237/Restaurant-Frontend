@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { MOCK_COMPARE_METRICS } from "../mock-data"
-import { TimeRangeDropdown } from "./TimeRangeDropdown"
+import { TimeRangeDropdown, detectActivePreset, PRESET_OPTIONS, type DateRangeValue } from "./TimeRangeDropdown"
 import { HourlyTimePicker } from "./HourlyTimePicker"
 import type { BranchListItem } from "@/types/models"
 import { cn } from "@/lib/utils"
@@ -20,8 +20,8 @@ interface ReportHeaderProps {
   selectedBranchIds: number[]
   onSelectBranchIds: (branchIds: number[]) => void
   isBranchManager: boolean
-  selectedTime: string
-  onSelectTime: (timeLabel: string) => void
+  dateRange: DateRangeValue
+  onChangeRange: (range: DateRangeValue) => void
   selectedMetric?: string
   onSelectMetric?: (metric: string) => void
   onExport: (format: "xlsx" | "csv") => void
@@ -38,8 +38,8 @@ export function ReportHeaderActions({
   selectedBranchIds,
   onSelectBranchIds,
   isBranchManager,
-  selectedTime,
-  onSelectTime,
+  dateRange,
+  onChangeRange,
   selectedMetric = "Theo doanh thu",
   onSelectMetric,
   onExport,
@@ -50,6 +50,12 @@ export function ReportHeaderActions({
   onHourlyEndHourChange,
 }: ReportHeaderProps) {
   const isBranchCompareTab = currentTab === "branch"
+  const now = React.useMemo(() => new Date(), [])
+
+  // Detect which preset is currently active
+  const activePresetKey = React.useMemo(() => {
+    return detectActivePreset(dateRange.from, dateRange.to, now)
+  }, [dateRange, now])
 
   // Get display text for branch selector
   const branchSelectorText = React.useMemo(() => {
@@ -64,42 +70,46 @@ export function ReportHeaderActions({
 
   const handleToggleBranch = (branchId: number) => {
     if (isBranchManager) return
-    
+
     if (selectedBranchIds.includes(branchId)) {
-      // Deselect branch
       const newIds = selectedBranchIds.filter((id) => id !== branchId)
       if (newIds.length > 0) {
         onSelectBranchIds(newIds)
       }
     } else {
-      // Select branch
       onSelectBranchIds([...selectedBranchIds, branchId])
     }
   }
 
   const handleToggleAll = () => {
     if (isBranchManager) return
-    
+
     if (selectedBranchIds.length === branches.length) {
-      // Deselect all except first one
       onSelectBranchIds([branches[0].id])
     } else {
-      // Select all
       onSelectBranchIds(branches.map((b) => b.id))
     }
   }
 
+  // Quick preset clicks from toolbar
+  const handleToolbarPreset = (presetKey: "today" | "yesterday" | "7days" | "thisMonth") => {
+    const preset = PRESET_OPTIONS.find((p) => p.key === presetKey)
+    if (preset) {
+      const r = preset.getRange(now)
+      onChangeRange(r)
+    }
+  }
+
   return (
-    // CHỈ cụm điều khiển — tiêu đề/dòng phụ do PageHeader lo.
     <>
       <div className="flex flex-wrap items-center gap-3">
+        {/* Branch / Metric Selector */}
         {isBranchCompareTab ? (
-          /* Tab So sánh chi nhánh: Dropdown Tiêu chí so sánh (Theo doanh thu ▾) */
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="flex items-center gap-2 rounded-xl border border-border-default/90 bg-surface-card px-4 py-2 text-sm font-medium text-text-primary shadow-2xs hover:bg-surface-muted transition-colors"
+                className="flex items-center gap-2 rounded-xl border border-border-default/90 bg-surface-card px-4 py-2 text-sm font-medium text-text-primary shadow-2xs hover:bg-surface-muted transition-colors cursor-pointer"
               >
                 <span>{selectedMetric}</span>
                 <ChevronDown className="size-4 text-text-tertiary" />
@@ -118,13 +128,12 @@ export function ReportHeaderActions({
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          /* Tab Ngày & Khung giờ: Dropdown Chọn chi nhánh */
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
                 disabled={isBranchManager}
-                className="flex items-center gap-2 rounded-xl border border-border-default/90 bg-surface-card px-4 py-2 text-sm font-medium text-text-primary shadow-2xs hover:bg-surface-muted transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex items-center gap-2 rounded-xl border border-border-default/90 bg-surface-card px-4 py-2 text-sm font-medium text-text-primary shadow-2xs hover:bg-surface-muted transition-colors disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
               >
                 <span>{branchSelectorText}</span>
                 <ChevronDown className="size-4 text-text-tertiary" />
@@ -175,11 +184,62 @@ export function ReportHeaderActions({
           </DropdownMenu>
         )}
 
-        {/* Bộ chọn kỳ — ẩn ở <md vì đã có bản "chip" trên MobileHeader (Figma
-            "Báo cáo · Mobile"); cùng một component nên hai nơi không thể lệch nhau. */}
+        {/* Quick Presets Pills on Toolbar (1-click immediate access) */}
+        <div className="hidden lg:flex items-center rounded-xl bg-surface-muted p-1 border border-border-default/70">
+          <button
+            type="button"
+            onClick={() => handleToolbarPreset("today")}
+            className={cn(
+              "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer",
+              activePresetKey === "today"
+                ? "bg-surface-card text-brand-primary shadow-xs font-bold"
+                : "text-text-secondary hover:text-text-primary"
+            )}
+          >
+            Hôm nay
+          </button>
+          <button
+            type="button"
+            onClick={() => handleToolbarPreset("yesterday")}
+            className={cn(
+              "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer",
+              activePresetKey === "yesterday"
+                ? "bg-surface-card text-brand-primary shadow-xs font-bold"
+                : "text-text-secondary hover:text-text-primary"
+            )}
+          >
+            Hôm qua
+          </button>
+          <button
+            type="button"
+            onClick={() => handleToolbarPreset("7days")}
+            className={cn(
+              "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer",
+              activePresetKey === "7days"
+                ? "bg-surface-card text-brand-primary shadow-xs font-bold"
+                : "text-text-secondary hover:text-text-primary"
+            )}
+          >
+            7 ngày
+          </button>
+          <button
+            type="button"
+            onClick={() => handleToolbarPreset("thisMonth")}
+            className={cn(
+              "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer",
+              activePresetKey === "thisMonth"
+                ? "bg-surface-card text-brand-primary shadow-xs font-bold"
+                : "text-text-secondary hover:text-text-primary"
+            )}
+          >
+            Tháng này
+          </button>
+        </div>
+
+        {/* Date Range Picker Component with Compact Popover */}
         <TimeRangeDropdown
-          value={selectedTime}
-          onChange={onSelectTime}
+          range={dateRange}
+          onChangeRange={onChangeRange}
           className="hidden md:flex"
         />
 
@@ -215,7 +275,7 @@ export function ReportHeaderActions({
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuContent align="right" className="w-52">
             <DropdownMenuItem
               onClick={() => onExport("xlsx")}
               className="cursor-pointer flex items-center gap-2.5 py-2 text-text-primary hover:bg-surface-muted"

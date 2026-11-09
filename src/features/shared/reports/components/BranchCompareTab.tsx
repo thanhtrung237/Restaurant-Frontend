@@ -74,6 +74,8 @@ export function BranchCompareTab({
         orderCount: branch.totalInvoices,
         averagePerOrder: branchAvgInvoiceValue,
         cancelRate: `${branch.totalCancelRate.toFixed(1)}%`,
+        cancelByRestaurantCount: branch.cancelByRestaurantCount,
+        cancelByCustomerCount: branch.cancelByCustomerCount,
         isCancelRateHigh: branch.totalCancelRate > data.avgCancelRate * 1.5,
         vsAverage: {
           value: `${Math.abs(vsAveragePercent).toFixed(1)}%`,

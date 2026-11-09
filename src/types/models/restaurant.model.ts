@@ -21,7 +21,11 @@ export interface Restaurant extends BaseResponse {
 export interface RestaurantListItem extends BaseResponse {
   code: string
   name: string
+  taxCode?: string
+  address?: string
   phone?: string
   status: RestaurantStatus
   branchCount?: number
+  createdAt?: string
+  updatedAt?: string
 }

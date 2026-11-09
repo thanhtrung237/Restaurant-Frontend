@@ -1,10 +1,13 @@
+import * as React from "react"
 import { StatCard } from "@/components/common/StatCard"
 import { RevenueBarChart } from "./RevenueBarChart"
 import { TopDishesCard } from "./TopDishesCard"
+import { PaymentMethodBreakdownCard } from "./PaymentMethodBreakdownCard"
+import { CategoryRevenueCard } from "./CategoryRevenueCard"
 import { useRevenueReport, useTopDishes } from "@/api/reports.api"
 import { computeGrowthTrend, formatCurrency, formatNumber } from "@/lib/format"
 import { format as formatDate, subDays } from "date-fns"
-import type { DailyRevenueItem, TopSellingDishItem } from "../types"
+import type { DailyRevenueItem } from "../types"
 
 interface DailyReportTabProps {
   branchIds: number[]
@@ -19,14 +22,14 @@ export function DailyReportTab({
   to,
   groupBy,
 }: DailyReportTabProps) {
-  // Compute previous period dates
+  // Compute previous period dates for trend comparisons
   const fromDate = new Date(from)
   const toDate = new Date(to)
   const durationMs = toDate.getTime() - fromDate.getTime()
-  
-  const previousToDate = new Date(fromDate.getTime() - 1000) // 1 second before from
+
+  const previousToDate = new Date(fromDate.getTime() - 1000)
   const previousFromDate = new Date(previousToDate.getTime() - durationMs)
-  
+
   const previousFrom = formatDate(previousFromDate, "yyyy-MM-dd'T'HH:mm:ss")
   const previousTo = formatDate(previousToDate, "yyyy-MM-dd'T'HH:mm:ss")
 
@@ -35,7 +38,7 @@ export function DailyReportTab({
   const sevenDaysFrom = formatDate(sevenDaysStartDate, "yyyy-MM-dd'T'00:00:00")
   const sevenDaysTo = formatDate(toDate, "yyyy-MM-dd'T'23:59:59")
 
-  // Fetch current period data (for stat cards & today metrics)
+  // Fetch current period data (for stat cards, payment methods & summary)
   const {
     data: currentData,
     isLoading: isLoadingCurrent,
@@ -65,12 +68,12 @@ export function DailyReportTab({
     groupBy: "DAY",
   })
 
-  // Fetch top dishes
+  // Fetch top & slowest dishes (FR-RPT-03, topN: 50 for full category coverage)
   const {
     data: topDishesData,
     isLoading: isLoadingTopDishes,
     error: errorTopDishes,
-  } = useTopDishes({ branchIds, from, to, topN: 4 })
+  } = useTopDishes({ branchIds, from, to, topN: 50 })
 
   const isLoading = isLoadingCurrent || isLoadingPrevious || isLoadingTopDishes || isLoadingSevenDays
   const error = errorCurrent || errorPrevious || errorTopDishes
@@ -87,7 +90,10 @@ export function DailyReportTab({
             />
           ))}
         </div>
-        <div className="h-96 animate-pulse rounded-card bg-surface-muted" />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <div className="h-96 animate-pulse rounded-card bg-surface-muted lg:col-span-7 xl:col-span-8" />
+          <div className="h-96 animate-pulse rounded-card bg-surface-muted lg:col-span-5 xl:col-span-4" />
+        </div>
         <div className="h-64 animate-pulse rounded-card bg-surface-muted" />
       </div>
     )
@@ -102,7 +108,7 @@ export function DailyReportTab({
             Không thể tải dữ liệu báo cáo
           </p>
           <p className="mt-2 text-xs text-text-tertiary">
-            Vui lòng kiểm tra kết nối và thử lại
+            Vui lòng kiểm tra kết nối mạng và thử lại.
           </p>
         </div>
       </div>
@@ -114,10 +120,10 @@ export function DailyReportTab({
   }
 
   // Parse BigDecimal strings to numbers
-  const currentRevenue = parseFloat(currentData.totalRevenue)
-  const previousRevenue = parseFloat(previousData.totalRevenue)
-  const currentAvgPerInvoice = parseFloat(currentData.avgRevenuePerInvoice)
-  const previousAvgPerInvoice = parseFloat(previousData.avgRevenuePerInvoice)
+  const currentRevenue = parseFloat(currentData.totalRevenue) || 0
+  const previousRevenue = parseFloat(previousData.totalRevenue) || 0
+  const currentAvgPerInvoice = parseFloat(currentData.avgRevenuePerInvoice) || 0
+  const previousAvgPerInvoice = parseFloat(previousData.avgRevenuePerInvoice) || 0
 
   // Compute growth trends
   const revenueTrend = computeGrowthTrend(currentRevenue, previousRevenue)
@@ -170,46 +176,58 @@ export function DailyReportTab({
     })
   }
 
-  // Map top dishes data to TopSellingDishItem[]
-  const topDishesItems: TopSellingDishItem[] =
-    topDishesData?.topByRevenue.slice(0, 4).map((dish) => ({
-      rank: dish.rank,
-      dishName: dish.dishName,
-      quantity: dish.totalQuantity,
-      totalAmount: parseFloat(dish.totalRevenue),
-    })) ?? []
-
   return (
     <div className="space-y-6">
-      {/* 4 Stat Cards */}
+      {/* 4 Core Stat Cards (FR-RPT-01) */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          label="Doanh thu"
+          label="Tổng doanh thu"
           value={formatCurrency(currentRevenue)}
           trend={revenueTrend}
         />
         <StatCard
-          label="Số đơn"
+          label="Số đơn hàng"
           value={formatNumber(currentData.totalInvoices)}
           trend={invoicesTrend}
         />
         <StatCard
-          label="Trung bình/bàn"
+          label="Giá trị TB / đơn"
           value={formatCurrency(currentAvgPerInvoice)}
           trend={avgPerInvoiceTrend}
         />
         <StatCard
-          label="Số bàn phục vụ"
-          value={formatNumber(currentData.totalGuests)}
+          label="Số lượng khách phục vụ"
+          value={`${formatNumber(currentData.totalGuests)} khách`}
           trend={guestsTrend}
         />
       </div>
 
-      {/* Bar Chart: Doanh thu 7 ngày qua */}
-      <RevenueBarChart data={dailyRevenueData} />
+      {/* Row: 7-day revenue bar chart + Payment Methods Breakdown (FR-RPT-01) */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <div className="lg:col-span-7 xl:col-span-8">
+          <RevenueBarChart data={dailyRevenueData} />
+        </div>
+        <div className="lg:col-span-5 xl:col-span-4">
+          <PaymentMethodBreakdownCard
+            revenueByPaymentMethod={currentData.revenueByPaymentMethod}
+            totalRevenue={currentRevenue}
+          />
+        </div>
+      </div>
 
-      {/* Top Selling Dishes Card */}
-      <TopDishesCard dishes={topDishesItems} />
+      {/* Row: Category Breakdown + Top Dishes & Slowest Dishes (FR-RPT-03) */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <div className="lg:col-span-5">
+          <CategoryRevenueCard dishes={topDishesData?.topByRevenue} />
+        </div>
+        <div className="lg:col-span-7">
+          <TopDishesCard
+            topByRevenue={topDishesData?.topByRevenue}
+            topByQuantity={topDishesData?.topByQuantity}
+            slowestDishes={topDishesData?.slowestDishes}
+          />
+        </div>
+      </div>
     </div>
   )
 }

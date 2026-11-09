@@ -6,13 +6,14 @@ import { ReportHeaderActions } from "./components/ReportHeader"
 import { DailyReportTab } from "./components/DailyReportTab"
 import { HourlyReportTab } from "./components/HourlyReportTab"
 import { BranchCompareTab } from "./components/BranchCompareTab"
-import { TimeRangeDropdown } from "./components/TimeRangeDropdown"
+import { TimeRangeDropdown, detectActivePreset, PRESET_OPTIONS, type DateRangeValue } from "./components/TimeRangeDropdown"
 import { HourlyTimePicker } from "./components/HourlyTimePicker"
 import { useAuthStore } from "@/stores/auth.store"
 import { useBranchesByRestaurant } from "@/api/branches.api"
 import { downloadReportFile } from "@/api/reports.api"
 import { getErrorMessage } from "@/lib/http"
 import { APP_ROLE } from "@/config/roles"
+import { format as formatDate } from "date-fns"
 
 const TAB_HEADER_META: Record<
   string,
@@ -20,7 +21,7 @@ const TAB_HEADER_META: Record<
 > = {
   daily: {
     title: "Báo cáo doanh thu",
-    subtitle: "Hôm nay · 26/07/2026",
+    subtitle: "Doanh thu theo thời gian (FR-RPT-01)",
   },
   hourly: {
     title: "Doanh thu theo khung giờ",
@@ -28,7 +29,7 @@ const TAB_HEADER_META: Record<
   },
   branch: {
     title: "So sánh chi nhánh",
-    subtitle: "Tháng 07/2026 · xếp hạng & cảnh báo chỉ số bất thường (FR-RPT-04)",
+    subtitle: "Xếp hạng & cảnh báo chỉ số bất thường (FR-RPT-04)",
   },
 }
 
@@ -42,14 +43,13 @@ export function ReportDashboard({ showBranchCompare = true }: ReportDashboardPro
   const { account, role, branchId } = useAuthStore()
   const [currentTab, setCurrentTab] = React.useState<string>("daily")
   const [selectedBranchIds, setSelectedBranchIds] = React.useState<number[]>([])
-  const [selectedDate, setSelectedDate] = React.useState<string>(() => {
-    // Initialize with today's date in dd/MM/yyyy format
+
+  // State quản lý khoảng thời gian (Date Range)
+  const [dateRange, setDateRange] = React.useState<DateRangeValue>(() => {
     const today = new Date()
-    const day = String(today.getDate()).padStart(2, '0')
-    const month = String(today.getMonth() + 1).padStart(2, '0')
-    const year = today.getFullYear()
-    return `${day}/${month}/${year}`
+    return { from: today, to: today }
   })
+
   const [selectedMetric, setSelectedMetric] = React.useState<string>("Theo doanh thu")
   const [hourlyStartHour, setHourlyStartHour] = React.useState<number>(0)
   const [hourlyEndHour, setHourlyEndHour] = React.useState<number>(23)
@@ -74,6 +74,49 @@ export function ReportDashboard({ showBranchCompare = true }: ReportDashboardPro
     }
   }, [branchesData, selectedBranchIds.length, isBranchManager, branchId])
 
+  // Calculate dynamic date range (ISO strings) based on dateRange
+  const { dateFrom, dateTo, dateDisplayLabel } = React.useMemo(() => {
+    const now = new Date()
+    const fromStr = formatDate(dateRange.from, "yyyy-MM-dd")
+    const toStr = formatDate(dateRange.to, "yyyy-MM-dd")
+    const fromLabel = formatDate(dateRange.from, "dd/MM/yyyy")
+    const toLabel = formatDate(dateRange.to, "dd/MM/yyyy")
+
+    const matchingKey = detectActivePreset(dateRange.from, dateRange.to, now)
+    const preset = PRESET_OPTIONS.find((p) => p.key === matchingKey)
+
+    let label = ""
+    if (preset) {
+      if (matchingKey === "today") {
+        label = `Hôm nay · ${fromLabel}`
+      } else if (matchingKey === "yesterday") {
+        label = `Hôm qua · ${fromLabel}`
+      } else {
+        label = `${preset.label} (${fromLabel} – ${toLabel})`
+      }
+    } else {
+      label = fromStr === toStr ? `Ngày ${fromLabel}` : `Khoảng ngày: ${fromLabel} – ${toLabel}`
+    }
+
+    return {
+      dateFrom: `${fromStr}T00:00:00`,
+      dateTo: `${toStr}T23:59:59`,
+      dateDisplayLabel: label,
+    }
+  }, [dateRange])
+
+  // Hourly datetime range for Hourly tab
+  const hourlyDateTimeRange = React.useMemo(() => {
+    const startHourPadded = String(hourlyStartHour).padStart(2, '0')
+    const endHourPadded = String(hourlyEndHour).padStart(2, '0')
+    const fromBase = dateFrom.split("T")[0]
+    const toBase = dateTo.split("T")[0]
+    return {
+      from: `${fromBase}T${startHourPadded}:00:00`,
+      to: `${toBase}T${endHourPadded}:59:59`,
+    }
+  }, [dateFrom, dateTo, hourlyStartHour, hourlyEndHour])
+
   const [isExporting, setIsExporting] = React.useState<boolean>(false)
 
   const handleExport = async (format: "xlsx" | "csv" = "xlsx") => {
@@ -91,8 +134,8 @@ export function ReportDashboard({ showBranchCompare = true }: ReportDashboardPro
         ? "BRANCH_COMPARISON"
         : "REVENUE"
 
-      const from = currentTab === "hourly" ? hourlyDateTimeRange.from : selectedDateFrom
-      const to = currentTab === "hourly" ? hourlyDateTimeRange.to : selectedDateTo
+      const from = currentTab === "hourly" ? hourlyDateTimeRange.from : dateFrom
+      const to = currentTab === "hourly" ? hourlyDateTimeRange.to : dateTo
 
       await downloadReportFile({
         type,
@@ -110,7 +153,7 @@ export function ReportDashboard({ showBranchCompare = true }: ReportDashboardPro
       })
     } catch (error) {
       toast({
-        variant: "destructive",
+        variant: "danger",
         title: "Xuất báo cáo thất bại",
         description: getErrorMessage(error) || "Không thể xuất file báo cáo, vui lòng thử lại.",
       })
@@ -128,58 +171,13 @@ export function ReportDashboard({ showBranchCompare = true }: ReportDashboardPro
     }
   }
 
-  // Handle date change - receives date string in dd/MM/yyyy format
-  const handleDateChange = (dateString: string) => {
-    setSelectedDate(dateString)
-  }
-
-  // Convert selected date (dd/MM/yyyy) to ISO datetime string base for API
-  const selectedDateBase = React.useMemo(() => {
-    try {
-      const [day, month, year] = selectedDate.split("/")
-      const date = new Date(Number(year), Number(month) - 1, Number(day))
-      const yyyy = date.getFullYear()
-      const mm = String(date.getMonth() + 1).padStart(2, '0')
-      const dd = String(date.getDate()).padStart(2, '0')
-      return `${yyyy}-${mm}-${dd}` // Returns "YYYY-MM-DD"
-    } catch {
-      // Fallback to today
-      const today = new Date()
-      const yyyy = today.getFullYear()
-      const mm = String(today.getMonth() + 1).padStart(2, '0')
-      const dd = String(today.getDate()).padStart(2, '0')
-      return `${yyyy}-${mm}-${dd}`
-    }
-  }, [selectedDate])
-
-  // Create full ISO datetime strings for Daily and Branch tabs
-  const selectedDateFrom = React.useMemo(() => {
-    return `${selectedDateBase}T00:00:00`
-  }, [selectedDateBase])
-
-  const selectedDateTo = React.useMemo(() => {
-    return `${selectedDateBase}T23:59:59`
-  }, [selectedDateBase])
-
-  // Create hourly datetime range for Hourly tab
-  const hourlyDateTimeRange = React.useMemo(() => {
-    const startHourPadded = String(hourlyStartHour).padStart(2, '0')
-    const endHourPadded = String(hourlyEndHour).padStart(2, '0')
-    return {
-      from: `${selectedDateBase}T${startHourPadded}:00:00`,
-      to: `${selectedDateBase}T${endHourPadded}:59:59`,
-    }
-  }, [selectedDateBase, hourlyStartHour, hourlyEndHour])
-
-  // Figma "Báo cáo · Mobile (375)": bộ chọn kỳ nằm TRONG header, cạnh chip chi nhánh.
-  // Phải memo hoá — usePageHeader so sánh headerActions bằng tham chiếu.
   const headerActions = React.useMemo(
     () => (
       <div className="flex items-center gap-2">
         <TimeRangeDropdown
           variant="chip"
-          value={selectedDate}
-          onChange={handleDateChange}
+          range={dateRange}
+          onChangeRange={setDateRange}
         />
         {currentTab === "hourly" && (
           <HourlyTimePicker
@@ -192,7 +190,7 @@ export function ReportDashboard({ showBranchCompare = true }: ReportDashboardPro
         )}
       </div>
     ),
-    [selectedDate, currentTab, hourlyStartHour, hourlyEndHour],
+    [dateRange, currentTab, hourlyStartHour, hourlyEndHour],
   )
 
   // Show loading indicator while branches are being fetched for Restaurant Admin
@@ -210,7 +208,13 @@ export function ReportDashboard({ showBranchCompare = true }: ReportDashboardPro
     <div className="flex min-h-screen flex-col bg-surface-page">
       <PageHeader
         title={headerMeta.title}
-        subtitle={currentTab === "daily" ? `Ngày ${selectedDate}` : headerMeta.subtitle}
+        subtitle={
+          currentTab === "daily"
+            ? dateDisplayLabel
+            : currentTab === "branch"
+            ? `${dateDisplayLabel} · Xếp hạng & cảnh báo chỉ số bất thường (FR-RPT-04)`
+            : headerMeta.subtitle
+        }
         mobileSubtitle=""
         mobileHeaderActions={headerActions}
         actions={
@@ -220,8 +224,8 @@ export function ReportDashboard({ showBranchCompare = true }: ReportDashboardPro
             selectedBranchIds={selectedBranchIds}
             onSelectBranchIds={handleSelectBranches}
             isBranchManager={isBranchManager}
-            selectedTime={selectedDate}
-            onSelectTime={handleDateChange}
+            dateRange={dateRange}
+            onChangeRange={setDateRange}
             selectedMetric={selectedMetric}
             onSelectMetric={setSelectedMetric}
             onExport={handleExport}
@@ -235,65 +239,65 @@ export function ReportDashboard({ showBranchCompare = true }: ReportDashboardPro
       />
 
       <div className="flex flex-col gap-6 p-6 lg:p-8">
-      {/* 2. Tabs Navigation & Content */}
-      <Tabs
-        value={currentTab}
-        onValueChange={setCurrentTab}
-        className="w-full space-y-6"
-      >
-        <TabsList className="w-full justify-start gap-8 border-b border-border-default/80 bg-transparent p-0 rounded-none">
-          <TabsTrigger
-            value="daily"
-            className="pb-3 text-sm font-medium text-text-tertiary transition-colors data-[state=active]:font-semibold data-[state=active]:text-brand-primary after:h-0.5 after:bg-transparent data-[state=active]:after:bg-brand-primary"
-          >
-            Theo ngày
-          </TabsTrigger>
-          <TabsTrigger
-            value="hourly"
-            className="pb-3 text-sm font-medium text-text-tertiary transition-colors data-[state=active]:font-semibold data-[state=active]:text-brand-primary after:h-0.5 after:bg-transparent data-[state=active]:after:bg-brand-primary"
-          >
-            Theo khung giờ
-          </TabsTrigger>
-          {showBranchCompare && (
+        {/* Tabs Navigation & Content */}
+        <Tabs
+          value={currentTab}
+          onValueChange={setCurrentTab}
+          className="w-full space-y-6"
+        >
+          <TabsList className="w-full justify-start gap-8 border-b border-border-default/80 bg-transparent p-0 rounded-none">
             <TabsTrigger
-              value="branch"
+              value="daily"
               className="pb-3 text-sm font-medium text-text-tertiary transition-colors data-[state=active]:font-semibold data-[state=active]:text-brand-primary after:h-0.5 after:bg-transparent data-[state=active]:after:bg-brand-primary"
             >
-              So sánh chi nhánh
+              Theo ngày
             </TabsTrigger>
-          )}
-        </TabsList>
+            <TabsTrigger
+              value="hourly"
+              className="pb-3 text-sm font-medium text-text-tertiary transition-colors data-[state=active]:font-semibold data-[state=active]:text-brand-primary after:h-0.5 after:bg-transparent data-[state=active]:after:bg-brand-primary"
+            >
+              Theo khung giờ
+            </TabsTrigger>
+            {showBranchCompare && (
+              <TabsTrigger
+                value="branch"
+                className="pb-3 text-sm font-medium text-text-tertiary transition-colors data-[state=active]:font-semibold data-[state=active]:text-brand-primary after:h-0.5 after:bg-transparent data-[state=active]:after:bg-brand-primary"
+              >
+                So sánh chi nhánh
+              </TabsTrigger>
+            )}
+          </TabsList>
 
-        {/* Tab 1: Theo ngày */}
-        <TabsContent value="daily" className="outline-none">
-          <DailyReportTab
-            branchIds={selectedBranchIds}
-            from={selectedDateFrom}
-            to={selectedDateTo}
-            groupBy="DAY"
-          />
-        </TabsContent>
-
-        {/* Tab 2: Theo khung giờ */}
-        <TabsContent value="hourly" className="outline-none">
-          <HourlyReportTab
-            branchIds={selectedBranchIds}
-            from={hourlyDateTimeRange.from}
-            to={hourlyDateTimeRange.to}
-          />
-        </TabsContent>
-
-        {/* Tab 3: So sánh chi nhánh — chỉ Quản trị NH (mục 4.3) */}
-        {showBranchCompare && restaurantId && (
-          <TabsContent value="branch" className="outline-none">
-            <BranchCompareTab
-              restaurantId={restaurantId}
-              from={selectedDateFrom}
-              to={selectedDateTo}
+          {/* Tab 1: Theo ngày */}
+          <TabsContent value="daily" className="outline-none">
+            <DailyReportTab
+              branchIds={selectedBranchIds}
+              from={dateFrom}
+              to={dateTo}
+              groupBy="DAY"
             />
           </TabsContent>
-        )}
-      </Tabs>
+
+          {/* Tab 2: Theo khung giờ */}
+          <TabsContent value="hourly" className="outline-none">
+            <HourlyReportTab
+              branchIds={selectedBranchIds}
+              from={hourlyDateTimeRange.from}
+              to={hourlyDateTimeRange.to}
+            />
+          </TabsContent>
+
+          {/* Tab 3: So sánh chi nhánh — chỉ Quản trị NH (mục 4.3) */}
+          {showBranchCompare && restaurantId && (
+            <TabsContent value="branch" className="outline-none">
+              <BranchCompareTab
+                restaurantId={restaurantId}
+                from={dateFrom}
+                to={dateTo}
+              />
+            </TabsContent>
+          )}
+        </Tabs>
       </div>
     </div>
   )

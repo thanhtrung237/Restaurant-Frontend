@@ -7,6 +7,8 @@
 
 export interface RevenueReportResponse {
   totalRevenue: string
+  totalGrossRevenue?: string
+  totalDiscount?: string
   totalInvoices: number
   totalGuests: number
   avgRevenuePerInvoice: string

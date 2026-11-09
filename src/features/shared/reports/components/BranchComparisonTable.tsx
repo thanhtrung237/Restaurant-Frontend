@@ -64,14 +64,21 @@ export function BranchComparisonTable({ data }: BranchComparisonTableProps) {
                     {item.averagePerOrder.toLocaleString("vi-VN")}đ
                   </td>
 
-                  {/* Cột Tỷ lệ hủy */}
+                  {/* Cột Tỷ lệ hủy (BR-24) */}
                   <td
                     className={cn(
                       "py-4 font-normal",
                       isDanger ? "font-semibold text-status-danger" : "text-text-secondary"
                     )}
                   >
-                    {item.cancelRate}
+                    <div className="flex flex-col">
+                      <span>{item.cancelRate}</span>
+                      {(item.cancelByCustomerCount !== undefined || item.cancelByRestaurantCount !== undefined) && (
+                        <span className="text-[11px] text-text-tertiary font-normal">
+                          Khách: {item.cancelByCustomerCount ?? 0} · Bếp: {item.cancelByRestaurantCount ?? 0}
+                        </span>
+                      )}
+                    </div>
                   </td>
 
                   {/* Cột So với TB */}

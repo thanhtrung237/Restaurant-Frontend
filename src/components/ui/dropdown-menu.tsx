@@ -74,13 +74,43 @@ export function DropdownMenuContent({
   children,
   className,
   align = "right",
+  side = "bottom",
 }: {
   children: React.ReactNode
   className?: string
   align?: "left" | "right" | "center"
+  side?: "top" | "bottom" | "auto"
 }) {
   const ctx = React.useContext(DropdownMenuContext)
   if (!ctx) throw new Error("DropdownMenuContent must be inside DropdownMenu")
+
+  const [actualSide, setActualSide] = React.useState<"top" | "bottom">(
+    side === "top" ? "top" : "bottom"
+  )
+  const contentRef = React.useRef<HTMLDivElement>(null)
+
+  React.useLayoutEffect(() => {
+    if (side === "top") {
+      setActualSide("top")
+    } else if (side === "auto" && contentRef.current) {
+      const rect = contentRef.current.getBoundingClientRect()
+      const overflowParent = contentRef.current.closest(".overflow-x-auto, .overflow-y-auto, .overflow-hidden")
+      if (overflowParent) {
+        const parentRect = overflowParent.getBoundingClientRect()
+        if (rect.bottom > parentRect.bottom - 10) {
+          setActualSide("top")
+          return
+        }
+      }
+      if (rect.bottom > window.innerHeight - 20) {
+        setActualSide("top")
+      } else {
+        setActualSide("bottom")
+      }
+    } else {
+      setActualSide("bottom")
+    }
+  }, [ctx.open, side])
 
   if (!ctx.open) return null
 
@@ -91,12 +121,16 @@ export function DropdownMenuContent({
       ? "left-1/2 -translate-x-1/2"
       : "right-0"
 
+  const sideClass = actualSide === "top" ? "bottom-full mb-1.5" : "top-full mt-1.5"
+
   return (
     <div
+      ref={contentRef}
       className={cn(
-        "absolute z-50 mt-2 min-w-44 rounded-card border border-border-default bg-surface-card p-1.5 shadow-lg",
+        "absolute z-50 min-w-44 rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl text-gray-800",
         "animate-in fade-in-0 zoom-in-95",
         alignClass,
+        sideClass,
         className
       )}
     >

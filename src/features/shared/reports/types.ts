@@ -64,6 +64,8 @@ export interface BranchComparisonItem {
   orderCount: number
   averagePerOrder: number
   cancelRate: string
+  cancelByRestaurantCount?: number
+  cancelByCustomerCount?: number
   isCancelRateHigh?: boolean
   vsAverage: {
     value: string
