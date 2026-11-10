@@ -401,18 +401,18 @@ export interface PromotionAddRequest {
 }
 export interface PromotionUpdateRequest {
   name?: string
-  description?: string
+  description?: string | null
   startDate?: string
   endDate?: string
-  timeWindow?: string
-  daysOfWeek?: string
+  timeWindow?: string | null
+  daysOfWeek?: string | null
   applyLevel?: ApplyLevel
   condition?: string
   action?: string
   priority?: number
   status?: PromotionStatus
-  code?: string
-  usageLimit?: number
+  code?: string | null
+  usageLimit?: number | null
   allBranches?: boolean
   branchIds?: number[]
 }

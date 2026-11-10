@@ -112,6 +112,9 @@ const BranchManagerPromotionsPage = lazy(
 const BranchManagerPromotionCreatePage = lazy(
   () => import("@/features/branch-manager/pages/promotion-create"),
 );
+const BranchManagerPromotionEditPage = lazy(
+  () => import("@/features/branch-manager/pages/promotion-edit"),
+);
 const ManualDiscountPage = lazy(
   () => import("@/features/branch-manager/pages/manual-discount"),
 );
@@ -327,6 +330,10 @@ export const router = createBrowserRouter([
                     path: "khuyen-mai/tao-moi",
                     element: <BranchManagerPromotionCreatePage />,
                   }, // PROMOTION_CREATE
+                  {
+                    path: "khuyen-mai/:id/chinh-sua",
+                    element: <BranchManagerPromotionEditPage />,
+                  }, // PROMOTION_EDIT
                 ],
               },
               { path: "bao-cao", element: <BranchReportPage /> }, // REPORT — không có tab "So sánh chi nhánh"

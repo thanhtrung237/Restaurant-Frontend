@@ -105,6 +105,14 @@ export function useAssignPromotionToBranch() {
   })
 }
 
+export function useRemovePromotionFromBranch() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => removePromotionFromBranch(id),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.promotionBranches.all }),
+  })
+}
+
 export function getActivePromotionsByBranch(branchId: number) {
   return apiGet<Promotion[]>(`/promotions/branch/${branchId}/active`)
 }

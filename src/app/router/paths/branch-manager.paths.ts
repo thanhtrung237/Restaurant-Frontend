@@ -36,6 +36,7 @@ export const BRANCH_MANAGER_PATHS = {
   MENU: `${BRANCH_MANAGER_BASE}/thuc-don`, // Thực đơn (đè giá/ẩn món/món riêng — dùng chung MenuManagementPage)
   PROMOTIONS: `${BRANCH_MANAGER_BASE}/khuyen-mai`, // Khuyến mãi
   PROMOTION_CREATE: `${BRANCH_MANAGER_BASE}/khuyen-mai/tao-moi`, // Tạo khuyến mãi
+  PROMOTION_EDIT: `${BRANCH_MANAGER_BASE}/khuyen-mai/:id/chinh-sua`, // Chỉnh sửa khuyến mãi
   REPORT: `${BRANCH_MANAGER_BASE}/bao-cao`, // Báo cáo chi nhánh mình (không có tab So sánh chi nhánh)
   REVENUE_BY_HOUR: `${BRANCH_MANAGER_BASE}/bao-cao/doanh-thu-theo-gio`, // tab "Theo khung giờ"
   BRANCH: `${BRANCH_MANAGER_BASE}/chi-nhanh`, // Chi nhánh — đi thẳng vào chi tiết (3 tab) của chi nhánh mình
