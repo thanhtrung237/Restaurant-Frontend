@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useNavigate, useParams, generatePath } from "react-router-dom";
-import { Banknote, QrCode, FileStack, ChevronLeft, Trash2 } from "lucide-react";
+import { Banknote, QrCode, FileStack, ChevronLeft, Trash2, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
 import { StatusBadge } from "@/components/common/StatusBadge";
@@ -29,6 +29,7 @@ import { PromotionSelectModal } from "@/features/cashier/components/PromotionSel
 import { useActivePromotionsByBranch } from "@/api/promotions.api";
 import type { Promotion } from "@/types/models";
 import { useCheckoutStore, type ManualDiscountInput, type ManualDiscountState } from "@/features/cashier/store/checkout.store";
+import { calculatePromoDiscount } from "@/features/cashier/components/PromotionSelectModal";
 import { cn } from "@/lib/utils";
 import { isBillableDetail, getCancelInfo } from "@/lib/order-detail-billing";
 
@@ -86,7 +87,8 @@ export default function CheckoutPage() {
 
   // Local state
   const [manualDiscount, setManualDiscount] = React.useState<ManualDiscountState | null>(null);
-  const [selectedPromo, setSelectedPromo] = React.useState<Promotion | null>(null);
+  // undefined: mặc định theo BE; null: thu ngân đã xóa KM; Promotion: thu ngân chọn KM cụ thể
+  const [selectedPromo, setSelectedPromo] = React.useState<Promotion | null | undefined>(undefined);
   const [isPromoModalOpen, setIsPromoModalOpen] = React.useState(false);
   const [cashTendered, setCashTendered] = React.useState<number | null>(null);
   const [isDiscountModalOpen, setDiscountModalOpen] = React.useState(false);
@@ -98,36 +100,118 @@ export default function CheckoutPage() {
   // Dùng ref để chặn ngay lập tức, đồng bộ, không phụ thuộc vào re-render.
   const isSubmittingRef = React.useRef(false);
 
-  // Số tiền lấy từ BE — KHÔNG tự tính ở FE
-  const grandTotal = bill?.grandTotal ?? 0;
-
-  const quickAmounts = React.useMemo(
-    () => buildQuickCashAmounts(grandTotal),
-    [grandTotal]
-  );
-  const changeAmount = cashTendered != null ? cashTendered - grandTotal : null;
-
-  // Cơ sở tính chiết khấu tay hiển thị trong modal (sau KM đơn) — số liệu từ BE
   // Tiền hàng = tổng giá đã giảm của các món (gốc − KM món)
   const itemsSubTotal = Math.max(
     0,
     (bill?.grossSubTotal ?? 0) - (bill?.itemPromotionDiscount ?? 0),
   );
-  const discountBaseAmount = Math.max(
-    0,
-    itemsSubTotal - (bill?.orderPromotionDiscount ?? 0),
+
+  // Xác định khuyến mãi cấp đơn đang có hiệu lực
+  const effectivePromo = React.useMemo(() => {
+    if (selectedPromo === null) {
+      return null;
+    }
+    if (selectedPromo !== undefined) {
+      const { discount, isEligible } = calculatePromoDiscount(selectedPromo, itemsSubTotal);
+      if (isEligible && discount > 0) {
+        return {
+          id: selectedPromo.id,
+          name: selectedPromo.name,
+          discount,
+          promo: selectedPromo,
+        };
+      }
+      return null;
+    }
+    if ((bill?.orderPromotionDiscount ?? 0) > 0) {
+      return {
+        id: bill?.orderPromotionId ?? null,
+        name: bill?.orderPromotionName ?? undefined,
+        discount: bill?.orderPromotionDiscount ?? 0,
+        promo: null,
+      };
+    }
+    return null;
+  }, [selectedPromo, itemsSubTotal, bill]);
+
+  const effectiveOrderPromoDiscount = effectivePromo?.discount ?? 0;
+  const effectiveOrderPromoName = effectivePromo?.name;
+  const effectiveOrderPromoId = selectedPromo === null ? -1 : (effectivePromo?.id ?? null);
+
+  // Cơ sở tính chiết khấu tay (sau KM đơn)
+  const discountBaseAmount = Math.max(0, itemsSubTotal - effectiveOrderPromoDiscount);
+
+  // Chiết khấu tay
+  const effectiveManualDiscountAmount = React.useMemo(() => {
+    if (!manualDiscount) return 0;
+    if ((bill?.manualDiscount ?? 0) > 0 && selectedPromo === undefined) {
+      return bill?.manualDiscount ?? 0;
+    }
+    if (manualDiscount.type === "PERCENTAGE") {
+      return Math.round((discountBaseAmount * manualDiscount.value) / 100);
+    }
+    return Math.min(manualDiscount.value, discountBaseAmount);
+  }, [manualDiscount, discountBaseAmount, bill?.manualDiscount, selectedPromo]);
+
+  // Tiền sau chiết khấu (cơ sở cho phí dịch vụ & VAT)
+  const baseAmount = Math.max(0, discountBaseAmount - effectiveManualDiscountAmount);
+
+  // Phí dịch vụ
+  const serviceFeeRate = bill?.serviceFeeRate ?? 0;
+  const effectiveServiceFee = React.useMemo(() => {
+    if (selectedPromo === undefined && !manualDiscount && bill) {
+      return bill.serviceFee;
+    }
+    return Math.round((baseAmount * serviceFeeRate) / 100);
+  }, [selectedPromo, manualDiscount, bill, baseAmount, serviceFeeRate]);
+
+  // VAT
+  const vatRate = bill?.vatRate ?? 0;
+  const vatOnServiceFee = bill?.vatOnServiceFee ?? true;
+  const effectiveVatAmount = React.useMemo(() => {
+    if (selectedPromo === undefined && !manualDiscount && bill) {
+      return bill.vatAmount;
+    }
+    const vatBase = vatOnServiceFee ? baseAmount + effectiveServiceFee : baseAmount;
+    return Math.round((vatBase * vatRate) / 100);
+  }, [selectedPromo, manualDiscount, bill, vatOnServiceFee, baseAmount, effectiveServiceFee, vatRate]);
+
+  // Tổng cộng hiển thị
+  const displayGrandTotal = React.useMemo(() => {
+    if (selectedPromo === undefined && !manualDiscount && bill) {
+      return bill.grandTotal;
+    }
+    return Math.max(0, baseAmount + effectiveServiceFee + effectiveVatAmount);
+  }, [selectedPromo, manualDiscount, bill, baseAmount, effectiveServiceFee, effectiveVatAmount]);
+
+  const grandTotal = displayGrandTotal;
+
+  const quickAmounts = React.useMemo(
+    () => buildQuickCashAmounts(displayGrandTotal),
+    [displayGrandTotal]
   );
+  const changeAmount = cashTendered != null ? cashTendered - displayGrandTotal : null;
+
+  const displayOrderPromoName = effectiveOrderPromoName;
 
   function goToQrTransfer() {
     if (!tableSessionId) return;
-    useCheckoutStore.getState().setSelectedPromotion(selectedPromo);
+    useCheckoutStore.getState().setSelectedPromotion(
+      selectedPromo === null
+        ? { id: -1 }
+        : selectedPromo
+          ? selectedPromo
+          : effectivePromo
+            ? { id: effectivePromo.id, name: effectivePromo.name }
+            : null
+    );
     navigate(
       generatePath(CASHIER_PATHS.QR_TRANSFER_PAYMENT, { tableSessionId: String(tableSessionId) })
     );
   }
 
   async function handleApplyDiscount(input: ManualDiscountInput) {
-    if (!tableSessionId || !branchId) return;
+    if (!tableSessionId || !effectiveBranchId) return;
 
     try {
       // Tạo manual discount với invoiceId nếu đã có invoice
@@ -169,7 +253,7 @@ export default function CheckoutPage() {
   }
 
   async function handleIssueInvoice() {
-    if (!tableSessionId || !branchId) return;
+    if (!tableSessionId || !effectiveBranchId) return;
 
     // Chặn double-submit (xem giải thích ở khai báo isSubmittingRef phía trên)
     if (isSubmittingRef.current) return;
@@ -186,11 +270,12 @@ export default function CheckoutPage() {
     isSubmittingRef.current = true;
 
     try {
-      // 1. Tạo invoice với promotionId nếu có
+      // 1. Tạo invoice với promotionId nếu có (truyền -1 nếu thu ngân đã xóa khuyến mãi)
+      const promoIdToSend = effectiveOrderPromoId === -1 ? -1 : (effectiveOrderPromoId ?? undefined);
       const invoice = await createInvoiceMutation.mutateAsync({
         branchId: effectiveBranchId as number,
         tableSessionId,
-        promotionId: selectedPromo?.id,
+        promotionId: promoIdToSend,
       });
 
       setInvoiceId(invoice.id);
@@ -455,9 +540,9 @@ export default function CheckoutPage() {
 
               <div className="flex items-center justify-between text-sm">
                 <span className="text-text-secondary">
-                  Khuyến mãi đơn{bill.orderPromotionName ? ` (${bill.orderPromotionName})` : ""}
+                  Khuyến mãi đơn{displayOrderPromoName ? ` (${displayOrderPromoName})` : ""}
                 </span>
-                {bill.orderPromotionDiscount > 0 ? (
+                {effectiveOrderPromoDiscount > 0 ? (
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
@@ -465,13 +550,13 @@ export default function CheckoutPage() {
                       className="font-medium text-status-success underline-offset-2 hover:underline text-right"
                       title="Thay đổi khuyến mãi"
                     >
-                      −{formatVnd(bill.orderPromotionDiscount)}
+                      −{formatVnd(effectiveOrderPromoDiscount)}
                     </button>
                     <button
                       type="button"
                       onClick={() => {
                         setSelectedPromo(null);
-                        useCheckoutStore.getState().setSelectedPromotion(null);
+                        useCheckoutStore.getState().setSelectedPromotion({ id: -1 });
                       }}
                       className="rounded-full p-0.5 text-text-tertiary hover:bg-surface-muted hover:text-status-danger transition-colors"
                       title="Bỏ khuyến mãi"
@@ -493,13 +578,26 @@ export default function CheckoutPage() {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-text-secondary">Chiết khấu tay</span>
                 {manualDiscount ? (
-                  <button
-                    type="button"
-                    onClick={() => setDiscountModalOpen(true)}
-                    className="font-medium text-status-success underline-offset-2 hover:underline"
-                  >
-                    −{formatVnd(bill.manualDiscount)}
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setDiscountModalOpen(true)}
+                      className="font-medium text-status-success underline-offset-2 hover:underline"
+                    >
+                      −{formatVnd(effectiveManualDiscountAmount)}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setManualDiscount(null);
+                        useCheckoutStore.getState().setManualDiscount(null);
+                      }}
+                      className="rounded-full p-0.5 text-text-tertiary hover:bg-surface-muted hover:text-status-danger transition-colors"
+                      title="Bỏ chiết khấu"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </div>
                 ) : (
                   <button
                     type="button"
@@ -513,19 +611,19 @@ export default function CheckoutPage() {
 
               <div className="flex items-center justify-between text-sm">
                 <span className="text-text-secondary">
-                  Phí dịch vụ ({bill.serviceFeeRate.toFixed(0)}%)
+                  Phí dịch vụ ({serviceFeeRate.toFixed(0)}%)
                 </span>
                 <span className="font-medium text-text-primary">
-                  {formatVnd(bill.serviceFee)}
+                  {formatVnd(effectiveServiceFee)}
                 </span>
               </div>
 
               <div className="flex items-center justify-between text-sm">
                 <span className="text-text-secondary">
-                  VAT ({bill.vatRate.toFixed(0)}%)
+                  VAT ({vatRate.toFixed(0)}%)
                 </span>
                 <span className="font-medium text-text-primary">
-                  {formatVnd(bill.vatAmount)}
+                  {formatVnd(effectiveVatAmount)}
                 </span>
               </div>
             </>
@@ -538,10 +636,47 @@ export default function CheckoutPage() {
           <span className="text-base font-bold text-text-primary">
             Tổng cộng
           </span>
-          <span className="text-2xl font-bold text-brand-primary">
-            {formatVnd(grandTotal)}
-          </span>
+          <div className="flex flex-col items-end">
+            <span className="text-2xl font-bold text-brand-primary">
+              {formatVnd(displayGrandTotal)}
+            </span>
+          </div>
         </div>
+
+        {/* Thông báo khi thu ngân đổi hoặc xóa KM */}
+        {selectedPromo && (
+          <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-status-success-subtle px-3 py-2">
+            <Tag className="mt-0.5 size-3.5 shrink-0 text-status-success" />
+            <p className="text-xs text-status-success leading-relaxed">
+              <strong>{selectedPromo.name}</strong> sẽ được áp dụng khi phát hành hóa đơn.
+              {effectiveOrderPromoDiscount > 0
+                ? ` Giảm ${formatVnd(effectiveOrderPromoDiscount)}.`
+                : " (Hóa đơn chưa đủ điều kiện.)"}
+            </p>
+          </div>
+        )}
+        {selectedPromo === null && (
+          <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-surface-muted px-3 py-2">
+            <Tag className="mt-0.5 size-3.5 shrink-0 text-text-tertiary" />
+            <p className="text-xs text-text-secondary leading-relaxed">
+              Đã bỏ áp dụng khuyến mãi đơn hàng cho lần thanh toán này.
+            </p>
+          </div>
+        )}
+
+        {/* Thông báo chiết khấu tay chờ áp */}
+        {manualDiscount && bill && bill.manualDiscount === 0 && (
+          <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-brand-primary-subtle/60 px-3 py-2">
+            <Tag className="mt-0.5 size-3.5 shrink-0 text-brand-primary" />
+            <p className="text-xs text-brand-primary leading-relaxed">
+              Chiết khấu{" "}
+              <strong>
+                {manualDiscount.value}{manualDiscount.type === "PERCENTAGE" ? "%" : "đ"}
+              </strong>{" "}
+              ({manualDiscount.reason}) sẽ được áp khi phát hành hóa đơn.
+            </p>
+          </div>
+        )}
 
         <p className="mt-6 text-xs font-semibold tracking-wide text-text-tertiary">
           HÌNH THỨC THANH TOÁN
@@ -694,10 +829,10 @@ export default function CheckoutPage() {
         branchId={effectiveBranchId ?? undefined}
         subtotal={itemsSubTotal} // BE tính KM đơn trên tiền sau KM món
         activePromotions={branchPromotions}
-        currentPromotionId={selectedPromo?.id}
-        onSelectPromotion={(promo) => {
+        currentPromotionId={effectiveOrderPromoId !== -1 ? (effectiveOrderPromoId ?? undefined) : null}
+        onSelectPromotion={(promo, _discountAmount) => {
           setSelectedPromo(promo);
-          useCheckoutStore.getState().setSelectedPromotion(promo);
+          useCheckoutStore.getState().setSelectedPromotion(promo ? promo : { id: -1 });
           setIsPromoModalOpen(false);
         }}
       />

@@ -78,13 +78,17 @@ export function PromotionSelectModal({
   const [queriedPromo, setQueriedPromo] = React.useState<Promotion | null>(null)
   const [selectedPromo, setSelectedPromo] = React.useState<Promotion | null>(null)
 
-  // Lọc chỉ các khuyến mãi cấp hóa đơn
+  // Lọc khuyến mãi: ưu tiên cấp INVOICE, nếu không có thì hiện tất cả
   const invoicePromotions = React.useMemo(() => {
-    const list = activePromotions.filter((p) => p.applyLevel === "INVOICE")
-    if (queriedPromo && !list.some((p) => p.id === queriedPromo.id)) {
-      return [queriedPromo, ...list]
+    const invoiceLevel = activePromotions.filter((p) => p.applyLevel === "INVOICE")
+    // Nếu có KM tìm qua mã (queriedPromo) chưa có trong list → thêm vào đầu
+    const baseList = invoiceLevel.length > 0
+      ? invoiceLevel
+      : activePromotions // fallback: hiện tất cả nếu chi nhánh không có KM cấp INVOICE
+    if (queriedPromo && !baseList.some((p) => p.id === queriedPromo.id)) {
+      return [queriedPromo, ...baseList]
     }
-    return list
+    return baseList
   }, [activePromotions, queriedPromo])
 
   React.useEffect(() => {
@@ -93,9 +97,15 @@ export function PromotionSelectModal({
       setCodeError(null)
       setQueriedPromo(null)
       const found = activePromotions.find((p) => p.id === currentPromotionId)
-      setSelectedPromo(found || null)
+      // Chỉ restore nếu KM đó vẫn đủ điều kiện
+      if (found) {
+        const { isEligible } = calculatePromoDiscount(found, subtotal)
+        setSelectedPromo(isEligible ? found : null)
+      } else {
+        setSelectedPromo(null)
+      }
     }
-  }, [open, currentPromotionId, activePromotions])
+  }, [open, currentPromotionId, activePromotions, subtotal])
 
   async function handleSearchCode() {
     const code = inputCode.trim().toUpperCase()
@@ -107,8 +117,18 @@ export function PromotionSelectModal({
 
     try {
       const promo = await getPromotionByBranchAndCode(branchId, code)
-      setQueriedPromo(promo)
-      setSelectedPromo(promo)
+      // Kiểm tra điều kiện ngay khi tìm mã
+      const { isEligible, minOrderValue } = calculatePromoDiscount(promo, subtotal)
+      if (!isEligible) {
+        setCodeError(
+          `Mã "${code}" chưa đủ điều kiện — đơn tối thiểu ${formatVnd(minOrderValue)} (hiện tại ${formatVnd(subtotal)})`
+        )
+        setQueriedPromo(promo) // Vẫn hiện trong list để thấy thông tin
+        setSelectedPromo(null) // Nhưng không chọn
+      } else {
+        setQueriedPromo(promo)
+        setSelectedPromo(promo)
+      }
       setInputCode("")
     } catch (err: any) {
       setCodeError(getErrorMessage(err))
@@ -117,8 +137,13 @@ export function PromotionSelectModal({
     }
   }
 
+  // KM được chọn có đủ điều kiện không
+  const selectedPromoEligible = selectedPromo
+    ? calculatePromoDiscount(selectedPromo, subtotal).isEligible
+    : false
+
   function handleConfirm() {
-    if (selectedPromo) {
+    if (selectedPromo && selectedPromoEligible) {
       const { discount } = calculatePromoDiscount(selectedPromo, subtotal)
       onSelectPromotion(selectedPromo, discount)
     } else {
@@ -178,33 +203,44 @@ export function PromotionSelectModal({
         {/* Danh sách khuyến mãi */}
         <div className="mt-4 max-h-[280px] space-y-2 overflow-y-auto pr-1">
           {invoicePromotions.length === 0 ? (
-            <div className="py-8 text-center text-sm text-text-tertiary">
-              Không có chương trình khuyến mãi hóa đơn nào đang chạy tại chi nhánh.
+            <div className="py-8 text-center space-y-1.5">
+              <p className="text-sm text-text-tertiary">
+                Không có chương trình khuyến mãi nào đang chạy tại chi nhánh.
+              </p>
+              <p className="text-xs text-text-tertiary">
+                Nhập mã voucher của khách ở ô tìm kiếm phía trên.
+              </p>
             </div>
           ) : (
             invoicePromotions.map((promo) => {
               const isSelected = selectedPromo?.id === promo.id
               const { discount, isEligible, minOrderValue } = calculatePromoDiscount(promo, subtotal)
+              const isInvoiceLevel = promo.applyLevel === "INVOICE"
+              // Không đủ điều kiện → không cho chọn
+              const isDisabled = !isEligible
 
               return (
                 <div
                   key={promo.id}
                   onClick={() => {
+                    if (isDisabled) return
                     if (isSelected) {
                       setSelectedPromo(null)
                     } else {
                       setSelectedPromo(promo)
                     }
                   }}
-                  className={`flex cursor-pointer items-start justify-between rounded-xl border p-3 transition-all ${
-                    isSelected
-                      ? "border-brand-primary bg-brand-primary-subtle/30 shadow-xs"
-                      : "border-border-default bg-surface-card hover:border-brand-primary/40 hover:bg-surface-muted/50"
+                  className={`flex items-start justify-between rounded-xl border p-3 transition-all ${
+                    isDisabled
+                      ? "cursor-not-allowed border-border-default bg-surface-muted/40 opacity-60"
+                      : isSelected
+                        ? "cursor-pointer border-brand-primary bg-brand-primary-subtle/30 shadow-xs"
+                        : "cursor-pointer border-border-default bg-surface-card hover:border-brand-primary/40 hover:bg-surface-muted/50"
                   }`}
                 >
                   <div className="space-y-1 min-w-0 flex-1 pr-3">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate text-sm font-bold text-text-primary">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`truncate text-sm font-bold ${isDisabled ? "text-text-tertiary" : "text-text-primary"}`}>
                         {promo.name}
                       </span>
                       {promo.code ? (
@@ -212,6 +248,11 @@ export function PromotionSelectModal({
                           {promo.code}
                         </span>
                       ) : null}
+                      {!isInvoiceLevel && (
+                        <span className="shrink-0 rounded bg-status-warning-subtle px-1.5 py-0.5 text-[10px] font-semibold text-status-warning">
+                          KM món
+                        </span>
+                      )}
                     </div>
 
                     {promo.description ? (
@@ -223,21 +264,33 @@ export function PromotionSelectModal({
                     {minOrderValue > 0 ? (
                       <p className="text-[11px] text-text-secondary">
                         Đơn tối thiểu: <span className="font-semibold">{formatVnd(minOrderValue)}</span>
-                        {!isEligible ? (
-                          <span className="ml-1 text-status-danger font-medium">(Chưa đủ ĐK)</span>
+                        {isDisabled ? (
+                          <span className="ml-1 font-semibold text-status-danger">
+                            — Hiện tại {formatVnd(subtotal)} (thiếu {formatVnd(minOrderValue - subtotal)})
+                          </span>
                         ) : null}
                       </p>
                     ) : null}
 
-                    {isEligible && discount > 0 ? (
+                    {!isDisabled && isEligible && discount > 0 ? (
                       <p className="text-xs font-bold text-status-success">
                         Giảm: -{formatVnd(discount)}
                       </p>
                     ) : null}
+
+                    {isDisabled ? (
+                      <p className="text-[11px] font-semibold text-status-danger">
+                        🔒 Chưa đủ điều kiện — không thể áp dụng
+                      </p>
+                    ) : null}
                   </div>
 
-                  <div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border-default bg-white mt-1">
-                    {isSelected ? (
+                  <div className={`flex size-5 shrink-0 items-center justify-center rounded-full border mt-1 ${
+                    isDisabled
+                      ? "border-border-default bg-surface-muted"
+                      : "border-border-default bg-white"
+                  }`}>
+                    {isSelected && !isDisabled ? (
                       <div className="flex size-full items-center justify-center rounded-full bg-brand-primary text-white">
                         <Check className="size-3.5 stroke-[3]" />
                       </div>
@@ -250,23 +303,50 @@ export function PromotionSelectModal({
         </div>
 
         {/* Footer */}
+        {/* Cảnh báo nếu chọn KM cấp ITEM (không tự động áp vào hóa đơn) */}
+        {selectedPromo && selectedPromo.applyLevel !== "INVOICE" && (
+          <div className="mt-3 flex items-start gap-2 rounded-xl bg-status-warning-subtle border border-status-warning/30 px-3 py-2.5">
+            <AlertCircle className="mt-0.5 size-3.5 shrink-0 text-status-warning" />
+            <p className="text-xs text-status-warning leading-relaxed">
+              <strong>{selectedPromo.name}</strong> là khuyến mãi cấp món — sẽ tự động áp theo số lượng món, không áp thêm vào hóa đơn. Chọn KM cấp <em>Hóa đơn</em> để giảm tổng tiền.
+            </p>
+          </div>
+        )}
         <div className="mt-5 flex gap-2.5">
-          {selectedPromo ? (
+          {selectedPromo || currentPromotionId ? (
             <Button
               type="button"
               variant="outline"
-              onClick={() => setSelectedPromo(null)}
+              onClick={() => {
+                setSelectedPromo(null)
+                onSelectPromotion(null, 0)
+                onOpenChange(false)
+              }}
+              className="flex-1 text-status-danger border-status-danger/30 hover:bg-status-danger/10"
+            >
+              Bỏ chọn khuyến mãi
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
               className="flex-1 text-text-secondary"
             >
-              Bỏ chọn
+              Hủy
             </Button>
-          ) : null}
+          )}
           <Button
             type="button"
             onClick={handleConfirm}
+            disabled={!selectedPromo || !selectedPromoEligible}
             className="flex-1 font-semibold"
           >
-            {selectedPromo ? "Áp dụng khuyến mãi" : "Đóng"}
+            {selectedPromo
+              ? selectedPromoEligible
+                ? "Áp dụng khuyến mãi"
+                : "Chưa đủ điều kiện"
+              : "Chọn khuyến mãi"}
           </Button>
         </div>
       </DialogContent>
