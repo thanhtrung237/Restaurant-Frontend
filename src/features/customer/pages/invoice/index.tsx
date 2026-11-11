@@ -54,11 +54,13 @@ export default function InvoicePage() {
   const tableName = tableSession?.tableName || "Bàn"
   const tableSessionId = tableSession?.id
 
-  // Lấy bill từ BE (invoice nếu có, preview nếu chưa có)
-  const { data: bill, isLoading: billLoading, hasInvoice } = useBill(tableSessionId)
+  // Lấy bill từ BE (invoice nếu có, preview nếu chưa có), polling mỗi 3 giây để đồng bộ tự động với thu ngân
+  const { data: bill, isLoading: billLoading, hasInvoice } = useBill(tableSessionId, {
+    refetchInterval: 3000,
+  })
   
   const { data: orderDetails = [], isLoading: orderDetailsLoading } =
-    useOrderDetailsBySession(tableSessionId)
+    useOrderDetailsBySession(tableSessionId, undefined, { refetchInterval: 3000 })
 
   // Invoice (BE) không expose danh sách dòng món riêng — luôn gộp từ order details.
   // Món đã huỷ được gộp riêng theo lý do huỷ (không gộp chung với món còn tính tiền

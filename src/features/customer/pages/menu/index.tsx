@@ -124,12 +124,6 @@ export default function MenuPage() {
   // dùng cùng 1 nguồn dữ liệu — tránh lệch giá giữa menu và lúc gửi order.
   const { data: activePromotions = [] } = useActivePromotionsByBranch(branchId)
 
-  // Debug: Log promotions
-  React.useEffect(() => {
-    console.log("🎁 Active Promotions:", activePromotions)
-    console.log("🎁 Branch ID:", branchId)
-  }, [activePromotions, branchId])
-
   // KM cấp HÓA ĐƠN: hiển thị dải thông báo ở đầu menu thay vì gạch giá từng món
   const invoicePromos = React.useMemo(
     () => activePromotions.filter((p) => p.applyLevel === "INVOICE"),

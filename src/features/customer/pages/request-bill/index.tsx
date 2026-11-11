@@ -32,8 +32,8 @@ export default function RequestBillPage() {
   const { data: liveSession } = useTableSession(tableSessionId, { refetchInterval: 3000 })
   const liveStatus = liveSession?.status
   
-  // Lấy bill từ BE (invoice nếu có, preview nếu chưa có)
-  const { data: bill, isLoading: billLoading } = useBill(tableSessionId)
+  // Lấy bill từ BE (invoice nếu có, preview nếu chưa có), polling mỗi 3 giây
+  const { data: bill, isLoading: billLoading } = useBill(tableSessionId, { refetchInterval: 3000 })
 
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
 

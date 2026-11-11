@@ -23,18 +23,23 @@ function getBillPreview(tableSessionId: number) {
   return apiGet<BillPreview>(`/table-sessions/${tableSessionId}/bill-preview`);
 }
 
+export interface UseBillOptions {
+  refetchInterval?: number | false;
+}
+
 /**
  * Hook lấy thông tin hóa đơn hoặc preview tạm tính.
  * - Nếu đã có invoice: dùng invoice
  * - Nếu chưa có invoice: gọi API preview
  */
-export function useBill(tableSessionId?: number) {
+export function useBill(tableSessionId?: number, options?: UseBillOptions) {
   // Thử lấy invoice trước (không retry với 404)
   const { data: invoice, isLoading: invoiceLoading } = useInvoiceBySession(
     tableSessionId,
     {
       enabled: typeof tableSessionId === "number",
       retry: false,
+      refetchInterval: options?.refetchInterval,
     }
   );
 
@@ -48,6 +53,7 @@ export function useBill(tableSessionId?: number) {
     queryFn: () => getBillPreview(tableSessionId as number),
     enabled: typeof tableSessionId === "number" && !invoice,
     retry: false,
+    refetchInterval: options?.refetchInterval,
   });
 
   const isLoading = invoiceLoading || (!invoice && previewLoading);
