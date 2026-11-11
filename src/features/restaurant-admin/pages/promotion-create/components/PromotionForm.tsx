@@ -83,17 +83,21 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
   const dishes = useMemo(() => dishesData?.content ?? [], [dishesData])
 
   const [formData, setFormData] = useState<PromotionFormData>(initialData ?? DEFAULT_FORM_DATA)
+  // Dùng ref để chỉ sync initialData vào form đúng 1 lần khi dữ liệu từ API về lần đầu
+  const initializedRef = React.useRef(false)
 
   // Cập nhật khi initialData thay đổi (ví dụ khi fetch Promotion chi tiết xong)
+  // Chỉ chạy 1 lần duy nhất khi initialData được load lần đầu, tránh reset form khi user đang nhập
   useEffect(() => {
-    if (initialData) {
+    if (initialData && !initializedRef.current) {
+      initializedRef.current = true
       setFormData(initialData)
     }
   }, [initialData])
 
-  // Auto-select tất cả chi nhánh nếu tạo mới và chưa chọn chi nhánh nào
+  // Auto-select tất cả chi nhánh nếu tạo mới (không có initialData) và chưa chọn chi nhánh nào
   useEffect(() => {
-    if (!initialData && branches.length > 0 && formData.selectedBranchIds.length === 0 && formData.isAllBranches) {
+    if (!initialData && !initializedRef.current && branches.length > 0 && formData.selectedBranchIds.length === 0 && formData.isAllBranches) {
       setFormData((prev) => ({
         ...prev,
         selectedBranchIds: branches.map((b) => b.id),

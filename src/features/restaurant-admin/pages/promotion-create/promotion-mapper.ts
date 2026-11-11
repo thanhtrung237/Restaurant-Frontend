@@ -122,19 +122,20 @@ export function formDataToUpdateRequest(formData: PromotionFormData): PromotionU
 
   return {
     name: formData.name.trim(),
-    description: formData.customerDescription.trim() || undefined,
+    description: formData.customerDescription.trim() || null,
     startDate: formatDateForApi(formData.startDate),
     endDate: formatDateForApi(formData.endDate),
     applyLevel: isDishLevel ? "ITEM" : "INVOICE",
-    code: formData.code.trim() || undefined,
-    usageLimit: formData.usageLimit ? Number.parseInt(formData.usageLimit, 10) : undefined,
+    code: formData.code.trim() ? formData.code.trim().toUpperCase() : null,
+    usageLimit: formData.usageLimit ? Number.parseInt(formData.usageLimit, 10) : null,
     allBranches: formData.isAllBranches,
     branchIds: formData.isAllBranches ? undefined : formData.selectedBranchIds,
     priority: Number.parseInt(formData.priority, 10) || 0,
-    timeWindow: formatTimeWindowForApi(formData.startTime, formData.endTime) || undefined,
-    daysOfWeek: formatDaysOfWeekForApi(formData.daysOfWeek) || undefined,
+    timeWindow: formatTimeWindowForApi(formData.startTime, formData.endTime) || null,
+    daysOfWeek: formatDaysOfWeekForApi(formData.daysOfWeek) || null,
     condition: JSON.stringify(conditionObj),
     action: JSON.stringify(actionObj),
+    status: formData.isActiveNow ? "ACTIVE" : "INACTIVE",
   }
 }
 
@@ -146,7 +147,7 @@ export function apiToFormData(promotion: Promotion): PromotionFormData {
   const [startTime, endTime] = parseTimeWindowFromApi(promotion.timeWindow || "")
 
   // Parse condition
-  let applyTarget: "all_order" | "category" | "specific_dish" = isDishLevel ? "all_order" : "all_order"
+  let applyTarget: "all_order" | "category" | "specific_dish" = "all_order" // default, sẽ được override từ condition JSON nếu cấp MÓN
   let selectedCategories: number[] = []
   let selectedDishes: number[] = []
   let minOrderValue = ""
