@@ -44,7 +44,7 @@ const JS_DAY_NAMES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
 /**
  * Parse JSON condition string safely
  */
-function parseCondition(conditionStr?: string): PromotionCondition | null {
+export function parseCondition(conditionStr?: string): PromotionCondition | null {
   if (!conditionStr) return null
   try {
     return JSON.parse(conditionStr)
@@ -302,7 +302,8 @@ export function evaluateItemPromotion(
     basePrice: dish.effectivePrice,
     effectivePrice: dish.effectivePrice,
     hasOverride: false,
-    isAvailable: true,
+    isHidden: false,
+    isBranchSpecific: false,
     stockStatus: "AVAILABLE",
   }
 

@@ -1,6 +1,6 @@
 import * as React from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { Check, ChevronDown, ReceiptText, X, Loader2, Tag } from "lucide-react";
+import { useParams } from "react-router-dom";
+import { Check, ChevronDown, ReceiptText, X, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -50,7 +50,6 @@ const REFUND_REASONS = [
  * - Mở trực tiếp URL → về fallback theo role
  */
 export default function EInvoicePage() {
-  const navigate = useNavigate();
   const { invoiceId: invoiceIdParam } = useParams<{ invoiceId: string }>();
   const { toast } = useToast();
   const currentUser = useAuthStore((s) => s.account);

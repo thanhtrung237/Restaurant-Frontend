@@ -24,8 +24,7 @@ import { useDishOverridesByBranch } from "@/api/dish-overrides.api"
 import { useToggleBranchDishStock } from "@/api/branch-dish-stocks.api"
 import { DishOverrideModal } from "./DishOverrideModal"
 import { DeleteOverrideDialog } from "./DeleteOverrideDialog"
-import type { BranchMenuItem, DishOverride } from "@/types/models"
-import type { StockStatus } from "@/types/enums"
+import type { BranchMenuItem } from "@/types/models"
 
 /**
  * Bộ lọc nhanh của bản mobile (Figma "Menu chi nhánh · Mobile (375)"). 
@@ -282,7 +281,7 @@ export const BranchMenuManagementTab: React.FC<BranchMenuManagementTabProps> = (
             <MoreVertical />
           </IconButton>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="right">
           <DropdownMenuItem onClick={() => handleCreateOrEditOverride(item)}>
             <Pencil className="mr-2 size-4" />
             {item.hasOverride ? "Sửa ghi đè" : "Tạo ghi đè"}

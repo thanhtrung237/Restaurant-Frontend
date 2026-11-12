@@ -1,4 +1,3 @@
-import * as React from "react";
 import type { BillPreview } from "@/hooks/useBill";
 
 interface BillSummaryProps {

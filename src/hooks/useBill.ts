@@ -39,7 +39,7 @@ export function useBill(tableSessionId?: number, options?: UseBillOptions) {
     {
       enabled: typeof tableSessionId === "number",
       retry: false,
-      refetchInterval: options?.refetchInterval,
+      refetchInterval: options?.refetchInterval === false ? undefined : options?.refetchInterval,
     }
   );
 

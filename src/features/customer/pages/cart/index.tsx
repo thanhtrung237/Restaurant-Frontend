@@ -26,8 +26,6 @@ import {
 import { useCustomerSessionStore } from "@/features/customer/store/session.store"
 import { useBillLocked } from "@/features/customer/hooks/use-bill-locked"
 import { useGoBack } from "@/hooks/use-go-back"
-import type { Promotion } from "@/types/models"
-import { cn } from "@/lib/utils"
 
 type CartModal =
   | { kind: "none" }

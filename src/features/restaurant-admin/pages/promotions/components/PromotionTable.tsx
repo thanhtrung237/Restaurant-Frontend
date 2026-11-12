@@ -202,7 +202,7 @@ export const PromotionTable: React.FC<PromotionTableProps> = ({
                           <p className="font-bold text-text-primary text-sm tracking-tight leading-snug">
                             {promo.name}
                           </p>
-                          <Badge variant={isDish ? "neutral" : "brand"} className="text-[11px] py-0 px-2 font-semibold">
+                          <Badge variant={isDish ? "secondary" : "default"} className="text-[11px] py-0 px-2 font-semibold">
                             {isDish ? "Cấp Món" : "Cấp Hóa đơn"}
                           </Badge>
                           {promo.code && (

@@ -9,7 +9,6 @@ import {
   Lock,
   Unlock,
   Trash2,
-  Building,
   Loader2,
   Search,
   Edit2,

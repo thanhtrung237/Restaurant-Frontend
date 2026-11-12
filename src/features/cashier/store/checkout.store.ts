@@ -94,7 +94,7 @@ interface CheckoutState {
   resetPaymentState: () => void;
 }
 
-export const useCheckoutStore = create<CheckoutState>((set, get) => ({
+export const useCheckoutStore = create<CheckoutState>((set) => ({
   tableSessionId: 1024,
   tableName: "Bàn B01",
   guestCount: 4,

@@ -5,7 +5,6 @@ import {
   ChevronRight,
   ChevronDown,
   ArrowRight,
-  Check,
 } from "lucide-react"
 import {
   format,

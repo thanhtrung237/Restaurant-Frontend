@@ -1,4 +1,3 @@
-import * as React from "react"
 import { StatCard } from "@/components/common/StatCard"
 import { RevenueBarChart } from "./RevenueBarChart"
 import { TopDishesCard } from "./TopDishesCard"

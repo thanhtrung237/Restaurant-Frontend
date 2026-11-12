@@ -44,10 +44,6 @@ export default function OutOfStockPage() {
   const toggleStockMutation = useToggleBranchDishStock();
   const restoreAllMutation = useRestoreAllBranchStock();
 
-  const formatMoney = (val?: number | null) => {
-    if (val === null || val === undefined) return "—";
-    return `${val.toLocaleString("vi-VN")}đ`;
-  };
 
   const handleBack = () => {
     navigate(-1);
@@ -78,13 +74,9 @@ export default function OutOfStockPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-surface-default">
+      <Button variant="ghost" onClick={handleBack}><ChevronLeft />Quay lại</Button>
       <PageHeader
         title={`Món hết hàng - ${branch?.name || "..."}`}
-        backButton={{
-          onClick: handleBack,
-          icon: <ChevronLeft />,
-          label: "Quay lại",
-        }}
         actions={
           outOfStockDishes.length > 0 ? (
             <Button

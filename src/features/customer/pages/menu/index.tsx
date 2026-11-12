@@ -17,7 +17,7 @@ import {
   selectCartSubtotalAfterPromotion,
 } from "@/features/customer/store/cart.store"
 import { useActivePromotionsByBranch } from "@/api/promotions.api"
-import { findBestPromotionForItem, formatPromotionBadge } from "@/lib/promotion-display"
+import { findBestPromotionForItem, formatPromotionBadge, parseCondition } from "@/lib/promotion-display"
 import { calculatePromoDiscount } from "@/features/cashier/components/PromotionSelectModal"
 import type { BranchMenuItem, Promotion } from "@/types/models"
 import { cn } from "@/lib/utils"
@@ -796,8 +796,11 @@ interface PromotionCardProps {
 
 function PromotionCard({ promotion, type, currentDiscount, cartSubtotal }: PromotionCardProps) {
   const isInvoicePromo = type === "invoice"
-  const hasCondition = promotion.conditionMinAmount && promotion.conditionMinAmount > 0
-  const meetsCondition = cartSubtotal ? cartSubtotal >= (promotion.conditionMinAmount || 0) : false
+  const condition = parseCondition(promotion.condition)
+  const minimumAmount = condition?.minOrderValue ?? condition?.minTotal ?? 0
+  const remainingUsageLimit = promotion.usageLimit == null ? null : Math.max(0, promotion.usageLimit - (promotion.usageCount ?? 0))
+  const hasCondition = minimumAmount > 0
+  const meetsCondition = cartSubtotal ? cartSubtotal >= (minimumAmount || 0) : false
 
   // Check if this promotion is currently applied
   const isApplied = isInvoicePromo && meetsCondition && currentDiscount && currentDiscount > 0
@@ -805,7 +808,7 @@ function PromotionCard({ promotion, type, currentDiscount, cartSubtotal }: Promo
   // Parse action để lấy discount info
   let discountText = ""
   try {
-    const action = JSON.parse(promotion.action)
+    const action = JSON.parse(promotion.action ?? "{}")
     if (action.discountType === "PERCENTAGE") {
       discountText = `Giảm ${action.discountValue}%`
       if (action.maxDiscountAmount) {
@@ -852,11 +855,11 @@ function PromotionCard({ promotion, type, currentDiscount, cartSubtotal }: Promo
             {discountText}
           </p>
         </div>
-        {!isApplied && promotion.remainingUsageLimit !== null && promotion.remainingUsageLimit > 0 && (
+        {!isApplied && remainingUsageLimit !== null && remainingUsageLimit > 0 && (
           <div className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-full bg-white/80 border border-border-default">
             <Clock className="size-3 text-text-tertiary" />
             <span className="text-xs font-semibold text-text-secondary">
-              Còn {promotion.remainingUsageLimit}
+              Còn {remainingUsageLimit}
             </span>
           </div>
         )}
@@ -884,7 +887,7 @@ function PromotionCard({ promotion, type, currentDiscount, cartSubtotal }: Promo
           </span>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-text-secondary">
-              Điều kiện: Hóa đơn từ {promotion.conditionMinAmount?.toLocaleString("vi-VN")}đ
+              Điều kiện: Hóa đơn từ {minimumAmount?.toLocaleString("vi-VN")}đ
             </p>
             {isInvoicePromo && cartSubtotal && (
               <p className={cn(
@@ -895,7 +898,7 @@ function PromotionCard({ promotion, type, currentDiscount, cartSubtotal }: Promo
                   ? `✨ Đang giảm ${currentDiscount?.toLocaleString("vi-VN")}đ`
                   : meetsCondition
                     ? `Đạt điều kiện · Giảm ${currentDiscount?.toLocaleString("vi-VN")}đ`
-                    : `Hiện tại: ${cartSubtotal.toLocaleString("vi-VN")}đ · Còn thiếu ${((promotion.conditionMinAmount || 0) - cartSubtotal).toLocaleString("vi-VN")}đ`
+                    : `Hiện tại: ${cartSubtotal.toLocaleString("vi-VN")}đ · Còn thiếu ${((minimumAmount || 0) - cartSubtotal).toLocaleString("vi-VN")}đ`
                 }
               </p>
             )}

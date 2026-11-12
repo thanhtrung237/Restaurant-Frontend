@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useAuthStore } from "@/stores/auth.store";
 import { cn } from "@/lib/utils";
-import { Scale, X, RefreshCw, Utensils, CheckSquare, Printer } from "lucide-react";
+import { Scale, X, RefreshCw, Utensils, Printer } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   useBranch,

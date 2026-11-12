@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Layers, Utensils, Coffee, Salad, Cake, Sparkles } from "lucide-react"
+import { Layers } from "lucide-react"
 import { formatCurrency, formatPercent } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { DishRankItem } from "@/types/models/reports"
