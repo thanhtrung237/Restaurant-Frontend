@@ -7,3 +7,7 @@ dist-ssr
 !.env.example
 *.ps1
 .env.local
+
+# Playwright artifacts
+/test-results/
+/playwright-report/
