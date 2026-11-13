@@ -21,6 +21,11 @@ import type { BranchStatus } from "../enums"
  * Response dùng `updatedAt`.
  */
 export interface Branch extends BaseResponse {
+  latitude?: number
+  longitude?: number
+  geofenceEnabled?: boolean
+  geofenceRadiusMeters?: number
+  geofenceMaxAccuracyMeters?: number
   restaurantId: number
   restaurantName?: string
   code: string

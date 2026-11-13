@@ -128,6 +128,11 @@ export interface BranchManagerConfigRequest {
 }
 /** `PUT /branches/{id}/config/admin` — phần chỉ Quản trị nhà hàng được sửa (thuế/phí/ngưỡng duyệt). */
 export interface BranchAdminConfigRequest {
+  latitude?: number
+  longitude?: number
+  geofenceEnabled?: boolean
+  geofenceRadiusMeters?: number
+  geofenceMaxAccuracyMeters?: number
   vatRate?: number
   serviceFeeRate?: number
   vatAppliedOnServiceFee?: boolean
