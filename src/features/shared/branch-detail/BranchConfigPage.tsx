@@ -1,3 +1,4 @@
+import { BranchGeofenceConfig } from "./components/BranchGeofenceConfig"
 import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { PageHeader } from "@/components/layout/PageHeader"
@@ -203,6 +204,7 @@ export function BranchConfigPage({ branchId }: BranchConfigPageProps) {
       />
 
       <div className="flex flex-col gap-6 p-6 lg:p-8">
+        <BranchGeofenceConfig branchId={branchId} readOnly={!isRestaurantAdmin} />
         {/* Nhóm 1: Cấu hình Quản lý chi nhánh (mọi vai trò có quyền vào trang này đều sửa được) */}
         <BranchConfigManagerTab
           config={managerConfig}
