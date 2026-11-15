@@ -105,7 +105,6 @@ export default function MenuPage() {
     if (polledSession && polledSession.status === "SERVING") {
       setSession({
         qrCode: qrCodeInStore ?? qrCode ?? "",
-        sessionToken: `session-${polledSession.id}`,
         tableSession: polledSession,
       })
       toast({

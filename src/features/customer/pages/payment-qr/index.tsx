@@ -63,7 +63,6 @@ export default function PaymentQrPage() {
           if (sess) {
             setSession({
               qrCode: qrCode ?? "",
-              sessionToken: `token-${sess.id}`,
               tableSession: sess,
             })
           }

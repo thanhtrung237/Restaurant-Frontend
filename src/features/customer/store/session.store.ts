@@ -1,3 +1,4 @@
+import { getGuestCredential, clearGuestCredential } from "@/lib/guest-credential"
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import type { TableSession } from "@/types/models"
@@ -23,7 +24,7 @@ interface CustomerSessionState {
    * khuyến mãi đã áp, kể cả khi khách rời trang Giỏ hàng.
    */
   appliedPromo: AppliedPromo | null
-  setSession: (payload: { qrCode: string; sessionToken: string; tableSession: TableSession }) => void
+  setSession: (payload: { qrCode: string; tableSession: TableSession }) => void
   clearSession: () => void
   /** Gọi SAU khi API request-payment trả về thành công — API lỗi thì KHÔNG gọi. */
   markBillRequested: (sessionId: number) => void
@@ -45,28 +46,31 @@ export const useCustomerSessionStore = create<CustomerSessionState>()(
       // (`InvoiceServiceImpl` đang hard-code `totalPromotionDiscount = 0`),
       // nên tổng tiền khách nhìn thấy lệch hẳn với hoá đơn Thu ngân thu.
       appliedPromo: null,
-      setSession: ({ qrCode, sessionToken, tableSession }) =>
+      setSession: ({ qrCode, tableSession }) =>
         set((state) => {
           // Phiên KHÁC phiên cũ (quét bàn khác, hoặc bàn cũ đã đóng và mở phiên mới)
           // ⇒ bỏ mọi thứ gắn với phiên cũ. Thiếu bước này thì khuyến mãi và khoá tạm
           // của bàn trước dính sang bàn sau trên cùng một trình duyệt.
           const isDifferentSession = state.tableSession?.id !== tableSession.id
+          const credential = getGuestCredential()
           return {
             qrCode,
-            sessionToken,
+            sessionToken: credential?.sessionId === tableSession.id ? credential.token : null,
             tableSession,
             appliedPromo: isDifferentSession ? null : state.appliedPromo,
             pendingBillSessionId: isDifferentSession ? null : state.pendingBillSessionId,
           }
         }),
-      clearSession: () =>
+      clearSession: () => {
+        clearGuestCredential()
         set({
           qrCode: null,
           sessionToken: null,
           tableSession: null,
           pendingBillSessionId: null,
           appliedPromo: null,
-        }),
+        })
+      },
       markBillRequested: (sessionId) => set({ pendingBillSessionId: sessionId }),
       applyPromo: (promo) => set({ appliedPromo: promo }),
       clearPromo: () => set({ appliedPromo: null }),
@@ -80,19 +84,15 @@ export const useCustomerSessionStore = create<CustomerSessionState>()(
        * Thu ngân thu tiền mặt và đóng bàn thì máy của khách KHÔNG đi qua hai trang đó,
        * nên cờ kẹt lại vĩnh viễn: quét bàn khác vẫn thấy "Phiên đã khoá".
        */
-      version: 1,
+      version: 2,
       migrate: (persisted, version) => {
-        if (version === 0 && persisted && typeof persisted === "object") {
-          const { billRequested: _drop, ...rest } = persisted as Record<string, unknown>
-          return rest
-        }
+        if (version < 2) return { qrCode: null, sessionToken: null, tableSession: null, appliedPromo: null }
         return persisted
       },
       // `pendingBillSessionId` cố ý KHÔNG nằm trong danh sách: khoá tạm chỉ sống trong
       // phiên làm việc hiện tại của tab, không được sống dai qua F5.
       partialize: (state) => ({
         qrCode: state.qrCode,
-        sessionToken: state.sessionToken,
         tableSession: state.tableSession,
         appliedPromo: state.appliedPromo,
       }),
@@ -120,7 +120,7 @@ export async function syncCustomerSessionWithBackend(qrCode: string): Promise<Ta
       // bao giờ TẮT, nên phiên quay lại SERVING vẫn kẹt khoá.
       useCustomerSessionStore.getState().setSession({
         qrCode,
-        sessionToken: `session-${session.id}`,
+
         tableSession: session,
       })
       return session

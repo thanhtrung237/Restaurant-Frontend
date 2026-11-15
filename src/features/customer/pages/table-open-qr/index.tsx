@@ -1,318 +1,117 @@
 import * as React from "react"
-import { useNavigate, useParams, generatePath } from "react-router-dom"
+import { generatePath, useNavigate, useParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { CUSTOMER_PATHS } from "@/app/router/paths"
-import { cn } from "@/lib/utils"
-import { useToast } from "@/hooks/use-toast"
-import {
-  getTableByQrCode,
-  getOpenSessionByTable,
-  createTableSession,
-  type TableSessionCreateRequest,
-} from "@/features/customer/api"
+import { getErrorMessage } from "@/lib/http"
+import { getGuestCredential, saveGuestCredential } from "@/lib/guest-credential"
+import { getTableSession } from "@/api/table-sessions.api"
 import { useCustomerSessionStore } from "@/features/customer/store/session.store"
+import { enterGuestTable, getGuestTable, type GuestTableInfo } from "@/features/customer/api/guest-access.api"
+import { requestGuestLocation } from "@/features/customer/lib/geolocation"
+import type { TableSession } from "@/types/models"
 
-const GUEST_COUNT_OPTIONS = [1, 2, 3, "4+"] as const
-
-/**
- * Mở bàn (QR) — Landing sau khi khách quét mã QR dán tại bàn
- * Nguồn: Mobile / Mở bàn (QR)
- *
- * Flow:
- * 1. Parse QR code từ URL param (/ban/:qrCode)
- * 2. Fetch table info: GET /tables/branch/{branchId}/qr/{qrCode}
- * 3. Check session hiện tại: GET /table-sessions/table/{tableId}/open
- * 4. Nếu chưa có session: Khách chọn số người → POST /table-sessions
- * 5. Nếu đã có session: Join vào session đó
- * 6. Navigate sang waiting-table-open hoặc menu (nếu session đã SERVING)
- */
-export default function TableOpenQrPage() {
+function TableOpenQrForm({ qrCode }: { qrCode: string }) {
   const navigate = useNavigate()
-  const { qrCode } = useParams<{ qrCode: string }>()
-  const { toast } = useToast()
-
+  const [table, setTable] = React.useState<GuestTableInfo | null>(null)
   const [loading, setLoading] = React.useState(true)
-  const [error, setError] = React.useState<string | null>(null)
-  const [tableInfo, setTableInfo] = React.useState<{
-    tableId: number
-    branchId: number
-    tableName: string
-    restaurantName: string
-    branchName: string
-    existingSessionId?: number
-  } | null>(null)
-
-  const [selectedGuestCount, setSelectedGuestCount] = React.useState<number | "4+">(2)
   const [submitting, setSubmitting] = React.useState(false)
+  const [error, setError] = React.useState("")
+  const [guestCount, setGuestCount] = React.useState(2)
+  const [joinCode, setJoinCode] = React.useState("")
+  const [staffAssisted, setStaffAssisted] = React.useState(false)
 
-  // Fetch table info khi component mount
+  const openSession = React.useCallback((session: TableSession) => {
+    useCustomerSessionStore.getState().setSession({ qrCode, tableSession: session })
+    const target = session.status === "WAITING_FOR_OPEN" ? CUSTOMER_PATHS.WAITING_TABLE_OPEN
+      : session.status === "WAITING_FOR_PAY" ? CUSTOMER_PATHS.INVOICE : CUSTOMER_PATHS.MENU
+    navigate(generatePath(target, { qrCode }), { replace: true, state: { tableSessionId: session.id, tableName: session.tableName } })
+  }, [navigate, qrCode])
+
   React.useEffect(() => {
-    if (!qrCode) {
-      setError("Mã QR không hợp lệ")
-      setLoading(false)
-      return
-    }
-
-    async function fetchTableInfo() {
-      try {
-        setLoading(true)
-        setError(null)
-
-        // Parse QR code: format có thể là "branchId-tableId" hoặc chỉ là qrCode string
-        // Backend sẽ tự map qrCode → table
-        // Giả sử QR format: "Q1-B01" → parse branchId từ đó
-        // Hoặc đơn giản gọi API với qrCode, BE trả về table
-        
-        // Trích xuất branchId nếu mã QR có format "QR-B1-..." hoặc fallback = 1
-        const branchMatch = qrCode ? qrCode.match(/(?:QR-)?B(\d+)/i) : null
-        const branchId = branchMatch ? parseInt(branchMatch[1], 10) : 1
-
-        const table = await getTableByQrCode(branchId, qrCode ?? "")
-        
-        // Check xem bàn đã có session đang mở chưa
-        let existingSession = null
+    let cancelled = false
+    async function load() {
+      const branchMatch = qrCode.match(/(?:QR-)?B(\d+)/i)
+      if (!branchMatch) throw new Error("Mã QR thiếu chi nhánh. Vui lòng nhờ nhân viên cấp lại mã QR.")
+      const info = await getGuestTable(Number(branchMatch[1]), qrCode)
+      if (cancelled) return
+      setTable(info)
+      const credential = getGuestCredential()
+      if (credential) {
         try {
-          existingSession = await getOpenSessionByTable(table.id)
-        } catch {
-          // Không có session đang mở - OK
-        }
-
-        setTableInfo({
-          tableId: table.id,
-          branchId: table.branchId,
-          tableName: table.name,
-          restaurantName: "Phở Việt", // TODO: fetch from API
-          branchName: table.branchName || "Chi nhánh chính",
-          existingSessionId: existingSession?.id,
-        })
-
-        // Nếu đã có session và đang SERVING, lưu vào store và chuyển thẳng vào menu
-        if (existingSession && existingSession.status === "SERVING") {
-          useCustomerSessionStore.getState().setSession({
-            qrCode: qrCode ?? "",
-            sessionToken: `session-${existingSession.id}`,
-            tableSession: existingSession,
-          })
-          navigate(
-            generatePath(CUSTOMER_PATHS.MENU, { qrCode: qrCode ?? "" }),
-            { replace: true, state: { tableSessionId: existingSession.id, tableName: table.name } }
-          )
-          return
-        }
-
-        // Nếu có session nhưng đang WAITING_FOR_OPEN, lưu vào store và chuyển sang waiting
-        if (existingSession && existingSession.status === "WAITING_FOR_OPEN") {
-          useCustomerSessionStore.getState().setSession({
-            qrCode: qrCode ?? "",
-            sessionToken: `session-${existingSession.id}`,
-            tableSession: existingSession,
-          })
-          navigate(
-            generatePath(CUSTOMER_PATHS.WAITING_TABLE_OPEN, { qrCode: qrCode ?? "" }),
-            {
-              replace: true,
-              state: {
-                tableSessionId: existingSession.id,
-                tableName: table.name,
-                guestCount: existingSession.guestCount,
-              },
-            }
-          )
-          return
-        }
-
-        // Nếu có session đang WAITING_FOR_PAY, lưu vào store và chuyển sang hóa đơn
-        if (existingSession && existingSession.status === "WAITING_FOR_PAY") {
-          useCustomerSessionStore.getState().setSession({
-            qrCode: qrCode ?? "",
-            sessionToken: `session-${existingSession.id}`,
-            tableSession: existingSession,
-          })
-          navigate(
-            generatePath(CUSTOMER_PATHS.INVOICE, { qrCode: qrCode ?? "" }),
-            { replace: true }
-          )
-          return
-        }
-
-      } catch (err) {
-        console.error("Error fetching table:", err)
-        setError(
-          err instanceof Error 
-            ? err.message 
-            : "Không thể tải thông tin bàn. Vui lòng thử lại."
-        )
-      } finally {
-        setLoading(false)
+          const session = await getTableSession(credential.sessionId)
+          if (!cancelled && session.tableId === info.tableId && ["WAITING_FOR_OPEN", "SERVING", "WAITING_FOR_PAY"].includes(session.status)) openSession(session)
+        } catch { /* No valid capability: show admission form instead of joining by ID. */ }
       }
     }
+    void load().catch((reason: unknown) => { if (!cancelled) setError(getErrorMessage(reason)) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [qrCode, openSession])
 
-    fetchTableInfo()
-  }, [qrCode, navigate])
-
-  async function handleOpenTableRequest() {
-    if (!tableInfo) return
-
+  async function submit(event: React.FormEvent) {
+    event.preventDefault()
+    if (!table || submitting) return
+    setSubmitting(true)
+    setError("")
     try {
-      setSubmitting(true)
-
-      const guestCount = typeof selectedGuestCount === "number" 
-        ? selectedGuestCount 
-        : 4
-
-      // Tạo session mới — gửi kèm guestCount để Phục vụ xem/xác nhận không phải nhập lại
-      const request: TableSessionCreateRequest = {
-        tableId: tableInfo.tableId,
-        guestCount,
-      }
-
-      const session = await createTableSession(request)
-
-      // Cập nhật ngay vào store
-      useCustomerSessionStore.getState().setSession({
-        qrCode: qrCode ?? "",
-        sessionToken: `session-${session.id}`,
-        tableSession: session,
-      })
-
-      // Navigate sang waiting page với sessionId
-      navigate(
-        generatePath(CUSTOMER_PATHS.WAITING_TABLE_OPEN, { qrCode: qrCode ?? "" }),
-        {
-          replace: true,
-          state: {
-            tableSessionId: session.id,
-            tableName: tableInfo.tableName,
-            guestCount,
-          },
-        }
-      )
-    } catch (err) {
-      console.error("Error creating session:", err)
-      toast({
-        title: "Lỗi mở bàn",
-        description: err instanceof Error ? err.message : "Không thể mở bàn, vui lòng thử lại.",
-        variant: "danger",
-      })
-      setSubmitting(false)
-    }
+      const useStaffAssistance = table.locationRequired && table.joinRequired && staffAssisted
+      const location = table.locationRequired && !useStaffAssistance ? await requestGuestLocation() : undefined
+      const result = await enterGuestTable({ branchId: table.branchId, qrCode, guestCount,
+        joinCode: useStaffAssistance ? joinCode : undefined, location })
+      saveGuestCredential(result.session.id, result.token)
+      openSession(result.session)
+    } catch (reason) {
+      setError(getErrorMessage(reason))
+      // Refresh only public metadata: another customer/staff member may have opened the table.
+      try { setTable(await getGuestTable(table.branchId, qrCode)) } catch { /* Keep original error. */ }
+    } finally { setSubmitting(false) }
   }
 
-  // Loading state
-  if (loading) {
-    return (
-      <div className="flex flex-1 items-center justify-center bg-surface-page min-h-dvh">
-        <div className="flex flex-col items-center gap-3">
-          <div className="size-12 animate-spin rounded-full border-4 border-gray-200 border-t-brand-primary" />
-          <p className="text-sm text-text-secondary">Đang tải thông tin bàn...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Error state
-  if (error || !tableInfo) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center bg-surface-page min-h-dvh px-6">
-        <div className="flex flex-col items-center text-center">
-          <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-status-danger-subtle">
-            <span className="text-2xl">⚠️</span>
-          </div>
-          <h2 className="text-lg font-bold text-text-primary">
-            {error || "Không tìm thấy bàn"}
-          </h2>
-          <p className="mt-2 text-sm text-text-secondary">
-            Vui lòng kiểm tra lại mã QR hoặc liên hệ nhân viên.
-          </p>
-          <Button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="mt-6"
-          >
-            Thử lại
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
+  if (loading) return <p role="status" className="p-8 text-center">Đang tải thông tin bàn…</p>
   return (
-    <div className="flex flex-1 flex-col bg-surface-page min-h-dvh w-full">
-      {/* ---- Banner thương hiệu (Tràn viền 100% mọi màn hình) ---- */}
-      <div className="w-full bg-brand-primary px-4 sm:px-6 pt-[max(2.5rem,env(safe-area-inset-top))] pb-8 shadow-sm">
-        <div className="w-full max-w-lg md:max-w-xl mx-auto flex flex-col items-center">
-          <div className="mb-3.5 flex size-[72px] sm:size-20 shrink-0 items-center justify-center rounded-[20px] bg-white shadow-xs">
-            <span className="text-3xl sm:text-4xl font-bold text-brand-primary">P</span>
-          </div>
-          <h1 className="text-center text-xl sm:text-2xl font-bold text-white tracking-tight">
-            {tableInfo.restaurantName}
-          </h1>
-          <p className="mt-1 text-center text-sm sm:text-base font-normal text-white/90">
-            {tableInfo.branchName}
-          </p>
-        </div>
-      </div>
-
-      {/* ---- Nội dung chính (Thích ứng linh hoạt mọi điện thoại và tablet) ---- */}
-      <div className="flex flex-1 flex-col justify-between w-full max-w-lg md:max-w-xl mx-auto px-4 sm:px-6 pt-5 sm:pt-7 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-        <div className="flex flex-col">
-          {/* Thẻ thông tin bàn */}
-          <div className="rounded-[20px] border border-border-default/70 bg-white px-5 py-6 sm:py-8 text-center shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
-            <p className="text-xs sm:text-sm font-semibold tracking-wider text-text-tertiary uppercase">
-              BẠN ĐANG NGỒI TẠI
-            </p>
-            <p className="my-1.5 sm:my-2 text-3xl sm:text-4xl font-bold tracking-tight text-brand-primary">
-              {tableInfo.tableName}
-            </p>
-            <p className="text-xs sm:text-sm text-text-tertiary">
-              Đơn món sẽ được ghi theo phiên của bàn này
-            </p>
-          </div>
-
-          {/* Số lượng khách */}
-          <div className="mt-6 sm:mt-8">
-            <p className="text-xs sm:text-sm font-semibold tracking-wider text-text-tertiary uppercase">
-              SỐ LƯỢNG KHÁCH
-            </p>
-            <div className="mt-3 grid grid-cols-4 gap-2.5 sm:gap-4">
-              {GUEST_COUNT_OPTIONS.map((option) => {
-                const isSelected = option === selectedGuestCount
-                return (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => setSelectedGuestCount(option)}
-                    className={cn(
-                      "flex h-[52px] sm:h-[58px] min-w-0 items-center justify-center rounded-[16px] sm:rounded-[18px] border text-base sm:text-lg font-bold transition-all",
-                      isSelected
-                        ? "border-[#FFD5C8] bg-brand-primary-subtle text-brand-primary shadow-2xs"
-                        : "border-border-default bg-white text-text-primary hover:border-border-strong active:scale-95"
-                    )}
-                  >
-                    {option}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Khối hành động và ghi chú chân trang */}
-        <div className="mt-8 flex flex-col items-center w-full">
-          <p className="mb-3.5 text-center text-xs sm:text-sm leading-relaxed text-text-tertiary">
-            Quét mã QR tại bàn · Không cần tải app · Không cần đăng nhập
-          </p>
-          <Button
-            type="button"
-            size="lg"
-            className="w-full h-[52px] sm:h-[56px] rounded-[16px] sm:rounded-[18px] bg-brand-primary hover:bg-brand-primary-hover text-base sm:text-lg font-bold text-white shadow-none transition-transform active:scale-[0.99]"
-            onClick={handleOpenTableRequest}
-            disabled={submitting}
-          >
-            {submitting ? "Đang gửi..." : "Gửi yêu cầu mở bàn"}
-          </Button>
-        </div>
-      </div>
-    </div>
+    <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col gap-6 p-6">
+      <header className="rounded-2xl bg-brand-primary p-6 text-center text-white">
+        <h1 className="text-2xl font-bold">{table?.restaurantName ?? "Gọi món tại bàn"}</h1>
+        <p>{table?.branchName}</p>
+        <p className="mt-3 text-xl font-semibold">{table?.tableName}</p>
+      </header>
+      {error ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p> : null}
+      {table ? <form onSubmit={submit} className="space-y-5">
+        {table.joinRequired ? <div className="space-y-2 rounded-xl border p-4">
+          <h2 className="text-lg font-semibold">Bạn đang ngồi tại {table.tableName}?</h2>
+          <p className="text-sm text-text-secondary">Xác nhận đúng số bàn để tiếp tục vào lượt phục vụ hiện tại. Bạn không cần tạo bàn mới.</p>
+        </div> : <div className="space-y-2">
+          <label htmlFor="guest-count" className="font-semibold">Số lượng khách</label>
+          <Input id="guest-count" type="number" min={1} max={100} required value={guestCount}
+            onChange={(event) => setGuestCount(Number(event.target.value))} disabled={submitting} />
+        </div>}
+        {table.locationRequired ? <div className="space-y-3 text-sm text-text-secondary">
+          <p>Vị trí được kiểm tra một lần khi mở hoặc tham gia bàn; hệ thống không theo dõi vị trí liên tục.</p>
+          {table.joinRequired ? <details className="rounded-xl border p-3">
+            <summary className="cursor-pointer font-medium">Không thể định vị? Nhờ nhân viên hỗ trợ</summary>
+            <p className="mt-3">Chỉ dùng mã hỗ trợ khi thiết bị không lấy được vị trí. Khách định vị được chỉ cần bấm xác nhận bàn.</p>
+            <label className="my-3 flex items-start gap-2">
+              <input type="checkbox" checked={staffAssisted} disabled={submitting} onChange={(event) => setStaffAssisted(event.target.checked)} />
+              Sử dụng mã hỗ trợ do nhân viên tại bàn cung cấp
+            </label>
+            {staffAssisted ? <div className="space-y-2">
+              <label htmlFor="join-code" className="font-medium">Mã hỗ trợ</label>
+              <Input id="join-code" inputMode="numeric" autoComplete="off" pattern="[0-9]{8}" maxLength={8}
+                required value={joinCode} onChange={(event) => setJoinCode(event.target.value.replace(/\D/g, ""))} disabled={submitting} />
+            </div> : null}
+          </details> : <p>Nếu không định vị được, hãy nhờ nhân viên mở bàn rồi cung cấp mã hỗ trợ và bấm tải lại.</p>}
+        </div> : null}
+        <Button type="submit" className="w-full" disabled={submitting}>
+          {submitting ? "Đang xử lý…" : table.joinRequired ? "Đúng bàn, tiếp tục" : "Gửi yêu cầu mở bàn"}
+        </Button>
+      </form> : null}
+      <Button type="button" variant="outline" disabled={submitting} onClick={() => window.location.reload()}>Tải lại thông tin bàn</Button>
+    </main>
   )
+}
+
+export default function TableOpenQrPage() {
+  const { qrCode = "" } = useParams<{ qrCode: string }>()
+  return <TableOpenQrForm key={qrCode} qrCode={qrCode} />
 }

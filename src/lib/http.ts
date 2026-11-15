@@ -1,4 +1,5 @@
 import axios, { AxiosError, type AxiosInstance, type AxiosRequestConfig, type InternalAxiosRequestConfig } from "axios"
+import { getGuestCredential, isCustomerPage } from "./guest-credential"
 import type { ResponseError, ResponseSuccess } from "@/types/api"
 import type { RefreshTokenResponse } from "@/types/models"
 import {
@@ -51,7 +52,11 @@ function isPublicPath(url?: string): boolean {
 
 // ------------------------------------------------------------------ Request
 http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  if (!isPublicPath(config.url)) {
+  if (isCustomerPage()) {
+    config.headers.delete("Authorization")
+    const credential = getGuestCredential()
+    if (credential) config.headers.set("X-Guest-Token", credential.token)
+  } else if (!isPublicPath(config.url)) {
     const token = getAccessToken()
     if (token) config.headers.set("Authorization", `Bearer ${token}`)
   }
@@ -115,7 +120,7 @@ http.interceptors.response.use(
     const config = error.config as (InternalAxiosRequestConfig & { _retried?: boolean }) | undefined
     const status = error.response?.status
 
-    if (status === 401 && config && !config._retried && !isPublicPath(config.url)) {
+    if (status === 401 && config && !config._retried && !isPublicPath(config.url) && !isCustomerPage()) {
       config._retried = true
       try {
         if (!refreshPromise) {

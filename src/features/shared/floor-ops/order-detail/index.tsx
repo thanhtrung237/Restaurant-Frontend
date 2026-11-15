@@ -1,4 +1,5 @@
 import * as React from "react";
+import { GuestJoinCode } from "../GuestJoinCode";
 import { useNavigate, useParams, generatePath } from "react-router-dom";
 import {
   ChevronLeft,
@@ -553,6 +554,7 @@ export default function OrderDetailPage() {
 
   return (
     <div className="flex flex-1 flex-col min-h-screen bg-surface-page">
+      {tableSessionId ? <GuestJoinCode key={tableSessionId} sessionId={tableSessionId} /> : null}
       {/* ============================================================
           1. HEADER
           ============================================================ */}

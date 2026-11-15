@@ -98,7 +98,6 @@ export default function WaitingTableOpenPage() {
     if (session && session.status === "SERVING") {
       setSession({
         qrCode: qrCode ?? "",
-        sessionToken: `session-${session.id}`,
         tableSession: session,
       })
       navigate(
@@ -118,7 +117,6 @@ export default function WaitingTableOpenPage() {
     if (currentSession) {
       setSession({
         qrCode: qrCode ?? "",
-        sessionToken: `preview-session-${currentSession.id}`,
         tableSession: currentSession,
       })
       navigate(generatePath(CUSTOMER_PATHS.MENU, { qrCode: qrCode ?? "" }))
