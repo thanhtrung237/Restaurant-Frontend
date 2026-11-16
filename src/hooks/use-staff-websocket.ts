@@ -10,6 +10,7 @@
  * Tất cả thông báo lưu vào Zustand store (useNotificationStore) và bắn toast trực quan.
  */
 
+import { getAccessToken } from "@/lib/auth-token"
 import * as React from "react"
 import { Client } from "@stomp/stompjs"
 import SockJS from "sockjs-client"
@@ -43,6 +44,7 @@ export function useStaffWebSocket() {
     const client = new Client({
       webSocketFactory: () => new SockJS(getWsUrl()) as WebSocket,
       reconnectDelay: 5000,
+      beforeConnect: () => { client.connectHeaders = { Authorization: `Bearer ${getAccessToken() ?? ""}` } },
       onStompError: (frame) => console.error("[WS] STOMP error:", frame.headers["message"], frame.body),
       onWebSocketError: (evt) => console.error("[WS] Không kết nối được WebSocket:", evt),
       onConnect: () => {

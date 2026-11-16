@@ -8,6 +8,7 @@
  *   PENDING (Đã nhận) → PENDING_WEIGHT (Đang cân) → PREPARING (Đang chế biến) → SERVED (Đã phục vụ)
  */
 
+import { getGuestCredential } from "@/lib/guest-credential"
 import * as React from "react"
 import { Client } from "@stomp/stompjs"
 import SockJS from "sockjs-client"
@@ -27,6 +28,7 @@ export function useCustomerWebSocket(tableSessionId?: number) {
     const client = new Client({
       webSocketFactory: () => new SockJS(getWsUrl()) as WebSocket,
       reconnectDelay: 5000,
+      beforeConnect: () => { client.connectHeaders = { "X-Guest-Token": getGuestCredential()?.token ?? "" } },
       onConnect: () => {
         client.subscribe(`/topic/session/${tableSessionId}/item-status`, (msg) => {
           try {
@@ -46,7 +48,7 @@ export function useCustomerWebSocket(tableSessionId?: number) {
               description: `Món ăn của bạn đã chuyển sang trạng thái: ${statusLabel}`,
               variant: "info",
             })
-          } catch (_) {
+          } catch {
             // ignore
           }
         })
