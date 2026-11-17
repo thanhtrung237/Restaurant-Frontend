@@ -181,5 +181,7 @@ export const qk = {
       ["reports", "top-dishes", branchIds, from, to, topN] as const,
     branchComparison: (restaurantId: number, from: string, to: string) =>
       ["reports", "branch-comparison", restaurantId, from, to] as const,
+    anomalies: (branchIds: number[], from: string, to: string) =>
+      ["reports", "anomalies", branchIds, from, to] as const,
   },
 } as const

@@ -6,6 +6,7 @@ import type {
   HourlyRevenueResponse,
   TopDishResponse,
   BranchRevenueCompareResponse,
+  AnomalyReportResponse,
 } from "@/types/models"
 
 // ── FR-RPT-01: Revenue Report ───────────────────────────────────────
@@ -114,6 +115,31 @@ export function useBranchComparison(params?: {
     queryKey: qk.reports.branchComparison(restaurantId ?? 0, from ?? "", to ?? ""),
     queryFn: () => getBranchComparison(restaurantId!, from!, to!),
     enabled: !!restaurantId && !!from && !!to,
+  })
+}
+
+// ── AI Anomaly Detection ──────────────────────────────────────────
+
+export function getAnomalyReport(
+  branchIds: number[],
+  from: string,
+  to: string,
+) {
+  return apiGet<AnomalyReportResponse>("/reports/anomalies", {
+    params: { branchIds: branchIds.join(","), from, to },
+  })
+}
+
+export function useAnomalyReport(params?: {
+  branchIds?: number[]
+  from?: string
+  to?: string
+}) {
+  const { branchIds, from, to } = params ?? {}
+  return useQuery({
+    queryKey: qk.reports.anomalies(branchIds ?? [], from ?? "", to ?? ""),
+    queryFn: () => getAnomalyReport(branchIds!, from!, to!),
+    enabled: !!branchIds && branchIds.length > 0 && !!from && !!to,
   })
 }
 

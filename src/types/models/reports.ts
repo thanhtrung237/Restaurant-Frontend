@@ -84,3 +84,35 @@ export interface BranchStat {
   hasAnomaly: boolean
   anomalyNote: string
 }
+
+// ── AI Anomaly Detection ──────────────────────────────────────────
+
+export type AnomalySeverity = "LOW" | "WARNING" | "CRITICAL"
+export type AnomalyType =
+  | "SURGE_CANCELLATION"
+  | "SUSPICIOUS_DISCOUNT"
+  | "REPEATED_TABLE_CANCELLATIONS"
+  | "UNUSUAL_VOID_RATE"
+
+export interface AnomalyAlert {
+  id: string
+  type: AnomalyType
+  severity: AnomalySeverity
+  title: string
+  location: string
+  description: string
+  aiExplanation?: string
+  recommendation?: string
+  detectedAt: string
+  anomalyScore?: number
+  metrics?: Record<string, unknown>
+}
+
+export interface AnomalyReportResponse {
+  totalAnomalies: number
+  criticalCount: number
+  warningCount: number
+  alerts: AnomalyAlert[]
+  aiExecutiveSummary?: string
+  evaluatedAt: string
+}

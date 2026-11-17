@@ -1,12 +1,25 @@
 import { StatCard } from "@/components/common/StatCard"
 import { RevenueBarChart } from "./RevenueBarChart"
+import { HourlyRevenueBarChart } from "./HourlyRevenueBarChart"
 import { TopDishesCard } from "./TopDishesCard"
 import { PaymentMethodBreakdownCard } from "./PaymentMethodBreakdownCard"
 import { CategoryRevenueCard } from "./CategoryRevenueCard"
-import { useRevenueReport, useTopDishes } from "@/api/reports.api"
+import { AnomalyAlertCard } from "./AnomalyAlertCard"
+import {
+  useRevenueReport,
+  useTopDishes,
+  useAnomalyReport,
+  useHourlyRevenue,
+} from "@/api/reports.api"
 import { computeGrowthTrend, formatCurrency, formatNumber } from "@/lib/format"
-import { format as formatDate, subDays } from "date-fns"
-import type { DailyRevenueItem } from "../types"
+import {
+  differenceInCalendarDays,
+  eachDayOfInterval,
+  format as formatDate,
+  isToday,
+  isYesterday,
+} from "date-fns"
+import type { DailyRevenueItem, HourlyRevenueItem } from "../types"
 
 interface DailyReportTabProps {
   branchIds: number[]
@@ -32,12 +45,11 @@ export function DailyReportTab({
   const previousFrom = formatDate(previousFromDate, "yyyy-MM-dd'T'HH:mm:ss")
   const previousTo = formatDate(previousToDate, "yyyy-MM-dd'T'HH:mm:ss")
 
-  // Compute 7-day range ending at toDate for "Doanh thu 7 ngày qua" chart
-  const sevenDaysStartDate = subDays(toDate, 6)
-  const sevenDaysFrom = formatDate(sevenDaysStartDate, "yyyy-MM-dd'T'00:00:00")
-  const sevenDaysTo = formatDate(toDate, "yyyy-MM-dd'T'23:59:59")
+  // Số ngày trong khoảng thời gian được lọc
+  const totalDays = Math.max(1, differenceInCalendarDays(toDate, fromDate) + 1)
+  const isSingleDay = totalDays === 1
 
-  // Fetch current period data (for stat cards, payment methods & summary)
+  // Fetch current period data (for stat cards, payment methods, summary & daily trend)
   const {
     data: currentData,
     isLoading: isLoadingCurrent,
@@ -56,16 +68,13 @@ export function DailyReportTab({
     groupBy,
   })
 
-  // Fetch 7-day data specifically for the 7-day revenue chart
+  // Fetch hourly data specifically when filtering a single day (e.g. Hôm nay, Hôm qua)
   const {
-    data: sevenDaysData,
-    isLoading: isLoadingSevenDays,
-  } = useRevenueReport({
-    branchIds,
-    from: sevenDaysFrom,
-    to: sevenDaysTo,
-    groupBy: "DAY",
-  })
+    data: hourlyData,
+    isLoading: isLoadingHourly,
+  } = useHourlyRevenue(
+    isSingleDay ? { branchIds, from, to } : undefined
+  )
 
   // Fetch top & slowest dishes (FR-RPT-03, topN: 50 for full category coverage)
   const {
@@ -74,7 +83,21 @@ export function DailyReportTab({
     error: errorTopDishes,
   } = useTopDishes({ branchIds, from, to, topN: 50 })
 
-  const isLoading = isLoadingCurrent || isLoadingPrevious || isLoadingTopDishes || isLoadingSevenDays
+  // Fetch AI Anomaly Detection report
+  const {
+    data: anomalyData,
+    isLoading: isLoadingAnomalies,
+  } = useAnomalyReport({
+    branchIds,
+    from,
+    to,
+  })
+
+  const isLoading =
+    isLoadingCurrent ||
+    isLoadingPrevious ||
+    isLoadingTopDishes ||
+    (isSingleDay ? isLoadingHourly : false)
   const error = errorCurrent || errorPrevious || errorTopDishes
 
   // Show loading skeleton
@@ -151,32 +174,63 @@ export function DailyReportTab({
     "Thứ 7",
   ]
 
-  // Map 7-day trend data from backend by date string (YYYY-MM-DD)
+  // Map trend data from backend by date string (YYYY-MM-DD)
   const trendMap = new Map<string, number>()
-  if (sevenDaysData?.trend) {
-    for (const point of sevenDaysData.trend) {
+  if (currentData?.trend) {
+    for (const point of currentData.trend) {
       const dateKey = point.label.split("T")[0].trim()
       trendMap.set(dateKey, parseFloat(point.revenue) || 0)
     }
   }
 
-  // Generate all 7 consecutive days ending at toDate (T-6 to T)
-  const dailyRevenueData: DailyRevenueItem[] = []
-  for (let i = 6; i >= 0; i--) {
-    const d = subDays(toDate, i)
+  // Generate all consecutive days within the selected date range
+  const allDays = eachDayOfInterval({ start: fromDate, end: toDate })
+  const dailyRevenueData: DailyRevenueItem[] = allDays.map((d) => {
     const dateKey = formatDate(d, "yyyy-MM-dd")
     const dayOfWeek = d.getDay()
-
-    dailyRevenueData.push({
-      day: dayAbbreviations[dayOfWeek],
-      fullDay: fullDayNames[dayOfWeek],
+    return {
+      day:
+        totalDays <= 7
+          ? dayAbbreviations[dayOfWeek]
+          : totalDays > 14
+          ? formatDate(d, "dd")
+          : formatDate(d, "dd/MM"),
+      fullDay: `${fullDayNames[dayOfWeek]}, ${formatDate(d, "dd/MM/yyyy")}`,
       date: dateKey,
       revenue: trendMap.get(dateKey) ?? 0,
-    })
+    }
+  })
+
+  // Hourly items for single-day view (Hôm nay, Hôm qua, hoặc 1 ngày cụ thể)
+  const hourlyRevenueData: HourlyRevenueItem[] = (hourlyData?.hourlySlots ?? []).map((slot) => ({
+    hour: `${slot.hour}h`,
+    timeRange: slot.label,
+    revenue: parseFloat(slot.revenue) || 0,
+    isPeakHour: false,
+  }))
+
+  // Tiêu đề biểu đồ linh hoạt theo khoảng thời gian được lọc
+  let chartTitle = `Doanh thu theo ngày (${formatDate(fromDate, "dd/MM")} – ${formatDate(toDate, "dd/MM/yyyy")})`
+  if (isSingleDay) {
+    if (isToday(fromDate)) {
+      chartTitle = `Doanh thu theo khung giờ · Hôm nay (${formatDate(fromDate, "dd/MM/yyyy")})`
+    } else if (isYesterday(fromDate)) {
+      chartTitle = `Doanh thu theo khung giờ · Hôm qua (${formatDate(fromDate, "dd/MM/yyyy")})`
+    } else {
+      chartTitle = `Doanh thu theo khung giờ · Ngày ${formatDate(fromDate, "dd/MM/yyyy")}`
+    }
+  } else if (totalDays === 7) {
+    chartTitle = `Doanh thu 7 ngày qua (${formatDate(fromDate, "dd/MM")} – ${formatDate(toDate, "dd/MM/yyyy")})`
   }
 
   return (
     <div className="space-y-6">
+      {/* AI Anomaly Detection Card (FR-RPT-06 / Ops Auditor) */}
+      <AnomalyAlertCard
+        data={anomalyData}
+        isLoading={isLoadingAnomalies}
+      />
+
       {/* 4 Core Stat Cards (FR-RPT-01) */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
@@ -201,10 +255,20 @@ export function DailyReportTab({
         />
       </div>
 
-      {/* Row: 7-day revenue bar chart + Payment Methods Breakdown (FR-RPT-01) */}
+      {/* Row: Dynamic Revenue Bar Chart + Payment Methods Breakdown (FR-RPT-01) */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <div className="lg:col-span-7 xl:col-span-8">
-          <RevenueBarChart data={dailyRevenueData} />
+          {isSingleDay ? (
+            <HourlyRevenueBarChart
+              data={hourlyRevenueData}
+              title={chartTitle}
+            />
+          ) : (
+            <RevenueBarChart
+              data={dailyRevenueData}
+              title={chartTitle}
+            />
+          )}
         </div>
         <div className="lg:col-span-5 xl:col-span-4">
           <PaymentMethodBreakdownCard
