@@ -14,7 +14,8 @@ import {
   useMarkServed,
   useOpenSessionsByBranch,
 } from "@/features/shared/floor-ops/api";
-import { ApiError, getErrorMessage } from "@/lib/http";
+import { getOrderDetailsBySession } from "@/api/order-details.api";
+import { ApiError, getErrorMessage, isApiStatus } from "@/lib/http";
 import type { OrderDetail } from "@/types/models";
 import type { OrderDetailStatus } from "@/types/enums";
 import {
@@ -217,7 +218,7 @@ interface KDSTicketItem {
  * Hiển thị các món ăn đang chờ chế biến từ tất cả bàn của chi nhánh.
  * 
  * API: GET /table-sessions/branch/{branchId}/open (lấy danh sách sessions)
- *      GET /order-details/session/{tableSessionId} cho mỗi session (poll 5s)
+ *      GET /order-details/session/{tableSessionId} cho mỗi session (poll 1s)
  *      PUT /order-details/{id}/status
  *      POST /order-details/{id}/confirm-weight
  *      POST /order-details/{id}/mark-served
@@ -243,7 +244,7 @@ export default function KitchenDisplayPage() {
   } | null>(null);
 
   // Fetch all open sessions (làm mới mỗi 1 giây)
-  const { data: sessions = [], isLoading: sessionsLoading } = useOpenSessionsByBranch(
+  const { data: sessions, isLoading: sessionsLoading, error: sessionsError } = useOpenSessionsByBranch(
     branchId ?? undefined,
     { refetchInterval: 1000 }
   );
@@ -253,6 +254,7 @@ export default function KitchenDisplayPage() {
   const [allOrderDetails, setAllOrderDetails] = React.useState<
     Array<{ sessionId: number; tableName: string; detail: OrderDetail }>
   >([]);
+  const [detailsError, setDetailsError] = React.useState("");
 
   // Mutations
   // PENDING → PREPARING vẫn dùng PUT /status hoặc batchConfirm:
@@ -265,65 +267,44 @@ export default function KitchenDisplayPage() {
   const markServedMutation = useMarkServed();
   const confirmWeightMutation = useConfirmWeight();
 
-  // Fetch order details cho tất cả sessions (làm mới mỗi 1 giây)
+  // Dùng chung client xác thực cho cả lần tải đầu và các lượt làm mới.
   React.useEffect(() => {
-    if (!sessions.length) {
+    if (!sessions?.length) {
       setAllOrderDetails([]);
+      setDetailsError("");
       return;
     }
 
-    const fetchInterval = setInterval(async () => {
-      const promises = sessions.map(async (session) => {
-        try {
-          // Endpoint này là public, không cần Authorization header
-          const response = await fetch(
-            `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1"}/order-details/session/${session.id}`
-          );
-          if (!response.ok) return [];
-          const data = await response.json();
-          return (data.data || []).map((detail: OrderDetail) => ({
-            sessionId: session.id,
-            tableName: session.tableName || `Bàn ${session.tableId}`,
-            detail,
-          }));
-        } catch {
-          return [];
-        }
-      });
+    const activeSessions = sessions;
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout>;
 
-      const results = await Promise.all(promises);
-      setAllOrderDetails(results.flat());
-    }, 1000);
+    async function refreshDetails() {
+      const results = await Promise.allSettled(activeSessions.map(async (session) => {
+        const details = await getOrderDetailsBySession(session.id);
+        return details.map((detail) => ({
+          sessionId: session.id,
+          tableName: session.tableName || `Bàn ${session.tableId}`,
+          detail,
+        }));
+      }));
+      if (stopped) return;
 
-    // Initial fetch
-    (async () => {
-      const promises = sessions.map(async (session) => {
-        try {
-          const response = await fetch(
-            `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1"}/order-details/session/${session.id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${useAuthStore.getState().accessToken}`,
-              },
-            }
-          );
-          if (!response.ok) return [];
-          const data = await response.json();
-          return (data.data || []).map((detail: OrderDetail) => ({
-            sessionId: session.id,
-            tableName: session.tableName || `Bàn ${session.tableId}`,
-            detail,
-          }));
-        } catch {
-          return [];
-        }
-      });
+      const failed = results.find((result) => result.status === "rejected");
+      setDetailsError(failed ? getErrorMessage(failed.reason) : "");
+      setAllOrderDetails((previous) => results.flatMap((result, index) => {
+        if (result.status === "fulfilled") return result.value;
+        if (isApiStatus(result.reason, 401, 403, 404)) return [];
+        return previous.filter((item) => item.sessionId === activeSessions[index].id);
+      }));
+      timer = setTimeout(() => void refreshDetails(), 1000);
+    }
 
-      const results = await Promise.all(promises);
-      setAllOrderDetails(results.flat());
-    })();
-
-    return () => clearInterval(fetchInterval);
+    void refreshDetails();
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+    };
   }, [sessions]);
 
   // Convert OrderDetail to KDSTicketItem
@@ -678,9 +659,15 @@ export default function KitchenDisplayPage() {
   );
 
   const mobileTickets = byColumn[mobileTab];
+  const loadError = sessionsError ? getErrorMessage(sessionsError) : detailsError;
 
   return (
     <div className="flex flex-1 flex-col min-h-screen bg-surface-page">
+      {loadError && (
+        <p role="alert" className="mx-4 mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          Không cập nhật được danh sách món. {loadError}
+        </p>
+      )}
       {/* ============================================================
           A. GIAO DIỆN MOBILE (< md) - KHỚP MOCKUP 375PX
           ============================================================ */}
