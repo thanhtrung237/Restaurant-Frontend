@@ -32,9 +32,9 @@ function CustomActiveBar(props: any) {
   const { x = 0, y = 0, width = 0, height = 0, payload } = props
   if (!payload) return null
 
-  const boxWidth = 104
+  const boxWidth = 136
   const boxHeight = 44
-  const boxX = x + width / 2 - boxWidth / 2
+  const boxX = Math.max(4, x + width / 2 - boxWidth / 2)
   // Nằm ngay trên đỉnh cột cách đúng 8px
   const boxY = Math.max(4, y - boxHeight - 8)
   const formattedRevenue = `${payload.revenue.toLocaleString("vi-VN")}đ`
@@ -47,8 +47,8 @@ function CustomActiveBar(props: any) {
         y={y}
         width={width}
         height={height}
-        rx={8}
-        ry={8}
+        rx={6}
+        ry={6}
         fill="#EA4A2A"
       />
 
@@ -64,7 +64,7 @@ function CustomActiveBar(props: any) {
         className="filter drop-shadow-md"
       />
 
-      {/* Dòng 1: Tên thứ (vd: Thứ 7, Thứ 2...) */}
+      {/* Dòng 1: Tên thứ / ngày */}
       <text
         x={boxX + boxWidth / 2}
         y={boxY + 16}
@@ -95,7 +95,7 @@ function CustomActiveBar(props: any) {
  * Custom XAxis Tick: Chỉ đỏ và in đậm khi đưa chuột vào đúng cột đó
  */
 function CustomXAxisTick(props: any) {
-  const { x, y, payload, index, hoveredIndex } = props
+  const { x, y, payload, index, hoveredIndex, isCompact } = props
   const isHovered = hoveredIndex === index
 
   return (
@@ -105,7 +105,7 @@ function CustomXAxisTick(props: any) {
         y={14}
         textAnchor="middle"
         fill={isHovered ? "#EA4A2A" : "#868E96"}
-        fontSize={13}
+        fontSize={isCompact ? 11 : 13}
         fontWeight={isHovered ? 700 : 500}
         className="transition-colors duration-150"
       >
@@ -120,6 +120,9 @@ export function RevenueBarChart({
   title = "Doanh thu 7 ngày qua",
 }: RevenueBarChartProps) {
   const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null)
+  const isCompact = data.length > 14
+  const axisInterval = data.length > 22 ? 1 : 0
+  const maxBarWidth = data.length > 20 ? 16 : data.length > 10 ? 24 : 36
 
   return (
     <div className="rounded-card border border-border-default/80 bg-surface-card p-6 shadow-2xs">
@@ -132,7 +135,7 @@ export function RevenueBarChart({
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={data}
-              margin={{ top: 60, right: 24, left: 24, bottom: 8 }}
+              margin={{ top: 60, right: 16, left: 16, bottom: 8 }}
               onMouseMove={(state: any) => {
                 if (
                   state &&
@@ -163,15 +166,15 @@ export function RevenueBarChart({
                 axisLine={false}
                 tickLine={false}
                 tick={(props) => (
-                  <CustomXAxisTick {...props} hoveredIndex={hoveredIndex} />
+                  <CustomXAxisTick {...props} hoveredIndex={hoveredIndex} isCompact={isCompact} />
                 )}
-                interval={0}
+                interval={axisInterval}
               />
               <Bar
                 dataKey="revenue"
                 fill="#FDD7C7"
-                radius={[8, 8, 8, 8]}
-                maxBarSize={36}
+                radius={[6, 6, 6, 6]}
+                maxBarSize={maxBarWidth}
                 minPointSize={6}
                 cursor="pointer"
                 activeBar={<CustomActiveBar />}
