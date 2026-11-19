@@ -7,14 +7,11 @@ import {
 } from "./auth-token"
 
 /**
- * Base URL của backend. Đặt `VITE_API_BASE_URL` trong file `.env.local` khi deploy;
- * mặc định trỏ vào máy dev (BE chạy port 8080, prefix `/api/v1` lấy từ `API_PREFIX`).
- *
- * CORS của backend hiện chỉ cho phép origin `http://localhost:5173` và
- * `http://localhost:3000` — chạy Vite ở port khác sẽ bị chặn.
+ * Vite chuyển tiếp API cùng origin trong môi trường phát triển.
+ * Bản triển khai có thể đặt VITE_API_BASE_URL để dùng API riêng.
  */
 export const API_BASE_URL: string =
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080/api/v1"
+  import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? "/api/v1" : "http://localhost:8080/api/v1")
 
 /** Đường dẫn công khai (BE `SecurityConfig.PUBLIC_ENDPOINTS`) — không gắn Bearer, không refresh. */
 const PUBLIC_PATHS = ["/auth/login", "/auth/refresh-token"]

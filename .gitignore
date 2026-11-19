@@ -7,6 +7,10 @@ dist-ssr
 !.env.example
 *.ps1
 .env.local
+.agents
+.impeccable
+.codex
+PRODUCT.md 
 
 # Playwright artifacts
 /test-results/
