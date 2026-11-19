@@ -18,6 +18,7 @@ export const PERMISSION_KEYS = {
   REPORTS: "REPORTS",
   BRANCHES: "BRANCHES",
   STAFF: "STAFF",
+  BRANCH_STAFF: "BRANCH_STAFF",
   CONFIG: "CONFIG",
   /** Nhật ký hoạt động. QL chi nhánh chỉ ĐỌC và chỉ chi nhánh mình (R, FR-LOG-01). */
   AUDIT_LOG: "AUDIT_LOG",
@@ -47,7 +48,7 @@ export type PermissionKey = keyof typeof PERMISSION_KEYS
  * KHÔNG được (Bảng 4.3 để trống cho cột QL chi nhánh):
  *   · Menu nhà hàng / danh mục / nhóm tuỳ chọn món
  *   · Khuyến mãi
- *   · Quản lý nhân viên, Vai trò & phân quyền
+ *   · Quản lý tài khoản toàn nhà hàng và cấu hình quyền nền của vai trò
  *   · Cấu hình chi nhánh nhóm 2 — VAT, phí dịch vụ, ngưỡng chiết khấu, MST riêng
  *   · So sánh chi nhánh trong Báo cáo
  *
@@ -75,6 +76,7 @@ export const ROLE_PERMISSIONS: Record<AppRole, PermissionKey[]> = {
     "ORDER_AND_PREP",
     // Menu CHI NHÁNH — KHÔNG có "MENU" (menu nhà hàng) theo Bảng 4.3
     "BRANCH_MENU",
+    "BRANCH_STAFF",
     "REPORTS",
     "BRANCHES",
     "CONFIG",
