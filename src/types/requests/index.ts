@@ -111,7 +111,7 @@ export interface BranchUpdateRequest {
 }
 /**
  * `PUT /branches/{id}/config/manager` — phần cấu hình Quản lý chi nhánh được sửa.
- * LƯU Ý: `bankName` chỉ sửa được ở đây (BranchAddRequest/BranchUpdateRequest không có).
+ * Các trường tài khoản ngân hàng yêu cầu quyền Quản trị nhà hàng.
  */
 export interface BranchManagerConfigRequest {
   openingTime?: string
@@ -166,6 +166,7 @@ export interface DiningTableAddRequest {
 }
 export interface DiningTableUpdateRequest {
   areaId?: number
+  clearArea?: boolean
   name?: string
   capacity?: number
   qrCode?: string
@@ -227,6 +228,7 @@ export interface DishOverrideAddRequest {
 }
 export interface DishOverrideUpdateRequest {
   overridePrice?: number
+  clearOverridePrice?: boolean
   isHidden?: boolean
 }
 
@@ -322,6 +324,7 @@ export interface TableSessionMergeRequest {
 export interface OrderDetailAddRequest {
   dishId: number
   quantity: number
+  optionItemIds?: number[]
   promotionId?: number
   /** Chỉ dùng cho món bán theo cân. */
   weightKg?: number

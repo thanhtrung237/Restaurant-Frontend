@@ -4,9 +4,7 @@ import type { RoleScope } from "../enums"
 /**
  * Mirror của `RoleResponse.java`. Response dùng `updatedAt`.
  *
- * LƯU Ý: BE KHÔNG có field lưu ma trận quyền (permission matrix) trong Role — quyền đang
- * hard-code ở FE (`config/permissions.ts`). Trang "Vai trò & phân quyền" vì vậy chỉ quản lý
- * được tên/mã/scope của vai trò, chưa cấu hình được quyền chi tiết qua API.
+ * Quyền vận hành tùy chỉnh lấy từ API operational-permissions theo từng nhà hàng.
  */
 export interface Role extends BaseResponse {
   restaurantId: number
