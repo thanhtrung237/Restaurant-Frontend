@@ -33,12 +33,28 @@ export function useAreasByBranch(branchId?: number, status?: AreaStatus) {
 }
 export function useCreateArea() {
   const qc = useQueryClient()
-  return useMutation({ mutationFn: createArea, onSuccess: () => void qc.invalidateQueries({ queryKey: qk.areas.all }) })
+  return useMutation({
+    mutationFn: createArea,
+    onSuccess: (area, { branchId }) => {
+      qc.setQueryData<Area[]>(qk.areas.byBranch(branchId), (areas) => [
+        ...(areas ?? []).filter((item) => item.id !== area.id),
+        area,
+      ])
+      void qc.invalidateQueries({ queryKey: qk.areas.all })
+    },
+  })
 }
 export function useUpdateArea() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (vars: { id: number; body: AreaUpdateRequest }) => updateArea(vars.id, vars.body),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.areas.all }),
+  })
+}
+export function useDeleteArea() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: deleteArea,
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.areas.all }),
   })
 }
