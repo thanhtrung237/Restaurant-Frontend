@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiPut, apiGet } from '@/lib/http';
 import type { BranchDishStock } from '@/types/models';
+import { qk } from '@/lib/query-keys';
 
 // ============================================================================
 // Query Keys
@@ -11,6 +12,14 @@ export const branchDishStocksKeys = {
   byBranch: (branchId: number) => [...branchDishStocksKeys.all, 'branch', branchId] as const,
   outOfStock: (branchId: number) => [...branchDishStocksKeys.byBranch(branchId), 'out-of-stock'] as const,
 };
+
+function invalidateBranchStock(queryClient: ReturnType<typeof useQueryClient>, branchId: number) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: qk.branchMenu.overview(branchId) }),
+    queryClient.invalidateQueries({ queryKey: qk.branchMenu.forCustomer(branchId) }),
+    queryClient.invalidateQueries({ queryKey: branchDishStocksKeys.outOfStock(branchId) }),
+  ]);
+}
 
 // ============================================================================
 // API Functions
@@ -61,12 +70,7 @@ export function useToggleBranchDishStock() {
   return useMutation({
     mutationFn: ({ branchId, dishId }: { branchId: number; dishId: number }) =>
       toggleBranchDishStock(branchId, dishId),
-    onSuccess: (_, { branchId }) => {
-      // Invalidate branch menu overview to reflect stock changes
-      queryClient.invalidateQueries({ queryKey: ['branch-menu', 'overview', branchId] });
-      // Invalidate out-of-stock list
-      queryClient.invalidateQueries({ queryKey: branchDishStocksKeys.outOfStock(branchId) });
-    },
+    onSuccess: (_, { branchId }) => invalidateBranchStock(queryClient, branchId),
   });
 }
 
@@ -78,10 +82,7 @@ export function useRestoreAllBranchStock() {
 
   return useMutation({
     mutationFn: (branchId: number) => restoreAllBranchStock(branchId),
-    onSuccess: (_, branchId) => {
-      queryClient.invalidateQueries({ queryKey: ['branch-menu', 'overview', branchId] });
-      queryClient.invalidateQueries({ queryKey: branchDishStocksKeys.outOfStock(branchId) });
-    },
+    onSuccess: (_, branchId) => invalidateBranchStock(queryClient, branchId),
   });
 }
 

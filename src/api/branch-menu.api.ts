@@ -3,13 +3,29 @@ import { apiGet } from "@/lib/http"
 import { qk } from "@/lib/query-keys"
 import type { BranchMenuItem } from "@/types/models"
 
+type BranchMenuResponse = Omit<BranchMenuItem, "isHidden" | "isBranchSpecific"> & {
+  isHidden?: boolean
+  isBranchSpecific?: boolean
+  hidden?: boolean
+  branchSpecific?: boolean
+}
+
+async function fetchBranchMenu(path: string): Promise<BranchMenuItem[]> {
+  const items = await apiGet<BranchMenuResponse[]>(path)
+  return items.map(({ hidden, branchSpecific, ...item }) => ({
+    ...item,
+    isHidden: item.isHidden ?? hidden ?? false,
+    isBranchSpecific: item.isBranchSpecific ?? branchSpecific ?? false,
+  }))
+}
+
 /**
  * `GET /branches/{branchId}/menu` — thực đơn hiển thị cho KHÁCH.
  * BE đã resolve sẵn giá đè + lọc món ẩn + gắn trạng thái còn/hết,
  * nên FE chỉ hiển thị `effectivePrice`, không tự cộng giá.
  */
 export function getBranchMenu(branchId: number) {
-  return apiGet<BranchMenuItem[]>(`/branches/${branchId}/menu`)
+  return fetchBranchMenu(`/branches/${branchId}/menu`)
 }
 
 /**
@@ -17,7 +33,7 @@ export function getBranchMenu(branchId: number) {
  * kèm cả món đang ẩn, chênh lệch giá gốc ↔ giá đè (`priceDifference`, `hasOverride`).
  */
 export function getBranchMenuOverview(branchId: number) {
-  return apiGet<BranchMenuItem[]>(`/branches/${branchId}/menu/overview`)
+  return fetchBranchMenu(`/branches/${branchId}/menu/overview`)
 }
 
 export function useBranchMenu(branchId?: number) {

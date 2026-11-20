@@ -31,8 +31,10 @@ export function useDishOverridesByBranch(branchId?: number) {
   })
 }
 function invalidateOverrideScope(qc: ReturnType<typeof useQueryClient>) {
-  void qc.invalidateQueries({ queryKey: qk.dishOverrides.all })
-  void qc.invalidateQueries({ queryKey: qk.branchMenu.all })
+  return Promise.all([
+    qc.invalidateQueries({ queryKey: qk.dishOverrides.all }),
+    qc.invalidateQueries({ queryKey: qk.branchMenu.all }),
+  ])
 }
 export function useCreateDishOverride() {
   const qc = useQueryClient()
