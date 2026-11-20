@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/layout/Sidebar"
 import { SidebarRail } from "@/components/layout/SidebarRail"
 import { NavDrawer } from "@/components/layout/NavDrawer"
 import { MobileHeader } from "@/components/layout/MobileHeader"
+import { NotificationBell } from "@/components/layout/NotificationBell"
 import { BottomNav, type BottomNavItem } from "@/components/layout/BottomNav"
 import { BranchSwitcher } from "@/components/layout/BranchSwitcher"
 import { useAuthStore } from "@/stores/auth.store"
@@ -118,6 +119,7 @@ function StaffLayoutInner() {
             title={headerTitle}
             subtitle={pageHeader.subtitle}
             headerActions={pageHeader.headerActions}
+            rightActions={isSubScreen ? <NotificationBell className="size-9" /> : undefined}
           />
         </div>
 

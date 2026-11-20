@@ -203,13 +203,7 @@ export const NAV_ITEMS_BY_ROLE: Record<
     },
   ],
 
-  // Quản lý chi nhánh — phạm vi CHI NHÁNH được phân công (BR-18).
-  // Theo Bảng 4.3, cột "QL chi nhánh" để TRỐNG ở: Menu nhà hàng, danh mục, nhóm tuỳ chọn,
-  // Khuyến mãi, Quản lý nhân viên, Vai trò & phân quyền ⇒ KHÔNG có mục "Khuyến mãi" và
-  // "Nhân viên" trong menu. Mục "Thực đơn" ở đây là MENU CHI NHÁNH (đè giá / ẩn món /
-  // món riêng / báo hết món) nên dùng khoá BRANCH_MENU, không phải MENU.
-  // Nhật ký chi nhánh mình là quyền CHỈ ĐỌC (R) nên tách thành mục riêng — trước đây
-  // vào được nhờ mục "Nhân viên", nhưng mục đó đã bị bỏ theo đặc tả.
+  // Quản lý chi nhánh thao tác trong phạm vi được phân công.
   [APP_ROLE.BRANCH_MANAGER]: [
     {
       items: [
@@ -244,6 +238,13 @@ export const NAV_ITEMS_BY_ROLE: Record<
           path: BRANCH_MANAGER_PATHS.BRANCH,
           icon: Building2,
           permission: "BRANCHES",
+        },
+        {
+          label: "Nhân viên",
+          path: BRANCH_MANAGER_PATHS.STAFF,
+          icon: Users,
+          permission: "BRANCH_STAFF",
+          activeAlsoOn: [BRANCH_MANAGER_PATHS.ROLES_PERMISSIONS],
         },
         {
           label: "Cấu hình",

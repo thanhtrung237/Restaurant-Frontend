@@ -11,7 +11,7 @@ const BRANCH_MANAGER_BASE = "/quan-ly-chi-nhanh"
  * hẹp hơn Quản trị NH — xem chú thích trong config/permissions.ts:
  *  - "Chi nhánh" đi thẳng vào chi tiết chi nhánh mình (không có danh sách nhiều chi nhánh)
  *  - "Cấu hình" chỉ có cấu hình CHI NHÁNH (không có cấu hình nhà hàng/VAT/phí DV)
- *  - "Nhân viên" chỉ 2 tab (Nhân viên + Nhật ký), không có "Vai trò & phân quyền"
+ *  - "Nhật ký hoạt động" có tab tra cứu "Vai trò & phân quyền"
  *  - "Báo cáo" không có tab "So sánh chi nhánh"
  */
 export const BRANCH_MANAGER_PATHS = {
@@ -24,6 +24,7 @@ export const BRANCH_MANAGER_PATHS = {
    * nut "Dong ban" o man Don mon cua QLCN/QTNH khong co cho de di toi.
    */
   CHECKOUT: `${BRANCH_MANAGER_BASE}/thanh-toan/:tableSessionId`,
+  QR_TRANSFER_PAYMENT: `${BRANCH_MANAGER_BASE}/thanh-toan/:tableSessionId/chuyen-khoan-qr`,
   TABLE_MAP: `${BRANCH_MANAGER_BASE}/so-do-ban`, // Sơ đồ bàn — trang chủ của QL chi nhánh
   ORDER_AND_PREP: `${BRANCH_MANAGER_BASE}/order-che-bien`,
   // ORDER_CONFIRM removed: kitchen staff now confirms items directly in KDS (PENDING → PREPARING)
@@ -46,6 +47,8 @@ export const BRANCH_MANAGER_PATHS = {
   BRANCH_CONFIG: `${BRANCH_MANAGER_BASE}/cau-hinh`, // Alias của CONFIG
   MANUAL_DISCOUNT: `${BRANCH_MANAGER_BASE}/chiet-khau-thu-cong`, // Chiết khấu tay
   AUDIT_LOG: `${BRANCH_MANAGER_BASE}/nhat-ky`, // Nhật ký hoạt động chi nhánh mình — chỉ đọc (R, FR-LOG-01), tab trong Nhân viên
+  ROLES_PERMISSIONS: `${BRANCH_MANAGER_BASE}/vai-tro-phan-quyen`,
+  STAFF: `${BRANCH_MANAGER_BASE}/nhan-vien`,
   INVOICES: `${BRANCH_MANAGER_BASE}/hoa-don`, // Danh sách hóa đơn
   E_INVOICE: `${BRANCH_MANAGER_BASE}/hoa-don/:invoiceId`, // Chi tiết hóa đơn điện tử (đọc lại từ danh sách)
 } as const

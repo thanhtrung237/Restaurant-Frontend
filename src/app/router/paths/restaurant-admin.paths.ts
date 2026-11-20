@@ -11,6 +11,8 @@ export const RESTAURANT_ADMIN_PATHS = {
    * nut "Dong ban" o man Don mon cua QLCN/QTNH khong co cho de di toi.
    */
   CHECKOUT: `${RESTAURANT_ADMIN_BASE}/thanh-toan/:tableSessionId`,
+  QR_TRANSFER_PAYMENT: `${RESTAURANT_ADMIN_BASE}/thanh-toan/:tableSessionId/chuyen-khoan-qr`,
+  E_INVOICE: `${RESTAURANT_ADMIN_BASE}/hoa-don/:invoiceId`,
   TABLE_MAP: `${RESTAURANT_ADMIN_BASE}/so-do-ban`, // Sơ đồ bàn
   ORDER_AND_PREP: `${RESTAURANT_ADMIN_BASE}/order-che-bien`, // Gọi món & Chế biến
   // ORDER_CONFIRM removed: kitchen staff now confirms items directly in KDS (PENDING → PREPARING)

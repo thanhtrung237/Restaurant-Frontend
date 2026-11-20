@@ -21,6 +21,7 @@ export const SUB_SCREEN_ROUTE_PATTERNS: readonly string[] = [
   // Order chi tiết + Thêm món — dùng chung cho Phục vụ / QL chi nhánh / Quản trị NH
   "/:roleBase/order/:orderId",
   "/:roleBase/order/:orderId/them-mon",
+  "/:roleBase/so-do-ban/them-don-mang-ve/:orderId",
   // Xác nhận order route removed: items now go directly to KDS where kitchen staff confirms them
   // Chốt bàn / Thanh toán QR / Hóa đơn điện tử — vào từ thẻ bàn trên Sơ đồ bàn
   "/thu-ngan/thanh-toan/:tableSessionId",
