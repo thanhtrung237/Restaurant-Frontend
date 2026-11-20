@@ -1,5 +1,7 @@
 import * as React from "react"
+import { createPortal } from "react-dom"
 import { Printer, ExternalLink, QrCode } from "lucide-react"
+import { QRCodeSVG } from "qrcode.react"
 import {
   Dialog,
   DialogContent,
@@ -8,14 +10,17 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { DraggableTableQr } from "@/components/common/TableCard"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { DraggableTableQr, getTableGuestUrl } from "@/components/common/TableCard"
 import type { DiningTable, Area } from "@/types/models"
+import { groupBranchTables } from "../table-areas"
+import "./table-qr-print.css"
 
 interface AddTableModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   areas: Area[]
-  branchId: number
+  defaultAreaId?: number
   onSuccess: (newTable: { name: string; capacity: number; areaId?: number }) => Promise<void>
 }
 
@@ -23,11 +28,14 @@ export function AddTableModal({
   open,
   onOpenChange,
   areas,
+  defaultAreaId,
   onSuccess,
 }: AddTableModalProps) {
+  const areaFieldId = React.useId()
   const [name, setName] = React.useState("")
   const [capacity, setCapacity] = React.useState("4")
-  const [areaId, setAreaId] = React.useState<number | undefined>(areas[0]?.id)
+  const [areaId, setAreaId] = React.useState<number>()
+  const resolvedAreaId = areaId ?? defaultAreaId ?? areas[0]?.id
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
@@ -35,10 +43,10 @@ export function AddTableModal({
     if (open) {
       setName("")
       setCapacity("4")
-      setAreaId(areas[0]?.id)
+      setAreaId(undefined)
       setError(null)
     }
-  }, [open, areas])
+  }, [open])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -53,7 +61,7 @@ export function AddTableModal({
       await onSuccess({
         name: name.trim(),
         capacity: parseInt(capacity, 10) || 4,
-        areaId: areaId ? Number(areaId) : undefined,
+        areaId: resolvedAreaId,
       })
       onOpenChange(false)
     } catch (err) {
@@ -111,15 +119,16 @@ export function AddTableModal({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-text-secondary">
+            <label htmlFor={areaFieldId} className="text-xs font-semibold text-text-secondary">
               Khu vực
             </label>
             <select
-              value={areaId ?? ""}
+              id={areaFieldId}
+              value={resolvedAreaId ?? ""}
               onChange={(e) => setAreaId(e.target.value ? Number(e.target.value) : undefined)}
               className="w-full h-10 rounded-xl border border-border-default px-3 text-sm font-medium focus:border-brand-primary focus:outline-none bg-surface-card cursor-pointer"
             >
-              {areas.length === 0 && <option value="">Mặc định</option>}
+              {areas.length === 0 && <option value="">Chưa phân khu</option>}
               {areas.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
@@ -156,7 +165,8 @@ interface EditTableModalProps {
   onOpenChange: (open: boolean) => void
   table: DiningTable | null
   areas: Area[]
-  onSuccess: (id: number, data: { name?: string; capacity?: number; areaId?: number }) => Promise<void>
+  onSuccess: (id: number, data: { name?: string; capacity?: number; areaId?: number; clearArea?: boolean }) => Promise<void>
+  actions?: React.ReactNode
 }
 
 export function EditTableModal({
@@ -165,7 +175,9 @@ export function EditTableModal({
   table,
   areas,
   onSuccess,
+  actions,
 }: EditTableModalProps) {
+  const areaFieldId = React.useId()
   const [name, setName] = React.useState("")
   const [capacity, setCapacity] = React.useState("4")
   const [areaId, setAreaId] = React.useState<number | undefined>()
@@ -176,7 +188,7 @@ export function EditTableModal({
     if (table) {
       setName(table.name || "")
       setCapacity(String(table.capacity || 4))
-      setAreaId(table.areaId)
+      setAreaId(table.areaId ?? undefined)
       setError(null)
     }
   }, [table])
@@ -191,7 +203,8 @@ export function EditTableModal({
       await onSuccess(table.id, {
         name: name.trim(),
         capacity: parseInt(capacity, 10) || 4,
-        areaId: areaId ? Number(areaId) : undefined,
+        areaId: areaId !== table.areaId ? areaId : undefined,
+        clearArea: table.areaId != null && areaId == null ? true : undefined,
       })
       onOpenChange(false)
     } catch (err) {
@@ -203,7 +216,7 @@ export function EditTableModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px] rounded-2xl p-6">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[420px] rounded-2xl p-6">
         <DialogHeader>
           <DialogTitle className="text-lg font-bold text-text-primary">
             Chỉnh sửa {table?.name}
@@ -248,15 +261,19 @@ export function EditTableModal({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-text-secondary">
+            <label htmlFor={areaFieldId} className="text-xs font-semibold text-text-secondary">
               Khu vực
             </label>
             <select
+              id={areaFieldId}
               value={areaId ?? ""}
               onChange={(e) => setAreaId(e.target.value ? Number(e.target.value) : undefined)}
               className="w-full h-10 rounded-xl border border-border-default px-3 text-sm font-medium focus:border-brand-primary focus:outline-none bg-surface-card cursor-pointer"
             >
-              {areas.length === 0 && <option value="">Mặc định</option>}
+              <option value="">Chưa phân khu</option>
+              {table?.areaId != null && !areas.some((area) => area.id === table.areaId) ? (
+                <option value={table.areaId}>{table.areaName || "Khu vực hiện tại"}</option>
+              ) : null}
               {areas.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
@@ -283,6 +300,7 @@ export function EditTableModal({
             </Button>
           </div>
         </form>
+        {actions ? <div className="flex flex-wrap gap-2 border-t border-border-default pt-2">{actions}</div> : null}
       </DialogContent>
     </Dialog>
   )
@@ -398,105 +416,112 @@ interface PrintAllQrModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   tables: DiningTable[]
+  areas: Area[]
+  areaFilter: string
+  onAreaFilterChange: (value: string) => void
   branchName?: string
 }
+
+const QR_CARDS_PER_PAGE = 9
 
 export function PrintAllQrModal({
   open,
   onOpenChange,
   tables,
+  areas,
+  areaFilter,
+  onAreaFilterChange,
   branchName = "Phở Việt",
 }: PrintAllQrModalProps) {
-  // Chỉ in bàn ĐÃ có mã QR. Bàn thiếu mã vẫn được nêu tên để người dùng biết phải xử lý
-  // bàn nào, thay vì in ra một tập thẻ trong đó vài tờ không quét được (FR-TBL-02).
-  const printableTables = tables.filter((t) => Boolean(t.qrCode))
-  const missingTables = tables.filter((t) => !t.qrCode)
-
-  function handlePrint() {
-    if (printableTables.length === 0) return
-    window.print()
-  }
+  const tableGroups = groupBranchTables(areas, tables)
+  const selectedGroup = tableGroups.get(areaFilter)
+  const scopedTables = (selectedGroup?.tables ?? tables).filter((table) => table.status !== "INACTIVE")
+  const printableTables = scopedTables.flatMap((table) => table.qrCode ? [{ ...table, qrCode: table.qrCode }] : [])
+  const missingTables = scopedTables.filter((table) => !table.qrCode)
+  const pages = Array.from({ length: Math.ceil(printableTables.length / QR_CARDS_PER_PAGE) }, (_, index) => (
+    printableTables.slice(index * QR_CARDS_PER_PAGE, (index + 1) * QR_CARDS_PER_PAGE)
+  ))
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[760px] max-h-[90vh] overflow-y-auto rounded-2xl p-6">
-        <DialogHeader className="flex flex-row items-center justify-between pb-2 border-b border-border-default">
-          <div>
-            <DialogTitle className="text-xl font-bold text-text-primary">
-              In QR hàng loạt ({printableTables.length} bàn)
-            </DialogTitle>
-            <DialogDescription className="text-xs text-text-tertiary">
-              {branchName} · Chuẩn bị trang in
-            </DialogDescription>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto p-4 sm:max-w-[760px] sm:p-6">
+          <DialogHeader className="pr-8">
+            <DialogTitle className="text-xl">In QR hàng loạt</DialogTitle>
+            <DialogDescription>{branchName} · Khổ A4</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-wrap items-center gap-2 border-b border-border-default pb-4 sm:justify-between">
+            <Select value={selectedGroup ? areaFilter : "all"} onValueChange={onAreaFilterChange}>
+              <SelectTrigger aria-label="Phạm vi in QR" className="min-w-0 max-w-full flex-1 basis-48 sm:max-w-72 [&>span]:truncate">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-w-[calc(100vw-2rem)]">
+                <SelectItem value="all">Toàn chi nhánh</SelectItem>
+                {Array.from(tableGroups, ([id, group]) => (
+                  <SelectItem key={id} value={id} className="break-words">{group.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button type="button" onClick={() => window.print()} disabled={printableTables.length === 0} className="h-11 shrink-0">
+              <Printer aria-hidden="true" />
+              In {printableTables.length} mã QR
+            </Button>
           </div>
-          <Button
-            type="button"
-            onClick={handlePrint}
-            disabled={printableTables.length === 0}
-            className="h-10 px-5 rounded-xl bg-brand-primary hover:bg-brand-primary-hover text-white gap-1.5 font-semibold text-sm cursor-pointer shrink-0"
-          >
-            <Printer className="size-4" />
-            In toàn bộ
-          </Button>
-        </DialogHeader>
 
-        {/* print:hidden — cảnh báo là thông tin thao tác, không được lọt vào bản in */}
-        {missingTables.length > 0 ? (
-          <div className="mt-3 rounded-xl bg-status-warning-subtle px-3.5 py-2.5 print:hidden">
-            <p className="text-xs font-semibold text-status-warning">
-              {missingTables.length} bàn chưa in được — chưa có mã QR
+          {missingTables.length > 0 ? (
+            <div className="rounded-xl bg-status-warning-subtle px-3.5 py-2.5 text-xs">
+              <p className="font-semibold text-status-warning">{missingTables.length} bàn chưa có mã QR</p>
+              <p className="mt-1 text-text-secondary">{missingTables.map((table) => table.name).join(", ")}</p>
+            </div>
+          ) : null}
+
+          {printableTables.length === 0 ? (
+            <p className="py-8 text-center text-sm text-text-secondary">
+              {scopedTables.length > 0 ? "Chưa có mã QR nào để in trong phạm vi này." : "Phạm vi này chưa có bàn đang sử dụng."}
             </p>
-            <p className="mt-1 text-xs text-text-secondary">
-              {missingTables.map((t) => t.name).join(", ")}
-            </p>
-            <p className="mt-1 text-[11px] text-text-tertiary">
-              Các bàn còn lại vẫn in bình thường. Sửa từng bàn để hệ thống tạo mã QR, rồi
-              in lại những bàn này.
-            </p>
-          </div>
-        ) : null}
+          ) : (
+            <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:grid-cols-3 sm:gap-4">
+              {printableTables.map((table) => (
+                <BulkQrCard key={table.id} table={table} branchName={branchName} />
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+      {open && pages.length > 0 ? createPortal(
+        <div id="bulk-table-qr-print">
+          {pages.map((page) => (
+            <section key={page[0].id} className="bulk-table-qr-sheet">
+              {page.map((table) => <BulkQrCard key={table.id} table={table} branchName={branchName} print />)}
+            </section>
+          ))}
+        </div>,
+        document.body,
+      ) : null}
+    </>
+  )
+}
 
-        {printableTables.length === 0 ? (
-          <p className="py-10 text-center text-sm text-text-tertiary print:hidden">
-            Không có bàn nào in được — toàn bộ bàn của chi nhánh chưa có mã QR.
-          </p>
-        ) : null}
-
-        {/* Lưới CHỈ chứa bàn in được, nên window.print() không thể in nhầm thẻ rỗng */}
-        <div id="printable-all-qr" className="grid grid-cols-2 sm:grid-cols-3 gap-4 py-4">
-          {printableTables.map((tbl) => {
-            return (
-              <div
-                key={tbl.id}
-                className="rounded-xl border border-gray-300 bg-white p-4 text-center flex flex-col items-center shadow-xs page-break-inside-avoid"
-              >
-                <p className="text-[11px] font-bold text-brand-primary uppercase">
-                  {branchName}
-                </p>
-                <p className="text-xl font-bold text-text-primary mt-0.5">
-                  {tbl.name}
-                </p>
-                <p className="text-[10px] text-text-tertiary">
-                  {tbl.capacity} chỗ · {tbl.areaName || "Khu vực"}
-                </p>
-
-                {/* `printableTables` đã lọc nên qrCode chắc chắn có giá trị */}
-                <div className="my-2 rounded-lg border border-gray-100 p-2 bg-white flex items-center justify-center">
-                  <DraggableTableQr
-                    qrCode={tbl.qrCode as string}
-                    tableName={tbl.name}
-                    size={120}
-                  />
-                </div>
-
-                <p className="text-[10px] font-semibold text-text-secondary">
-                  Quét mã để gọi món tại bàn
-                </p>
-              </div>
-            )
-          })}
-        </div>
-      </DialogContent>
-    </Dialog>
+function BulkQrCard({ table, branchName, print = false }: {
+  table: DiningTable & { qrCode: string }
+  branchName: string
+  print?: boolean
+}) {
+  const details = [table.capacity ? `${table.capacity} chỗ` : null, table.areaName || "Chưa phân khu"]
+    .filter(Boolean).join(" · ")
+  return (
+    <div className="bulk-table-qr-card flex min-w-0 flex-col items-center rounded-xl border border-gray-300 bg-white p-2 text-center text-gray-900 sm:p-4">
+      <p className="w-full break-words text-[11px] font-bold uppercase text-brand-primary">{branchName}</p>
+      <p className="w-full break-words text-base font-bold leading-tight sm:text-xl">{table.name}</p>
+      <p className="w-full break-words text-[10px] text-gray-600">{details}</p>
+      <div className="my-2 flex max-w-full items-center justify-center">
+        {print ? (
+          <QRCodeSVG value={getTableGuestUrl(table.qrCode)} level="M" marginSize={4} />
+        ) : (
+          <DraggableTableQr qrCode={table.qrCode} tableName={table.name} size={104} />
+        )}
+      </div>
+      <p className="text-[10px] font-semibold text-gray-700">Quét mã để gọi món tại bàn</p>
+    </div>
   )
 }
