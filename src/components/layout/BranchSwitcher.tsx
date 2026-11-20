@@ -1,12 +1,8 @@
 import { Check, ChevronDown } from "lucide-react"
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu"
+import { PopoverClose } from "@radix-ui/react-popover"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
-import { useBranchSwitcher, type BranchChoice } from "@/features/auth/hooks/useBranchSwitcher"
+import { branchChoiceKey, useBranchSwitcher, type BranchChoice } from "@/features/auth/hooks/useBranchSwitcher"
 
 type BranchSwitcherVariant = "full" | "chip"
 
@@ -22,19 +18,24 @@ export interface BranchSwitcherProps {
 /**
  * Menu "Chuyển chi nhánh" (Figma "Menu · Chuyển chi nhánh").
  *
- * Danh sách lấy từ CÁC PHÂN CÔNG của tài khoản đang đăng nhập, không phải toàn bộ chi
- * nhánh của nhà hàng (BR-18). Dòng phụ mỗi mục là TÊN VAI TRÒ của phân công đó — cố ý
- * không hiện "N bàn · Đang mở" như Figma vì dữ liệu đó không có trong Assignment và
- * không đáng gọi thêm API chỉ để hiển thị.
+ * Quản trị nhà hàng chọn từ danh sách chi nhánh của nhà hàng. Các vai trò khác dùng phân công.
  *
  * Tài khoản chỉ có 1 phân công: hiển thị tĩnh, không mở được dropdown (FR-ADM-04).
  */
 export function BranchSwitcher({ variant = "full", className }: BranchSwitcherProps) {
-  const { choices, activeChoice, canSwitch, switchTo } = useBranchSwitcher()
+  const { choices, activeChoice, canSwitch, switchTo, branchListLoading, branchListError, retryBranchList } = useBranchSwitcher()
 
   if (!activeChoice) return null
 
   const label = variant === "chip" ? activeChoice.shortName : activeChoice.name
+
+  if (branchListError && !canSwitch) {
+    return (
+      <button type="button" className={className} onClick={() => void retryBranchList()}>
+        Không tải được chi nhánh. Thử lại
+      </button>
+    )
+  }
 
   if (!canSwitch) {
     return (
@@ -47,14 +48,14 @@ export function BranchSwitcher({ variant = "full", className }: BranchSwitcherPr
         )}
         title={activeChoice.name}
       >
-        {label}
+        {branchListLoading ? "Đang tải chi nhánh…" : label}
       </span>
     )
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+    <Popover>
+      <PopoverTrigger asChild>
         <button
           type="button"
           aria-label={`Chi nhánh hiện tại: ${activeChoice.name}. Bấm để chuyển chi nhánh`}
@@ -70,22 +71,37 @@ export function BranchSwitcher({ variant = "full", className }: BranchSwitcherPr
           <span className="truncate">{label}</span>
           <ChevronDown className="size-3.5 shrink-0" />
         </button>
-      </DropdownMenuTrigger>
+      </PopoverTrigger>
 
-      <DropdownMenuContent align="left" className="w-64">
+      <PopoverContent
+        aria-label="Chuyển chi nhánh"
+        align={variant === "chip" ? "end" : "start"}
+        sideOffset={6}
+        collisionPadding={8}
+        className="max-h-[var(--radix-popover-content-available-height)] w-64 max-w-[calc(100vw-16px)] overflow-y-auto rounded-xl border-border-default bg-surface-card p-1.5 shadow-xl"
+      >
         <p className="px-2 py-1.5 text-[11px] font-bold uppercase tracking-wider text-text-tertiary">
           Chuyển chi nhánh
         </p>
         {choices.map((choice) => (
           <BranchSwitcherRow
-            key={choice.assignmentId}
+            key={branchChoiceKey(choice)}
             choice={choice}
-            isActive={choice.assignmentId === activeChoice.assignmentId}
+            isActive={branchChoiceKey(choice) === branchChoiceKey(activeChoice)}
             onSelect={() => switchTo(choice)}
           />
         ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+        {branchListError ? (
+          <button
+            type="button"
+            className="w-full rounded-lg px-3 py-2 text-left text-sm text-brand-primary hover:bg-surface-muted"
+            onClick={() => void retryBranchList()}
+          >
+            Không tải được chi nhánh. Thử lại
+          </button>
+        ) : null}
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -99,11 +115,13 @@ function BranchSwitcherRow({
   onSelect: () => void
 }) {
   return (
-    <DropdownMenuItem
+    <PopoverClose
+      type="button"
+      aria-current={isActive ? "true" : undefined}
       onClick={onSelect}
       className={cn(
-        "cursor-pointer gap-3 py-2",
-        isActive && "bg-brand-primary-subtle/60",
+        "flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors",
+        isActive ? "bg-brand-primary-subtle/60" : "hover:bg-surface-muted",
       )}
     >
       <span
@@ -131,7 +149,7 @@ function BranchSwitcherRow({
           </span>
         ) : null}
       </span>
-      {isActive ? <Check className="size-4 shrink-0 text-brand-primary" /> : null}
-    </DropdownMenuItem>
+      {isActive ? <Check aria-hidden="true" className="size-4 shrink-0 text-brand-primary" /> : null}
+    </PopoverClose>
   )
 }

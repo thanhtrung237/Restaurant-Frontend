@@ -1,18 +1,14 @@
 import * as React from "react"
 import { useNavigate } from "react-router-dom"
 import { useAssignmentsByAccount } from "@/api/assignments.api"
+import { useBranchesByRestaurant } from "@/api/branches.api"
 import { useAuthStore } from "@/stores/auth.store"
 import { APP_ROLE, mapRoleCodeToAppRole, type AppRole } from "@/config/roles"
 import { ROLE_HOME } from "@/app/router/RoleHomeRedirect"
 import { RESTAURANT_ADMIN_PATHS } from "@/app/router/paths"
 import { hasPermission, type PermissionKey } from "@/config/permissions"
 
-/**
- * Một lựa chọn trong menu "Chuyển chi nhánh".
- * Mỗi lựa chọn ứng với MỘT ASSIGNMENT của tài khoản đang đăng nhập — không phải
- * danh sách toàn bộ chi nhánh của nhà hàng (BR-18: chỉ thao tác được trên chi nhánh
- * được phân công).
- */
+/** Chi nhánh làm việc và vai trò dùng tại chi nhánh đó. */
 export interface BranchChoice {
   assignmentId: number
   branchId: number | null
@@ -30,10 +26,11 @@ export interface BranchChoice {
 /** Mục ảo "Tất cả chi nhánh" — không ứng với assignment nào. */
 export const ALL_BRANCHES_ASSIGNMENT_ID = -1
 
-/**
- * Rút gọn tên chi nhánh thành nhãn ngắn cho chip: "Chi nhánh Quận 1" -> "Q1".
- * Ưu tiên mã chi nhánh nếu backend có trả về.
- */
+export function branchChoiceKey(choice: BranchChoice): string {
+  return [choice.assignmentId, choice.branchId, choice.role].join(":")
+}
+
+/** Rút gọn tên chi nhánh để hiển thị trên màn hình nhỏ. */
 function toShortName(name: string): string {
   // KHÔNG dùng branchCode: Figma ("Sơ đồ bàn · Mobile 375") hiện "Q1" — suy từ TÊN chi
   // nhánh, không phải mã "CN001". Mã dài hơn ~35px, đủ để đẩy tiêu đề trang thành "B...".
@@ -63,10 +60,14 @@ export function useBranchSwitcher() {
   const setSession = useAuthStore((s) => s.setSession)
   const accessToken = useAuthStore((s) => s.accessToken)
 
-  const { data: assignments = [] } = useAssignmentsByAccount(account?.id)
+  const { data: assignments } = useAssignmentsByAccount(account?.id)
+  const adminAssignment = assignments?.find(
+    (assignment) => mapRoleCodeToAppRole(assignment.roleCode) === APP_ROLE.RESTAURANT_ADMIN,
+  )
+  const restaurantBranches = useBranchesByRestaurant(adminAssignment ? account?.restaurantId : undefined)
 
   const choices = React.useMemo<BranchChoice[]>(() => {
-    const mapped = assignments
+    const mapped = (assignments ?? [])
       .map((assignment): BranchChoice | null => {
         const mappedRole = mapRoleCodeToAppRole(assignment.roleCode)
         if (!mappedRole) return null
@@ -85,27 +86,38 @@ export function useBranchSwitcher() {
       })
       .filter((choice): choice is BranchChoice => choice !== null)
 
-    // "Tất cả chi nhánh · Xem tổng hợp" CHỈ dành cho Quản trị nhà hàng.
-    if (role === APP_ROLE.RESTAURANT_ADMIN && mapped.length > 0) {
-      return [
-        {
-          assignmentId: ALL_BRANCHES_ASSIGNMENT_ID,
-          branchId: null,
-          name: "Tất cả chi nhánh",
-          shortName: "TC",
-          roleLabel: "Xem tổng hợp",
-          role: APP_ROLE.RESTAURANT_ADMIN,
-          isAllBranches: true,
-        },
-        ...mapped,
-      ]
-    }
-    return mapped
-  }, [assignments, role])
+    if (!adminAssignment) return mapped
+
+    const adminName = adminAssignment.roleName || "Quản trị nhà hàng"
+    return [
+      {
+        assignmentId: ALL_BRANCHES_ASSIGNMENT_ID,
+        branchId: null,
+        name: "Tất cả chi nhánh",
+        shortName: "TC",
+        roleLabel: "Xem tổng hợp",
+        role: APP_ROLE.RESTAURANT_ADMIN,
+        isAllBranches: true,
+      },
+      ...(restaurantBranches.data ?? []).map((branch): BranchChoice => ({
+        assignmentId: adminAssignment.id,
+        branchId: branch.id,
+        name: branch.name,
+        shortName: toShortName(branch.name),
+        roleLabel: adminName,
+        role: APP_ROLE.RESTAURANT_ADMIN,
+        isAllBranches: false,
+      })),
+      ...mapped.filter((choice) => choice.role !== APP_ROLE.RESTAURANT_ADMIN),
+    ]
+  }, [assignments, adminAssignment, restaurantBranches.data])
 
   const activeChoice = React.useMemo(
-    () => choices.find((c) => c.assignmentId === assignmentId) ?? choices[0],
-    [choices, assignmentId],
+    () => choices.find((choice) =>
+      choice.role === role && choice.branchId === branchId &&
+      (choice.assignmentId === assignmentId || role === APP_ROLE.RESTAURANT_ADMIN)
+    ) ?? choices[0],
+    [choices, assignmentId, branchId, role],
   )
 
   /** Tài khoản chỉ có 1 phân công thì hiển thị tên, không mở dropdown. */
@@ -114,7 +126,7 @@ export function useBranchSwitcher() {
   const switchTo = React.useCallback(
     (choice: BranchChoice) => {
       if (!account || !accessToken) return
-      if (choice.assignmentId === assignmentId) return
+      if (choice.assignmentId === assignmentId && choice.branchId === branchId && choice.role === role) return
 
       setSession({
         account,
@@ -137,13 +149,16 @@ export function useBranchSwitcher() {
         navigate(ROLE_HOME[choice.role])
       }
     },
-    [account, accessToken, assignmentId, role, setSession, navigate],
+    [account, accessToken, assignmentId, branchId, role, setSession, navigate],
   )
 
   return {
     choices,
     activeChoice,
     canSwitch,
+    branchListLoading: Boolean(adminAssignment) && restaurantBranches.isLoading,
+    branchListError: Boolean(adminAssignment) && restaurantBranches.isError,
+    retryBranchList: restaurantBranches.refetch,
     switchTo,
     /** true khi đang ở chế độ tổng hợp (chưa chọn chi nhánh cụ thể). */
     isAllBranches: branchId === null && role === APP_ROLE.RESTAURANT_ADMIN,
