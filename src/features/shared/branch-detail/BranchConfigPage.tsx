@@ -121,8 +121,10 @@ export function BranchConfigPage({ branchId }: BranchConfigPageProps) {
         id: branchId,
         body: {
           businessDayStartTime: toHhMmSs(managerConfig.businessDayStartTime),
-          bankAccountNo: blankToNull(managerConfig.bankAccountNo),
-          bankName: blankToNull(managerConfig.bankName),
+          ...(isRestaurantAdmin ? {
+            bankAccountNo: blankToNull(managerConfig.bankAccountNo),
+            bankName: blankToNull(managerConfig.bankName),
+          } : {}),
           pendingConfirmTimeoutMinutes: Number(managerConfig.autoCancelWaitingMinutes) || undefined,
           reservationHoldMinutes: Number(managerConfig.reservationHoldingMinutes) || undefined,
         },
@@ -204,26 +206,26 @@ export function BranchConfigPage({ branchId }: BranchConfigPageProps) {
       />
 
       <div className="flex flex-col gap-6 p-6 lg:p-8">
-        <BranchGeofenceConfig branchId={branchId} readOnly={!isRestaurantAdmin} />
-        {/* Nhóm 1: Cấu hình Quản lý chi nhánh (mọi vai trò có quyền vào trang này đều sửa được) */}
-        <BranchConfigManagerTab
-          config={managerConfig}
-          onConfigChange={setManagerConfig}
-          loadedBankName={branch?.bankName ?? ""}
-          selectedBranch={branchName}
-          onSave={handleSaveManagerConfig}
-          isSaving={updateManagerConfig.isPending}
-        />
-
-        {/* Nhóm 2: Cấu hình Quản trị (chỉ đọc với Quản lý chi nhánh, sửa được với Quản trị NH) */}
-        <BranchConfigAdminTab
-          config={adminConfig}
-          onConfigChange={setAdminConfig}
-          selectedBranch={branchName}
-          onSave={isRestaurantAdmin ? handleSaveAdminConfig : undefined}
-          isSaving={updateAdminConfig.isPending}
-          readOnly={!isRestaurantAdmin}
-        />
+        {isRestaurantAdmin && <BranchGeofenceConfig branchId={branchId} readOnly={false} />}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:grid-rows-[auto_1fr_auto]">
+          <BranchConfigManagerTab
+            config={managerConfig}
+            onConfigChange={setManagerConfig}
+            loadedBankName={branch?.bankName ?? ""}
+            canEditBankAccount={isRestaurantAdmin}
+            selectedBranch={branchName}
+            onSave={handleSaveManagerConfig}
+            isSaving={updateManagerConfig.isPending}
+          />
+          <BranchConfigAdminTab
+            config={adminConfig}
+            onConfigChange={setAdminConfig}
+            selectedBranch={branchName}
+            onSave={isRestaurantAdmin ? handleSaveAdminConfig : undefined}
+            isSaving={updateAdminConfig.isPending}
+            readOnly={!isRestaurantAdmin}
+          />
+        </div>
       </div>
     </div>
   )

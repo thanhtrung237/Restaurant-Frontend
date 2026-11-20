@@ -69,9 +69,9 @@ export const BranchConfigAdminTab: React.FC<BranchConfigAdminTabProps> = ({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="grid min-w-0 gap-6 lg:row-span-3 lg:grid-rows-subgrid">
       {/* ================= CARD: CẤU HÌNH QUẢN TRỊ ================= */}
-      <Card className="border-border-default bg-surface-card shadow-2xs">
+      <Card className="border-border-default bg-surface-card shadow-2xs lg:row-span-2">
         <CardHeader className="p-6 pb-4 space-y-0.5">
           <CardTitle className="text-base font-bold text-text-primary tracking-tight">
             Cấu hình Quản trị nhà hàng
@@ -216,7 +216,7 @@ export const BranchConfigAdminTab: React.FC<BranchConfigAdminTabProps> = ({
 
       {/* Nút "Lưu thay đổi" chỉ hiện khi KHÔNG readOnly */}
       {!readOnly && onSave ? (
-        <div className="flex justify-end pt-2">
+        <div className="flex justify-end self-start">
           <Button
             type="button"
             onClick={handleSaveClick}
