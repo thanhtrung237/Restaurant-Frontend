@@ -10,6 +10,7 @@ export interface DishItem {
   id: number
   name: string
   description?: string
+  categoryId?: number
   category: string
   price: number
   isAvailable: boolean

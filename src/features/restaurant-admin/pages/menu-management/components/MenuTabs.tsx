@@ -2,39 +2,32 @@ import React from "react"
 import { cn } from "@/lib/utils"
 import type { MenuTabType } from "../types"
 
-import { useAuthStore } from "@/stores/auth.store"
-import { APP_ROLE } from "@/config/roles"
-
 interface MenuTabsProps {
   activeTab: MenuTabType
   onTabChange: (tab: MenuTabType) => void
-  showOptionGroupTab?: boolean
 }
 
 /**
  * Thanh chuyển đổi Tab trên màn hình Thực đơn
  * Khớp chuẩn cấu trúc như StaffTabs trong staff-management
  */
-export const MenuTabs: React.FC<MenuTabsProps> = ({ activeTab, onTabChange, showOptionGroupTab }) => {
-  const role = useAuthStore((s) => s.role)
-  const canSeeOptionGroups = showOptionGroupTab ?? (role === APP_ROLE.RESTAURANT_ADMIN)
+const tabs = [
+  { id: "mon", label: "Thực đơn chung" },
+  { id: "menu-chi-nhanh", label: "Theo chi nhánh" },
+] as const
 
-  const tabs: { id: MenuTabType; label: string }[] = [
-    { id: "mon", label: "Món" },
-    { id: "danh-muc", label: "Danh mục" },
-    { id: "menu-chi-nhanh", label: "Menu chi nhánh" },
-    ...(canSeeOptionGroups ? [{ id: "tuy-chon" as const, label: "Tùy chọn món" }] : []),
-  ]
+export const MenuTabs: React.FC<MenuTabsProps> = ({ activeTab, onTabChange }) => {
   return (
     // KHÔNG tự vẽ border-b: dải tab của PageHeader đã có đường kẻ dưới.
     <div>
-      <nav className="flex space-x-8 overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Tabs">
+      <nav className="flex gap-5 whitespace-nowrap sm:gap-8" aria-label="Phạm vi thực đơn">
         {tabs.map((tab) => {
-          const isActive = activeTab === tab.id
+          const isActive = tab.id === "mon" ? activeTab !== "menu-chi-nhanh" : activeTab === tab.id
           return (
             <button
               key={tab.id}
               type="button"
+              aria-current={isActive ? "true" : undefined}
               onClick={() => onTabChange(tab.id)}
               className={cn(
                 "py-3 px-1 border-b-2 font-medium text-sm transition-colors cursor-pointer relative",

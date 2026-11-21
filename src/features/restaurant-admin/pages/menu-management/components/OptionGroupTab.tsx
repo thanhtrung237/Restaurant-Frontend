@@ -1,6 +1,7 @@
 import React from "react"
 import { Layers, Pencil, Trash2, ChevronDown, ChevronUp, UtensilsCrossed } from "lucide-react"
 import { IconButton } from "@/components/ui/icon-button"
+import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/common/EmptyState"
 import { useOptionItemsByGroup } from "@/api/option-items.api"
 import { useDishOptionGroupsByOptionGroup } from "@/api/dish-option-groups.api"
@@ -10,15 +11,17 @@ import { cn } from "@/lib/utils"
 interface OptionGroupTabProps {
   groups: OptionGroup[]
   searchTerm: string
-  onEditGroup: (group: OptionGroup) => void
-  onDeleteGroup: (group: OptionGroup) => void
+  onEditGroup?: (group: OptionGroup) => void
+  onDeleteGroup?: (group: OptionGroup) => void
   onAddGroup?: () => void
   isLoading?: boolean
+  loadError?: string
+  onRetry?: () => void
 }
 
 /**
  * Tab "Tùy chọn món" — Quản lý các nhóm tùy chọn (topping, size, đường, đá...)
- * Chỉ Quản trị nhà hàng thấy.
+ * Quản lý chi nhánh có thể xem danh mục tùy chọn dùng chung.
  */
 export const OptionGroupTab: React.FC<OptionGroupTabProps> = ({
   groups,
@@ -27,6 +30,8 @@ export const OptionGroupTab: React.FC<OptionGroupTabProps> = ({
   onDeleteGroup,
   onAddGroup,
   isLoading,
+  loadError,
+  onRetry,
 }) => {
   const filteredGroups = React.useMemo(() => {
     if (!searchTerm.trim()) return groups
@@ -43,13 +48,22 @@ export const OptionGroupTab: React.FC<OptionGroupTabProps> = ({
     )
   }
 
+  if (loadError) {
+    return (
+      <div className="rounded-card border border-border-default bg-surface-card p-6 text-center">
+        <p role="alert" className="text-sm text-status-danger">{loadError}</p>
+        <Button type="button" variant="link" onClick={onRetry}>Thử lại</Button>
+      </div>
+    )
+  }
+
   if (groups.length === 0) {
     return (
       <div className="rounded-card border border-border-default bg-surface-card p-8">
         <EmptyState
           icon={Layers}
           title="Chưa có nhóm tùy chọn nào"
-          description="Tạo các nhóm tùy chọn (kích cỡ, topping, mức cay...) để áp dụng cho các món ăn trong thực đơn."
+          description={onAddGroup ? "Tạo nhóm tùy chọn để áp dụng cho các món trong thực đơn." : undefined}
           action={
             onAddGroup
               ? {
@@ -81,8 +95,8 @@ export const OptionGroupTab: React.FC<OptionGroupTabProps> = ({
           <OptionGroupRow
             key={group.id}
             group={group}
-            onEdit={() => onEditGroup(group)}
-            onDelete={() => onDeleteGroup(group)}
+            onEdit={onEditGroup ? () => onEditGroup(group) : undefined}
+            onDelete={onDeleteGroup ? () => onDeleteGroup(group) : undefined}
           />
         ))}
       </div>
@@ -96,17 +110,19 @@ function OptionGroupRow({
   onDelete,
 }: {
   group: OptionGroup
-  onEdit: () => void
-  onDelete: () => void
+  onEdit?: () => void
+  onDelete?: () => void
 }) {
   const [isExpanded, setIsExpanded] = React.useState(false)
 
   // Fetch các lựa chọn con (items)
-  const { data: items = [], isLoading: itemsLoading } = useOptionItemsByGroup(group.id)
+  const itemsQuery = useOptionItemsByGroup(group.id)
+  const items = itemsQuery.data ?? []
+  const showManagement = Boolean(onEdit && onDelete)
 
   // Fetch các món đang liên kết nhóm này (chiều ngược lại)
   const { data: linkedDishes = [], isLoading: dishesLoading } = useDishOptionGroupsByOptionGroup(
-    group.id
+    showManagement ? group.id : undefined
   )
 
   const isRequired = group.selectionType === "REQUIRED"
@@ -143,12 +159,16 @@ function OptionGroupRow({
 
             {/* Danh sách các lựa chọn xem nhanh */}
             <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-              {itemsLoading ? (
+              {itemsQuery.isLoading ? (
                 <span className="text-xs text-text-tertiary">Đang tải lựa chọn...</span>
+              ) : itemsQuery.isError ? (
+                <Button type="button" variant="link" size="sm" onClick={() => void itemsQuery.refetch()}>
+                  Không tải được lựa chọn · Thử lại
+                </Button>
               ) : items.length === 0 ? (
                 <span className="text-xs text-status-warning">Chưa có lựa chọn nào</span>
               ) : (
-                items.slice(0, 4).map((item: OptionItem) => (
+                (showManagement ? items.slice(0, 4) : items).map((item: OptionItem) => (
                   <span
                     key={item.id}
                     className="inline-flex items-center rounded-md bg-surface-muted px-2 py-0.5 text-[11px] text-text-secondary"
@@ -162,7 +182,7 @@ function OptionGroupRow({
                   </span>
                 ))
               )}
-              {items.length > 4 && (
+              {showManagement && items.length > 4 && (
                 <span className="text-[11px] text-text-tertiary">+{items.length - 4} mục khác</span>
               )}
             </div>
@@ -170,7 +190,7 @@ function OptionGroupRow({
         </div>
 
         {/* Cụm phải: Số món đang dùng + Nút mở rộng + Sửa / Xóa */}
-        <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+        {showManagement ? <div className="flex items-center gap-3 sm:gap-4 shrink-0">
           {/* Nút xem số món đang dùng (Requirement 6) */}
           <button
             type="button"
@@ -217,7 +237,7 @@ function OptionGroupRow({
               <Trash2 className="size-3.5" />
             </IconButton>
           </div>
-        </div>
+        </div> : null}
       </div>
 
       {/* Chiều ngược lại (Requirement 6): Hiển thị chi tiết các món đang dùng */}
