@@ -1,16 +1,14 @@
-import React, { useState, useMemo } from "react"
-import { Pencil, Utensils, MoreVertical, Trash2 } from "lucide-react"
+import { useBranchOperationalPermissions } from "@/api/operational-permissions.api";
+import React, { useState, useMemo, useRef } from "react"
+import { Pencil, RotateCcw } from "lucide-react"
+import { DishThumbnail } from "@/components/common/DishThumbnail"
 import { toast } from "sonner"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
-import { Chip } from "@/components/common/Chip"
+import { SearchInput } from "@/components/common/SearchInput"
+import { Button } from "@/components/ui/button"
 import { IconButton } from "@/components/ui/icon-button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Table,
   TableHeader,
@@ -24,20 +22,17 @@ import { useDishOverridesByBranch } from "@/api/dish-overrides.api"
 import { useToggleBranchDishStock } from "@/api/branch-dish-stocks.api"
 import { DishOverrideModal } from "./DishOverrideModal"
 import { DeleteOverrideDialog } from "./DeleteOverrideDialog"
+import { DishOptionsDialog } from "./DishOptionsDialog"
 import type { BranchMenuItem } from "@/types/models"
 
-/**
- * Bộ lọc nhanh của bản mobile (Figma "Menu chi nhánh · Mobile (375)"). 
- * Bản PC dùng bảng đủ cột nên nhìn ra ngay món nào đè giá / tạm ẩn, không cần lọc.
- */
 type BranchMenuFilter = "all" | "overridden" | "hidden" | "custom" | "out-of-stock"
 
 const BRANCH_MENU_FILTERS: Array<{ key: BranchMenuFilter; label: string }> = [
-  { key: "all", label: "Tất cả" },
-  { key: "overridden", label: "Đã đè giá" },
+  { key: "all", label: "Mọi trạng thái" },
+  { key: "overridden", label: "Có giá riêng" },
   { key: "hidden", label: "Tạm ẩn" },
   { key: "custom", label: "Món riêng" },
-  { key: "out-of-stock", label: "Hết hàng" },
+  { key: "out-of-stock", label: "Tạm hết" },
 ]
 
 /** View model kết hợp BranchMenuItem + DishOverride */
@@ -53,7 +48,7 @@ function matchesFilter(item: BranchMenuItemView, filter: BranchMenuFilter): bool
     case "hidden":
       return item.isHidden
     case "overridden":
-      return item.hasOverride && !item.isHidden // Đã đè giá (không tính món ẩn)
+      return item.hasOverride
     case "out-of-stock":
       return item.stockStatus === "OUT_OF_STOCK"
     case "all":
@@ -93,17 +88,23 @@ export const BranchMenuManagementTab: React.FC<BranchMenuManagementTabProps> = (
   onEditBranchDish,
 }) => {
   const [filter, setFilter] = useState<BranchMenuFilter>("all")
+  const [search, setSearch] = useState("")
+  const [categoryId, setCategoryId] = useState("all")
 
   // Modals state
   const [overrideModalOpen, setOverrideModalOpen] = useState(false)
   const [deleteOverrideDialogOpen, setDeleteOverrideDialogOpen] = useState(false)
   const [selectedDish, setSelectedDish] = useState<BranchMenuItemView | null>(null)
+  const [optionsDish, setOptionsDish] = useState<BranchMenuItemView | null>(null)
+  const optionsTrigger = useRef<HTMLButtonElement>(null)
+  const dishSearch = useRef<HTMLInputElement>(null)
 
   // Lấy menu overview (dành quản trị, có cả món ẩn)
-  const { data: menuItems = [], isLoading: menuLoading } = useBranchMenuOverview(branchId)
+  const canManageStock = useBranchOperationalPermissions(branchId).can("MANAGE_STOCK")
+  const menuQuery = useBranchMenuOverview(branchId)
   
   // Lấy danh sách bản đè để có overrideId (cần cho PUT/DELETE ở GĐ2)
-  const { data: overrides = [], isLoading: overridesLoading } = useDishOverridesByBranch(branchId)
+  const overridesQuery = useDishOverridesByBranch(branchId)
 
   // Mutations
   const toggleStockMutation = useToggleBranchDishStock()
@@ -112,23 +113,29 @@ export const BranchMenuManagementTab: React.FC<BranchMenuManagementTabProps> = (
   const items: BranchMenuItemView[] = useMemo(() => {
     // Tạo map dishId → overrideId
     const overrideMap = new Map<number, number>()
-    overrides.forEach((override) => {
+    overridesQuery.data?.forEach((override) => {
       overrideMap.set(override.dishId, override.id)
     })
 
-    return menuItems.map((item) => ({
+    return (menuQuery.data ?? []).map((item) => ({
       ...item,
       overrideId: overrideMap.get(item.dishId),
     }))
-  }, [menuItems, overrides])
+  }, [menuQuery.data, overridesQuery.data])
 
   // Lọc theo bộ lọc
-  const filteredItems = useMemo(
-    () => items.filter((item) => matchesFilter(item, filter)),
-    [items, filter],
+  const categories = new Map(items.flatMap((item) =>
+    item.categoryName ? [[String(item.categoryId), item.categoryName] as const] : [],
+  ))
+  const category = categories.has(categoryId) ? categoryId : "all"
+  const query = search.trim().toLowerCase()
+  const filteredItems = items.filter((item) =>
+    (category === "all" || String(item.categoryId) === category) &&
+    matchesFilter(item, filter) &&
+    (item.dishName.toLowerCase().includes(query) || item.categoryName?.toLowerCase().includes(query)),
   )
-
-  const isLoading = menuLoading || overridesLoading
+  const isLoading = menuQuery.isLoading || overridesQuery.isLoading
+  const loadFailed = menuQuery.isError || overridesQuery.isError
 
   // ============================================================================
   // Handlers
@@ -191,34 +198,25 @@ export const BranchMenuManagementTab: React.FC<BranchMenuManagementTabProps> = (
 
   // Render badge trạng thái
   const renderStatusBadge = (item: BranchMenuItemView) => {
-    if (item.isBranchSpecific) {
+    if (!item.isBranchSpecific && !item.isHidden && !item.hasOverride) {
       return (
-        <Badge dot variant="warning" className="bg-brand-primary-subtle text-brand-primary font-medium">
-          Món riêng
+        <Badge dot variant="default" className="bg-surface-muted text-text-tertiary font-medium">
+          Theo giá gốc
         </Badge>
       )
     }
-
-    if (item.isHidden) {
-      return (
-        <Badge dot variant="warning" className="bg-status-warning-subtle text-status-warning font-medium">
-          Tạm ẩn
-        </Badge>
-      )
-    }
-
-    if (item.hasOverride) {
-      return (
-        <Badge dot variant="info" className="bg-blue-50 text-blue-700 font-medium">
-          Đã đè giá
-        </Badge>
-      )
-    }
-
     return (
-      <Badge dot variant="default" className="bg-surface-muted text-text-tertiary font-medium">
-        Theo giá gốc
-      </Badge>
+      <div className="flex flex-wrap gap-1">
+        {item.isBranchSpecific ? (
+          <Badge dot variant="warning" className="bg-brand-primary-subtle text-brand-primary font-medium">Món riêng</Badge>
+        ) : null}
+        {item.isHidden ? (
+          <Badge dot variant="warning" className="bg-status-warning-subtle text-status-warning font-medium">Tạm ẩn</Badge>
+        ) : null}
+        {item.hasOverride ? (
+          <Badge dot variant="info" className="bg-blue-50 text-blue-700 font-medium">Có giá riêng</Badge>
+        ) : null}
+      </div>
     )
   }
 
@@ -229,17 +227,18 @@ export const BranchMenuManagementTab: React.FC<BranchMenuManagementTabProps> = (
     return (
       <div className="flex items-center gap-2.5">
         <Switch
+          aria-label={`Còn món: ${item.dishName}`}
           checked={!isOutOfStock}
           onCheckedChange={() => handleToggleStock(item.dishId)}
           className="cursor-pointer data-[state=checked]:bg-status-success"
-          disabled={!editable || toggleStockMutation.isPending}
+          disabled={!editable || !canManageStock || toggleStockMutation.isPending}
         />
         <span
           className={`text-sm font-medium ${
             isOutOfStock ? "text-text-tertiary" : "text-status-success"
           }`}
         >
-          {isOutOfStock ? "Hết hàng" : "Còn hàng"}
+          {isOutOfStock ? "Tạm hết" : "Còn món"}
         </span>
       </div>
     )
@@ -251,6 +250,7 @@ export const BranchMenuManagementTab: React.FC<BranchMenuManagementTabProps> = (
 
     // Món riêng của chi nhánh: chỉ có nút sửa món (mở DishModal)
     if (item.isBranchSpecific) {
+      if (!onEditBranchDish) return null
       return (
         <IconButton
           type="button"
@@ -266,82 +266,105 @@ export const BranchMenuManagementTab: React.FC<BranchMenuManagementTabProps> = (
       )
     }
 
-    // Món gốc: có menu thả xuống (tạo/sửa/xóa override)
     return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+      <div className="flex flex-wrap items-center justify-end gap-1">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="px-2"
+          onClick={() => handleCreateOrEditOverride(item)}
+          aria-label={`Chỉnh giá và hiển thị: ${item.dishName}`}
+        >
+          Chỉnh giá
+        </Button>
+        {item.overrideId && (item.hasOverride || item.isHidden) ? (
           <IconButton
             type="button"
             variant="row"
             size="row"
+            onClick={() => handleDeleteOverride(item)}
             className="cursor-pointer"
-            title="Thao tác"
-            aria-label="Thao tác"
+            title="Khôi phục mặc định"
+            aria-label={`Khôi phục mặc định: ${item.dishName}`}
           >
-            <MoreVertical />
+            <RotateCcw />
           </IconButton>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="right">
-          <DropdownMenuItem onClick={() => handleCreateOrEditOverride(item)}>
-            <Pencil className="mr-2 size-4" />
-            {item.hasOverride ? "Sửa ghi đè" : "Tạo ghi đè"}
-          </DropdownMenuItem>
-          {item.hasOverride && (
-            <DropdownMenuItem
-              onClick={() => handleDeleteOverride(item)}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="mr-2 size-4" />
-              Xóa ghi đè
-            </DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    )
-  }
-
-  if (isLoading) {
-    return (
-      <div className="pt-1">
-        <div className="rounded-card border border-border-default bg-surface-card py-12 text-center">
-          <p className="text-sm text-text-tertiary">Đang tải menu chi nhánh...</p>
-        </div>
+        ) : null}
       </div>
     )
   }
 
-  if (items.length === 0) {
-    return (
-      <div className="pt-1">
-        <div className="rounded-card border border-border-default bg-surface-card py-12 text-center">
-          <p className="text-sm text-text-tertiary">Chưa có món nào trong menu chi nhánh này</p>
-        </div>
-      </div>
-    )
-  }
+  const renderOptions = (item: BranchMenuItemView) => (
+    <Button
+      type="button"
+      variant="link"
+      size="sm"
+      className="h-8 px-0"
+      aria-label={`Xem tùy chọn của ${item.dishName}`}
+      onClick={(event) => {
+        optionsTrigger.current = event.currentTarget
+        setOptionsDish(item)
+      }}
+    >
+      Xem tùy chọn
+    </Button>
+  )
+
+  const showItems = !isLoading && !loadFailed && filteredItems.length > 0
+  const statusContent = !showItems ? (
+    <div className="px-4 py-10 text-center text-sm text-text-secondary">
+      <p role={loadFailed ? "alert" : "status"}>
+        {isLoading ? "Đang tải thực đơn chi nhánh…"
+          : loadFailed ? "Không tải được thực đơn chi nhánh"
+          : items.length === 0 ? "Chưa có món nào trong thực đơn chi nhánh này"
+          : "Không tìm thấy món phù hợp."}
+      </p>
+      {loadFailed ? (
+        <Button type="button" variant="link" onClick={() => {
+          if (menuQuery.isError) void menuQuery.refetch()
+          if (overridesQuery.isError) void overridesQuery.refetch()
+        }}>Thử lại</Button>
+      ) : null}
+    </div>
+  ) : null
 
   return (
-    <div className="pt-1">
-      {/* ===== <md: chip lọc + danh sách card (Figma "Menu chi nhánh · Mobile") ===== */}
-      <div className="space-y-4 md:hidden">
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {BRANCH_MENU_FILTERS.map((f) => (
-            <Chip
-              key={f.key}
-              selected={filter === f.key}
-              onClick={() => setFilter(f.key)}
-              className="cursor-pointer"
-            >
-              {f.label}
-            </Chip>
-          ))}
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 items-center gap-2 sm:flex sm:gap-3" role="group" aria-label="Lọc thực đơn chi nhánh">
+        <div className="col-span-2 min-w-0 sm:w-64">
+          <SearchInput
+            ref={dishSearch}
+            aria-label="Tìm món tại chi nhánh"
+            placeholder="Tìm món tại chi nhánh…"
+            className="border-border-strong bg-surface-card placeholder:font-medium placeholder:text-text-secondary"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            onClear={() => setSearch("")}
+          />
         </div>
-
-        {filteredItems.length === 0 ? (
-          <div className="rounded-card border border-border-default bg-surface-card py-12 text-center text-sm text-text-tertiary">
-            Không có món nào thuộc nhóm này
-          </div>
-        ) : (
+        <Select value={category} onValueChange={setCategoryId}>
+          <SelectTrigger aria-label="Danh mục tại chi nhánh" className="h-10 w-full min-w-0 sm:w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tất cả danh mục</SelectItem>
+            {Array.from(categories, ([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filter} onValueChange={(value: BranchMenuFilter) => setFilter(value)}>
+          <SelectTrigger aria-label="Trạng thái món tại chi nhánh" className="h-10 w-full min-w-0 sm:w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {BRANCH_MENU_FILTERS.map((option) => (
+              <SelectItem key={option.key} value={option.key}>{option.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div aria-busy={isLoading} className="lg:hidden">
+        {showItems ? (
           <ul className="space-y-3">
             {filteredItems.map((item) => (
               <li
@@ -349,12 +372,14 @@ export const BranchMenuManagementTab: React.FC<BranchMenuManagementTabProps> = (
                 className="rounded-card border border-border-default bg-surface-card p-4 shadow-2xs"
               >
                 <div className="flex items-start justify-between gap-3">
+                  <DishThumbnail imageUrl={item.imageUrl} />
                   <div className="min-w-0 flex-1">
-                    <p className="text-base font-bold leading-snug text-text-primary">
+                    <p className="break-words text-base font-bold leading-snug text-text-primary">
                       {item.dishName}
                     </p>
                     <p className="mt-0.5 text-xs text-text-tertiary">{item.categoryName}</p>
                     <div className="mt-2">{renderStatusBadge(item)}</div>
+                    {renderOptions(item)}
                   </div>
                   {renderActions(item)}
                 </div>
@@ -391,51 +416,37 @@ export const BranchMenuManagementTab: React.FC<BranchMenuManagementTabProps> = (
               </li>
             ))}
           </ul>
-        )}
+        ) : <div className="rounded-card border border-border-default bg-surface-card">{statusContent}</div>}
       </div>
 
       {/* ===== md+: bảng đủ cột như thiết kế PC ===== */}
-      <div className="hidden overflow-hidden rounded-card border border-border-default bg-surface-card shadow-2xs md:block">
+      <div aria-busy={isLoading} className="hidden overflow-hidden rounded-card border border-border-default bg-surface-card shadow-2xs lg:block">
         <Table>
           <TableHeader>
             <TableRow className="bg-surface-muted/40 hover:bg-surface-muted/40 border-b border-border-default">
-              <TableHead className="py-3.5 pl-6 text-[11px] font-bold tracking-wider text-text-tertiary uppercase">
-                MÓN
-              </TableHead>
-              <TableHead className="py-3.5 px-4 text-[11px] font-bold tracking-wider text-text-tertiary uppercase">
-                TRẠNG THÁI
-              </TableHead>
-              <TableHead className="py-3.5 px-4 text-[11px] font-bold tracking-wider text-text-tertiary uppercase">
-                GIÁ GỐC
-              </TableHead>
-              <TableHead className="py-3.5 px-4 text-[11px] font-bold tracking-wider text-text-tertiary uppercase">
-                GIÁ CHI NHÁNH
-              </TableHead>
-              <TableHead className="py-3.5 px-4 text-[11px] font-bold tracking-wider text-text-tertiary uppercase">
-                CHÊNH LỆCH
-              </TableHead>
-              <TableHead className="py-3.5 px-4 text-[11px] font-bold tracking-wider text-text-tertiary uppercase">
-                CÒN / HẾT
-              </TableHead>
+              <TableHead className="pl-6">Món</TableHead>
+              <TableHead>Trạng thái</TableHead>
+              <TableHead>Giá gốc</TableHead>
+              <TableHead>Giá chi nhánh</TableHead>
+              <TableHead>Chênh lệch</TableHead>
+              <TableHead>Còn / hết</TableHead>
               {editable && (
-                <TableHead className="py-3.5 pr-6 pl-4 text-right text-[11px] font-bold tracking-wider text-text-tertiary uppercase">
+                <TableHead className="pr-6 text-right">
                   <span className="sr-only">Thao tác</span>
                 </TableHead>
               )}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map((item) => (
+            {showItems ? filteredItems.map((item) => (
               <TableRow
                 key={item.dishId}
                 className="hover:bg-surface-muted/30 transition-colors border-b border-border-default last:border-b-0"
               >
                 {/* Cột Món: Ảnh + Tên + Danh mục */}
-                <TableCell className="py-3.5 pl-6">
+                <TableCell className="py-3 pl-6">
                   <div className="flex items-center gap-3">
-                    <div className="size-10 shrink-0 rounded-lg bg-surface-muted flex items-center justify-center text-text-tertiary">
-                      <Utensils className="size-5 stroke-[1.75]" />
-                    </div>
+                    <DishThumbnail imageUrl={item.imageUrl} />
                     <div>
                       <p className="font-semibold text-text-primary text-sm tracking-tight leading-snug">
                         {item.dishName}
@@ -443,48 +454,62 @@ export const BranchMenuManagementTab: React.FC<BranchMenuManagementTabProps> = (
                       <p className="text-xs text-text-tertiary mt-0.5">
                         {item.categoryName}
                       </p>
+                      {renderOptions(item)}
                     </div>
                   </div>
                 </TableCell>
 
                 {/* Cột Trạng thái */}
-                <TableCell className="py-3.5 px-4 text-sm">
+                <TableCell className="py-3 text-sm">
                   {renderStatusBadge(item)}
                 </TableCell>
 
                 {/* Cột Giá gốc */}
-                <TableCell className="py-3.5 px-4 text-sm text-text-secondary">
+                <TableCell className="py-3 text-sm text-text-secondary">
                   {formatMoney(item.basePrice)}
                 </TableCell>
 
                 {/* Cột Giá chi nhánh */}
-                <TableCell className="py-3.5 px-4 text-sm font-semibold text-text-primary">
+                <TableCell className="py-3 text-sm font-semibold text-text-primary">
                   {formatMoney(item.effectivePrice)}
                 </TableCell>
 
                 {/* Cột Chênh lệch */}
-                <TableCell className="py-3.5 px-4 text-sm">
+                <TableCell className="py-3 text-sm">
                   {renderDiff(item)}
                 </TableCell>
 
                 {/* Cột Còn / Hết */}
-                <TableCell className="py-3.5 px-4 text-sm">
+                <TableCell className="py-3 text-sm">
                   {renderStockStatus(item)}
                 </TableCell>
 
                 {/* Cột Thao tác */}
                 {editable && (
-                  <TableCell className="py-3.5 pr-6 pl-4 text-right">
+                  <TableCell className="py-3 pr-6 text-right">
                     {renderActions(item)}
                   </TableCell>
                 )}
               </TableRow>
-            ))}
+            )) : (
+              <TableRow>
+                <TableCell colSpan={editable ? 7 : 6} className="whitespace-normal p-0">{statusContent}</TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>
 
       {/* Modals */}
+      <DishOptionsDialog
+        dish={optionsDish}
+        onClose={() => setOptionsDish(null)}
+        onRestoreFocus={() => {
+          const trigger = optionsTrigger.current
+          if (trigger?.isConnected && trigger.getClientRects().length) trigger.focus()
+          else dishSearch.current?.focus()
+        }}
+      />
       <DishOverrideModal
         open={overrideModalOpen}
         onOpenChange={setOverrideModalOpen}
