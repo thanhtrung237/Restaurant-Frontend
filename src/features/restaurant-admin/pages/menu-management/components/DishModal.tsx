@@ -28,9 +28,10 @@ import { useUploadDishImage } from "@/api/upload.api"
 import { useOptionGroupsByRestaurant } from "@/api/option-groups.api"
 import { useDishOptionGroups } from "@/api/dish-option-groups.api"
 import { useAuthStore } from "@/stores/auth.store"
+import { APP_ROLE } from "@/config/roles"
 import { getErrorMessage } from "@/lib/http"
 import { useToast } from "@/hooks/use-toast"
-import type { Category, Dish, OptionGroup, DishOptionGroup } from "@/types/models"
+import type { Category, Dish, OptionGroup } from "@/types/models"
 
 /** Giới hạn của `CloudinaryServiceImpl` ở backend — kiểm trước ở FE cho đỡ tốn lượt gọi. */
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
@@ -43,7 +44,6 @@ const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gi
  * `null` vào nhóm `"DEFAULT"`, nên để trống sẽ khiến đồ uống bị in chung phiếu với bếp
  * (FR-SRV-07). Không đặt giá trị mặc định vì không có khu nào đúng cho mọi món.
  * 
- * `scope`: "restaurant" | "branch" - Chỉ hiện với RESTAURANT_ADMIN trong GĐ3.
  * BRANCH_MANAGER tạo món luôn bắt buộc có branchId (FE enforce - BE có lỗ hổng theo QĐ-27).
  */
 const dishSchema = z.object({
@@ -63,7 +63,6 @@ const dishSchema = z.object({
   soldByWeight: z.boolean(),
   description: z.string().trim().max(1000, "Mô tả quá dài"),
   imageUrl: z.string().trim().max(500, "Đường dẫn ảnh quá dài"),
-  scope: z.enum(["restaurant", "branch"]).optional(), // Optional because not always shown
 })
 
 export type DishFormValues = z.infer<typeof dishSchema>
@@ -85,15 +84,15 @@ export interface DishSubmitData {
 interface DishModalProps {
   isOpen: boolean
   onClose: () => void
-  onSave: (data: DishSubmitData) => void
+  onSave: (data: DishSubmitData) => Promise<void>
   categories: Category[]
   /** Có giá trị = sửa; bỏ trống = tạo mới. */
   initialData?: Dish | null
   isSaving?: boolean
   /** ID chi nhánh hiện tại - bắt buộc khi BRANCH_MANAGER tạo món (GĐ3) */
   currentBranchId?: number
-  /** Có cho phép chọn scope không? Default: false. Chỉ true với RESTAURANT_ADMIN */
-  allowScopeSelection?: boolean
+  branchName?: string
+  saleStatus?: { isSelling: boolean; isUpdating: boolean; onChange: () => void }
 }
 
 /** Modal tạo / sửa món cấp NHÀ HÀNG hoặc RIÊNG CHI NHÁNH (FR-MNU-02, GĐ3). */
@@ -105,23 +104,23 @@ export function DishModal({
   initialData,
   isSaving = false,
   currentBranchId,
-  allowScopeSelection = false,
+  branchName,
+  saleStatus,
 }: DishModalProps) {
   const isEdit = Boolean(initialData)
 
-  // Determine if this is a branch-specific dish
-  const isBranchSpecific = Boolean(initialData?.branchId)
+  const branchId = initialData ? initialData.branchId ?? undefined : currentBranchId
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && !isSaving && onClose()}>
       {/* <md: gần như toàn màn hình, cuộn được — form này khá dài */}
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[560px]">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Sửa món" : "Thêm món"}</DialogTitle>
+          <DialogTitle>{isEdit ? "Sửa món" : branchId ? "Thêm món riêng" : "Thêm món"}</DialogTitle>
           <DialogDescription>
-            {isBranchSpecific
-              ? "Món riêng của chi nhánh này. Chỉ hiện trên menu chi nhánh này."
-              : "Món cấp nhà hàng. Giá ở đây là giá gốc, chi nhánh có thể đè (FR-MNU-02)."}
+            {branchId
+              ? `Phạm vi áp dụng · ${branchName ?? "Chi nhánh này"}`
+              : "Phạm vi áp dụng · Toàn nhà hàng"}
           </DialogDescription>
         </DialogHeader>
 
@@ -133,8 +132,8 @@ export function DishModal({
             onSave={onSave}
             onClose={onClose}
             isSaving={isSaving}
-            currentBranchId={currentBranchId}
-            allowScopeSelection={allowScopeSelection}
+            currentBranchId={branchId}
+            saleStatus={saleStatus}
           />
         ) : null}
       </DialogContent>
@@ -149,19 +148,11 @@ function DishForm({
   onClose,
   isSaving,
   currentBranchId,
-  allowScopeSelection = false,
+  saleStatus,
 }: Omit<DishModalProps, "isOpen"> & { isSaving: boolean }) {
   const { toast } = useToast()
   const uploadImage = useUploadDishImage()
   const fileInputRef = React.useRef<HTMLInputElement | null>(null)
-
-  // Determine default scope
-  // If editing: use existing branchId (undefined = restaurant-wide, number = branch-specific)
-  // If creating: BRANCH_MANAGER must create branch-specific, ADMIN can choose
-  const defaultScope: "restaurant" | "branch" = 
-    initialData?.branchId ? "branch" : 
-    (currentBranchId && !allowScopeSelection) ? "branch" : 
-    "restaurant"
 
   const {
     register,
@@ -179,7 +170,6 @@ function DishForm({
       soldByWeight: initialData?.soldByWeight ?? false,
       description: initialData?.description ?? "",
       imageUrl: initialData?.imageUrl ?? "",
-      scope: defaultScope,
     },
   })
 
@@ -202,22 +192,21 @@ function DishForm({
       : ""
 
   const restaurantId = useAuthStore((s) => s.account?.restaurantId)
-  const { data: availableOptionGroups = [] } = useOptionGroupsByRestaurant(restaurantId)
-  const { data: linkedDishOptionGroups = [] } = useDishOptionGroups(initialData?.id)
-
-  const [selectedOptionGroupIds, setSelectedOptionGroupIds] = React.useState<number[]>([])
-
-  // Đồng bộ các nhóm tùy chọn đã liên kết khi load món cũ
-  React.useEffect(() => {
-    if (initialData?.id && linkedDishOptionGroups.length > 0) {
-      setSelectedOptionGroupIds(linkedDishOptionGroups.map((l: DishOptionGroup) => l.optionGroupId))
-    }
-  }, [initialData?.id, linkedDishOptionGroups])
+  const isBranchManager = useAuthStore((s) => s.role === APP_ROLE.BRANCH_MANAGER)
+  const availableGroupsQuery = useOptionGroupsByRestaurant(restaurantId)
+  const linkedGroupsQuery = useDishOptionGroups(initialData?.id)
+  const [draftGroupIds, setDraftGroupIds] = React.useState<number[] | null>(null)
+  const linkedGroupIds = linkedGroupsQuery.data?.map((link) => link.optionGroupId) ?? []
+  const selectedOptionGroupIds = draftGroupIds ?? linkedGroupIds
+  const availableOptionGroups = availableGroupsQuery.data ?? []
+  const optionGroupsLoading = availableGroupsQuery.isPending || (Boolean(initialData) && linkedGroupsQuery.isPending)
+  const optionGroupsError = availableGroupsQuery.isError || linkedGroupsQuery.isError
 
   function toggleOptionGroup(groupId: number) {
-    setSelectedOptionGroupIds((prev) =>
-      prev.includes(groupId) ? prev.filter((id) => id !== groupId) : [...prev, groupId]
-    )
+    setDraftGroupIds((previous) => {
+      const selected = previous ?? linkedGroupIds
+      return selected.includes(groupId) ? selected.filter((id) => id !== groupId) : [...selected, groupId]
+    })
   }
 
   const busy = isSaving || isSubmitting || uploadImage.isPending
@@ -258,25 +247,9 @@ function DishForm({
     }
   }
 
-  const submit = handleSubmit((values) => {
-    // Determine branchId based on scope
-    let finalBranchId: number | undefined
-
-    if (values.scope === "branch") {
-      if (!currentBranchId) {
-        toast({
-          title: "Lỗi",
-          description: "Không xác định được chi nhánh hiện tại",
-          variant: "danger",
-        })
-        return
-      }
-      finalBranchId = currentBranchId
-    } else {
-      finalBranchId = undefined
-    }
-
-    onSave({
+  const submit = handleSubmit(async (values) => {
+    if (optionGroupsLoading || optionGroupsError || isSaving) return
+    await onSave({
       name: values.name.trim(),
       categoryId: Number(values.categoryId),
       basePrice: Number(values.basePrice),
@@ -284,8 +257,8 @@ function DishForm({
       soldByWeight: values.soldByWeight,
       description: values.description.trim() || undefined,
       imageUrl: values.imageUrl.trim() || undefined,
-      branchId: finalBranchId,
-      optionGroupIds: selectedOptionGroupIds,
+      branchId: currentBranchId,
+      optionGroupIds: draftGroupIds ?? undefined,
     })
   })
 
@@ -295,58 +268,15 @@ function DishForm({
         <Input id="dish-name" {...register("name")} placeholder="VD: Phở bò tái nạm" autoFocus />
       </FormField>
 
-      {/* Scope selection - Only show for RESTAURANT_ADMIN when creating OR editing branch dish */}
-      {(allowScopeSelection || initialData?.branchId) && !initialData ? (
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-text-primary">
-            Phạm vi áp dụng <span className="text-status-danger">*</span>
-          </label>
-          <Controller
-            control={control}
-            name="scope"
-            render={({ field }) => (
-              <div className="space-y-2">
-                <label className="flex items-start gap-3 rounded-card border border-border-default p-3 cursor-pointer hover:bg-surface-muted/30 transition-colors">
-                  <input
-                    type="radio"
-                    value="restaurant"
-                    checked={field.value === "restaurant"}
-                    onChange={() => field.onChange("restaurant")}
-                    disabled={!allowScopeSelection}
-                    className="mt-0.5"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-text-primary">Toàn nhà hàng</p>
-                    <p className="mt-0.5 text-xs text-text-tertiary">
-                      Món hiện trên tất cả chi nhánh. Chi nhánh có thể đè giá hoặc ẩn món.
-                    </p>
-                  </div>
-                </label>
-
-                <label className="flex items-start gap-3 rounded-card border border-border-default p-3 cursor-pointer hover:bg-surface-muted/30 transition-colors">
-                  <input
-                    type="radio"
-                    value="branch"
-                    checked={field.value === "branch"}
-                    onChange={() => field.onChange("branch")}
-                    disabled={!allowScopeSelection && !currentBranchId}
-                    className="mt-0.5"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-text-primary">Chỉ chi nhánh này</p>
-                    <p className="mt-0.5 text-xs text-text-tertiary">
-                      Món đặc trưng riêng, chỉ hiện trên menu chi nhánh hiện tại.
-                    </p>
-                  </div>
-                </label>
-              </div>
-            )}
-          />
-          {!allowScopeSelection && currentBranchId && (
-            <p className="mt-1.5 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
-              ⚠️ Quản lý chi nhánh chỉ có thể tạo món riêng cho chi nhánh của mình.
-            </p>
-          )}
+      {saleStatus ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-muted px-3 py-2">
+          <div>
+            <p className="text-xs text-text-tertiary">{currentBranchId ? "Trạng thái tại chi nhánh" : "Trạng thái toàn nhà hàng"}</p>
+            <p className="text-sm font-medium">{saleStatus.isSelling ? "Đang bán" : "Ngừng bán"}</p>
+          </div>
+          <Button type="button" size="sm" variant="ghost" onClick={saleStatus.onChange} disabled={busy || saleStatus.isUpdating}>
+            {saleStatus.isSelling ? "Ngừng bán món" : "Bán lại món"}
+          </Button>
         </div>
       ) : null}
 
@@ -456,13 +386,27 @@ function DishForm({
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold uppercase tracking-wider text-text-secondary flex items-center gap-1.5">
             <Layers className="size-4 text-brand-primary" />
-            <span>Nhóm tùy chọn / Topping áp dụng ({selectedOptionGroupIds.length})</span>
+            <span>{isBranchManager ? "Topping dùng chung" : "Nhóm tùy chọn / Topping áp dụng"} ({selectedOptionGroupIds.length})</span>
           </label>
         </div>
 
-        {availableOptionGroups.length === 0 ? (
+        {optionGroupsError ? (
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-2 text-sm text-text-secondary">
+            <span>Không tải được nhóm tùy chọn của món.</span>
+            <Button type="button" variant="outline" size="sm" onClick={() => {
+              if (availableGroupsQuery.isError) void availableGroupsQuery.refetch()
+              if (linkedGroupsQuery.isError) void linkedGroupsQuery.refetch()
+            }}>
+              Thử lại
+            </Button>
+          </div>
+        ) : optionGroupsLoading ? (
+          <p role="status" className="text-sm text-text-secondary">Đang tải nhóm tùy chọn…</p>
+        ) : availableOptionGroups.length === 0 ? (
           <p className="text-xs text-text-tertiary italic">
-            Chưa có nhóm tùy chọn nào trong nhà hàng. Bạn có thể tạo thêm ở tab "Tùy chọn món".
+            {isBranchManager
+              ? "Chưa có nhóm topping dùng chung. Quản trị nhà hàng có thể tạo nhóm."
+              : 'Chưa có nhóm tùy chọn nào trong nhà hàng. Bạn có thể tạo thêm ở tab "Tùy chọn món".'}
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1">
@@ -478,7 +422,9 @@ function DishForm({
                   }`}
                 >
                   <Checkbox
+                    aria-label={group.name}
                     checked={isChecked}
+                    disabled={busy}
                     onCheckedChange={() => toggleOptionGroup(group.id)}
                     className="data-[state=checked]:bg-brand-primary data-[state=checked]:border-brand-primary cursor-pointer"
                   />
@@ -561,8 +507,8 @@ function DishForm({
         <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
           Huỷ
         </Button>
-        <Button type="submit" disabled={busy}>
-          {busy ? "Đang lưu..." : initialData ? "Lưu thay đổi" : "Thêm món"}
+        <Button type="submit" disabled={busy || optionGroupsLoading || optionGroupsError}>
+          {busy ? "Đang lưu..." : initialData ? "Lưu thay đổi" : currentBranchId ? "Thêm món riêng" : "Thêm món"}
         </Button>
       </DialogFooter>
     </form>
