@@ -1,295 +1,226 @@
-/**
- * NotificationBell — chuông thông báo real-time cho nhân viên.
- *
- * Hiển thị:
- *  - Icon chuông với badge số thông báo chưa đọc.
- *  - Dropdown danh sách thông báo khi bấm — click ngoài thì đóng.
- *  - Nhóm theo loại:
- *      + NEW_ORDER (Khách gửi order mới - FR-SRV-03)
- *      + PAYMENT_REQUESTED (Khách yêu cầu tính tiền - FR-CUS-10)
- *      + STAFF_CALL (Khách bấm "Báo nhân viên" - FR-CUS-07, có trạng thái Chờ xử lý -> Đã xử lý)
- *
- * Hỗ trợ các biến thể:
- *  - "header": Nút tròn nổi bật cạnh "Danh sách đặt" trên thanh tiêu đề bàn (Figma & ảnh thực tế)
- *  - "sidebar": Sidebar desktop
- *  - "rail": Sidebar thu gọn trên Tablet
- */
-
-import * as React from "react"
-import { Bell, X, CheckCheck, ShoppingBag, CreditCard, BellRing, Check } from "lucide-react"
+import { useState } from "react"
+import { useNavigate } from "react-router-dom"
+import { Bell, BellRing, CheckCheck, ChevronDown, CreditCard, Ellipsis, ShoppingBag, Trash2, X } from "lucide-react"
+import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { getNotificationTableLabel, useStaffInbox, type StaffNotification } from "@/api/staff-notifications.api"
+import { getTableSession } from "@/api/table-sessions.api"
+import { getNotificationDestination } from "@/features/shared/floor-ops/notification-navigation"
+import { useAuthStore } from "@/stores/auth.store"
+import { useNotificationRing } from "@/stores/notification.store"
+import { useToast } from "@/hooks/use-toast"
+import { isApiStatus } from "@/lib/http"
 import { cn } from "@/lib/utils"
-import {
-  useNotificationStore,
-  type StaffNotification,
-  type NotificationType,
-} from "@/stores/notification.store"
 
-const TYPE_CONFIG: Record<
-  NotificationType,
-  { icon: React.ElementType; color: string; bg: string }
-> = {
-  NEW_ORDER: {
-    icon: ShoppingBag,
-    color: "text-brand-primary",
-    bg: "bg-brand-primary-subtle",
-  },
-  PAYMENT_REQUESTED: {
-    icon: CreditCard,
-    color: "text-status-success",
-    bg: "bg-status-success-subtle",
-  },
-  STAFF_CALL: {
-    icon: BellRing,
-    color: "text-[#D97706]",
-    bg: "bg-[#FEF3C7]",
-  },
-  ITEM_STATUS_CHANGED: {
-    icon: Bell,
-    color: "text-text-secondary",
-    bg: "bg-surface-muted",
-  },
+const config = {
+  NEW_ORDER: { title: "Có món mới", icon: ShoppingBag, tone: "bg-brand-primary-subtle text-brand-primary" },
+  PAYMENT_REQUESTED: { title: "Yêu cầu tính tiền", icon: CreditCard, tone: "bg-status-success-subtle text-status-success" },
+  DISCOUNT_APPROVAL: { title: "Yêu cầu duyệt chiết khấu", icon: CreditCard, tone: "bg-brand-primary-subtle text-brand-primary" },
+  PAYMENT_QR_OPENED: { title: "Khách đã mở mã QR thanh toán", icon: CreditCard, tone: "bg-brand-primary-subtle text-brand-primary" },
+  BANK_PAYMENT_VERIFIED: { title: "Ngân hàng đã xác nhận thanh toán", icon: CreditCard, tone: "bg-status-success-subtle text-status-success" },
+  STAFF_CALL: { title: "Khách gọi nhân viên", icon: BellRing, tone: "bg-status-warning-subtle text-status-warning" },
+} as const
+
+function timeAgo(createdAt: string) {
+  const minutes = Math.max(0, Math.floor((Date.now() - Date.parse(createdAt)) / 60_000))
+  if (minutes < 1) return "vừa xong"
+  if (minutes < 60) return `${minutes} phút trước`
+  if (minutes < 1440) return `${Math.floor(minutes / 60)} giờ trước`
+  return `${Math.floor(minutes / 1440)} ngày trước`
 }
 
-function timeAgo(ts: number): string {
-  const diff = Math.floor((Date.now() - ts) / 1000)
-  if (diff < 60) return "vừa xong"
-  if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`
-  if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`
-  return `${Math.floor(diff / 86400)} ngày trước`
+function groupNotifications(notifications: StaffNotification[]) {
+  const groups = new Map<string, StaffNotification[]>()
+  for (const item of notifications) {
+    const key = item.type === "NEW_ORDER" ? `orders-${item.tableSessionId}` : `event-${item.id}`
+    const group = groups.get(key)
+    if (group) group.push(item)
+    else groups.set(key, [item])
+  }
+  return Array.from(groups.entries())
 }
 
-interface NotificationBellProps {
-  /** "header" = trên thanh tiêu đề kế nút Danh sách đặt, "sidebar" = desktop layout, "rail" = tablet layout */
+const headerButton = "flex size-8 items-center justify-center rounded-lg text-text-secondary hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-brand-primary"
+const rowButton = "flex min-w-0 w-full items-center gap-3 px-3.5 py-3 text-left hover:bg-surface-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-primary disabled:opacity-60"
+const ended = new Set(["CLOSED", "CANCELLED", "MERGED"])
+
+export function NotificationBell({ variant = "header", className }: {
   variant?: "header" | "sidebar" | "rail"
   className?: string
-}
-
-export function NotificationBell({ variant = "header", className }: NotificationBellProps) {
-  const { notifications, unreadCount, isRinging, stopRinging, markAllRead, clearAll } = useNotificationStore()
-  const [open, setOpen] = React.useState(false)
-  const ref = React.useRef<HTMLDivElement>(null)
-
-  // Đóng dropdown khi click ngoài
-  React.useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
-    }
-    if (open) document.addEventListener("mousedown", onClickOutside)
-    return () => document.removeEventListener("mousedown", onClickOutside)
-  }, [open])
-
-  function handleToggle() {
-    setOpen((v) => !v)
-    stopRinging()
-  }
-
+}) {
+  const { branchId, enabled, inbox, action } = useStaffInbox()
+  const ringingBranch = useNotificationRing((state) => state.ringingBranch)
+  const stop = useNotificationRing((state) => state.stop)
+  const ringing = ringingBranch != null && ringingBranch === branchId
+  const navigate = useNavigate()
+  const { toast } = useToast()
+  const [open, setOpen] = useState(false)
+  const [openingId, setOpeningId] = useState<number | null>(null)
+  const notifications = inbox.data ?? []
+  const unread = notifications.filter((item) => !item.read).length
   const isHeader = variant === "header"
   const isRail = variant === "rail"
 
+  function update(request: Parameters<typeof action.mutate>[0]) {
+    action.mutate(request, {
+      onError: () => toast({ title: "Không cập nhật được thông báo", variant: "danger" }),
+    })
+  }
+
+  async function openNotification(item: StaffNotification) {
+    if (openingId != null) return
+    setOpeningId(item.id)
+    const accountId = useAuthStore.getState().account?.id
+    const stillCurrent = () => {
+      const current = useAuthStore.getState()
+      return current.branchId === item.branchId && current.account?.id === accountId
+    }
+    function finish() {
+      if (!item.read) update({ type: "read", id: item.id })
+      setOpen(false)
+    }
+    try {
+      const session = await getTableSession(item.tableSessionId)
+      if (!stillCurrent()) return
+      if (session.pickedUpAt || (ended.has(session.status) && !(session.takeaway && session.status === "CLOSED")) ||
+          session.branchId !== item.branchId) {
+        finish()
+        toast({ title: "Phiên bàn đã kết thúc", variant: "info" })
+        return
+      }
+      const destination = getNotificationDestination(item, session, useAuthStore.getState().role)
+      if (destination) {
+        finish()
+        navigate(destination)
+      } else {
+        toast({ title: "Bạn không có quyền mở màn hình này", variant: "info" })
+      }
+    } catch (error) {
+      if (!stillCurrent()) return
+      if (isApiStatus(error, 404)) {
+        finish()
+        toast({ title: "Phiên bàn không còn khả dụng", variant: "info" })
+      } else {
+        toast({ title: "Không mở được phiên bàn", description: "Vui lòng thử lại.", variant: "danger" })
+      }
+    } finally {
+      setOpeningId(null)
+    }
+  }
+
   return (
-    <div ref={ref} className={cn("relative inline-block", className)}>
-      {/* Nút chuông */}
-      <button
-        type="button"
-        onClick={handleToggle}
-        title="Thông báo"
+    <Popover open={open} onOpenChange={(next) => {
+      setOpen(next)
+      if (next) {
+        stop()
+        if (enabled) void inbox.refetch()
+      }
+    }}>
+      <PopoverTrigger asChild>
+        <button type="button" title="Thông báo" aria-label="Thông báo" className={cn(
+          "relative flex items-center justify-center transition-colors",
+          isHeader && "size-10 rounded-full border border-border-default bg-surface-card text-text-secondary hover:bg-surface-muted shadow-2xs",
+          isRail && "size-11 rounded-xl text-text-tertiary hover:bg-surface-muted",
+          variant === "sidebar" && "size-8 rounded-lg text-text-tertiary hover:bg-surface-muted",
+          ringing && "border-brand-primary text-brand-primary ring-2 ring-brand-primary/40",
+          className,
+        )}>
+          <Bell className={cn(isRail ? "size-5" : "size-4", ringing && "animate-bell-ring")} />
+          {unread > 0 && <span className="absolute -top-1 -right-1 flex size-4.5 items-center justify-center rounded-full bg-brand-primary text-[10px] font-bold text-white">{unread > 9 ? "9+" : unread}</span>}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
         aria-label="Thông báo"
-        className={cn(
-          "relative flex items-center justify-center transition-colors cursor-pointer",
-          isHeader &&
-            "size-10 rounded-full border border-border-default bg-surface-card text-text-secondary hover:bg-surface-muted hover:text-text-primary shadow-2xs",
-          isRail &&
-            "size-11 rounded-xl text-text-tertiary hover:bg-surface-muted hover:text-text-primary",
-          !isHeader && !isRail &&
-            "size-8 rounded-lg text-text-tertiary hover:bg-surface-muted hover:text-text-primary",
-          isRinging &&
-            "border-brand-primary text-brand-primary ring-2 ring-brand-primary/40 shadow-[0_0_12px_rgba(240,82,43,0.35)]",
-        )}
+        side={isHeader ? "bottom" : isRail ? "right" : "top"}
+        align={variant === "sidebar" ? "start" : "end"}
+        sideOffset={8}
+        collisionPadding={12}
+        className="flex max-h-[var(--radix-popover-content-available-height)] w-84 max-w-[var(--radix-popover-content-available-width)] flex-col overflow-hidden rounded-2xl border-border-default bg-surface-card p-0 shadow-2xl sm:w-96"
       >
-        <Bell
-          className={cn(
-            isHeader ? "size-4" : isRail ? "size-5" : "size-4.5",
-            isRinging && "animate-bell-ring text-brand-primary",
-          )}
-        />
-        {unreadCount > 0 && (
-          <span
-            className={cn(
-              "absolute flex items-center justify-center rounded-full bg-brand-primary text-[10px] font-bold text-white shadow-xs",
-              isHeader
-                ? "-top-1 -right-1 size-4.5"
-                : "-right-0.5 -top-0.5 size-4.5",
-              isRinging && "animate-bounce",
-            )}
-          >
-            {unreadCount > 9 ? "9+" : unreadCount}
-          </span>
-        )}
-      </button>
-
-      {/* Dropdown panel */}
-      {open && (
-        <div
-          className={cn(
-            "absolute z-50 w-84 sm:w-96 rounded-2xl border border-border-default bg-surface-card shadow-2xl overflow-hidden",
-            // Chuông "header" nằm trên đầu trang → mở xuống dưới.
-            // Chuông "sidebar"/"rail" nằm ở CHÂN màn hình → phải mở LÊN trên (bottom-*),
-            // nếu mở xuống (top-*) thì bảng thông báo nằm ngoài màn hình, bấm chuông không thấy gì.
-            isHeader
-              ? "right-0 top-full mt-2"
-              : isRail
-                ? "left-full bottom-0 ml-2"
-                : "left-0 bottom-full mb-2",
-          )}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-border-default/60 px-4 py-3 bg-surface-card">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-text-primary">Thông báo</span>
-              {unreadCount > 0 ? (
-                <span className="rounded-full bg-brand-primary/10 px-2 py-0.5 text-xs font-bold text-brand-primary">
-                  {unreadCount} mới
-                </span>
-              ) : null}
-            </div>
-            <div className="flex items-center gap-1">
-              {unreadCount > 0 && (
-                <button
-                  type="button"
-                  onClick={markAllRead}
-                  title="Đánh dấu đã đọc tất cả"
-                  className="flex size-7 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-surface-muted hover:text-brand-primary cursor-pointer"
-                >
-                  <CheckCheck className="size-4" />
-                </button>
-              )}
-              {notifications.length > 0 && (
-                <button
-                  type="button"
-                  onClick={clearAll}
-                  title="Xoá tất cả thông báo"
-                  className="flex size-7 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-surface-muted hover:text-status-danger cursor-pointer"
-                >
-                  <X className="size-4" />
-                </button>
-              )}
-            </div>
+        <div className="flex shrink-0 items-center justify-between border-b border-border-default/60 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold">Thông báo</span>
+            {unread > 0 && <span className="rounded-full bg-brand-primary/10 px-2 py-0.5 text-xs font-bold text-brand-primary">{unread} mới</span>}
           </div>
-
-          {/* Danh sách */}
-          <div className="max-h-[min(24rem,calc(100vh-10rem))] overflow-y-auto divide-y divide-border-default/40">
-            {notifications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-2 py-10 text-center px-4">
-                <div className="flex size-12 items-center justify-center rounded-full bg-surface-muted text-text-tertiary">
-                  <Bell className="size-6" />
-                </div>
-                <p className="text-sm font-medium text-text-primary">Chưa có thông báo nào</p>
-                <p className="text-xs text-text-tertiary">
-                  Các sự kiện gọi món, yêu cầu tính tiền và gọi nhân viên sẽ xuất hiện tại đây theo thời gian thực.
-                </p>
-              </div>
-            ) : (
-              notifications.map((n) => (
-                <NotificationItem key={n.id} notification={n} />
-              ))
-            )}
+          <div className="flex items-center gap-1">
+            {unread > 0 && <button type="button" disabled={action.isPending} onClick={() => update({ type: "readAll" })}
+              title="Đánh dấu đã đọc tất cả" aria-label="Đánh dấu đã đọc tất cả" className={headerButton}><CheckCheck className="size-4" /></button>}
+            {notifications.length > 0 && <DropdownMenu>
+              <DropdownMenuTrigger aria-label="Tùy chọn thông báo" title="Tùy chọn thông báo" className={headerButton}><Ellipsis className="size-4" /></DropdownMenuTrigger>
+              <DropdownMenuContent className="w-48">
+                <DropdownMenuItem variant="danger" icon={<Trash2 />} disabled={action.isPending} onClick={() => update({ type: "hideAll" })}>
+                  Ẩn tất cả của tôi
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>}
+            <PopoverClose type="button" aria-label="Đóng thông báo" title="Đóng thông báo" className={headerButton}><X className="size-4" /></PopoverClose>
           </div>
         </div>
-      )}
-    </div>
+
+        <div className="min-h-0 max-h-96 overflow-y-auto divide-y divide-border-default/40">
+          {!enabled ? <p className="p-5 text-sm text-text-secondary">Chọn chi nhánh để xem thông báo.</p>
+            : inbox.isPending ? <p role="status" className="p-5 text-sm text-text-secondary">Đang tải thông báo…</p>
+            : inbox.isError && notifications.length === 0 ? (
+              <div className="p-5 text-sm"><p role="alert">Không tải được thông báo.</p>
+                <button type="button" className="mt-2 font-semibold underline" onClick={() => void inbox.refetch()}>Thử lại</button></div>
+            ) : notifications.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
+                <Bell className="size-6 text-text-secondary" aria-hidden="true" />
+                <p className="text-sm font-medium">Chưa có thông báo nào</p>
+                <p className="text-xs text-text-secondary">Món mới, yêu cầu tính tiền và gọi nhân viên sẽ xuất hiện tại đây.</p>
+              </div>
+            ) : groupNotifications(notifications).map(([key, items]) => (
+              <NotificationGroup key={key} items={items} busy={openingId != null} onOpen={openNotification} />
+            ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
 
-function NotificationItem({ notification: n }: { notification: StaffNotification }) {
-  const { markRead, toggleResolved } = useNotificationStore()
-  const cfg = TYPE_CONFIG[n.type] ?? TYPE_CONFIG.STAFF_CALL
-  const Icon = cfg.icon
-
-  const isStaffCall = n.type === "STAFF_CALL"
-  const isResolved = n.status === "RESOLVED"
-
-  return (
-    <div
-      className={cn(
-        "flex flex-col gap-1.5 p-3.5 transition-colors text-left",
-        !n.read ? "bg-[#FFF9F6]" : "hover:bg-surface-muted/60",
-      )}
-      onClick={() => markRead(n.id)}
-    >
-      <div className="flex items-start gap-3">
-        <span
-          className={cn(
-            "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full",
-            cfg.bg,
-          )}
-        >
-          <Icon className={cn("size-4", cfg.color)} />
+function NotificationGroup({ items, busy, onOpen }: {
+  items: StaffNotification[]
+  busy: boolean
+  onOpen: (item: StaffNotification) => Promise<void>
+}) {
+  const first = items[0]
+  const table = getNotificationTableLabel(first.tableName, first.tableSessionId)
+  const { title, icon: Icon, tone } = config[first.type]
+  if (items.length === 1) {
+    const description = first.orderId ? `${table} · Lượt gọi #${first.orderId}`
+      : first.dishName ? `${table} · Món “${first.dishName}”` : table
+    return (
+      <button type="button" disabled={busy} onClick={() => void onOpen(first)} className={cn(rowButton, !first.read && "bg-brand-primary-subtle/40")}>
+        <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-full", tone)}><Icon aria-hidden="true" className="size-4" /></span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold">{title}</span>
+          <span className="block text-xs text-text-secondary">{description}</span>
+          {first.resolvedAt && <span className="block text-xs text-status-success">Đã xử lý</span>}
         </span>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-1">
-            <p className="text-xs font-bold text-text-primary">{n.title}</p>
-            <span className="text-[10px] text-text-tertiary shrink-0">
-              {timeAgo(n.createdAt)}
-            </span>
-          </div>
-
-          <p className="mt-0.5 text-xs text-text-secondary leading-relaxed">
-            {n.body}
-          </p>
-
-          {/* Đối với Báo nhân viên (FR-CUS-07): Cho phép chuyển trạng thái Chờ xử lý -> Đã xử lý */}
-          {isStaffCall && (
-            <div className="mt-2 flex items-center justify-between gap-2 pt-1 border-t border-border-default/40">
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold",
-                  isResolved
-                    ? "bg-[#ECFDF3] text-[#027A48]"
-                    : "bg-[#FEF3F2] text-[#B42318]",
-                )}
-              >
-                <span
-                  className={cn(
-                    "size-1.5 rounded-full",
-                    isResolved ? "bg-[#12B76A]" : "bg-[#F04438] animate-pulse",
-                  )}
-                />
-                {isResolved ? "Đã xử lý" : "Chờ xử lý"}
-              </span>
-
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  toggleResolved(n.id)
-                }}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer",
-                  isResolved
-                    ? "bg-surface-muted text-text-tertiary hover:bg-surface-muted/80"
-                    : "bg-brand-primary text-white hover:bg-brand-primary-hover shadow-2xs active:scale-95",
-                )}
-              >
-                {isResolved ? (
-                  "Đánh dấu chờ xử lý"
-                ) : (
-                  <>
-                    <Check className="size-3" />
-                    <span>Xong</span>
-                  </>
-                )}
-              </button>
-            </div>
-          )}
-        </div>
-
-        {!n.read && (
-          <span className="mt-1 size-2 shrink-0 rounded-full bg-brand-primary" />
-        )}
-      </div>
-    </div>
+        <span className="text-xs text-text-secondary">{timeAgo(first.createdAt)}</span>
+      </button>
+    )
+  }
+  const unread = items.filter((item) => !item.read).length
+  return (
+    <details className="group">
+      <summary className={cn(rowButton, "cursor-pointer list-none [&::-webkit-details-marker]:hidden", unread > 0 && "bg-brand-primary-subtle/40")}>
+        <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-full", tone)}><Icon aria-hidden="true" className="size-4" /></span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold">{table}</span>
+          <span className="block text-xs text-text-secondary">{items.length} lượt gọi{unread > 0 ? ` · ${unread} chưa đọc` : ""}</span>
+        </span>
+        <ChevronDown aria-hidden="true" className="size-4 text-text-secondary group-open:rotate-180" />
+      </summary>
+      <ul className="divide-y divide-border-default/40 border-t border-border-default/40">
+        {items.map((item) => <li key={item.id}>
+          <button type="button" disabled={busy} onClick={() => void onOpen(item)}
+            className={cn(rowButton, "pl-11 text-xs", !item.read && "font-semibold")}>
+            <span className="flex-1">Lượt gọi #{item.orderId}</span>
+            <span className="text-text-secondary">{timeAgo(item.createdAt)}</span>
+          </button>
+        </li>)}
+      </ul>
+    </details>
   )
 }
