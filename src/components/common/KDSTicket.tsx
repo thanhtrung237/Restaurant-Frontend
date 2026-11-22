@@ -1,4 +1,5 @@
 import { Scale } from "lucide-react";
+import type { MouseEventHandler } from "react";
 import { cn } from "@/lib/utils";
 
 export type KDSTicketStatus =
@@ -9,6 +10,7 @@ export type KDSTicketStatus =
   | "custom";
 
 export interface KDSTicketProps {
+  tableId: number;
   tableName: string;
   timeAgo: string;
   dishName: string;
@@ -23,19 +25,21 @@ export interface KDSTicketProps {
   badgeLabel?: string;
   status?: KDSTicketStatus;
   actionLabel?: string;
-  onAction?: () => void;
+  onAction?: MouseEventHandler<HTMLButtonElement>;
   className?: string;
 }
 
-/**
- * KDSTicket — khớp component "KDS Ticket" trong UI Component (Figma):
- * Phiếu hiển thị điều phối nhà bếp (Kitchen Display System) với các trạng thái:
- * 1. "Xác nhận" (Nút xanh dương info #2E90FA)
- * 2. "Đã phục vụ" (Nút vàng cam warning #F59E0B) — Phục vụ bấm khi đã mang món ra bàn
- * 4. "weighing" — món bán theo cân, cần "Nhập số cân" trước khi gửi bếp (Nút đỏ danger),
- *    có thêm badge cảnh báo phía trên header và viền/nền cam nhạt để nổi bật trong cột.
- */
+const tableLabelColors = [
+  "bg-sky-100 text-sky-950",
+  "bg-emerald-100 text-emerald-950",
+  "bg-violet-100 text-violet-950",
+  "bg-rose-100 text-rose-950",
+  "bg-cyan-100 text-cyan-950",
+  "bg-indigo-100 text-indigo-950",
+];
+
 export function KDSTicket({
+  tableId,
   tableName,
   timeAgo,
   dishName,
@@ -49,6 +53,7 @@ export function KDSTicket({
   onAction,
   className,
 }: KDSTicketProps) {
+  const tableLabel = /^\d+$/.test(tableName.trim()) ? `Bàn ${tableName.trim()}` : tableName;
   // Tự động chọn nhãn và màu nút theo status nếu không chỉ định actionLabel
   let buttonLabel = actionLabel;
   let buttonClass = "";
@@ -56,16 +61,14 @@ export function KDSTicket({
   switch (status) {
     case "pending":
       buttonLabel = buttonLabel ?? "Xác nhận";
-      buttonClass =
-        "bg-status-info text-white hover:bg-status-info/90 active:bg-status-info/80";
+      buttonClass = "bg-blue-700 text-white hover:bg-blue-800";
       break;
     case "cooking":
       // Đặc tả: bếp KHÔNG thao tác trên hệ thống. Phục vụ là người chuyển
       // ĐANG CHẾ BIẾN → ĐÃ PHỤC VỤ, nên nhãn nút là "Đã phục vụ" (không phải
       // "Đánh dấu xong" — chữ đó ngụ ý bếp bấm báo nấu xong).
       buttonLabel = buttonLabel ?? "Đã phục vụ";
-      buttonClass =
-        "bg-status-warning text-white hover:bg-status-warning/90 active:bg-status-warning/80";
+      buttonClass = "bg-amber-100 text-amber-950 hover:bg-amber-200";
       break;
     case "served":
       buttonLabel = buttonLabel ?? "Đã phục vụ";
@@ -74,8 +77,7 @@ export function KDSTicket({
       break;
     case "weighing":
       buttonLabel = buttonLabel ?? "Nhập số cân";
-      buttonClass =
-        "bg-status-danger text-white hover:bg-status-danger/90 active:bg-status-danger/80";
+      buttonClass = "bg-amber-800 text-white hover:bg-amber-900";
       break;
     default:
       buttonLabel = buttonLabel ?? "Thao tác";
@@ -83,67 +85,54 @@ export function KDSTicket({
   }
 
   return (
-    <div
+    <article
       className={cn(
-        "flex flex-col justify-between rounded-card border border-border-default bg-surface-card p-4 transition-all min-h-40 shadow-xs",
+        "flex min-w-0 flex-col gap-2 rounded-card border border-border-default bg-surface-card px-3 py-2.5",
         status === "weighing" &&
           "border-status-warning/50 bg-status-warning-subtle/40",
         className,
       )}
     >
-      {/* Badge cảnh báo phụ (VD "Chờ cân") */}
-      {badgeLabel ? (
-        <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-status-warning">
-          <span className="size-1.5 rounded-full bg-status-warning" />
-          {badgeLabel}
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs text-text-secondary">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <span className={cn(
+            "min-w-0 max-w-full rounded-md px-2 py-0.5 text-base font-bold leading-snug tabular-nums [overflow-wrap:anywhere] sm:text-lg",
+            tableLabelColors[tableId % tableLabelColors.length],
+          )}>
+            {tableLabel}
+          </span>
+          {badgeLabel ? <span className="rounded bg-amber-100 px-1.5 py-0.5 font-semibold text-amber-950">{badgeLabel}</span> : null}
+        </div>
+        <span className="shrink-0 tabular-nums">{timeAgo}</span>
+      </div>
+      <div className="flex min-w-0 items-center justify-between gap-2">
+        <h3 className="min-w-0 break-words text-sm font-bold leading-snug text-text-primary">
+          {quantity ?? 1}× {dishName}
+        </h3>
+        <button
+          type="button"
+          onClick={onAction}
+          className={cn(
+            "min-h-11 shrink-0 cursor-pointer rounded-md px-3 text-xs font-bold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2",
+            buttonClass,
+          )}
+        >
+          {buttonLabel}
+        </button>
+      </div>
+
+      {options?.length || note || hint ? (
+        <div className="space-y-1 break-words text-xs text-text-secondary">
+          {options?.length ? <p>{options.map((option) => option.optionItemName).join(" · ")}</p> : null}
+          {note ? <p className="font-semibold text-orange-900">Ghi chú: {note}</p> : null}
+          {hint ? (
+            <p className="flex items-start gap-1">
+              {status === "weighing" ? <Scale aria-hidden="true" className="size-3.5 shrink-0" /> : null}
+              <span className="min-w-0">{hint}</span>
+            </p>
+          ) : null}
         </div>
       ) : null}
-
-      {/* Header phiếu: Tên bàn & Thời gian */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="rounded-md bg-surface-muted px-2.5 py-1 text-xs font-bold text-text-primary">
-          {tableName}
-        </span>
-        <span className="text-xs text-text-tertiary">{timeAgo}</span>
-      </div>
-
-      {/* Nội dung món */}
-      <div className="my-4 space-y-1">
-        {/* Luôn hiển thị số lượng dạng "1× Tên món", kể cả khi số lượng = 1 (theo Figma) */}
-        <h4 className="text-base font-bold text-text-primary">
-          {quantity ?? 1}× {dishName}
-        </h4>
-        {/* Tuỳ chọn / ghi chú / hướng dẫn đều dùng màu cam thương hiệu như Figma,
-            để bếp đọc lướt vẫn thấy ngay yêu cầu riêng của món. */}
-        {options && options.length > 0 ? (
-          <div className="space-y-0.5">
-            {options.map((opt) => (
-              <p key={opt.id} className="text-xs text-brand-primary">
-                + {opt.optionItemName}
-              </p>
-            ))}
-          </div>
-        ) : null}
-        {note ? <p className="text-xs text-brand-primary">{note}</p> : null}
-        {hint ? (
-          <p className="flex items-center gap-1 text-xs text-brand-primary">
-            {status === "weighing" ? <Scale className="size-3" /> : null}
-            {hint}
-          </p>
-        ) : null}
-      </div>
-
-      {/* Nút hành động trạng thái KDS */}
-      <button
-        type="button"
-        onClick={onAction}
-        className={cn(
-          "flex h-10 w-full items-center justify-center rounded-button text-sm font-bold transition-colors outline-none",
-          buttonClass,
-        )}
-      >
-        {buttonLabel}
-      </button>
-    </div>
+    </article>
   );
 }
