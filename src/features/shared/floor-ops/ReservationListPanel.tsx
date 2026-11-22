@@ -21,6 +21,7 @@ import {
 import type { TableSession } from "@/types/models"
 
 interface ReservationListPanelProps {
+  canCancel?: boolean
   open: boolean
   onOpenChange: (open: boolean) => void
   /** Toàn bộ phiên đang hoạt động của chi nhánh; panel tự lọc ĐẶT TRƯỚC. */
@@ -81,6 +82,7 @@ export function ReservationListPanel({
   sessions,
   holdMinutes = DEFAULT_HOLD_MINUTES,
   onCreateReservation,
+  canCancel = false,
 }: ReservationListPanelProps) {
   const reservations = React.useMemo(
     () =>
@@ -171,7 +173,7 @@ export function ReservationListPanel({
                   holdMinutes={holdMinutes}
                   now={now}
                   onReceive={setSessionToOpen}
-                  onCancel={setSessionToCancel}
+                  onCancel={canCancel ? setSessionToCancel : undefined}
                 />
               )}
             </div>
@@ -200,7 +202,7 @@ export function ReservationListPanel({
         onClose={() => setSessionToOpen(null)}
       />
       <CancelReservationDialog
-        session={sessionToCancel}
+        session={canCancel ? sessionToCancel : null}
         onClose={() => setSessionToCancel(null)}
       />
     </>
@@ -219,7 +221,7 @@ function ReservationList({
   holdMinutes: number
   now: number
   onReceive: (session: TableSession) => void
-  onCancel: (session: TableSession) => void
+  onCancel?: (session: TableSession) => void
 }) {
   return (
     <ul className="space-y-3">
@@ -230,7 +232,7 @@ function ReservationList({
           holdMinutes={holdMinutes}
           now={now}
           onReceive={() => onReceive(session)}
-          onCancel={() => onCancel(session)}
+          onCancel={onCancel ? () => onCancel(session) : undefined}
         />
       ))}
     </ul>
@@ -248,7 +250,7 @@ function ReservationRow({
   holdMinutes: number
   now: number
   onReceive: () => void
-  onCancel: () => void
+  onCancel?: () => void
 }) {
   // BR-29: quá giờ hẹn + thời gian giữ chỗ thì job nền tự huỷ. Cảnh báo trước để nhân
   // viên kịp gọi khách, thay vì để lịch biến mất không báo gì.
@@ -304,9 +306,7 @@ function ReservationRow({
         <Button size="sm" className="flex-1" onClick={onReceive}>
           Nhận bàn
         </Button>
-        <Button size="sm" variant="outline" className="flex-1" onClick={onCancel}>
-          Huỷ đặt
-        </Button>
+        {onCancel && <Button size="sm" variant="outline" className="flex-1" onClick={onCancel}>Huỷ đặt</Button>}
       </div>
     </li>
   )

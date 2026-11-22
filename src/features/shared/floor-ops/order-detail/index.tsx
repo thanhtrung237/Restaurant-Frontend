@@ -1,6 +1,8 @@
 import * as React from "react";
 import { GuestJoinCode } from "../GuestJoinCode";
-import { useNavigate, useParams, generatePath } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams, generatePath } from "react-router-dom";
+import { StaffCallNotice } from "@/features/shared/floor-ops/StaffCallNotice";
+import { takeawayListPath } from "@/app/router/paths/takeaway.paths";
 import {
   ChevronLeft,
   Trash2,
@@ -86,6 +88,10 @@ const formatVnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`;
  */
 export default function OrderDetailPage() {
   const navigate = useNavigate();
+  const { key: locationKey } = useLocation();
+  const [params] = useSearchParams();
+  const targetRound = Number(params.get("round"));
+  const staffCallId = Number(params.get("staffCall"));
   const { orderId } = useParams<{ orderId: string }>(); // Thực chất là tableSessionId
   const { toast } = useToast();
 
@@ -186,6 +192,15 @@ export default function OrderDetailPage() {
       };
     });
   }, [orderDetails, orders]);
+
+  const hasTargetRound = targetRound > 0 && rounds.some((round) => round.id === targetRound);
+  React.useEffect(() => {
+    if (hasTargetRound) {
+      const target = document.getElementById(`order-round-${targetRound}`);
+      target?.scrollIntoView({ block: "center" });
+      target?.focus({ preventScroll: true });
+    }
+  }, [hasTargetRound, targetRound, locationKey]);
 
   const totalAmount = React.useMemo(() => {
     return orderDetails
@@ -386,6 +401,7 @@ export default function OrderDetailPage() {
         : role === APP_ROLE.CASHIER
           ? CASHIER_PATHS.TABLE_MAP
           : WAITER_PATHS.TABLE_MAP;
+  const listPath = session?.takeaway ? takeawayListPath(tableMapPath) : tableMapPath;
 
   /** Đóng phiên thật (CHỜ THANH TOÁN + hoá đơn đã phát hành → ĐÃ ĐÓNG). */
   async function handleCloseTable() {
@@ -394,7 +410,7 @@ export default function OrderDetailPage() {
       await closeSessionMutation.mutateAsync(tableSessionId);
       setIsCloseTableModalOpen(false);
       toast({ title: "Đã đóng bàn", description: "Bàn đã về trạng thái Trống.", variant: "success" });
-      navigate(tableMapPath);
+      navigate(listPath);
     } catch (error) {
       toast({
         title: "Không đóng được bàn",
@@ -426,7 +442,7 @@ export default function OrderDetailPage() {
       });
       setIsCancelSessionModalOpen(false);
       toast({ title: "Đã hủy phiên", description: "Bàn đã về trạng thái Trống.", variant: "success" });
-      navigate(tableMapPath);
+      navigate(listPath);
     } catch (error) {
       toast({
         title: "Không hủy được phiên",
@@ -532,7 +548,7 @@ export default function OrderDetailPage() {
         },
       },
     ];
-    if (canCloseTable && tableActionMode !== "none") {
+    if (!session?.takeaway && canCloseTable && tableActionMode !== "none") {
       actions.push({
         key: "close-table",
         label: tableActionLabel,
@@ -541,9 +557,9 @@ export default function OrderDetailPage() {
         onSelect: handleTableAction,
       });
     }
-    return actions;
+    return session?.takeaway ? actions.filter((action) => action.key !== "transfer") : actions;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canCloseTable, tableActionMode, tableActionLabel]);
+  }, [canCloseTable, tableActionMode, tableActionLabel, session?.takeaway]);
 
   const headerOverflow = React.useMemo(
     () => <HeaderOverflowMenu actions={overflowActions} />,
@@ -574,10 +590,10 @@ export default function OrderDetailPage() {
           <>
             <button
               type="button"
-              onClick={() => navigate(tableMapPath)}
+              onClick={() => navigate(listPath)}
               className="mr-1 inline-flex items-center gap-1 text-sm font-medium text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
             >
-              <ChevronLeft className="size-4" /> Về sơ đồ bàn
+              <ChevronLeft className="size-4" /> {session?.takeaway ? "Về đơn mang về" : "Về sơ đồ bàn"}
             </button>
             <Button
               type="button"
@@ -587,7 +603,7 @@ export default function OrderDetailPage() {
             >
               In phiếu chế biến
             </Button>
-            <Button
+            {!session?.takeaway && <Button
               type="button"
               variant="outline"
               onClick={() => {
@@ -606,10 +622,10 @@ export default function OrderDetailPage() {
               className="h-10 border-border-default px-4 text-text-secondary hover:bg-surface-muted hover:text-text-primary"
             >
               Chuyển / Gộp bàn
-            </Button>
+            </Button>}
             {/* Đóng bàn / Hủy phiên — nhãn và hành vi đổi theo trạng thái phiên.
                 Phục vụ không thấy; Hủy phiên chỉ QL chi nhánh + Quản trị NH. */}
-            {canCloseTable && tableActionMode !== "none" ? (
+            {!session?.takeaway && canCloseTable && tableActionMode !== "none" ? (
               <Button
                 type="button"
                 variant="outline"
@@ -623,6 +639,7 @@ export default function OrderDetailPage() {
         }
       />
 
+      {staffCallId > 0 && <StaffCallNotice notificationId={staffCallId} sessionId={tableSessionId} />}
       <div className="flex flex-1 flex-col gap-6 p-6 sm:p-8 lg:flex-row items-start">
         {/* ============================================================
             2. CỘT TRÁI: CÁC LƯỢT GỌI MÓN (GOM CHUNG 1 CARD DUY NHẤT)
@@ -636,10 +653,17 @@ export default function OrderDetailPage() {
             rounds.map((round, rIndex) => (
               <div
                 key={round.id}
-                className={cn(rIndex > 0 && "mt-6 pt-6 border-t border-border-default/60")}
+                id={`order-round-${round.id}`}
+                tabIndex={round.id === targetRound ? -1 : undefined}
+                aria-label={round.id === targetRound ? `Lượt gọi #${round.id}` : undefined}
+                className={cn(
+                  rIndex > 0 && "mt-6 pt-6 border-t border-border-default/60",
+                  round.id === targetRound && "scroll-mt-24 rounded-xl bg-brand-primary-subtle/30 p-4 outline-2 outline-brand-primary/60",
+                )}
               >
                 <p className="text-xs font-bold tracking-wider text-text-tertiary uppercase">
                   {round.label} · {round.time}
+                  {round.id === targetRound && <span className="ml-2 text-brand-primary">#{round.id}</span>}
                 </p>
 
                 <div className="mt-4 divide-y divide-border-default/40">
@@ -683,6 +707,9 @@ export default function OrderDetailPage() {
                               ) : null}
                             </div>
                             <StatusBadge type="orderDetail" status={item.status} />
+                            {item.isTakeAway && !session?.takeaway && (
+                              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-900">Mang về</span>
+                            )}
                           </div>
                           <div className="flex items-center gap-4 shrink-0">
                             <span className="text-sm text-text-secondary">x{item.quantity}</span>
@@ -710,7 +737,7 @@ export default function OrderDetailPage() {
                             ) : null}
                           </div>
 
-                          {phase ? (
+                          {phase && (!session?.takeaway || session.status === "SERVING") ? (
                             <button
                               type="button"
                               onClick={() => {
@@ -768,14 +795,15 @@ export default function OrderDetailPage() {
                 // navigate nên tự khớp đúng prefix theo vai trò (/phuc-vu, /quan-ly-chi-nhanh,
                 // /quan-tri-nha-hang) mà KHÔNG cần hardcode. Xem ADD_DISH trong *.paths.ts.
                 onClick={() => navigate("them-mon")}
+                disabled={Boolean(session?.takeaway && session.status !== "SERVING")}
                 className="w-full h-12 rounded-xl bg-brand-primary hover:bg-brand-primary-hover active:scale-[0.99] text-text-on-brand font-bold text-sm sm:text-base transition-all shadow-xs cursor-pointer"
               >
-                + Thêm món vào bàn
+                {session?.takeaway ? "+ Thêm món vào đơn" : "+ Thêm món vào bàn"}
               </button>
               <button
                 type="button"
                 onClick={handleCheckout}
-                disabled={isProcessingPay}
+                disabled={isProcessingPay || Boolean(session?.takeaway && invoiceIssued)}
                 className="w-full h-12 rounded-xl border border-brand-primary bg-surface-card hover:bg-brand-primary-subtle/30 active:scale-[0.99] text-brand-primary font-bold text-sm sm:text-base transition-all shadow-xs cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isProcessingPay ? "Đang xử lý..." : "Thanh Toán"}
@@ -793,7 +821,7 @@ export default function OrderDetailPage() {
           variant="outline"
           className="h-11 flex-1 border-brand-primary font-bold text-brand-primary"
           onClick={handleCheckout}
-          disabled={isProcessingPay}
+          disabled={isProcessingPay || Boolean(session?.takeaway && invoiceIssued)}
         >
           {isProcessingPay ? "Đang xử lý..." : "Thanh toán"}
         </Button>
@@ -801,6 +829,7 @@ export default function OrderDetailPage() {
           type="button"
           className="h-11 flex-1 font-bold"
           onClick={() => navigate("them-mon")}
+          disabled={Boolean(session?.takeaway && session.status !== "SERVING")}
         >
           + Thêm món
         </Button>
