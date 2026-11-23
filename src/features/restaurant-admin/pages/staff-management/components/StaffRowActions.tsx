@@ -1,5 +1,7 @@
 import React from "react"
 import { KeyRound, MoreHorizontal, Pencil, ShieldCheck, ShieldOff } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useEmployeeOperationalPermissions } from "@/api/operational-permissions.api"
 import { IconButton } from "@/components/ui/icon-button"
 import {
   DropdownMenu,
@@ -34,6 +36,8 @@ export const StaffRowActions: React.FC<{ staff: StaffRow } & StaffRowActionHandl
   onResetPassword,
   disableReasonOf,
 }) => {
+  const [showPermissions, setShowPermissions] = React.useState(false)
+  const permissions = useEmployeeOperationalPermissions(showPermissions ? staff.id : undefined)
   const isActive = staff.status === "ACTIVE"
   // Chỉ chặn chiều VÔ HIỆU HOÁ. Kích hoạt lại thì không bao giờ nguy hiểm.
   const blockedReason = isActive ? disableReasonOf(staff) : null
@@ -64,6 +68,9 @@ export const StaffRowActions: React.FC<{ staff: StaffRow } & StaffRowActionHandl
           </IconButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="right" className="w-60">
+          <DropdownMenuItem icon={<ShieldCheck />} onClick={() => setShowPermissions(true)}>
+            Xem quyền thực tế
+          </DropdownMenuItem>
           {/* `title` đặt trên thẻ bọc để tooltip vẫn hiện khi mục bị khoá */}
           <span title={blockedReason ?? undefined} className="block">
             <DropdownMenuItem
@@ -86,6 +93,28 @@ export const StaffRowActions: React.FC<{ staff: StaffRow } & StaffRowActionHandl
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <Dialog open={showPermissions} onOpenChange={setShowPermissions}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Quyền thực tế</DialogTitle>
+            <DialogDescription>{staff.fullName} · Quyền vận hành theo chi nhánh</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60dvh] space-y-3 overflow-y-auto">
+            {staff.status !== "ACTIVE" && <p className="text-sm">Tài khoản đang vô hiệu hóa.</p>}
+            {permissions.isLoading && <p role="status">Đang tải quyền…</p>}
+            {permissions.isError && <p role="alert">Chưa tải được quyền của nhân viên.</p>}
+            {permissions.data?.length === 0 && <p>Nhân viên chưa có phân công.</p>}
+            {permissions.data?.map((branch) => (
+              <section key={branch.branchId ?? "restaurant"} className="rounded-lg border border-border-default p-3 text-sm">
+                <h3 className="mb-1 font-semibold">{branch.branchName}</h3>
+                {branch.permissions.length ? <ul className="list-disc space-y-1 pl-5">
+                  {branch.permissions.map((permission) => <li key={permission.code}>{permission.label}</li>)}
+                </ul> : <p>Chưa có quyền vận hành được cấp.</p>}
+              </section>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
