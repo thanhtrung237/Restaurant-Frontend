@@ -1,23 +1,27 @@
+import { shareInvoiceQuote } from "@/api/invoices.api";
+import { getStaffPaymentPaths } from "@/app/router/paths/staff-payment.paths";
 import * as React from "react";
-import { useNavigate, useParams, generatePath } from "react-router-dom";
-import { Banknote, QrCode, Loader2, AlertTriangle } from "lucide-react";
+import { useLocation, useNavigate, useParams, generatePath } from "react-router-dom";
+import { useIsMutating } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
+import { PaymentMethodButtons } from "@/features/cashier/components/PaymentMethodButtons";
 
 import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
 import { usePageHeader } from "@/hooks/use-page-header";
-import { CASHIER_PATHS, BRANCH_MANAGER_PATHS } from "@/app/router/paths";
+import { CASHIER_PATHS, BRANCH_MANAGER_PATHS, RESTAURANT_ADMIN_PATHS } from "@/app/router/paths";
 import { getBankLabel } from "@/config/banks";
+import { hasBranchTransferAccount } from "@/features/cashier/lib/branch-transfer-account";
 import { useGoBack } from "@/hooks/use-go-back";
 import { useBill } from "@/hooks/useBill";
-import { ApiError, getErrorMessage, isApiStatus } from "@/lib/http";
+import { getErrorMessage, isApiStatus } from "@/lib/http";
 import { APP_ROLE } from "@/config/roles";
 import {
   useTableSession,
   useOrderDetailsBySession,
   useCreateInvoice,
-  useCreateManualDiscount,
   useInvoiceBySession,
   useInvoiceQrCode,
   useCreatePayment,
@@ -32,7 +36,10 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useAuthStore } from "@/stores/auth.store";
-import { useCheckoutStore } from "@/features/cashier/store/checkout.store";
+import { CheckoutLines } from "../checkout/CheckoutLines";
+import { qk } from "@/lib/query-keys";
+import { InvoicePrint, type InvoiceAmountRow } from "../e-invoice/InvoicePrint";
+import { groupInvoiceLines } from "../e-invoice/invoice-lines";
 
 const formatVnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`;
 
@@ -41,122 +48,61 @@ const formatVnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`;
 // sự thật duy nhất là dữ liệu trên backend, thay vì tự suy đoán ở mỗi phía.
 const POLL_INTERVAL_MS = 1000;
 
-/**
- * Tạo hoạ tiết QR giả lập (không gọi thư viện ngoài) — pattern tất định dựa trên
- * seed để mỗi hoá đơn có 1 mã QR "trông giống thật" nhưng ổn định giữa các lần render.
- */
-function PseudoQrCode({ seed, size = 220 }: { seed: string; size?: number }) {
-  const GRID = 21;
-  const cell = size / GRID;
-
-  const modules = React.useMemo(() => {
-    let h = 0;
-    for (let i = 0; i < seed.length; i++)
-      h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-    const rand = () => {
-      h = (h * 1664525 + 1013904223) >>> 0;
-      return h / 0xffffffff;
-    };
-    const grid: boolean[][] = Array.from({ length: GRID }, () =>
-      Array.from({ length: GRID }, () => rand() > 0.55),
-    );
-    const clearCorner = (r0: number, c0: number) => {
-      for (let r = r0; r < r0 + 7; r++)
-        for (let c = c0; c < c0 + 7; c++) grid[r][c] = false;
-    };
-    clearCorner(0, 0);
-    clearCorner(0, GRID - 7);
-    clearCorner(GRID - 7, 0);
-    return grid;
-  }, [seed]);
-
-  const Finder = ({ x, y }: { x: number; y: number }) => (
-    <g transform={`translate(${x * cell}, ${y * cell})`}>
-      <rect width={cell * 7} height={cell * 7} fill="#111111" />
-      <rect x={cell} y={cell} width={cell * 5} height={cell * 5} fill="#ffffff" />
-      <rect x={cell * 2} y={cell * 2} width={cell * 3} height={cell * 3} fill="#111111" />
-    </g>
-  );
-
-  return (
-    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} role="img" aria-label="Mã QR chuyển khoản">
-      <rect width={size} height={size} fill="#ffffff" />
-      {modules.map((row, r) =>
-        row.map((on, c) =>
-          on ? (
-            <rect key={`${r}-${c}`} x={c * cell} y={r * cell} width={cell} height={cell} fill="#111111" />
-          ) : null,
-        ),
-      )}
-      <Finder x={0} y={0} />
-      <Finder x={GRID - 7} y={0} />
-      <Finder x={0} y={GRID - 7} />
-    </svg>
-  );
+export default function QrTransferPaymentPage() {
+  const { tableSessionId: sessionIdParam } = useParams<{ tableSessionId: string }>();
+  return <QrTransferPayment key={sessionIdParam} tableSessionId={sessionIdParam ? Number(sessionIdParam) : undefined} />;
 }
 
-/**
- * Thanh toán · Chuyển khoản QR
- * Nguồn: Desktop / Thanh toán · Chuyển khoản QR
- *
- * SỬA LỖI ĐỒNG BỘ (09/2026): trước đây màn này dùng 1 `setTimeout` 4 giây để TỰ
- * COI NHƯ khách đã chuyển khoản xong, hoàn toàn không liên quan gì tới việc
- * khách có thực sự thao tác ở trang `payment-qr` (`/ban/:code/thanh-toan-qr`)
- * hay chưa → Thu ngân thấy "Đã nhận chuyển khoản" dù khách chưa làm gì cả.
- *
- * Luồng ĐÚNG bây giờ (đồng bộ qua backend, không có state giả ở FE):
- * 1. Vào màn này → tạo Invoice NGAY (POST /invoices) thay vì đợi tới lúc bấm nút
- *    cuối cùng — để trang khách hàng có hóa đơn để GET và thanh toán vào.
- * 2. Poll GET /invoices/session/{id} (giống hệt trang khách hàng).
- * 3. Khi khách thao tác xong ở trang `payment-qr` (tạo `Payment` đủ tiền),
- *    backend (`PaymentServiceImpl.processPayment`) tự set Invoice.status = PAID
- *    và tự đóng phiên bàn.
- * 4. Thu ngân CHỈ thấy "Đã nhận chuyển khoản" khi poll thấy invoice.status thực
- *    sự = PAID. Nút "Thu tiền & phát hành hoá đơn" lúc đó chỉ còn tác dụng điều
- *    hướng sang trang hoá đơn điện tử.
- *
- * Số tiền hiển thị lấy từ `useBill` / invoice của BE — FE KHÔNG tự tính.
- */
-export default function QrTransferPaymentPage() {
+function QrTransferPayment({ tableSessionId }: { tableSessionId?: number }) {
   const navigate = useNavigate();
-  const { tableSessionId: sessionIdParam } = useParams<{ tableSessionId: string }>();
+  const location = useLocation();
   const { toast } = useToast();
 
-  const tableSessionId = sessionIdParam ? parseInt(sessionIdParam, 10) : undefined;
   const currentUser = useAuthStore((s) => s.account);
-  const branchId = useAuthStore((s) => s.branchId);
   const role = useAuthStore((s) => s.role);
-  // Chuyển khoản QR chỉ có route dưới /thu-ngan (xem app/router/index.tsx) → fallback cố định.
-  const goBack = useGoBack(CASHIER_PATHS.TABLE_MAP);
+  const paymentPaths = getStaffPaymentPaths(role);
+  const goBack = useGoBack(paymentPaths?.TABLE_MAP ?? CASHIER_PATHS.TABLE_MAP);
   // Chỉ QL chi nhánh / Quản trị NH mới vào được trang Cấu hình chi nhánh (FR-BRN-02).
   // Thu ngân thấy cảnh báo nhưng không thấy nút — bấm vào cũng chỉ ra trang 403.
-  const canConfigBranch =
-    role === APP_ROLE.BRANCH_MANAGER || role === APP_ROLE.RESTAURANT_ADMIN;
 
   const { data: session, isLoading: sessionLoading } = useTableSession(tableSessionId);
   const { data: orderDetails = [], isLoading: orderDetailsLoading } = useOrderDetailsBySession(tableSessionId);
-  const { data: branch } = useBranch(branchId ?? undefined);
+  const branchId = session?.branchId;
+  const branchConfigPath = role === APP_ROLE.BRANCH_MANAGER
+    ? BRANCH_MANAGER_PATHS.CONFIG
+    : role === APP_ROLE.RESTAURANT_ADMIN && branchId
+      ? generatePath(RESTAURANT_ADMIN_PATHS.BRANCH_CONFIG, { branchId: String(branchId) })
+      : undefined;
+  const branchQuery = useBranch(branchId);
+  const hasBankConfig = branchQuery.isSuccess && hasBranchTransferAccount(branchQuery.data);
 
   // Lấy bill từ BE
   const { data: bill } = useBill(tableSessionId);
 
   const createInvoiceMutation = useCreateInvoice();
-  const createManualDiscountMutation = useCreateManualDiscount();
-
-  // Đọc state từ trang checkout (nếu đi từ trang đó)
-  const storedManualDiscount = useCheckoutStore((s) => s.manualDiscount);
-  const storedPromotion = useCheckoutStore((s) => s.selectedPromotion);
-  const setPaymentMethod = useCheckoutStore((s) => s.setPaymentMethod);
 
   // Nguồn sự thật DUY NHẤT cho việc "đã nhận chuyển khoản hay chưa": hóa đơn
   // thật lấy từ backend, poll liên tục — không dùng state cục bộ nào khác.
-  const { data: invoice, isFetched: invoiceFetched } = useInvoiceBySession(tableSessionId, {
-    refetchInterval: POLL_INTERVAL_MS,
+  const invoiceQuery = useInvoiceBySession(tableSessionId, {
+    refetchInterval: hasBankConfig ? POLL_INTERVAL_MS : undefined,
   });
-  const qrPaid = invoice?.status === "PAID";
+  const { data: invoice, isFetched: invoiceFetched } = invoiceQuery;
+  const invoiceLookupFailed = invoiceQuery.isError;
+  const qrPaid = invoice?.status === "PAID" || invoice?.status === "ISSUED";
 
-  // Lấy dữ liệu VietQR chính thức từ backend
-  const { data: qrData, isLoading: qrLoading, error: qrError } = useInvoiceQrCode(invoice?.id);
+  const qrQuery = useInvoiceQrCode(hasBankConfig && invoice?.status === "PENDING" ? invoice.id : undefined);
+  const { data: qrData, error: qrError, refetch: refetchQr } = qrQuery;
+  const qrAmountChanged = Boolean(qrData && invoice && (
+    qrData.grandTotal !== invoice.grandTotal ||
+    qrData.remainingAmount !== (invoice.remainingAmount ?? invoice.grandTotal)
+  ));
+  React.useEffect(() => {
+    if (qrAmountChanged && invoice?.status === "PENDING") void refetchQr();
+  }, [qrAmountChanged, invoice?.grandTotal, invoice?.remainingAmount, invoice?.status, refetchQr]);
+  const isBankAccountNotConfigured =
+    (branchQuery.isSuccess && !hasBankConfig) || isApiStatus(qrError, 409);
+  const [loadedQrUrl, setLoadedQrUrl] = React.useState("");
+  const [failedQrUrl, setFailedQrUrl] = React.useState("");
 
   /**
    * Tạo hoá đơn ĐÚNG MỘT LẦN cho mỗi phiên.
@@ -176,48 +122,63 @@ export default function QrTransferPaymentPage() {
 
   // Số tiền: ưu tiên invoice thật, sau đó tới bill preview của BE
   const grandTotal = invoice?.grandTotal ?? bill?.grandTotal ?? 0;
-  const remainingAmount = qrData?.remainingAmount ?? invoice?.remainingAmount ?? grandTotal;
-  const amountToCollect = remainingAmount > 0 ? remainingAmount : grandTotal;
+  const amountToCollect = qrData?.remainingAmount ?? invoice?.remainingAmount ?? grandTotal;
 
   const [confirmModalOpen, setConfirmModalOpen] = React.useState(false);
+  const [transferVerified, setTransferVerified] = React.useState(false);
   const [isConfirming, setIsConfirming] = React.useState(false);
+  const confirmingRef = React.useRef(false);
   const createPaymentMutation = useCreatePayment();
+  const adjusting = useIsMutating({ mutationKey: qk.orderDetails.checkoutRemoval }) > 0;
 
-  /**
-   * Chi nhánh CHƯA cấu hình tài khoản thì KHÔNG được hiện mã QR.
-   *
-   * Hai lớp, cố ý giữ cả hai:
-   *  1. Dữ liệu chi nhánh — chặn được NGAY, không phải đợi gọi API sinh QR, và hiện được
-   *     nút mở màn Cấu hình chi nhánh.
-   *  2. Mã **409** từ `GET /invoices/{id}/qr-code` — backend nay từ chối sinh QR khi chi
-   *     nhánh chưa cấu hình (be-issues mục 5, đã bỏ tài khoản hardcode). Lớp này bắt cả
-   *     trường hợp dữ liệu chi nhánh ở FE đã cũ.
-   */
-  const isBankAccountNotConfigured = qrError instanceof ApiError && qrError.status === 409;
-  const hasBankConfig =
-    Boolean(branch?.bankAccountNo && branch?.bankName) && !isBankAccountNotConfigured;
-
-  const bankAccountLabel = hasBankConfig
-    ? `${getBankLabel(branch?.bankName)} · ${branch?.bankAccountNo}`
-    : "";
-  const bankAccountOwner = hasBankConfig
-    ? (qrData?.accountName || branch?.restaurantName || branch?.name || "")
-    : "";
-  const transferContent = qrData?.transferContent || (invoice?.invoiceNumber ? `TT ${invoice.invoiceNumber.replace(/-/g, "")}` : "");
-
+  const hasValidQrData = Boolean(
+    qrData && qrData.invoiceId === invoice?.id && qrData.qrImageUrl?.trim() &&
+    qrData.bankName?.trim() && qrData.accountNo?.trim() && qrData.accountName?.trim() &&
+    qrData.transferContent?.trim() && Number.isFinite(qrData.remainingAmount) && qrData.remainingAmount > 0,
+  );
+  const [sharedQrUrl, setSharedQrUrl] = React.useState("");
+  const [shareError, setShareError] = React.useState<string | null>(null);
+  const [shareAttempt, setShareAttempt] = React.useState(0);
+  const validQrUrl = hasValidQrData && !qrAmountChanged && session?.status === "WAITING_FOR_PAY"
+    ? qrData?.qrImageUrl : undefined;
+  const qrInvoiceId = invoice?.id;
+  const qrInvoiceTotal = invoice?.grandTotal;
   React.useEffect(() => {
-    setPaymentMethod("BANK_TRANSFER");
-  }, [setPaymentMethod]);
+    if (!validQrUrl || qrInvoiceId === undefined || qrInvoiceTotal === undefined) return;
+    let active = true;
+    setShareError(null);
+    void shareInvoiceQuote(qrInvoiceId, qrInvoiceTotal).then(() => {
+      if (active) setSharedQrUrl(validQrUrl);
+    }).catch((error: unknown) => {
+      if (active) setShareError(getErrorMessage(error));
+    });
+    return () => { active = false; };
+  }, [validQrUrl, qrInvoiceId, qrInvoiceTotal, shareAttempt]);
+  const quoteReady = Boolean(validQrUrl && validQrUrl === sharedQrUrl);
+  const imageFailed = Boolean(failedQrUrl && failedQrUrl === qrData?.qrImageUrl);
+  const isSessionPayable = session?.status === "WAITING_FOR_PAY";
+  const canConfirmTransfer =
+    isSessionPayable && hasBankConfig && !invoiceLookupFailed && qrQuery.isSuccess && !invoiceCreating &&
+    !adjusting && quoteReady && hasValidQrData && !imageFailed && loadedQrUrl === qrData?.qrImageUrl
+    && qrData?.grandTotal === invoice?.grandTotal && qrData?.remainingAmount === (invoice?.remainingAmount ?? grandTotal)
+    && !orderDetails.some((item) => item.status === "PENDING_WEIGHT");
+  const bankAccountLabel = qrData ? `${getBankLabel(qrData.bankName)} · ${qrData.accountNo}` : "";
+  const hasRecordedPayment = (invoice?.totalPaid ?? qrData?.totalPaid ?? 0) > 0;
+  const canPrintPrebill = Boolean(canConfirmTransfer && invoice && qrData && orderDetails.length > 0);
+  const requestedPrebill = React.useRef(false);
+  React.useEffect(() => {
+    if (!location.state?.printPrebill || !canPrintPrebill || requestedPrebill.current) return;
+    requestedPrebill.current = true;
+    window.print();
+  }, [canPrintPrebill, location.state]);
+
 
   // Mọi giá trị HAY ĐỔI mà việc tạo hoá đơn cần đọc — để ngoài danh sách phụ thuộc của effect.
   // Gán ngay trong thân render: lần gọi nào cũng thấy giá trị mới nhất, mà không kích hoạt effect.
   const liveRef = React.useRef({
     invoice,
     session,
-    storedManualDiscount,
-    storedPromotion,
     createInvoice: createInvoiceMutation.mutateAsync,
-    createManualDiscount: createManualDiscountMutation.mutateAsync,
     toast,
   });
   // Cập nhật sau MỖI lần render (effect không có mảng phụ thuộc), và effect này khai trước
@@ -226,34 +187,17 @@ export default function QrTransferPaymentPage() {
     liveRef.current = {
       invoice,
       session,
-      storedManualDiscount,
-      storedPromotion,
       createInvoice: createInvoiceMutation.mutateAsync,
-      createManualDiscount: createManualDiscountMutation.mutateAsync,
       toast,
     };
   });
 
-  const syncedPromoIdRef = React.useRef<number | null | undefined>(undefined);
 
   /** Tạo hoặc đồng bộ hoá đơn cho phiên này. */
   const createInvoiceForSession = React.useCallback(async () => {
-    if (!tableSessionId || !branchId) return;
+    if (!tableSessionId || !branchId || !hasBankConfig || isBankAccountNotConfigured) return;
     const live = liveRef.current;
-    const targetPromoId = live.storedPromotion?.id ?? null;
-
-    if (live.invoice) {
-      if (live.invoice.status !== "PENDING") return;
-      // Không có KM chọn thủ công ở trang checkout → BE đã quyết định KM, không cần đồng bộ.
-      if (!live.storedPromotion) return;
-      if (live.invoice.promotionId === targetPromoId && syncedPromoIdRef.current === targetPromoId) {
-        return;
-      }
-      if (live.invoice.promotionId === targetPromoId) {
-        syncedPromoIdRef.current = targetPromoId;
-        return;
-      }
-    }
+    if (live.invoice) return;
 
     // Phiên không ở CHỜ THANH TOÁN thì backend từ chối — đừng gọi cho phí một request.
     if (live.session && live.session.status !== "WAITING_FOR_PAY") return;
@@ -261,24 +205,12 @@ export default function QrTransferPaymentPage() {
     setInvoiceCreating(true);
     setInvoiceCreateError(null);
     try {
-      const created = await live.createInvoice({
+      await live.createInvoice({
         branchId,
         tableSessionId,
-        promotionId: targetPromoId ?? undefined,
       });
-      syncedPromoIdRef.current = targetPromoId;
-      if (live.storedManualDiscount && !live.invoice) {
-        await live.createManualDiscount({
-          invoiceId: created.id,
-          type: live.storedManualDiscount.type,
-          value: live.storedManualDiscount.value,
-          reason: live.storedManualDiscount.reason,
-        });
-      }
     } catch (error) {
       const errMsg = getErrorMessage(error);
-      // Hoá đơn đã có sẵn (người khác vừa tạo, hoặc nhịp poll chưa kịp về) — không phải lỗi.
-      if (isApiStatus(error, 409) || errMsg.includes("đã tồn tại")) return;
       setInvoiceCreateError(errMsg);
       live.toast({
         title: "Chưa tạo được hoá đơn",
@@ -288,26 +220,21 @@ export default function QrTransferPaymentPage() {
     } finally {
       setInvoiceCreating(false);
     }
-  }, [tableSessionId, branchId]);
+  }, [tableSessionId, branchId, hasBankConfig, isBankAccountNotConfigured]);
 
   /**
    * Tạo hoặc đồng bộ khuyến mãi hoá đơn ngay khi vào màn QR — không đợi khách chuyển khoản xong.
    */
   React.useEffect(() => {
-    if (!tableSessionId || !branchId || !invoiceFetched) return;
-    const targetPromoId = storedPromotion?.id ?? null;
-    const needsPromoSync =
-      Boolean(storedPromotion) &&
-      invoice &&
-      invoice.status === "PENDING" &&
-      invoice.promotionId !== targetPromoId &&
-      syncedPromoIdRef.current !== targetPromoId;
-
-    if (invoiceAttemptedForSessionRef.current !== tableSessionId || needsPromoSync) {
+    if (
+      !tableSessionId || !branchId || !invoiceFetched || !hasBankConfig || isBankAccountNotConfigured ||
+      invoiceLookupFailed
+    ) return;
+    if (!invoice && invoiceAttemptedForSessionRef.current !== tableSessionId) {
       invoiceAttemptedForSessionRef.current = tableSessionId;
       void createInvoiceForSession();
     }
-  }, [tableSessionId, branchId, invoiceFetched, createInvoiceForSession, storedPromotion, invoice?.status, invoice?.promotionId]);
+  }, [tableSessionId, branchId, invoiceFetched, hasBankConfig, isBankAccountNotConfigured, invoiceLookupFailed, createInvoiceForSession, invoice]);
 
   /** Thu ngân bấm "Thử lại" — lần gọi lại DUY NHẤT do người dùng chủ động. */
   function handleRetryCreateInvoice() {
@@ -320,76 +247,84 @@ export default function QrTransferPaymentPage() {
     if (qrPaid && !wasQrPaidRef.current) {
       wasQrPaidRef.current = true;
       toast({
-        title: "Đã nhận chuyển khoản",
-        description: `Đã nhận đủ ${formatVnd(grandTotal)}.`,
+        title: "Hóa đơn đã thanh toán",
+        description: `Đã ghi nhận đủ ${formatVnd(grandTotal)}.`,
         variant: "success",
       });
     }
   }, [qrPaid, grandTotal, toast]);
 
+  const bankVerifiedInvoiceId = qrPaid && invoice?.payments?.some((payment) => payment.bankVerified) ? invoice.id : undefined;
+  React.useEffect(() => {
+    if (bankVerifiedInvoiceId == null || !paymentPaths) return;
+    navigate(generatePath(paymentPaths.E_INVOICE, { invoiceId: String(bankVerifiedInvoiceId) }), {
+      replace: true,
+      state: { autoPrint: true },
+    });
+  }, [bankVerifiedInvoiceId, navigate, paymentPaths]);
+
   function goBackToCash() {
-    if (!tableSessionId) return;
-    setPaymentMethod("CASH");
-    navigate(generatePath(CASHIER_PATHS.CHECKOUT, { tableSessionId: String(tableSessionId) }));
+    if (!tableSessionId || !paymentPaths || qrPaid || hasRecordedPayment || adjusting || confirmingRef.current) return;
+    navigate(generatePath(paymentPaths.CHECKOUT, { tableSessionId: String(tableSessionId) }));
   }
 
   function handleIssueInvoice() {
-    if (!invoice) return;
-    navigate(generatePath(CASHIER_PATHS.E_INVOICE, { invoiceId: String(invoice.id) }));
+    if (!invoice || !paymentPaths) return;
+    navigate(generatePath(paymentPaths.E_INVOICE, { invoiceId: String(invoice.id) }));
   }
 
-  // Thu ngân bấm xác nhận khách đã chuyển khoản thành công trong Modal
   async function handleConfirmPaymentAndIssue() {
-    if (!tableSessionId) return;
+    if (!paymentPaths || !canConfirmTransfer || !transferVerified || !invoice || !qrData || confirmingRef.current) return;
 
+    confirmingRef.current = true;
+    setIsConfirming(true);
     try {
-      setIsConfirming(true);
-
-      // 1. Đảm bảo có invoice
-      let currentInvoice = invoice;
-      if (!currentInvoice?.id) {
-        currentInvoice = await createInvoiceMutation.mutateAsync({
-          branchId: branchId || 1,
-          tableSessionId,
-          promotionId: storedPromotion?.id, // Từ store
+      const { data: latestQr } = await qrQuery.refetch({ throwOnError: true });
+      if (
+        !latestQr || latestQr.invoiceId !== invoice.id ||
+        latestQr.remainingAmount !== qrData.remainingAmount ||
+        latestQr.bankName !== qrData.bankName || latestQr.accountNo !== qrData.accountNo ||
+        latestQr.accountName !== qrData.accountName || latestQr.transferContent !== qrData.transferContent ||
+        latestQr.qrImageUrl !== qrData.qrImageUrl
+      ) {
+        setConfirmModalOpen(false);
+        setTransferVerified(false);
+        void invoiceQuery.refetch();
+        toast({
+          title: "Thông tin chuyển khoản đã thay đổi",
+          description: "Kiểm tra lại giao dịch theo thông tin mới.",
+          variant: "danger",
         });
-
-        // Áp manual discount nếu có từ store
-        if (storedManualDiscount) {
-          await createManualDiscountMutation.mutateAsync({
-            invoiceId: currentInvoice.id,
-            type: storedManualDiscount.type,
-            value: storedManualDiscount.value,
-            reason: storedManualDiscount.reason,
-          });
-        }
+        return;
       }
 
-      // 2. Thu tiền (tạo Payment record BANK_TRANSFER) — DÙNG AMOUNT TỪ INVOICE
       await createPaymentMutation.mutateAsync({
-        invoiceId: currentInvoice.id,
+        invoiceId: invoice.id,
         method: "BANK_TRANSFER",
-        amount: currentInvoice.remainingAmount || currentInvoice.grandTotal, // ← TỪ BE
+        amount: latestQr.remainingAmount,
       });
 
       toast({
-        title: "Xác nhận chuyển khoản thành công",
-        description: `Đã thu ${formatVnd(amountToCollect)} và đóng bàn thành công.`,
+        title: "Đã ghi nhận chuyển khoản",
+        description: `Đã ghi nhận ${formatVnd(latestQr.remainingAmount)}.`,
         variant: "success",
       });
 
       setConfirmModalOpen(false);
-
-      // 3. Chuyển sang màn hóa đơn điện tử
-      navigate(generatePath(CASHIER_PATHS.E_INVOICE, { invoiceId: String(currentInvoice.id) }));
+      navigate(generatePath(paymentPaths.E_INVOICE, { invoiceId: String(invoice.id) }));
     } catch (error) {
-      console.error("Lỗi khi xác nhận thanh toán:", error);
+      setConfirmModalOpen(false);
+      setTransferVerified(false);
+      if (isApiStatus(error, 409)) {
+        void invoiceQuery.refetch();
+      }
       toast({
-        title: "Lỗi xác nhận thanh toán",
-        description: error instanceof Error ? error.message : "Vui lòng thử lại",
+        title: "Chưa ghi nhận được chuyển khoản",
+        description: getErrorMessage(error),
         variant: "danger",
       });
     } finally {
+      confirmingRef.current = false;
       setIsConfirming(false);
     }
   }
@@ -434,9 +369,21 @@ export default function QrTransferPaymentPage() {
   const tableName = session.tableName || `Bàn #${session.tableId}`;
   const guestCount = session.guestCount || 0;
   const waiterName = currentUser?.fullName || "Thu ngân";
+  const prebillAmounts: InvoiceAmountRow[] = [
+    { label: "Tiền hàng", amount: bill?.grossSubTotal ?? 0 },
+    { label: "Khuyến mãi món", amount: -(bill?.itemPromotionDiscount ?? 0) },
+    { label: "Khuyến mãi đơn", amount: -(bill?.orderPromotionDiscount ?? 0) },
+    { label: "Chiết khấu tay", amount: -(bill?.manualDiscount ?? 0) },
+    { label: "Phí dịch vụ", amount: bill?.serviceFee ?? 0 },
+    { label: "VAT", amount: bill?.vatAmount ?? 0 },
+  ].filter(({ amount }) => amount !== 0);
 
   return (
     <div className="flex flex-1 flex-col min-h-screen bg-surface-page lg:flex-row">
+      {canPrintPrebill && invoice && qrData && (
+        <InvoicePrint invoice={invoice} issuedAt={new Date().toLocaleString("vi-VN")} tableName={tableName}
+          items={groupInvoiceLines(orderDetails)} amounts={prebillAmounts} transfer={qrData} />
+      )}
       {/* CỘT TRÁI: DANH SÁCH MÓN */}
       <div className="flex-1 p-6 sm:p-8">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -452,66 +399,11 @@ export default function QrTransferPaymentPage() {
           <StatusBadge type="tableSession" status={session.status} />
         </div>
 
-        <div className="mt-6 divide-y divide-border-default rounded-card border border-border-default bg-surface-card">
-          {orderDetails.length === 0 ? (
-            <div className="p-8 text-center">
-              <p className="text-sm text-text-tertiary">Chưa có món nào được gọi</p>
-            </div>
-          ) : (
-            orderDetails.map((detail) => (
-              <div key={detail.id} className="flex items-start gap-4 px-5 py-4">
-                <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-surface-muted text-xs font-bold text-text-secondary">
-                  {detail.quantity}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-text-primary">{detail.dishName}</p>
-                  {detail.options && detail.options.length > 0 ? (
-                    <div className="mt-0.5 space-y-0.5">
-                      {detail.options.map((opt) => (
-                        <p key={opt.id} className="text-xs text-text-tertiary">
-                          + {opt.optionItemName}
-                          {opt.priceSnapshot > 0
-                            ? ` +${opt.priceSnapshot.toLocaleString("vi-VN")}đ`
-                            : " (Miễn phí)"}
-                        </p>
-                      ))}
-                    </div>
-                  ) : null}
-                  {detail.note ? (
-                    <p className="mt-0.5 text-xs text-text-tertiary">{detail.note}</p>
-                  ) : null}
-                  <div className="mt-1">
-                    <StatusBadge type="orderDetail" status={detail.status} />
-                  </div>
-                </div>
-                <div className="flex flex-col items-end shrink-0">
-                  {detail.promotionDiscountAmount && detail.promotionDiscountAmount > 0 ? (
-                    <>
-                      <span className="text-xs text-text-tertiary line-through">
-                        {formatVnd((detail.price || 0) + detail.promotionDiscountAmount)}
-                      </span>
-                      <span className="text-sm font-bold text-brand-primary">
-                        {formatVnd(detail.price || 0)}
-                      </span>
-                      <span className="text-[11px] font-semibold text-status-success">
-                        -{formatVnd(detail.promotionDiscountAmount)}
-                        {detail.promotionName ? ` (${detail.promotionName})` : ""}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="shrink-0 text-sm font-bold text-text-primary">
-                      {formatVnd(detail.price || 0)}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+        <CheckoutLines details={orderDetails} session={session} busy={isConfirming || invoiceCreating} />
       </div>
 
       {/* CỘT PHẢI: THANH TOÁN QR */}
-      <div className="w-full shrink-0 border-t border-border-default bg-surface-card p-6 sm:p-8 lg:w-[380px] lg:border-t-0 lg:border-l">
+      <div className="order-first w-full shrink-0 border-b border-border-default bg-surface-card p-4 sm:p-8 lg:order-none lg:w-[380px] lg:border-b-0 lg:border-l">
         <h2 className="text-xl font-bold text-text-primary">Thanh toán</h2>
 
         <div className="mt-5 space-y-3">
@@ -572,163 +464,147 @@ export default function QrTransferPaymentPage() {
           <span className="text-2xl font-bold text-brand-primary">{formatVnd(grandTotal)}</span>
         </div>
 
-        <p className="mt-6 text-xs font-semibold tracking-wide text-text-tertiary">HÌNH THỨC THANH TOÁN</p>
-        <div className="mt-2.5 grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={goBackToCash}
-            className="flex flex-col items-center gap-2 rounded-md border border-border-default bg-surface-card py-4 text-sm font-semibold text-text-secondary transition-colors hover:border-border-strong"
-          >
-            <span className="flex size-8 items-center justify-center rounded-full bg-surface-muted text-text-tertiary">
-              <Banknote className="size-4" />
-            </span>
-            Tiền mặt
-          </button>
-          <button
-            type="button"
-            className="flex flex-col items-center gap-2 rounded-md border-2 border-brand-primary bg-surface-card py-4 text-sm font-semibold text-text-primary"
-          >
-            <span className="flex size-8 items-center justify-center rounded-full bg-brand-primary text-text-on-brand">
-              <QrCode className="size-4" />
-            </span>
-            Chuyển khoản QR
-          </button>
-        </div>
+        <PaymentMethodButtons
+          selected="BANK_TRANSFER"
+          cash={{ onClick: goBackToCash, disabled: qrPaid || hasRecordedPayment || adjusting || isConfirming }}
+        />
 
-        <div className="mt-6 flex flex-col items-center">
-          <p className="text-sm font-semibold text-text-primary">Quét mã để chuyển khoản</p>
-          <div className="mt-3 rounded-card border border-border-default p-2 bg-white flex items-center justify-center min-h-[220px]">
-            {!hasBankConfig ? (
-              <div className="flex max-w-[260px] flex-col items-center gap-3 px-3 py-8 text-center">
-                <span className="flex size-12 items-center justify-center rounded-full bg-status-warning-subtle text-status-warning">
-                  <AlertTriangle className="size-6" />
-                </span>
-                <p className="text-sm font-semibold text-text-primary">
-                  Chi nhánh chưa cấu hình tài khoản ngân hàng
+        {qrPaid ? (
+          <div className="mt-4 space-y-3">
+            <p role="status" className="text-sm font-semibold text-emerald-800">Hóa đơn đã thanh toán</p>
+            <Button type="button" className="w-full" onClick={handleIssueInvoice}>
+              {invoice?.status === "ISSUED" ? "Xem hóa đơn điện tử" : "Phát hành hóa đơn điện tử"}
+            </Button>
+          </div>
+        ) : invoice && grandTotal <= 0 ? (
+          <p role="status" className="mt-4 text-sm text-text-secondary">Phiếu tạm tính hiện không còn số tiền phải thu.</p>
+        ) : isBankAccountNotConfigured || branchQuery.isError ? (
+          <div className="mt-4 space-y-3 rounded-card border border-border-default bg-status-warning-subtle px-4 py-4">
+            <div role="status" className="space-y-1">
+              <p className="font-semibold text-text-primary">QR chưa khả dụng</p>
+              <p className="text-sm text-amber-950">
+                {isBankAccountNotConfigured
+                  ? "Chi nhánh chưa cấu hình tài khoản ngân hàng."
+                  : "Chưa kiểm tra được tài khoản nhận chuyển khoản."}
+              </p>
+            </div>
+            {hasRecordedPayment ? (
+              <p className="text-sm text-amber-950">Hóa đơn đã ghi nhận một phần thanh toán. Kiểm tra số tiền còn lại trước khi thu thêm.</p>
+            ) : (
+              <Button type="button" className="w-full bg-brand-primary-hover" onClick={goBackToCash}>
+                Chuyển sang tiền mặt
+              </Button>
+            )}
+            {isBankAccountNotConfigured && branchConfigPath ? (
+              <Button type="button" variant="ghost" className="w-full" onClick={() => navigate(branchConfigPath)}>
+                Mở cấu hình chi nhánh
+              </Button>
+            ) : branchQuery.isError ? (
+              <Button type="button" variant="ghost" className="w-full" onClick={() => void branchQuery.refetch()}>
+                Thử lại
+              </Button>
+            ) : null}
+          </div>
+        ) : !isSessionPayable || invoice?.status === "CANCELLED" ? (
+          <p role="status" className="mt-4 text-sm text-text-secondary">Phiên bàn hiện không thể thu tiền qua QR.</p>
+        ) : invoiceCreateError && !invoice ? (
+          <div className="mt-4 space-y-2">
+            <div role="alert">
+              <p className="font-semibold text-text-primary">Chưa tạo được hóa đơn</p>
+              <p className="text-sm text-text-secondary">{invoiceCreateError}</p>
+            </div>
+            <Button type="button" variant="outline" onClick={handleRetryCreateInvoice} disabled={invoiceCreating}>
+              Thử lại tạo hóa đơn
+            </Button>
+          </div>
+        ) : invoiceLookupFailed || qrQuery.isError || imageFailed || (qrQuery.isSuccess && !hasValidQrData) ? (
+          <div className="mt-4 space-y-2">
+            <p role="alert" className="text-sm font-medium text-text-primary">Chưa tải được mã QR chuyển khoản.</p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setFailedQrUrl("");
+                if (invoiceQuery.isError || qrData?.remainingAmount === 0) void invoiceQuery.refetch();
+                if (invoice?.status === "PENDING") void qrQuery.refetch();
+              }}
+            >
+              Thử tải lại mã QR
+            </Button>
+          </div>
+        ) : shareError ? (
+          <div className="mt-4 space-y-2" role="alert">
+            <p>{shareError}</p>
+            <Button type="button" variant="outline" onClick={() => {
+              void invoiceQuery.refetch();
+              setShareAttempt((attempt) => attempt + 1);
+            }}>Thử lại</Button>
+          </div>
+        ) : invoiceCreating || qrAmountChanged || (hasValidQrData && !quoteReady) ? (
+          <p role="status" className="mt-4 text-sm text-text-secondary">Đang cập nhật mã QR theo số tiền phải thu…</p>
+        ) : quoteReady && qrData ? (
+          <div className="mt-5 flex flex-col items-center gap-3">
+            <p className="text-sm font-semibold text-text-primary">Quét mã để chuyển khoản</p>
+            <img
+              src={qrData.qrImageUrl}
+              alt="Mã VietQR chuyển khoản"
+              className="aspect-square w-[230px] max-w-full rounded-md border border-border-default object-contain"
+              onLoad={() => setLoadedQrUrl(qrData.qrImageUrl)}
+              onError={() => {
+                setLoadedQrUrl("");
+                setFailedQrUrl(qrData.qrImageUrl);
+              }}
+            />
+            <div className="max-w-full text-center">
+              <p className="text-xl font-bold tabular-nums text-text-primary">{formatVnd(amountToCollect)}</p>
+              <p className="break-words text-sm font-medium text-text-primary">{bankAccountLabel}</p>
+              <p className="break-words text-sm text-text-secondary">{qrData.accountName}</p>
+              <p className="mt-2 break-words text-sm text-text-secondary">
+                Nội dung chuyển khoản · <strong className="text-text-primary">{qrData.transferContent}</strong>
+              </p>
+            </div>
+            {canConfirmTransfer ? (
+              <>
+                <p role="status" className="text-sm text-text-secondary">
+                  {qrData.automaticVerification ? "Đang chờ ngân hàng xác nhận chuyển khoản" : "Đang chờ khách chuyển khoản"}
                 </p>
-                <p className="text-xs text-text-tertiary">
-                  Vào Cấu hình chi nhánh để thiết lập, rồi quay lại màn này.
-                </p>
-                {canConfigBranch ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-9 px-4 text-xs"
-                    onClick={() => navigate(BRANCH_MANAGER_PATHS.CONFIG)}
-                  >
-                    Mở Cấu hình chi nhánh
-                  </Button>
-                ) : null}
-              </div>
-            ) : invoiceCreateError && !invoice ? (
-              /* Tạo hoá đơn hỏng: DỪNG hẳn, nói lý do, chờ Thu ngân bấm "Thử lại".
-                 Không tự gọi lại — đó chính là cái đã gây vòng lặp ~74 request/giây. */
-              <div className="flex max-w-[260px] flex-col items-center gap-3 px-3 py-8 text-center">
-                <span className="flex size-12 items-center justify-center rounded-full bg-status-danger-subtle text-status-danger">
-                  <AlertTriangle className="size-6" />
-                </span>
-                <p className="text-sm font-semibold text-text-primary">Chưa tạo được hoá đơn</p>
-                <p className="text-xs text-text-tertiary">{invoiceCreateError}</p>
+                <Button type="button" variant="outline" className="w-full" disabled={!canPrintPrebill} onClick={() => window.print()}>
+                  In tạm tính có QR
+                </Button>
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-9 px-4 text-xs"
-                  onClick={handleRetryCreateInvoice}
-                  disabled={invoiceCreating}
+                  className="w-full whitespace-normal"
+                  onClick={() => {
+                    setTransferVerified(false);
+                    setConfirmModalOpen(true);
+                  }}
                 >
-                  {invoiceCreating ? "Đang thử lại..." : "Thử lại"}
+                  Đối chiếu giao dịch
                 </Button>
-              </div>
-            ) : invoiceCreating && !invoice ? (
-              <div className="flex h-[200px] w-[200px] flex-col items-center justify-center gap-2">
-                <Loader2 className="size-7 animate-spin text-brand-primary" />
-                <span className="text-xs text-text-tertiary">Đang tạo hoá đơn...</span>
-              </div>
-            ) : qrData?.qrImageUrl ? (
-              <img
-                src={qrData.qrImageUrl}
-                alt="VietQR Chuyển khoản"
-                className="w-[230px] max-w-full rounded-md object-contain"
-              />
-            ) : qrLoading ? (
-              <div className="flex h-[200px] w-[200px] flex-col items-center justify-center gap-2">
-                <Loader2 className="size-7 animate-spin text-brand-primary" />
-                <span className="text-xs text-text-tertiary">Đang tạo mã VietQR...</span>
-              </div>
+              </>
             ) : (
-              <PseudoQrCode seed={`${session.id}-${grandTotal}`} />
+              <p role="status" className="text-sm text-text-secondary">Đang chuẩn bị mã QR…</p>
             )}
           </div>
-          <p className="mt-4 text-xl font-bold text-brand-primary">{formatVnd(amountToCollect)}</p>
-          <p className="mt-1 text-sm font-medium text-text-primary">{bankAccountLabel}</p>
-          {bankAccountOwner ? <p className="text-xs text-text-tertiary">{bankAccountOwner}</p> : null}
-          {transferContent ? (
-            <p className="mt-2 text-xs font-semibold text-text-secondary bg-surface-muted px-3 py-1 rounded-md">
-              Nội dung CK: <span className="font-bold text-brand-primary">{transferContent}</span>
-            </p>
-          ) : null}
-
-          <div className="mt-4">
-            {qrPaid ? (
-              <span className="inline-flex items-center gap-1.5 rounded-pill bg-status-success-subtle px-3 py-1.5 text-xs font-semibold text-status-success">
-                <span className="size-1.5 rounded-full bg-status-success" />
-                Đã nhận chuyển khoản
-              </span>
-            ) : invoiceCreateError && !invoice ? (
-              /* Chưa có hoá đơn thì chưa có gì để khách chuyển — đừng báo "đang chờ khách". */
-              <span className="inline-flex items-center gap-1.5 rounded-pill bg-status-danger-subtle px-3 py-1.5 text-xs font-semibold text-status-danger">
-                <AlertTriangle className="size-3.5" />
-                Chưa tạo được hoá đơn
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 rounded-pill bg-status-warning-subtle px-3 py-1.5 text-xs font-semibold text-status-warning">
-                <Loader2 className="size-3.5 animate-spin" />
-                Đang chờ khách chuyển khoản...
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="mt-8">
-          {qrPaid ? (
-            <Button
-              className="w-full bg-status-success hover:bg-status-success-hover text-white font-bold"
-              size="lg"
-              onClick={handleIssueInvoice}
-            >
-              Phát hành hoá đơn điện tử
-            </Button>
-          ) : invoiceCreateError && !invoice ? (
-            <Button
-              className="w-full"
-              variant="outline"
-              size="lg"
-              onClick={handleRetryCreateInvoice}
-              disabled={invoiceCreating}
-            >
-              {invoiceCreating ? "Đang thử lại..." : "Thử lại tạo hoá đơn"}
-            </Button>
-          ) : (
-            <Button
-              className="w-full bg-brand-primary hover:bg-brand-primary-hover text-white font-bold shadow-sm"
-              size="lg"
-              onClick={() => setConfirmModalOpen(true)}
-            >
-              Khách hàng đã chuyển khoản xong
-            </Button>
-          )}
-        </div>
+        ) : (
+          <p role="status" className="mt-4 flex items-center gap-2 text-sm text-text-secondary">
+            <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+            {hasBankConfig ? "Đang chuẩn bị mã QR…" : "Đang kiểm tra tài khoản nhận chuyển khoản…"}
+          </p>
+        )}
       </div>
 
-      {/* Modal xác nhận khách hàng đã chuyển khoản xong */}
-      <Dialog open={confirmModalOpen} onOpenChange={setConfirmModalOpen}>
+      <Dialog open={confirmModalOpen && canConfirmTransfer} onOpenChange={(open) => {
+        if (!isConfirming) setConfirmModalOpen(open);
+      }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-text-primary">
-              Xác nhận đã nhận chuyển khoản
+              Đối chiếu giao dịch chuyển khoản
             </DialogTitle>
             <DialogDescription className="text-text-secondary text-sm">
-              Kiểm tra thông tin chuyển khoản trước khi xác nhận thu tiền và phát hành hóa đơn cho bàn.
+              Mở lịch sử giao dịch trong ứng dụng ngân hàng của quán. Kiểm tra giao dịch ghi có khớp với thông tin bên dưới.
             </DialogDescription>
           </DialogHeader>
 
@@ -745,17 +621,24 @@ export default function QrTransferPaymentPage() {
               <span className="text-text-tertiary">Tài khoản nhận:</span>
               <span className="font-medium text-text-primary">{bankAccountLabel}</span>
             </div>
-            {transferContent ? (
+            {qrData?.transferContent ? (
               <div className="flex justify-between items-center pt-2 border-t border-border-default/50">
                 <span className="text-text-tertiary">Nội dung CK:</span>
-                <span className="font-mono font-bold text-brand-primary">{transferContent}</span>
+                <span className="break-all font-semibold text-text-primary">{qrData.transferContent}</span>
               </div>
             ) : null}
           </div>
 
-          <div className="rounded-[12px] bg-status-warning-subtle/60 p-3 text-xs text-[#B54708] leading-relaxed">
-            ⚠️ <strong>Lưu ý:</strong> Vui lòng kiểm tra thông báo biến động số dư hoặc ứng dụng ngân hàng của quán để chắc chắn đã nhận đủ tiền trước khi xác nhận.
-          </div>
+          <label className="flex min-h-11 items-start gap-3 rounded-md border border-border-default p-3 text-sm text-text-primary">
+            <input
+              type="checkbox"
+              className="mt-0.5 size-4 shrink-0 accent-brand-primary"
+              checked={transferVerified}
+              onChange={(event) => setTransferVerified(event.target.checked)}
+              disabled={isConfirming}
+            />
+            Tôi đã thấy tiền vào đúng tài khoản, khớp số tiền và nội dung chuyển khoản.
+          </label>
 
           <DialogFooter className="mt-4 flex gap-2 sm:justify-end">
             <Button
@@ -764,15 +647,15 @@ export default function QrTransferPaymentPage() {
               disabled={isConfirming}
               onClick={() => setConfirmModalOpen(false)}
             >
-              Chưa nhận được
+              Quay lại
             </Button>
             <Button
               type="button"
               className="bg-brand-primary hover:bg-brand-primary-hover text-white font-bold"
-              disabled={isConfirming}
+              disabled={isConfirming || !transferVerified}
               onClick={handleConfirmPaymentAndIssue}
             >
-              {isConfirming ? "Đang xử lý..." : "Xác nhận & Thu tiền"}
+              {isConfirming ? "Đang xử lý…" : "Ghi nhận chuyển khoản"}
             </Button>
           </DialogFooter>
         </DialogContent>
