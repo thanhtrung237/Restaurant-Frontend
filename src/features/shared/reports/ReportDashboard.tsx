@@ -36,9 +36,10 @@ const TAB_HEADER_META: Record<
 interface ReportDashboardProps {
   /** Quản trị NH: có tab "So sánh chi nhánh" (mặc định). QL chi nhánh: KHÔNG có tab này (mục 4.3). */
   showBranchCompare?: boolean
+  canExport?: boolean
 }
 
-export function ReportDashboard({ showBranchCompare = true }: ReportDashboardProps = {}) {
+export function ReportDashboard({ showBranchCompare = true, canExport = true }: ReportDashboardProps = {}) {
   const { toast } = useToast()
   const { account, role, branchId } = useAuthStore()
   const [currentTab, setCurrentTab] = React.useState<string>("daily")
@@ -228,7 +229,7 @@ export function ReportDashboard({ showBranchCompare = true }: ReportDashboardPro
             onChangeRange={setDateRange}
             selectedMetric={selectedMetric}
             onSelectMetric={setSelectedMetric}
-            onExport={handleExport}
+            onExport={canExport ? handleExport : undefined}
             isExporting={isExporting}
             hourlyStartHour={hourlyStartHour}
             hourlyEndHour={hourlyEndHour}
@@ -250,7 +251,7 @@ export function ReportDashboard({ showBranchCompare = true }: ReportDashboardPro
               value="daily"
               className="pb-3 text-sm font-medium text-text-tertiary transition-colors data-[state=active]:font-semibold data-[state=active]:text-brand-primary after:h-0.5 after:bg-transparent data-[state=active]:after:bg-brand-primary"
             >
-              Theo ngày
+              Theo thời gian
             </TabsTrigger>
             <TabsTrigger
               value="hourly"
@@ -274,7 +275,6 @@ export function ReportDashboard({ showBranchCompare = true }: ReportDashboardPro
               branchIds={selectedBranchIds}
               from={dateFrom}
               to={dateTo}
-              groupBy="DAY"
             />
           </TabsContent>
 

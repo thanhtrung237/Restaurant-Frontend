@@ -315,6 +315,9 @@ function describeChange(log: AuditLog): { description: string; detail?: string }
 
   // ── Phân quyền ─────────────────────────────────────────────────────────────
   if (action === "PERMISSION_CHANGE") {
+    if (entity === "OperationalPermission" || entity === "BranchStaffAssignment") {
+      return { description: reason ?? "Cập nhật quyền vận hành", detail: `${log.valueBefore ?? "—"} → ${log.valueAfter ?? "—"}` }
+    }
     return { description: reason ?? "Thay đổi phân quyền nhân viên" }
   }
 

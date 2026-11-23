@@ -24,7 +24,7 @@ interface ReportHeaderProps {
   onChangeRange: (range: DateRangeValue) => void
   selectedMetric?: string
   onSelectMetric?: (metric: string) => void
-  onExport: (format: "xlsx" | "csv") => void
+  onExport?: (format: "xlsx" | "csv") => void
   isExporting?: boolean
   hourlyStartHour?: number
   hourlyEndHour?: number
@@ -255,7 +255,7 @@ export function ReportHeaderActions({
         )}
 
         {/* Export Button & Dropdown (FR-RPT-05: Xuất .xlsx / .csv) */}
-        <DropdownMenu>
+        {onExport && <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               disabled={isExporting}
@@ -297,7 +297,7 @@ export function ReportHeaderActions({
               </div>
             </DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
+        </DropdownMenu>}
       </div>
     </>
   )

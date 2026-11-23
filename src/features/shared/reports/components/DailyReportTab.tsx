@@ -14,7 +14,10 @@ import {
 import { computeGrowthTrend, formatCurrency, formatNumber } from "@/lib/format"
 import {
   differenceInCalendarDays,
+  differenceInCalendarMonths,
   eachDayOfInterval,
+  eachMonthOfInterval,
+  eachYearOfInterval,
   format as formatDate,
   isToday,
   isYesterday,
@@ -25,14 +28,12 @@ interface DailyReportTabProps {
   branchIds: number[]
   from: string
   to: string
-  groupBy: "DAY" | "MONTH"
 }
 
 export function DailyReportTab({
   branchIds,
   from,
   to,
-  groupBy,
 }: DailyReportTabProps) {
   // Compute previous period dates for trend comparisons
   const fromDate = new Date(from)
@@ -48,6 +49,9 @@ export function DailyReportTab({
   // Số ngày trong khoảng thời gian được lọc
   const totalDays = Math.max(1, differenceInCalendarDays(toDate, fromDate) + 1)
   const isSingleDay = totalDays === 1
+  const totalMonths = differenceInCalendarMonths(toDate, fromDate) + 1
+  const period = totalDays <= 31 ? "day" : totalMonths <= 24 ? "month" : "year"
+  const groupBy = period === "day" ? "DAY" : "MONTH"
 
   // Fetch current period data (for stat cards, payment methods, summary & daily trend)
   const {
@@ -162,42 +166,24 @@ export function DailyReportTab({
     previousData.totalGuests
   )
 
-  // Convert to Vietnamese day abbreviation
-  const dayAbbreviations = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"]
-  const fullDayNames = [
-    "Chủ nhật",
-    "Thứ 2",
-    "Thứ 3",
-    "Thứ 4",
-    "Thứ 5",
-    "Thứ 6",
-    "Thứ 7",
-  ]
-
-  // Map trend data from backend by date string (YYYY-MM-DD)
+  const keyFormat = { day: "yyyy-MM-dd", month: "yyyy-MM", year: "yyyy" }[period]
+  const labelFormat = { day: "dd/MM", month: "MM/yy", year: "yyyy" }[period]
+  const detailFormat = { day: "dd/MM/yyyy", month: "'Tháng' MM/yyyy", year: "'Năm' yyyy" }[period]
   const trendMap = new Map<string, number>()
-  if (currentData?.trend) {
-    for (const point of currentData.trend) {
-      const dateKey = point.label.split("T")[0].trim()
-      trendMap.set(dateKey, parseFloat(point.revenue) || 0)
-    }
+  for (const point of currentData.trend ?? []) {
+    const key = point.label.trim().slice(0, keyFormat.length)
+    trendMap.set(key, (trendMap.get(key) ?? 0) + (parseFloat(point.revenue) || 0))
   }
 
-  // Generate all consecutive days within the selected date range
-  const allDays = eachDayOfInterval({ start: fromDate, end: toDate })
-  const dailyRevenueData: DailyRevenueItem[] = allDays.map((d) => {
-    const dateKey = formatDate(d, "yyyy-MM-dd")
-    const dayOfWeek = d.getDay()
+  const interval = { start: fromDate, end: toDate }
+  const eachPeriod = { day: eachDayOfInterval, month: eachMonthOfInterval, year: eachYearOfInterval }[period]
+  const revenueData: DailyRevenueItem[] = eachPeriod(interval).map((date) => {
+    const key = formatDate(date, keyFormat)
     return {
-      day:
-        totalDays <= 7
-          ? dayAbbreviations[dayOfWeek]
-          : totalDays > 14
-          ? formatDate(d, "dd")
-          : formatDate(d, "dd/MM"),
-      fullDay: `${fullDayNames[dayOfWeek]}, ${formatDate(d, "dd/MM/yyyy")}`,
-      date: dateKey,
-      revenue: trendMap.get(dateKey) ?? 0,
+      day: formatDate(date, labelFormat),
+      fullDay: formatDate(date, detailFormat),
+      date: key,
+      revenue: trendMap.get(key) ?? 0,
     }
   })
 
@@ -210,7 +196,9 @@ export function DailyReportTab({
   }))
 
   // Tiêu đề biểu đồ linh hoạt theo khoảng thời gian được lọc
-  let chartTitle = `Doanh thu theo ngày (${formatDate(fromDate, "dd/MM")} – ${formatDate(toDate, "dd/MM/yyyy")})`
+  const periodLabel = { day: "ngày", month: "tháng", year: "năm" }[period]
+  const rangeLabel = `${formatDate(fromDate, "dd/MM/yyyy")} – ${formatDate(toDate, "dd/MM/yyyy")}`
+  let chartTitle = `Doanh thu theo ${periodLabel}`
   if (isSingleDay) {
     if (isToday(fromDate)) {
       chartTitle = `Doanh thu theo khung giờ · Hôm nay (${formatDate(fromDate, "dd/MM/yyyy")})`
@@ -219,8 +207,6 @@ export function DailyReportTab({
     } else {
       chartTitle = `Doanh thu theo khung giờ · Ngày ${formatDate(fromDate, "dd/MM/yyyy")}`
     }
-  } else if (totalDays === 7) {
-    chartTitle = `Doanh thu 7 ngày qua (${formatDate(fromDate, "dd/MM")} – ${formatDate(toDate, "dd/MM/yyyy")})`
   }
 
   return (
@@ -257,7 +243,7 @@ export function DailyReportTab({
 
       {/* Row: Dynamic Revenue Bar Chart + Payment Methods Breakdown (FR-RPT-01) */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        <div className="lg:col-span-7 xl:col-span-8">
+        <div className="min-w-0 lg:col-span-7 xl:col-span-8">
           {isSingleDay ? (
             <HourlyRevenueBarChart
               data={hourlyRevenueData}
@@ -265,15 +251,15 @@ export function DailyReportTab({
             />
           ) : (
             <RevenueBarChart
-              data={dailyRevenueData}
+              data={revenueData}
               title={chartTitle}
+              subtitle={rangeLabel}
             />
           )}
         </div>
-        <div className="lg:col-span-5 xl:col-span-4">
+        <div className="min-w-0 lg:col-span-5 xl:col-span-4">
           <PaymentMethodBreakdownCard
             revenueByPaymentMethod={currentData.revenueByPaymentMethod}
-            totalRevenue={currentRevenue}
           />
         </div>
       </div>
