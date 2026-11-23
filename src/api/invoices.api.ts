@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { apiDelete, apiGet, apiPost, retryUnlessStatus } from "@/lib/http"
+import { apiDelete, apiGet, apiPost, isApiStatus, retryUnlessStatus } from "@/lib/http"
 import { qk } from "@/lib/query-keys"
 import type { Invoice, InvoiceListItem } from "@/types/models"
 import type { InvoiceStatus } from "@/types/enums"
 import type { InvoiceCreateRequest } from "@/types/requests"
 
 export interface QrCodeResponse {
+  automaticVerification?: boolean
   invoiceId: number
   invoiceNumber: string
   remainingAmount: number
@@ -25,8 +26,20 @@ export function createInvoice(body: InvoiceCreateRequest) {
 export function getInvoice(id: number) {
   return apiGet<Invoice>(`/invoices/${id}`)
 }
-export function getInvoiceBySession(tableSessionId: number) {
-  return apiGet<Invoice>(`/invoices/session/${tableSessionId}`)
+export function shareInvoiceQuote(id: number, expectedTotal: number) {
+  return apiPost<void>(`/invoices/${id}/share-quote`, { expectedTotal })
+}
+export async function getInvoiceBySession(tableSessionId: number): Promise<Invoice | null> {
+  try {
+    return await apiGet<Invoice>(`/invoices/session/${tableSessionId}`)
+  } catch (error) {
+    // Một phiên đang chờ thanh toán có thể chưa lập hóa đơn.
+    if (isApiStatus(error, 404)) return null
+    throw error
+  }
+}
+export function reportPaymentQrOpened(tableSessionId: number, expectedTotal: number) {
+  return apiPost<void>(`/invoices/session/${tableSessionId}/qr-opened`, { expectedTotal })
 }
 export function getInvoiceQrCode(id: number) {
   return apiGet<QrCodeResponse>(`/invoices/${id}/qr-code`)
@@ -48,10 +61,6 @@ export function issueEInvoice(id: number) {
   return apiPost<Invoice>(`/invoices/${id}/issue`)
 }
 
-/**
- * Poll hoá đơn sau khi khách chuyển khoản QR: BE chưa có webhook báo về,
- * nên màn `payment-qr` truyền `refetchInterval` và chờ `status` chuyển sang PAID.
- */
 export function useInvoice(id?: number, options?: { refetchInterval?: number }) {
   return useQuery({
     queryKey: qk.invoices.detail(id as number),
@@ -62,24 +71,17 @@ export function useInvoice(id?: number, options?: { refetchInterval?: number }) 
     retry: retryUnlessStatus([404]),
   })
 }
-/**
- * Poll hoá đơn sau khi khách chuyển khoản QR: BE chưa có webhook báo về,
- * nên màn `payment-qr` truyền `refetchInterval` và chờ `status` chuyển sang PAID.
- */
+/** Đọc hóa đơn theo phiên và theo dõi trạng thái định kỳ nếu màn thanh toán yêu cầu. */
 export function useInvoiceBySession(
   tableSessionId?: number,
-  options?: { refetchInterval?: number; enabled?: boolean; retry?: boolean | number }
+  options?: { refetchInterval?: number | ((query: { state: { data: Invoice | null | undefined } }) => number | false); enabled?: boolean; retry?: boolean | number }
 ) {
   return useQuery({
     queryKey: qk.invoices.bySession(tableSessionId as number),
     queryFn: () => getInvoiceBySession(tableSessionId as number),
     enabled: options?.enabled !== false && typeof tableSessionId === "number",
     refetchInterval: options?.refetchInterval,
-    // Phiên chưa được Thu ngân lập hoá đơn thì endpoint trả **404** — đó là trạng thái bình
-    // thường ("chưa có"), không phải lỗi mạng. Mặc định của react-query (`retry: 1`) sẽ thử
-    // lại kèm backoff, làm màn hình treo ở vòng xoay vài giây dù backend đã trả lời xong.
-    // Nên mặc định ở đây là KHÔNG thử lại với 404; lỗi thật (mất mạng, 500) vẫn thử lại 1 lần.
-    retry: options?.retry ?? retryUnlessStatus([404]),
+    retry: options?.retry,
   })
 }
 export function useInvoicesByBranch(branchId?: number, status?: InvoiceStatus) {

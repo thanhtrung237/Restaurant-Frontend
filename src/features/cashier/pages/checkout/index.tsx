@@ -1,6 +1,8 @@
+import { getStaffPaymentPaths } from "@/app/router/paths/staff-payment.paths";
+import { takeawayListPath } from "@/app/router/paths/takeaway.paths";
 import * as React from "react";
 import { useNavigate, useParams, generatePath } from "react-router-dom";
-import { Banknote, QrCode, FileStack, ChevronLeft, Trash2, Tag } from "lucide-react";
+import { FileStack, ChevronLeft, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
 import { StatusBadge } from "@/components/common/StatusBadge";
@@ -8,7 +10,10 @@ import {
   HeaderOverflowMenu,
   type OverflowMenuAction,
 } from "@/components/layout/HeaderOverflowMenu";
-import { StickyActionBar } from "@/components/layout/StickyActionBar";
+import { useInvoiceBySession } from "@/api/invoices.api";
+import { useSaveInvoiceDiscount, usePendingDiscountApproval, useDecideDiscountApproval, type InvoiceDiscountInput } from "@/api/manual-discounts.api";
+import { useBranch } from "@/api/branches.api";
+import { hasBranchTransferAccount } from "@/features/cashier/lib/branch-transfer-account";
 import { useToast } from "@/hooks/use-toast";
 import { usePageHeader } from "@/hooks/use-page-header";
 import { CASHIER_PATHS } from "@/app/router/paths";
@@ -20,29 +25,16 @@ import {
   useOrderDetailsBySession,
   useCreateInvoice,
   useCreatePayment,
-  useCreateManualDiscount,
-  useCloseSession,
 } from "@/features/cashier/api";
 import { useAuthStore } from "@/stores/auth.store";
 import { ManualDiscountModal } from "@/features/cashier/components/ManualDiscountModal";
-import { PromotionSelectModal } from "@/features/cashier/components/PromotionSelectModal";
-import { useActivePromotionsByBranch } from "@/api/promotions.api";
-import type { Promotion } from "@/types/models";
-import { useCheckoutStore, type ManualDiscountInput, type ManualDiscountState } from "@/features/cashier/store/checkout.store";
-import { calculatePromoDiscount } from "@/features/cashier/components/PromotionSelectModal";
+import { PaymentMethodButtons } from "@/features/cashier/components/PaymentMethodButtons";
 import { cn } from "@/lib/utils";
-import { isBillableDetail, getCancelInfo } from "@/lib/order-detail-billing";
+import { useIsMutating } from "@tanstack/react-query";
+import { CheckoutLines } from "./CheckoutLines";
+import { qk } from "@/lib/query-keys";
 
 const formatVnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`;
-
-/** Gợi ý nhanh số tiền khách đưa */
-function buildQuickCashAmounts(total: number): number[] {
-  const roundUp = (n: number, step: number) => Math.ceil(n / step) * step;
-  const exact = Math.round(total);
-  const next100k = roundUp(exact, 100000);
-  const next500k = roundUp(next100k + 1, 500000);
-  return Array.from(new Set([exact, next100k, next500k]));
-}
 
 /**
  * Thanh toán (Checkout)
@@ -50,27 +42,31 @@ function buildQuickCashAmounts(total: number): number[] {
  *
  * Màn "Chốt bàn" của Thu ngân với API thực:
  * 1. Fetch table session + order details + bill (BE tính)
- * 2. Áp chiết khấu tay (POST /manual-discounts)
- * 3. Tạo invoice (POST /invoices)
+ * 2. Lập hóa đơn nháp khi cần lưu khoản chiết khấu hoặc thu tiền.
+ * 3. Lưu chiết khấu theo hóa đơn và dùng tổng tiền backend trả về.
  * 4. Tạo payment (POST /payments)
  *
  * FE KHÔNG tự tính tiền — mọi con số lấy từ `useBill` / invoice của BE.
  */
 export default function CheckoutPage() {
-  const navigate = useNavigate();
   const { tableSessionId: sessionIdParam } = useParams<{ tableSessionId: string }>();
-  const { toast } = useToast();
-
   const tableSessionId = sessionIdParam ? parseInt(sessionIdParam, 10) : undefined;
+  return <Checkout key={sessionIdParam} tableSessionId={tableSessionId} />;
+}
+
+function Checkout({ tableSessionId }: { tableSessionId?: number }) {
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const currentUser = useAuthStore((s) => s.account);
   const branchId = useAuthStore((s) => s.branchId);
   const role = useAuthStore((s) => s.role);
+  const paymentPaths = getStaffPaymentPaths(role);
   // Màn Thanh toán mở được bởi Thu ngân / QL chi nhánh / Quản trị NH (Bảng 4.2 "Thu tiền, đóng
   // bàn") nên fallback của nút "Quay lại" phải theo vai trò — ROLE_HOME là Sơ đồ bàn của vai trò.
-  const goBack = useGoBack(role ? ROLE_HOME[role] : CASHIER_PATHS.TABLE_MAP);
-
   // Fetch data
   const { data: session, isLoading: sessionLoading } = useTableSession(tableSessionId);
+  const tableMapPath = role ? ROLE_HOME[role] : CASHIER_PATHS.TABLE_MAP;
+  const goBack = useGoBack(session?.takeaway ? takeawayListPath(tableMapPath) : tableMapPath);
   const { data: orderDetails = [], isLoading: orderDetailsLoading } = useOrderDetailsBySession(tableSessionId);
 
   // Lấy bill từ BE (invoice nếu có, preview nếu chưa)
@@ -79,20 +75,27 @@ export default function CheckoutPage() {
   // Mutations
   const createInvoiceMutation = useCreateInvoice();
   const createPaymentMutation = useCreatePayment();
-  const createManualDiscountMutation = useCreateManualDiscount();
-  const closeSessionMutation = useCloseSession();
+  const saveInvoiceDiscount = useSaveInvoiceDiscount(tableSessionId);
+  const { data: currentInvoice } = useInvoiceBySession(tableSessionId, {
+    refetchInterval: (query) => query.state.data?.status === "PENDING" ? 2500 : false,
+  });
+  const canReview = role === "BRANCH_MANAGER" || role === "RESTAURANT_ADMIN";
+  const approvalPending = currentInvoice?.discountApprovalPending ?? false;
+  const sharedQuote = currentInvoice?.quoteShared ?? false;
+  const approval = usePendingDiscountApproval(approvalPending ? currentInvoice?.id : undefined);
+  const decideApproval = useDecideDiscountApproval(tableSessionId);
+  const adjusting = useIsMutating({ mutationKey: qk.orderDetails.checkoutRemoval }) > 0;
 
-  const effectiveBranchId = branchId || session?.branchId;
-  const { data: branchPromotions = [] } = useActivePromotionsByBranch(effectiveBranchId ?? undefined);
+  const effectiveBranchId = session?.branchId ?? branchId;
+  const transferBranch = useBranch(session?.branchId);
+  const canSelectQr = transferBranch.isSuccess && hasBranchTransferAccount(transferBranch.data);
 
   // Local state
-  const [manualDiscount, setManualDiscount] = React.useState<ManualDiscountState | null>(null);
-  // undefined: mặc định theo BE; null: thu ngân đã xóa KM; Promotion: thu ngân chọn KM cụ thể
-  const [selectedPromo, setSelectedPromo] = React.useState<Promotion | null | undefined>(undefined);
-  const [isPromoModalOpen, setIsPromoModalOpen] = React.useState(false);
   const [cashTendered, setCashTendered] = React.useState<number | null>(null);
+  const [verifiedTotal, setVerifiedTotal] = React.useState<number | null>(null);
   const [isDiscountModalOpen, setDiscountModalOpen] = React.useState(false);
-  const [invoiceId, setInvoiceId] = React.useState<number | null>(null);
+  const [savingDiscount, setSavingDiscount] = React.useState(false);
+  const [isIssuingInvoice, setIssuingInvoice] = React.useState(false);
   // Chặn double-submit: React state (isPending) chỉ cập nhật sau khi re-render,
   // nên nếu bấm 2 lần liên tiếp rất nhanh (hoặc double-click) trước khi nút kịp
   // disable, handleIssueInvoice có thể chạy song song 2 lần và tạo 2 hóa đơn /
@@ -106,198 +109,113 @@ export default function CheckoutPage() {
     (bill?.grossSubTotal ?? 0) - (bill?.itemPromotionDiscount ?? 0),
   );
 
-  // Xác định khuyến mãi cấp đơn đang có hiệu lực
-  const effectivePromo = React.useMemo(() => {
-    if (selectedPromo === null) {
-      return null;
-    }
-    if (selectedPromo !== undefined) {
-      const { discount, isEligible } = calculatePromoDiscount(selectedPromo, itemsSubTotal);
-      if (isEligible && discount > 0) {
-        return {
-          id: selectedPromo.id,
-          name: selectedPromo.name,
-          discount,
-          promo: selectedPromo,
-        };
-      }
-      return null;
-    }
-    if ((bill?.orderPromotionDiscount ?? 0) > 0) {
-      return {
-        id: bill?.orderPromotionId ?? null,
-        name: bill?.orderPromotionName ?? undefined,
-        discount: bill?.orderPromotionDiscount ?? 0,
-        promo: null,
-      };
-    }
-    return null;
-  }, [selectedPromo, itemsSubTotal, bill]);
-
-  const effectiveOrderPromoDiscount = effectivePromo?.discount ?? 0;
-  const effectiveOrderPromoName = effectivePromo?.name;
-  const effectiveOrderPromoId = selectedPromo === null ? -1 : (effectivePromo?.id ?? null);
-
-  // Cơ sở tính chiết khấu tay (sau KM đơn)
+  const effectiveOrderPromoDiscount = bill?.orderPromotionDiscount ?? 0;
+  const displayOrderPromoName = bill?.orderPromotionName;
   const discountBaseAmount = Math.max(0, itemsSubTotal - effectiveOrderPromoDiscount);
-
-  // Chiết khấu tay
-  const effectiveManualDiscountAmount = React.useMemo(() => {
-    if (!manualDiscount) return 0;
-    if ((bill?.manualDiscount ?? 0) > 0 && selectedPromo === undefined) {
-      return bill?.manualDiscount ?? 0;
-    }
-    if (manualDiscount.type === "PERCENTAGE") {
-      return Math.round((discountBaseAmount * manualDiscount.value) / 100);
-    }
-    return Math.min(manualDiscount.value, discountBaseAmount);
-  }, [manualDiscount, discountBaseAmount, bill?.manualDiscount, selectedPromo]);
-
-  // Tiền sau chiết khấu (cơ sở cho phí dịch vụ & VAT)
-  const baseAmount = Math.max(0, discountBaseAmount - effectiveManualDiscountAmount);
-
-  // Phí dịch vụ
+  const effectiveManualDiscountAmount = bill?.manualDiscount ?? 0;
   const serviceFeeRate = bill?.serviceFeeRate ?? 0;
-  const effectiveServiceFee = React.useMemo(() => {
-    if (selectedPromo === undefined && !manualDiscount && bill) {
-      return bill.serviceFee;
-    }
-    return Math.round((baseAmount * serviceFeeRate) / 100);
-  }, [selectedPromo, manualDiscount, bill, baseAmount, serviceFeeRate]);
-
-  // VAT
+  const effectiveServiceFee = bill?.serviceFee ?? 0;
   const vatRate = bill?.vatRate ?? 0;
-  const vatOnServiceFee = bill?.vatOnServiceFee ?? true;
-  const effectiveVatAmount = React.useMemo(() => {
-    if (selectedPromo === undefined && !manualDiscount && bill) {
-      return bill.vatAmount;
-    }
-    const vatBase = vatOnServiceFee ? baseAmount + effectiveServiceFee : baseAmount;
-    return Math.round((vatBase * vatRate) / 100);
-  }, [selectedPromo, manualDiscount, bill, vatOnServiceFee, baseAmount, effectiveServiceFee, vatRate]);
+  const effectiveVatAmount = bill?.vatAmount ?? 0;
+  const displayGrandTotal = bill?.grandTotal ?? 0;
 
-  // Tổng cộng hiển thị
-  const displayGrandTotal = React.useMemo(() => {
-    if (selectedPromo === undefined && !manualDiscount && bill) {
-      return bill.grandTotal;
-    }
-    return Math.max(0, baseAmount + effectiveServiceFee + effectiveVatAmount);
-  }, [selectedPromo, manualDiscount, bill, baseAmount, effectiveServiceFee, effectiveVatAmount]);
+  const grandTotal = verifiedTotal ?? displayGrandTotal;
+  const checkoutBusy = isIssuingInvoice || savingDiscount || decideApproval.isPending || adjusting;
+  const canEditDiscount = !approvalPending && session?.status === "WAITING_FOR_PAY" &&
+    (!currentInvoice || (currentInvoice.status === "PENDING" && (currentInvoice.totalPaid ?? 0) === 0));
+  const changeAmount = cashTendered == null ? null : cashTendered - grandTotal;
+  const canIssueCashInvoice =
+    !checkoutBusy &&
+    session?.status === "WAITING_FOR_PAY" &&
+    grandTotal > 0 &&
+    cashTendered !== null &&
+    cashTendered >= grandTotal;
+  const next100k = Math.ceil(grandTotal / 100_000) * 100_000;
+  const next500k = Math.ceil((next100k + 1) / 500_000) * 500_000;
+  const quickAmounts = [next100k, next500k].filter((amount) => amount > grandTotal);
 
-  const grandTotal = displayGrandTotal;
-
-  const quickAmounts = React.useMemo(
-    () => buildQuickCashAmounts(displayGrandTotal),
-    [displayGrandTotal]
-  );
-  const changeAmount = cashTendered != null ? cashTendered - displayGrandTotal : null;
-
-  const displayOrderPromoName = effectiveOrderPromoName;
-
-  function goToQrTransfer() {
-    if (!tableSessionId) return;
-    useCheckoutStore.getState().setSelectedPromotion(
-      selectedPromo === null
-        ? { id: -1 }
-        : selectedPromo
-          ? selectedPromo
-          : effectivePromo
-            ? { id: effectivePromo.id, name: effectivePromo.name }
-            : null
-    );
+  function goToQrTransfer(printPrebill = false) {
+    if (!tableSessionId || !paymentPaths || !canSelectQr || checkoutBusy) return;
     navigate(
-      generatePath(CASHIER_PATHS.QR_TRANSFER_PAYMENT, { tableSessionId: String(tableSessionId) })
+      generatePath(paymentPaths.QR_TRANSFER_PAYMENT, { tableSessionId: String(tableSessionId) }),
+      { state: { printPrebill } },
     );
   }
 
-  async function handleApplyDiscount(input: ManualDiscountInput) {
-    if (!tableSessionId || !effectiveBranchId) return;
-
+  async function handleSaveDiscount(discount: InvoiceDiscountInput | null) {
+    if (!tableSessionId || !effectiveBranchId || !canEditDiscount || checkoutBusy || isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    setSavingDiscount(true);
     try {
-      // Tạo manual discount với invoiceId nếu đã có invoice
-      if (invoiceId) {
-        await createManualDiscountMutation.mutateAsync({
-          invoiceId,
-          type: input.type,
-          value: input.value,
-          reason: input.reason,
-        });
-      }
-
-      // Lưu vào store để trang QR đọc được
-      const discountState: ManualDiscountState = {
-        scope: input.scope,
-        type: input.type,
-        value: input.value,
-        reason: input.reason,
-        amount: 0, // BE sẽ tính
-        requiresApproval: false, // BE sẽ quyết định
-      };
-
-      setManualDiscount(discountState);
-      useCheckoutStore.getState().setManualDiscount(discountState);
-
-      toast({
-        title: "Đã áp dụng chiết khấu",
-        description: "Chiết khấu sẽ được tính khi tạo hóa đơn.",
-        variant: "success",
-      });
+      const invoice = currentInvoice
+        ? currentInvoice
+        : await createInvoiceMutation.mutateAsync({
+            branchId: effectiveBranchId,
+            tableSessionId,
+          });
+      setVerifiedTotal(null);
+      const updated = await saveInvoiceDiscount.mutateAsync({ invoiceId: invoice.id, discount });
+      setCashTendered(null);
+      setDiscountModalOpen(false);
+      toast({ title: updated.discountApprovalPending ? "Đã gửi yêu cầu duyệt" : discount ? "Đã lưu chiết khấu tay" : "Đã bỏ chiết khấu tay", variant: "success" });
     } catch (error) {
-      console.error("Error applying discount:", error);
       toast({
-        title: "Lỗi áp dụng chiết khấu",
-        description: error instanceof Error ? error.message : "Vui lòng thử lại",
+        title: "Chưa cập nhật được chiết khấu",
+        description: error instanceof Error ? error.message : "Vui lòng thử lại.",
+        variant: "danger",
+      });
+    } finally {
+      setSavingDiscount(false);
+      isSubmittingRef.current = false;
+    }
+  }
+
+  async function reviewDiscount(approved: boolean) {
+    if (!currentInvoice || !approval.data || checkoutBusy) return;
+    try {
+      await decideApproval.mutateAsync({ invoiceId: currentInvoice.id, requestId: approval.data.requestId, approved });
+      setVerifiedTotal(null);
+      setCashTendered(null);
+      toast({ title: approved ? "Đã duyệt. Hãy gửi lại tạm tính mới cho khách." : "Đã từ chối yêu cầu", variant: "success" });
+    } catch (error) {
+      toast({
+        title: "Chưa xử lý được yêu cầu",
+        description: error instanceof Error ? error.message : "Vui lòng thử lại.",
         variant: "danger",
       });
     }
   }
 
   async function handleIssueInvoice() {
-    if (!tableSessionId || !effectiveBranchId) return;
-
-    // Chặn double-submit (xem giải thích ở khai báo isSubmittingRef phía trên)
-    if (isSubmittingRef.current) return;
-    // Nếu phiên đã đóng/hủy từ trước, không cho gửi lại nữa - tránh tạo hóa đơn/thanh toán
-    // trùng lặp phía backend.
-    if (session && session.status !== "WAITING_FOR_PAY") {
-      toast({
-        title: "Không thể phát hành hóa đơn",
-        description: "Phiên bàn không còn ở trạng thái chờ thanh toán. Vui lòng tải lại trang.",
-        variant: "danger",
-      });
-      return;
-    }
+    if (
+      !tableSessionId || !effectiveBranchId || !paymentPaths ||
+      !canIssueCashInvoice || cashTendered === null || isSubmittingRef.current
+    ) return;
     isSubmittingRef.current = true;
+    setIssuingInvoice(true);
 
     try {
-      // 1. Tạo invoice với promotionId nếu có (truyền -1 nếu thu ngân đã xóa khuyến mãi)
-      const promoIdToSend = effectiveOrderPromoId === -1 ? -1 : (effectiveOrderPromoId ?? undefined);
       const invoice = await createInvoiceMutation.mutateAsync({
-        branchId: effectiveBranchId as number,
+        branchId: effectiveBranchId,
         tableSessionId,
-        promotionId: promoIdToSend,
       });
 
-      setInvoiceId(invoice.id);
-
-      // 2. Áp manual discount nếu có (và chưa tạo trước đó)
-      if (manualDiscount && !invoiceId) {
-        await createManualDiscountMutation.mutateAsync({
-          invoiceId: invoice.id,
-          type: manualDiscount.type,
-          value: manualDiscount.value,
-          reason: manualDiscount.reason,
+      const amountDue = invoice.grandTotal;
+      if (amountDue !== grandTotal || amountDue <= 0 || cashTendered < amountDue) {
+        setVerifiedTotal(amountDue);
+        toast({
+          title: "Số tiền phải thu đã thay đổi",
+          description: "Kiểm tra lại tổng tiền trước khi tiếp tục.",
+          variant: "danger",
         });
+        return;
       }
 
-      // 3. Tạo payment — DÙNG AMOUNT TỪ INVOICE, KHÔNG TỰ TÍNH.
-      // Backend (PaymentServiceImpl.processPayment) TỰ ĐỘNG đóng phiên bàn (CLOSED)
-      // khi tổng tiền đã trả >= grandTotal, nên KHÔNG gọi thêm API đóng phiên ở đây.
       await createPaymentMutation.mutateAsync({
         invoiceId: invoice.id,
         method: "CASH",
-        amount: invoice.grandTotal, // ← lấy từ BE
-        amountTendered: cashTendered || invoice.grandTotal,
+        amount: amountDue,
+        amountTendered: cashTendered,
       });
 
       toast({
@@ -307,7 +225,7 @@ export default function CheckoutPage() {
       });
 
       navigate(
-        generatePath(CASHIER_PATHS.E_INVOICE, {
+        generatePath(paymentPaths.E_INVOICE, {
           invoiceId: String(invoice.id),
         })
       );
@@ -320,6 +238,7 @@ export default function CheckoutPage() {
       });
     } finally {
       isSubmittingRef.current = false;
+      setIssuingInvoice(false);
     }
   }
 
@@ -349,7 +268,7 @@ export default function CheckoutPage() {
   );
   usePageHeader({
     title: session
-      ? `${session.tableName || `Bàn #${session.tableId}`} · Chốt bàn`
+      ? `${session.tableName || `Bàn #${session.tableId}`} · ${session.takeaway ? "Thanh toán" : "Chốt bàn"}`
       : "Chốt bàn",
     subtitle: session
       ? `${session.guestCount || 0} khách · Phiên #${session.id} · ${currentUser?.fullName || "Thu ngân"}`
@@ -391,11 +310,6 @@ export default function CheckoutPage() {
   const guestCount = session.guestCount || 0;
   const waiterName = currentUser?.fullName || "Thu ngân";
 
-  const isIssuingInvoice =
-    createInvoiceMutation.isPending ||
-    createPaymentMutation.isPending ||
-    closeSessionMutation.isPending;
-
   return (
     <div className="flex flex-1 flex-col min-h-screen bg-surface-page lg:flex-row">
       {/* ============================================================
@@ -416,7 +330,7 @@ export default function CheckoutPage() {
               <span>Quay lại</span>
             </button>
             <h1 className="text-2xl font-bold tracking-tight text-text-primary">
-              {tableName} · Chốt bàn
+              {tableName} · {session.takeaway ? "Thanh toán" : "Chốt bàn"}
             </h1>
             <p className="mt-1 text-sm text-text-tertiary">
               {guestCount} khách · Phiên #{session.id} · Thu ngân: {waiterName}
@@ -425,108 +339,21 @@ export default function CheckoutPage() {
           <StatusBadge type="tableSession" status={session.status} />
         </div>
 
-        <div className="p-6 sm:p-8">
+        <div className="p-4 sm:p-8">
         {/* <md: badge trạng thái tách riêng vì thanh tiêu đề trên đã ẩn */}
         <div className="mb-4 md:hidden">
           <StatusBadge type="tableSession" status={session.status} />
         </div>
 
-        <div className="mt-6 divide-y divide-border-default rounded-card border border-border-default bg-surface-card">
-          {orderDetails.length === 0 ? (
-            <div className="p-8 text-center">
-              <p className="text-sm text-text-tertiary">Chưa có món nào được gọi</p>
-            </div>
-          ) : (
-            orderDetails.map((detail) => {
-              const cancelInfo = getCancelInfo(detail);
-              const billable = isBillableDetail(detail);
-
-              return (
-                <div key={detail.id} className="flex items-start gap-4 px-5 py-4">
-                  <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-surface-muted text-xs font-bold text-text-secondary">
-                    {detail.quantity}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className={cn(
-                        "text-sm font-bold text-text-primary",
-                        cancelInfo && "text-text-tertiary line-through decoration-1",
-                      )}
-                    >
-                      {detail.dishName}
-                    </p>
-                    {detail.options && detail.options.length > 0 ? (
-                      <div className="mt-0.5 space-y-0.5">
-                        {detail.options.map((opt) => (
-                          <p key={opt.id} className="text-xs text-text-tertiary">
-                            + {opt.optionItemName}
-                            {opt.priceSnapshot > 0
-                              ? ` +${opt.priceSnapshot.toLocaleString("vi-VN")}đ`
-                              : " (Miễn phí)"}
-                          </p>
-                        ))}
-                      </div>
-                    ) : null}
-                    {detail.note ? (
-                      <p className="mt-0.5 text-xs text-text-tertiary">
-                        {detail.note}
-                      </p>
-                    ) : null}
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      <StatusBadge type="orderDetail" status={detail.status} />
-                      {cancelInfo ? (
-                        <span
-                          className={cn(
-                            "rounded-pill px-2 py-0.5 text-xs font-semibold",
-                            cancelInfo.billable
-                              ? "bg-status-warning-subtle text-status-warning"
-                              : "bg-status-danger-subtle text-status-danger",
-                          )}
-                        >
-                          {cancelInfo.label} ·{" "}
-                          {cancelInfo.billable ? "vẫn tính tiền" : "không tính tiền"}
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end shrink-0">
-                    {billable && detail.promotionDiscountAmount && detail.promotionDiscountAmount > 0 ? (
-                      <>
-                        <span className="text-xs text-text-tertiary line-through">
-                          {formatVnd((detail.price || 0) + detail.promotionDiscountAmount)}
-                        </span>
-                        <span className="text-sm font-bold text-brand-primary">
-                          {formatVnd(detail.price || 0)}
-                        </span>
-                        <span className="text-[11px] font-semibold text-status-success">
-                          -{formatVnd(detail.promotionDiscountAmount)}
-                          {detail.promotionName ? ` (${detail.promotionName})` : ""}
-                        </span>
-                      </>
-                    ) : (
-                      <span
-                        className={cn(
-                          "shrink-0 text-sm font-bold",
-                          billable ? "text-text-primary" : "text-text-tertiary line-through",
-                        )}
-                      >
-                        {formatVnd(detail.price || 0)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
+        <CheckoutLines details={orderDetails} session={session} busy={checkoutBusy} onAdjusted={() => setVerifiedTotal(null)} />
         </div>
       </div>
 
       {/* ============================================================
           2. CỘT PHẢI: THANH TOÁN
           ============================================================ */}
-      <div className="w-full shrink-0 border-t border-border-default bg-surface-card p-6 sm:p-8 lg:w-[380px] lg:border-t-0 lg:border-l">
-        <h2 className="text-xl font-bold text-text-primary">Thanh toán</h2>
+      <section aria-labelledby="checkout-payment-title" className="order-first w-full shrink-0 border-b border-border-default bg-surface-card p-4 sm:p-8 lg:order-none lg:w-[380px] lg:border-b-0 lg:border-l">
+        <h2 id="checkout-payment-title" className="text-xl font-bold text-text-primary">Thanh toán</h2>
 
         <div className="mt-5 space-y-3">
           {bill && (
@@ -542,66 +369,41 @@ export default function CheckoutPage() {
                 <span className="text-text-secondary">
                   Khuyến mãi đơn{displayOrderPromoName ? ` (${displayOrderPromoName})` : ""}
                 </span>
-                {effectiveOrderPromoDiscount > 0 ? (
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setIsPromoModalOpen(true)}
-                      className="font-medium text-status-success underline-offset-2 hover:underline text-right"
-                      title="Thay đổi khuyến mãi"
-                    >
-                      −{formatVnd(effectiveOrderPromoDiscount)}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedPromo(null);
-                        useCheckoutStore.getState().setSelectedPromotion({ id: -1 });
-                      }}
-                      className="rounded-full p-0.5 text-text-tertiary hover:bg-surface-muted hover:text-status-danger transition-colors"
-                      title="Bỏ khuyến mãi"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setIsPromoModalOpen(true)}
-                    className="rounded-pill bg-brand-primary-subtle px-3 py-1 text-xs font-semibold text-brand-primary hover:bg-brand-primary/20"
-                  >
-                    + Áp khuyến mãi
-                  </button>
-                )}
+                <span className="shrink-0 font-medium text-text-secondary">
+                  {effectiveOrderPromoDiscount > 0 ? `−${formatVnd(effectiveOrderPromoDiscount)}` : "—"}
+                </span>
               </div>
 
               <div className="flex items-center justify-between text-sm">
                 <span className="text-text-secondary">Chiết khấu tay</span>
-                {manualDiscount ? (
+                {effectiveManualDiscountAmount > 0 ? (
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => setDiscountModalOpen(true)}
-                      className="font-medium text-status-success underline-offset-2 hover:underline"
+                      disabled={checkoutBusy || !canEditDiscount}
+                      aria-label="Thay chiết khấu tay"
+                      className="font-medium text-status-success underline-offset-2 enabled:hover:underline"
                     >
                       −{formatVnd(effectiveManualDiscountAmount)}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setManualDiscount(null);
-                        useCheckoutStore.getState().setManualDiscount(null);
-                      }}
-                      className="rounded-full p-0.5 text-text-tertiary hover:bg-surface-muted hover:text-status-danger transition-colors"
-                      title="Bỏ chiết khấu"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
+                    {canEditDiscount && (
+                      <button
+                        type="button"
+                        onClick={() => void handleSaveDiscount(null)}
+                        className="rounded-full p-0.5 text-text-tertiary hover:bg-surface-muted hover:text-status-danger transition-colors"
+                        aria-label={sharedQuote ? "Yêu cầu bỏ chiết khấu tay" : "Bỏ chiết khấu tay"}
+                        disabled={checkoutBusy}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    )}
                   </div>
-                ) : (
+                ) : canEditDiscount && (
                   <button
                     type="button"
                     onClick={() => setDiscountModalOpen(true)}
+                    disabled={checkoutBusy}
                     className="rounded-pill bg-brand-primary-subtle px-3 py-1 text-xs font-semibold text-brand-primary hover:bg-brand-primary/20"
                   >
                     + Nhập chiết khấu
@@ -630,134 +432,124 @@ export default function CheckoutPage() {
           )}
         </div>
 
+        {approvalPending && (
+          <div className="mt-3 space-y-2 rounded-xl bg-surface-muted p-3 text-sm" role="status">
+            <p className="font-semibold">Chiết khấu đang chờ quản lý duyệt</p>
+            {approval.data && (
+              <>
+                <p>{approval.data.type === "PERCENTAGE" ? `Giảm ${approval.data.value}%`
+                  : approval.data.type === "FIXED_AMOUNT" ? `Giảm ${formatVnd(approval.data.value ?? 0)}`
+                    : "Bỏ chiết khấu hiện tại"}</p>
+                <p className="break-words text-text-secondary">{approval.data.reason}</p>
+                {canReview && approval.data.requestedBy !== currentUser?.id && (
+                  <div className="flex gap-2">
+                    <Button variant="outline" disabled={checkoutBusy} onClick={() => void reviewDiscount(false)}>
+                      Từ chối
+                    </Button>
+                    <Button disabled={checkoutBusy} onClick={() => void reviewDiscount(true)}>Duyệt</Button>
+                  </div>
+                )}
+              </>
+            )}
+            <p className="text-text-secondary">Tổng tiền chỉ đổi sau khi yêu cầu được duyệt.</p>
+          </div>
+        )}
+
         <Divider className="my-4" />
-
-        <div className="flex items-center justify-between">
-          <span className="text-base font-bold text-text-primary">
-            Tổng cộng
-          </span>
-          <div className="flex flex-col items-end">
-            <span className="text-2xl font-bold text-brand-primary">
-              {formatVnd(displayGrandTotal)}
-            </span>
-          </div>
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="font-semibold text-text-primary">Phải thu</span>
+          <strong className="text-2xl font-bold tabular-nums text-text-primary">
+            {formatVnd(grandTotal)}
+          </strong>
         </div>
 
-        {/* Thông báo khi thu ngân đổi hoặc xóa KM */}
-        {selectedPromo && (
-          <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-status-success-subtle px-3 py-2">
-            <Tag className="mt-0.5 size-3.5 shrink-0 text-status-success" />
-            <p className="text-xs text-status-success leading-relaxed">
-              <strong>{selectedPromo.name}</strong> sẽ được áp dụng khi phát hành hóa đơn.
-              {effectiveOrderPromoDiscount > 0
-                ? ` Giảm ${formatVnd(effectiveOrderPromoDiscount)}.`
-                : " (Hóa đơn chưa đủ điều kiện.)"}
-            </p>
+        <PaymentMethodButtons
+          selected="CASH"
+          transfer={{
+            onClick: () => goToQrTransfer(),
+            disabled: checkoutBusy || !canSelectQr,
+            "aria-describedby": !canSelectQr ? "checkout-qr-availability" : undefined,
+          }}
+        />
+        <Button type="button" variant="outline" className="mt-3 w-full"
+          disabled={!canSelectQr || checkoutBusy || grandTotal <= 0 || session.status !== "WAITING_FOR_PAY"}
+          onClick={() => goToQrTransfer(true)}>
+          In tạm tính có QR
+        </Button>
+        {!canSelectQr ? (
+          <div id="checkout-qr-availability" role="status" className="mt-2 text-sm text-text-secondary">
+            {transferBranch.isError ? (
+              <>
+                Chưa kiểm tra được tài khoản nhận chuyển khoản.
+                <Button type="button" variant="link" size="sm" className="px-2" onClick={() => void transferBranch.refetch()}>
+                  Thử lại
+                </Button>
+              </>
+            ) : transferBranch.isSuccess ? (
+              "QR chưa khả dụng vì chi nhánh chưa cấu hình tài khoản ngân hàng. Bạn có thể thu tiền mặt."
+            ) : "Đang kiểm tra tài khoản nhận chuyển khoản…"}
           </div>
-        )}
-        {selectedPromo === null && (
-          <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-surface-muted px-3 py-2">
-            <Tag className="mt-0.5 size-3.5 shrink-0 text-text-tertiary" />
-            <p className="text-xs text-text-secondary leading-relaxed">
-              Đã bỏ áp dụng khuyến mãi đơn hàng cho lần thanh toán này.
-            </p>
-          </div>
-        )}
+        ) : null}
 
-        {/* Thông báo chiết khấu tay chờ áp */}
-        {manualDiscount && bill && bill.manualDiscount === 0 && (
-          <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-brand-primary-subtle/60 px-3 py-2">
-            <Tag className="mt-0.5 size-3.5 shrink-0 text-brand-primary" />
-            <p className="text-xs text-brand-primary leading-relaxed">
-              Chiết khấu{" "}
-              <strong>
-                {manualDiscount.value}{manualDiscount.type === "PERCENTAGE" ? "%" : "đ"}
-              </strong>{" "}
-              ({manualDiscount.reason}) sẽ được áp khi phát hành hóa đơn.
-            </p>
-          </div>
-        )}
-
-        <p className="mt-6 text-xs font-semibold tracking-wide text-text-tertiary">
-          HÌNH THỨC THANH TOÁN
-        </p>
-        <div className="mt-2.5 grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            className="flex flex-col items-center gap-2 rounded-md border-2 border-brand-primary bg-surface-card py-4 text-sm font-semibold text-text-primary"
-          >
-            <span className="flex size-8 items-center justify-center rounded-full bg-brand-primary text-text-on-brand">
-              <Banknote className="size-4" />
-            </span>
-            Tiền mặt
-          </button>
-          <button
-            type="button"
-            onClick={goToQrTransfer}
-            className="flex flex-col items-center gap-2 rounded-md border border-border-default bg-surface-card py-4 text-sm font-semibold text-text-secondary transition-colors hover:border-border-strong"
-          >
-            <span className="flex size-8 items-center justify-center rounded-full bg-surface-muted text-text-tertiary">
-              <QrCode className="size-4" />
-            </span>
-            Chuyển khoản QR
-          </button>
-        </div>
-
-        <div className="mt-5 space-y-1.5">
-          <label className="block text-xs font-semibold text-text-primary">
+        <div className="mt-4 space-y-1.5">
+          <label htmlFor="checkout-cash-tendered" className="block text-sm font-semibold text-text-primary">
             Tiền khách đưa
           </label>
           <input
+            id="checkout-cash-tendered"
             type="text"
             inputMode="numeric"
+            autoComplete="off"
+            aria-describedby="checkout-cash-status"
+            aria-invalid={changeAmount !== null && changeAmount < 0}
+            disabled={checkoutBusy}
             value={
               cashTendered != null ? cashTendered.toLocaleString("vi-VN") : ""
             }
             onChange={(e) => {
               const raw = e.target.value.replace(/\D/g, "");
-              setCashTendered(raw ? Number(raw) : null);
+              const amount = Number(raw);
+              setCashTendered(raw && Number.isSafeInteger(amount) ? amount : null);
             }}
-            placeholder="0đ"
-            className="h-14 w-full rounded-md border border-border-default bg-surface-card px-4 text-xl font-bold text-text-primary outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary"
+            placeholder="Nhập số tiền"
+            className="h-11 w-full rounded-md border border-border-default bg-surface-card px-3 text-lg font-semibold tabular-nums text-text-primary outline-none placeholder:text-base placeholder:font-normal placeholder:text-text-secondary focus:border-brand-primary focus:ring-1 focus:ring-brand-primary aria-invalid:border-status-danger"
           />
         </div>
 
-        <div className="mt-2.5 grid grid-cols-3 gap-2">
+        <div className="mt-2 grid grid-cols-[minmax(0,1.4fr)_repeat(2,minmax(0,1fr))] gap-2">
+          <button
+            type="button"
+            onClick={() => setCashTendered(grandTotal)}
+            disabled={checkoutBusy || grandTotal <= 0}
+            aria-pressed={cashTendered === grandTotal}
+            className="min-h-11 rounded-md border border-border-default px-1 text-xs font-semibold text-text-primary hover:border-border-strong aria-pressed:border-brand-primary aria-pressed:bg-brand-primary-subtle disabled:opacity-50"
+          >
+            Khách đưa đủ
+          </button>
           {quickAmounts.map((amount) => (
             <button
               key={amount}
               type="button"
               onClick={() => setCashTendered(amount)}
-              className={cn(
-                "h-9 rounded-md border text-xs font-semibold transition-colors",
-                cashTendered === amount
-                  ? "border-brand-primary bg-brand-primary-subtle text-brand-primary"
-                  : "border-border-default bg-surface-card text-text-secondary hover:border-border-strong",
-              )}
+              aria-pressed={cashTendered === amount}
+              disabled={checkoutBusy || grandTotal <= 0}
+              className="min-h-11 rounded-md border border-border-default px-1 text-xs font-semibold tabular-nums text-text-primary hover:border-border-strong aria-pressed:border-brand-primary aria-pressed:bg-brand-primary-subtle disabled:opacity-50"
             >
-              {amount === Math.round(grandTotal)
-                ? `Đủ ${formatVnd(amount)}`
-                : formatVnd(amount)}
+              {formatVnd(amount)}
             </button>
           ))}
         </div>
 
-        {changeAmount != null ? (
-          <div className="mt-5 flex items-center justify-between">
-            <span className="text-sm text-text-secondary">Tiền thối lại</span>
-            <span
-              className={cn(
-                "text-lg font-bold",
-                changeAmount >= 0
-                  ? "text-status-success"
-                  : "text-status-danger",
-              )}
-            >
-              {formatVnd(Math.abs(changeAmount))}
-              {changeAmount < 0 ? " (thiếu)" : ""}
-            </span>
-          </div>
-        ) : null}
+        <p id="checkout-cash-status" role="status" className={cn(
+          "mt-3 min-h-5 text-sm font-medium tabular-nums",
+          changeAmount !== null && changeAmount < 0 ? "text-red-800" : "text-text-secondary",
+        )}>
+          {session.status !== "WAITING_FOR_PAY" ? "Phiên bàn hiện không ở trạng thái chờ thanh toán."
+            : changeAmount === null ? "Nhập tiền khách đưa hoặc chọn Khách đưa đủ."
+              : changeAmount < 0 ? `Còn thiếu ${formatVnd(-changeAmount)}`
+                : changeAmount === 0 ? "Khách đưa đủ tiền."
+                  : `Tiền thối lại ${formatVnd(changeAmount)}`}
+        </p>
 
         {/* Phiên 0đ: backend từ chối phát hành ("Số tiền thanh toán phải > 0"), nên ẩn hẳn
             nút thay vì để thu ngân bấm rồi nhận lỗi. Gỡ phiên là việc của QL chi nhánh
@@ -774,45 +566,29 @@ export default function CheckoutPage() {
           </div>
         ) : null}
 
-        {/* md+: hai nút cuối cột phải. <md: nút chính xuống thanh cố định, "Tách hóa đơn"
-            vào menu "⋯" trên header. */}
-        <div className={`mt-8 space-y-3 md:block ${grandTotal <= 0 ? "hidden md:hidden" : "hidden"}`}>
-          <Button
-            className="w-full"
-            size="lg"
-            onClick={handleIssueInvoice}
-            disabled={isIssuingInvoice}
-          >
-            {createInvoiceMutation.isPending || createPaymentMutation.isPending
-              ? "Đang xử lý..."
-              : "Thu tiền & phát hành hóa đơn"}
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full"
-            size="lg"
-            onClick={handleSplitInvoice}
-          >
-            <FileStack className="size-4" />
-            Tách hóa đơn
-          </Button>
-        </div>
-
-        {/* <md: chỉ hành động CHÍNH nằm ở thanh cố định (FR-PAY-04) */}
         {grandTotal > 0 ? (
-        <StickyActionBar>
-          <Button
-            className="h-11 w-full font-semibold"
-            onClick={handleIssueInvoice}
-            disabled={isIssuingInvoice}
-          >
-            {createInvoiceMutation.isPending || createPaymentMutation.isPending
-              ? "Đang xử lý..."
-              : "Thu tiền & phát hành hóa đơn"}
-          </Button>
-        </StickyActionBar>
+          <div className="mt-3 space-y-3">
+            <Button
+              className="w-full bg-brand-primary-hover px-3 hover:bg-[#b93617]"
+              size="lg"
+              onClick={handleIssueInvoice}
+              disabled={!canIssueCashInvoice}
+              aria-describedby="checkout-cash-status"
+            >
+              {isIssuingInvoice ? "Đang xử lý..." : "Thu tiền & phát hành hóa đơn"}
+            </Button>
+            <Button
+              variant="outline"
+              className="hidden w-full md:inline-flex"
+              size="lg"
+              onClick={handleSplitInvoice}
+            >
+              <FileStack className="size-4" />
+              Tách hóa đơn
+            </Button>
+          </div>
         ) : null}
-      </div>
+      </section>
 
       <ManualDiscountModal
         open={isDiscountModalOpen}
@@ -820,22 +596,12 @@ export default function CheckoutPage() {
         tableName={tableName}
         sessionCode={`#${session.id}`}
         baseAmount={discountBaseAmount}
-        onSubmit={handleApplyDiscount}
+        replacing={effectiveManualDiscountAmount > 0}
+        submitting={savingDiscount}
+        requiresApproval={sharedQuote}
+        onSubmit={handleSaveDiscount}
       />
 
-      <PromotionSelectModal
-        open={isPromoModalOpen}
-        onOpenChange={setIsPromoModalOpen}
-        branchId={effectiveBranchId ?? undefined}
-        subtotal={itemsSubTotal} // BE tính KM đơn trên tiền sau KM món
-        activePromotions={branchPromotions}
-        currentPromotionId={effectiveOrderPromoId !== -1 ? (effectiveOrderPromoId ?? undefined) : null}
-        onSelectPromotion={(promo, _discountAmount) => {
-          setSelectedPromo(promo);
-          useCheckoutStore.getState().setSelectedPromotion(promo ? promo : { id: -1 });
-          setIsPromoModalOpen(false);
-        }}
-      />
     </div>
   );
 }
