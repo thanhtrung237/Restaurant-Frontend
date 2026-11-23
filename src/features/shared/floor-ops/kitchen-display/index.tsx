@@ -1,23 +1,31 @@
 import * as React from "react";
-import { KDSTicket } from "@/components/common/KDSTicket";
+import { useBranchOperationalPermissions } from "@/api/operational-permissions.api";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { SearchInput } from "@/components/common/SearchInput";
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useAuthStore } from "@/stores/auth.store";
 import { cn } from "@/lib/utils";
-import { Scale, X, RefreshCw, Utensils, Printer } from "lucide-react";
+import { Minus, Plus, Scale, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   useBranch,
-  useChangeOrderDetailStatus,
   useBatchConfirmOrderDetails,
   useConfirmWeight,
   useMarkServed,
   useOpenSessionsByBranch,
 } from "@/features/shared/floor-ops/api";
 import { getOrderDetailsBySession } from "@/api/order-details.api";
-import { ApiError, getErrorMessage, isApiStatus } from "@/lib/http";
+import { getErrorMessage, isApiStatus } from "@/lib/http";
 import type { OrderDetail } from "@/types/models";
-import type { OrderDetailStatus } from "@/types/enums";
+import { BatchReviewDialog } from "./BatchReviewDialog";
+import { getOrderRoundPath } from "../notification-navigation";
+import {
+  countPortions, dishGroupKey, formatTimeAgo, getWaitMinutes, groupByRound, groupIdenticalDishes,
+  parseOrderTime, type KDSColumn, type KDSTicketItem,
+} from "./kitchen-items";
 import {
   formatWeight,
   toKg,
@@ -27,27 +35,15 @@ import {
 } from "@/lib/weight";
 
 /**
- * Thời gian trôi qua trên thẻ KDS, theo Figma:
- *  - dưới 1 phút  -> "vừa gửi"
- *  - dưới 60 phút -> "N phút"
- *  - từ 1 giờ     -> "Nh Mm"
- * (Trước đây hiển thị "1h trước" — không khớp Figma và mất phần phút.)
- */
-function formatTimeAgo(minutesAgo: number): string {
-  if (minutesAgo < 1) return "vừa gửi";
-  if (minutesAgo < 60) return `${minutesAgo} phút`;
-  return `${Math.floor(minutesAgo / 60)}h ${minutesAgo % 60}m`;
-}
-
-/**
  * In phiếu bếp trực tiếp thông qua cửa sổ in trình duyệt (hỗ trợ máy in nhiệt 80mm/58mm)
  */
 function printKitchenSlip(params: {
   branchName?: string;
   tableName: string;
   items: KDSTicketItem[];
+  onPrintComplete?: () => void;
 }) {
-  const { branchName = "Phở Việt", tableName, items } = params;
+  const { branchName = "Phở Việt", tableName, items, onPrintComplete } = params;
   if (!items.length) return;
 
   const now = new Date();
@@ -69,16 +65,21 @@ function printKitchenSlip(params: {
   const doc = iframe.contentWindow?.document;
   if (!doc) return;
 
-  const itemsHtml = items
-    .map((item) => {
+  const escapeText = (text: string) => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+  const itemsHtml = groupIdenticalDishes(items)
+    .map((group) => {
+      const [item] = group;
       const optionsHtml =
         item.options && item.options.length > 0
           ? `<div style="font-size: 11px; color: #555; padding-left: 8px;">+ ${item.options
-              .map((o) => o.optionItemName)
+              .map((o) => escapeText(o.optionItemName))
               .join(", ")}</div>`
           : "";
       const noteHtml = item.note
-        ? `<div style="font-size: 11px; font-style: italic; color: #d00; padding-left: 8px;">* Ghi chú: ${item.note}</div>`
+        ? `<div style="font-size: 11px; font-style: italic; color: #d00; padding-left: 8px;">* Ghi chú: ${escapeText(item.note)}</div>`
+        : "";
+      const takeAwayHtml = item.isTakeAway
+        ? '<div style="font-size: 11px; padding-left: 8px;">Mang về</div>'
         : "";
       const weightHtml =
         item.weightKg != null ? ` (${item.weightKg} kg)` : "";
@@ -86,12 +87,13 @@ function printKitchenSlip(params: {
       return `
         <tr style="border-bottom: 1px dashed #ccc;">
           <td style="padding: 6px 0; font-size: 14px; font-weight: bold; vertical-align: top;">
-            ${item.dishName}${weightHtml}
+            ${escapeText(item.dishName)}${weightHtml}
             ${optionsHtml}
+            ${takeAwayHtml}
             ${noteHtml}
           </td>
           <td style="padding: 6px 0; text-align: right; font-size: 15px; font-weight: bold; vertical-align: top; width: 40px;">
-            x${item.quantity}
+            ×${countPortions(group)}
           </td>
         </tr>
       `;
@@ -103,7 +105,7 @@ function printKitchenSlip(params: {
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Phiếu Bếp - ${tableName}</title>
+        <title>Phiếu Bếp - ${escapeText(tableName)}</title>
         <style>
           @page {
             size: 80mm auto;
@@ -152,9 +154,9 @@ function printKitchenSlip(params: {
       </head>
       <body>
         <div class="header">
-          <div style="font-size: 12px; font-weight: 600; text-transform: uppercase;">${branchName}</div>
+          <div style="font-size: 12px; font-weight: 600; text-transform: uppercase;">${escapeText(branchName)}</div>
           <div class="title">*** PHIẾU BẾP ***</div>
-          <div class="table-name">BÀN: ${tableName}</div>
+          <div class="table-name">${items[0].takeaway ? "" : "BÀN: "}${escapeText(tableName)}</div>
           <div class="meta">Giờ in: ${timeStr}</div>
         </div>
         <table>
@@ -169,8 +171,7 @@ function printKitchenSlip(params: {
           </tbody>
         </table>
         <div class="footer">
-          Tổng số món: <strong>${items.length} món</strong><br/>
-          <em>--- Chúc quý khách ngon miệng ---</em>
+          Tổng số phần: <strong>${countPortions(items)} phần</strong>
         </div>
       </body>
     </html>
@@ -184,6 +185,9 @@ function printKitchenSlip(params: {
     } catch (e) {
       console.error("Print kitchen slip failed:", e);
     } finally {
+      if (document.activeElement === iframe || document.activeElement === document.body) {
+        onPrintComplete?.();
+      }
       setTimeout(() => {
         document.body.removeChild(iframe);
       }, 2000);
@@ -191,26 +195,107 @@ function printKitchenSlip(params: {
   }, 300);
 }
 
-type KDSColumn = "AWAITING_CONFIRM" | "COOKING";
 type KDSFilter = "ALL" | "AWAITING_CONFIRM" | "COOKING";
 
-interface KDSTicketItem {
-  id: number;
-  orderDetailId: number;
-  tableSessionId: number;
-  tableName: string;
-  timeAgo: string;
-  dishName: string;
-  quantity: number;
-  note?: string;
-  hint?: string;
-  requiresWeighing: boolean;
-  /** Khối lượng đã cân (kg) — chỉ có khi món đã qua bước "Nhập số cân" (PENDING_WEIGHT → PREPARING). */
-  weightKg?: number;
-  /** Các tùy chọn đã chọn (size, topping, etc.) */
-  options?: Array<{ id: number; optionItemId: number; optionItemName: string; priceSnapshot: number }>;
-  column: KDSColumn;
-  status: OrderDetailStatus;
+function normalizeSearch(value: string) {
+  return value.trim().toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/đ/g, "d");
+}
+
+function groupTicketsByTable(tickets: KDSTicketItem[]) {
+  const groups = new Map<number, KDSTicketItem[]>();
+  for (const ticket of tickets) {
+    const group = groups.get(ticket.tableSessionId);
+    if (group) group.push(ticket);
+    else groups.set(ticket.tableSessionId, [ticket]);
+  }
+  return [...groups.values()].sort((first, second) => getOldestWait(second) - getOldestWait(first));
+}
+
+function formatTableName(name: string) {
+  return /^\d+$/.test(name.trim()) ? `Bàn ${name.trim()}` : name;
+}
+
+function getOldestWait(items: KDSTicketItem[]) {
+  return items.reduce((oldest, item) => Math.max(oldest, item.minutesAgo), 0);
+}
+
+function WaitLabel({ minutes }: { minutes: number }) {
+  return (
+    <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-bold tabular-nums",
+      minutes < 1 ? "bg-emerald-100 text-emerald-950"
+        : minutes > 10 ? "bg-amber-100 text-amber-950" : "bg-surface-muted text-text-secondary",
+    )}>
+      {formatTimeAgo(minutes)}
+    </span>
+  );
+}
+
+function KitchenTableTicket({ items, focusedOrder, onReview, onServe, onWeigh }: {
+  items: KDSTicketItem[];
+  focusedOrder?: number;
+  onReview?: (items: KDSTicketItem[], trigger: HTMLButtonElement, focusedOrder?: number) => void;
+  onServe?: (items: KDSTicketItem[], trigger: HTMLButtonElement) => void;
+  onWeigh?: (item: KDSTicketItem) => void;
+}) {
+  const first = items[0];
+  const tableName = formatTableName(first.tableName);
+  const pending = items.filter((item) => item.status === "PENDING");
+  const cooking = first.column === "COOKING";
+  const dishRows = groupIdenticalDishes(items);
+
+  return (
+    <article
+      id={`kitchen-${first.tableSessionId}-${first.column}`}
+      aria-label={tableName}
+      className={cn(
+        "flex min-w-0 scroll-mt-24 flex-col rounded-card border border-border-default bg-surface-card p-3 sm:p-4",
+        focusedOrder !== undefined && "border-brand-primary ring-1 ring-brand-primary/30",
+      )}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
+        <h3 className="min-w-0 break-words text-base font-bold leading-snug text-text-primary sm:text-lg">{tableName}</h3>
+        <WaitLabel minutes={getOldestWait(pending.length ? pending : items)} />
+      </div>
+      <ul className="mb-3 mt-2 flex-1 space-y-2">
+        {dishRows.map((group) => {
+          const [item] = group;
+          const focused = group.filter((dish) => dish.orderId === focusedOrder);
+          return (
+            <li key={item.id} className={cn("grid grid-cols-[auto_minmax(0,1fr)] gap-x-2", focused.length > 0 && "rounded-md bg-brand-primary-subtle px-2 py-1")}>
+              <span className="text-sm font-bold tabular-nums text-blue-700">{countPortions(group)}×</span>
+              <div className="min-w-0 break-words text-sm">
+                <p className="font-semibold leading-snug text-text-primary">{item.dishName}</p>
+                {focused.length > 0 && <p className="text-xs font-medium text-text-primary">{countPortions(focused)} phần · Lượt #{focusedOrder}</p>}
+                {item.options?.length ? (
+                  <p className="text-xs text-text-secondary">{item.options.map((option) => option.optionItemName).join(" · ")}</p>
+                ) : null}
+                {item.note ? <p className="text-xs font-medium text-text-secondary">Ghi chú: {item.note}</p> : null}
+                {item.isTakeAway ? <p className="text-xs text-text-secondary">Mang về</p> : null}
+                {item.weightKg != null ? <p className="text-xs text-text-secondary">{formatWeight(item.weightKg)}</p> : null}
+                {item.requiresWeighing && onWeigh ? (
+                  <Button type="button" variant="secondary" className="mt-1 h-11 px-2.5 text-xs text-amber-950"
+                    onClick={() => onWeigh(item)}>
+                    <Scale aria-hidden="true" /> Nhập số cân
+                  </Button>
+                ) : null}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {cooking && onServe ? (
+        <Button type="button" variant="secondary" className="w-full bg-amber-100 px-2 text-amber-950 hover:bg-amber-200"
+          onClick={(event) => onServe(items, event.currentTarget)}>
+          {first.takeaway ? "Đóng gói xong" : "Đã phục vụ"}
+        </Button>
+      ) : pending.length && onReview ? (
+        <Button type="button" className="w-full bg-blue-700 px-2 text-white hover:bg-blue-800"
+          onClick={(event) => onReview(pending, event.currentTarget, focusedOrder)}>
+          Xác nhận món
+        </Button>
+      ) : null}
+    </article>
+  );
 }
 
 /**
@@ -221,27 +306,53 @@ interface KDSTicketItem {
  *      GET /order-details/session/{tableSessionId} cho mỗi session (poll 1s)
  *      PUT /order-details/{id}/status
  *      POST /order-details/{id}/confirm-weight
- *      POST /order-details/{id}/mark-served
+ *      POST /order-details/{id}/serve-portions
  */
 export default function KitchenDisplayPage() {
   const { toast } = useToast();
+  const [params, setParams] = useSearchParams();
+  const { key: locationKey } = useLocation();
+  const targetSession = Number(params.get("session"));
+  const targetOrder = Number(params.get("round"));
+  const hasNotification = Number.isSafeInteger(targetSession) && targetSession > 0 &&
+    Number.isSafeInteger(targetOrder) && targetOrder > 0;
 
   const branchId = useAuthStore((s) => s.branchId);
+  const access = useBranchOperationalPermissions(branchId);
+  const canConfirm = access.can("CONFIRM_ORDER");
+  const canServe = access.can("SERVE_ORDER");
+  const canWeigh = access.can("WEIGH_ORDER");
+  const role = useAuthStore((s) => s.role);
 
-  const [mobileTab, setMobileTab] = React.useState<KDSColumn>("AWAITING_CONFIRM");
+  const [mobileSelection, setMobileSelection] = React.useState<{ key: string | null; tab: KDSColumn }>({
+    key: null, tab: "AWAITING_CONFIRM",
+  });
+  const scrolledLocation = React.useRef<string | null>(null);
   const [weighModalTicket, setWeighModalTicket] = React.useState<KDSTicketItem | null>(null);
   const [weightInput, setWeightInput] = React.useState("1.2");
   const [weightUnit, setWeightUnit] = React.useState<WeightUnit>("kg");
   const [filter, setFilter] = React.useState<KDSFilter>("ALL");
+  const [search, setSearch] = React.useState("");
 
   // Modal xác nhận nhiều món cùng bàn
   const [batchModalState, setBatchModalState] = React.useState<{
-    isOpen: boolean;
     tableName: string;
-    tableSessionId: number;
     items: KDSTicketItem[];
     selectedIds: Set<number>;
   } | null>(null);
+  const batchTriggerRef = React.useRef<HTMLButtonElement | null>(null);
+  const batchSubmittingRef = React.useRef(false);
+  const serveTriggerRef = React.useRef<HTMLButtonElement>(null);
+  const [serveItems, setServeItems] = React.useState<KDSTicketItem[]>([]);
+  const [serveQuantities, setServeQuantities] = React.useState<Record<string, number>>({});
+  const [serving, setServing] = React.useState(false);
+  const serveCheckboxId = React.useId();
+  const kitchenRegionRef = React.useRef<HTMLDivElement | null>(null);
+  const [now, setNow] = React.useState(Date.now);
+  React.useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 5000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   // Fetch all open sessions (làm mới mỗi 1 giây)
   const { data: sessions, isLoading: sessionsLoading, error: sessionsError } = useOpenSessionsByBranch(
@@ -252,18 +363,15 @@ export default function KitchenDisplayPage() {
   // Aggregate all order details từ tất cả sessions (để đơn giản, tôi sẽ fetch từng session)
   // Trong production, backend nên có endpoint GET /order-details/branch/{branchId}
   const [allOrderDetails, setAllOrderDetails] = React.useState<
-    Array<{ sessionId: number; tableName: string; detail: OrderDetail }>
+    Array<{ sessionId: number; tableName: string; takeaway?: boolean; detail: OrderDetail }>
   >([]);
   const [detailsError, setDetailsError] = React.useState("");
+  const [detailsLoaded, setDetailsLoaded] = React.useState(false);
 
   // Mutations
-  // PENDING → PREPARING vẫn dùng PUT /status hoặc batchConfirm:
-  const changeStatusMutation = useChangeOrderDetailStatus();
+  // PENDING → PREPARING theo danh sách món đã duyệt.
   const batchConfirmMutation = useBatchConfirmOrderDetails();
-  // PREPARING → SERVED dùng POST /mark-served thay cho PUT /status, vì endpoint này:
-  //  - validate đúng chuyển trạng thái (chỉ nhận PREPARING, sai thì trả 409),
-  //  - đẩy WebSocket `notifyItemStatusChanged` để khách và Phục vụ thấy ngay (T-01).
-  // PUT /status không làm cả hai việc trên — nó set thẳng trạng thái, không kiểm tra gì.
+  // Ghi nhận số phần và chuyển sang SERVED khi đủ.
   const markServedMutation = useMarkServed();
   const confirmWeightMutation = useConfirmWeight();
 
@@ -272,6 +380,7 @@ export default function KitchenDisplayPage() {
     if (!sessions?.length) {
       setAllOrderDetails([]);
       setDetailsError("");
+      setDetailsLoaded(false);
       return;
     }
 
@@ -285,19 +394,23 @@ export default function KitchenDisplayPage() {
         return details.map((detail) => ({
           sessionId: session.id,
           tableName: session.tableName || `Bàn ${session.tableId}`,
+          takeaway: session.takeaway,
           detail,
         }));
       }));
       if (stopped) return;
 
       const failed = results.find((result) => result.status === "rejected");
+      setDetailsLoaded(true);
       setDetailsError(failed ? getErrorMessage(failed.reason) : "");
       setAllOrderDetails((previous) => results.flatMap((result, index) => {
         if (result.status === "fulfilled") return result.value;
         if (isApiStatus(result.reason, 401, 403, 404)) return [];
         return previous.filter((item) => item.sessionId === activeSessions[index].id);
       }));
-      timer = setTimeout(() => void refreshDetails(), 1000);
+      if (!results.every((result) => result.status === "rejected" && isApiStatus(result.reason, 401, 403))) {
+        timer = setTimeout(() => void refreshDetails(), 1000);
+      }
     }
 
     void refreshDetails();
@@ -309,35 +422,49 @@ export default function KitchenDisplayPage() {
 
   // Convert OrderDetail to KDSTicketItem
   const tickets = React.useMemo((): KDSTicketItem[] => {
+    const ordersBySession = new Map<number, Map<number, number>>();
+    for (const { sessionId, detail } of allOrderDetails) {
+      const orders = ordersBySession.get(sessionId) ?? new Map<number, number>();
+      const createdAt = parseOrderTime(detail.createdAt);
+      const timestamp = Number.isFinite(createdAt) ? createdAt : Infinity;
+      orders.set(detail.orderId, Math.min(orders.get(detail.orderId) ?? Infinity, timestamp));
+      ordersBySession.set(sessionId, orders);
+    }
+    const roundsBySession = new Map([...ordersBySession].map(([sessionId, orders]) => [
+      sessionId,
+      new Map([...orders].sort(([firstId, firstTime], [secondId, secondTime]) =>
+        firstTime - secondTime || firstId - secondId,
+      ).map(([orderId, time], index) => [
+        orderId, { number: index + 1, time: Number.isFinite(time) ? time : undefined },
+      ])),
+    ]));
+
     return allOrderDetails
-      .filter(({ detail }) => {
-        // Chỉ hiển thị món chưa phục vụ hoặc đã hủy
-        return detail.status !== "SERVED" && detail.status !== "CANCELLED";
-      })
-      .map(({ sessionId, tableName, detail }) => {
+      .filter(({ detail }) => detail.status !== "SERVED" && detail.status !== "CANCELLED")
+      .map(({ sessionId, tableName, takeaway, detail }) => {
         let column: KDSColumn = "AWAITING_CONFIRM";
         if (detail.status === "PREPARING") column = "COOKING";
         else if (detail.status === "PENDING_WEIGHT") column = "AWAITING_CONFIRM";
 
-        const createdAt = detail.createdAt ? new Date(detail.createdAt) : new Date();
-        const minutesAgo = Math.floor((Date.now() - createdAt.getTime()) / 60000);
-        const timeAgo = formatTimeAgo(minutesAgo);
+        const round = roundsBySession.get(sessionId)?.get(detail.orderId);
+        const minutesAgo = getWaitMinutes(round?.time, now);
 
         return {
           id: detail.id,
           orderDetailId: detail.id,
+          orderId: detail.orderId,
+          dishId: detail.dishId,
           tableSessionId: sessionId,
+          minutesAgo,
           tableName,
-          timeAgo,
+          takeaway,
+          round: round?.number ?? 1,
+          roundTime: round?.time,
           dishName: detail.dishName || "Món ăn",
-          quantity: detail.quantity,
+          quantity: detail.status === "PREPARING" ? detail.quantity - (detail.servedQuantity ?? 0) : detail.quantity,
+          servedQuantity: detail.servedQuantity ?? 0,
+          isTakeAway: detail.isTakeAway,
           note: detail.note,
-          hint:
-            detail.status === "PENDING_WEIGHT"
-              ? "Bán theo cân · cần cân trước khi gửi bếp"
-              : detail.weightKg != null
-                ? `Khối lượng: ${formatWeight(detail.weightKg)}`
-                : undefined,
           requiresWeighing: detail.status === "PENDING_WEIGHT",
           weightKg: detail.weightKg,
           options: detail.options,
@@ -345,9 +472,10 @@ export default function KitchenDisplayPage() {
           status: detail.status,
         };
       });
-  }, [allOrderDetails]);
+  }, [allOrderDetails, now]);
 
-  const totalCount = tickets.length;
+  const totalCount = countPortions(tickets);
+  const pendingTickets = tickets.filter((item) => item.status === "PENDING");
   const byColumn = React.useMemo(() => {
     const groups: Record<KDSColumn, KDSTicketItem[]> = {
       AWAITING_CONFIRM: [],
@@ -361,13 +489,9 @@ export default function KitchenDisplayPage() {
     return groups;
   }, [tickets]);
 
-  const totalProcessing = byColumn.AWAITING_CONFIRM.length + byColumn.COOKING.length;
-
-  // Subtitle theo Figma: "<Tên chi nhánh> · N dòng món đang xử lý".
-  // Bỏ phần tên nếu chưa tải xong để không hiện dấu "·" cụt.
   const { data: branch } = useBranch(branchId ?? undefined);
   const buildSubtitle = (count: number) =>
-    [branch?.name, `${count} dòng món đang xử lý`].filter(Boolean).join(" · ");
+    [branch?.name, `${count} món đang xử lý`].filter(Boolean).join(" · ");
 
   const FILTER_TABS: Array<{ value: KDSFilter; label: string }> = [
     { value: "ALL", label: "Tất cả" },
@@ -392,137 +516,94 @@ export default function KitchenDisplayPage() {
     },
   ];
 
-  /**
-   * Đưa 1 thẻ về đúng trạng thái trước khi bấm, dùng khi API từ chối.
-   * `ticket.status` là trạng thái đọc từ server ở nhịp poll gần nhất.
-   */
-  function revertTicketStatus(ticket: KDSTicketItem) {
-    setAllOrderDetails((prev) =>
-      prev.map((item) =>
-        item.detail.id === ticket.orderDetailId
-          ? { ...item, detail: { ...item.detail, status: ticket.status } }
-          : item
-      )
-    );
+  function openBatchReview(items: KDSTicketItem[], trigger: HTMLButtonElement, focusedOrder?: number) {
+    batchTriggerRef.current = trigger;
+    const rounds = groupByRound(items);
+    setBatchModalState({
+      tableName: formatTableName(items[0].tableName),
+      items: rounds.flatMap(([, roundItems]) => roundItems),
+      selectedIds: new Set(items.filter((item) => focusedOrder === undefined || item.orderId === focusedOrder)
+        .map((item) => item.orderDetailId)),
+    });
   }
 
-  async function handleAction(ticket: KDSTicketItem) {
-    try {
-      if (ticket.column === "AWAITING_CONFIRM") {
-        if (ticket.requiresWeighing) {
-          setWeighModalTicket(ticket);
-          setWeightUnit("kg");
-          setWeightInput("1.2");
-          return;
-        }
+  const openedServeIds = new Set(serveItems.map((item) => item.id));
+  const availableServeItems = tickets.filter((item) => item.status === "PREPARING" && openedServeIds.has(item.id));
+  const serveGroups = groupIdenticalDishes(availableServeItems).map((items) => {
+    const key = dishGroupKey(items[0]);
+    const total = countPortions(items);
+    return { key, items, total, selected: Math.min(serveQuantities[key] ?? 0, total) };
+  });
+  const availableServePortions = countPortions(availableServeItems);
+  const selectedServePortions = serveGroups.reduce((sum, group) => sum + group.selected, 0);
+  const allServeItemsSelected = selectedServePortions === availableServePortions;
 
-        // Kiểm tra xem bàn này còn những món nào đang ở trạng thái CHỜ XÁC NHẬN (PENDING)
-        // Lấy tất cả món chờ xác nhận cùng tableSessionId (loại trừ các món cần cân riêng)
-        const tablePendingItems = tickets.filter(
-          (t) =>
-            t.tableSessionId === ticket.tableSessionId &&
-            t.column === "AWAITING_CONFIRM" &&
-            !t.requiresWeighing
-        );
-
-        // Nếu bàn có nhiều hơn 1 món đang chờ xác nhận -> mở modal chọn các món cần xác nhận
-        // Riêng món vừa bấm thì tích sẵn
-        if (tablePendingItems.length > 1) {
-          setBatchModalState({
-            isOpen: true,
-            tableName: ticket.tableName,
-            tableSessionId: ticket.tableSessionId,
-            items: tablePendingItems,
-            selectedIds: new Set([ticket.orderDetailId]),
-          });
-          return;
-        }
-
-        // Nếu bàn chỉ có đúng 1 món chờ xác nhận -> xác nhận ngay lập tức
-        setAllOrderDetails((prev) =>
-          prev.map((item) =>
-            item.detail.id === ticket.orderDetailId
-              ? { ...item, detail: { ...item.detail, status: "PREPARING" } }
-              : item
-          )
-        );
-        await changeStatusMutation.mutateAsync({
-          id: ticket.orderDetailId,
-          status: "PREPARING",
-        });
-        printKitchenSlip({
-          branchName: branch?.name,
-          tableName: ticket.tableName,
-          items: [ticket],
-        });
-        toast({
-          title: "Đã xác nhận & In phiếu",
-          description: `${ticket.dishName} (${ticket.tableName}) đã chuyển sang Đang chế biến.`,
-        });
-      } else if (ticket.column === "COOKING") {
-        // Chuyển từ PREPARING → SERVED
-        // Cập nhật giao diện ngay lập tức
-        setAllOrderDetails((prev) =>
-          prev.map((item) =>
-            item.detail.id === ticket.orderDetailId
-              ? { ...item, detail: { ...item.detail, status: "SERVED" } }
-              : item
-          )
-        );
-        await markServedMutation.mutateAsync(ticket.orderDetailId);
-        toast({
-          title: "Đã phục vụ",
-          description: `${ticket.dishName} (${ticket.tableName}) đã mang ra bàn khách.`,
-          variant: "success",
-        });
+  async function handleServeTable() {
+    if (serving || selectedServePortions === 0) return;
+    const updates = serveGroups.flatMap(({ items, selected }) => {
+      let remaining = selected;
+      const requests = [];
+      // Allocate identical portions to the oldest order lines first.
+      for (const item of [...items].sort((first, second) => first.id - second.id)) {
+        if (remaining === 0) break;
+        const quantity = Math.min(remaining, item.quantity);
+        requests.push({ id: item.orderDetailId, quantity, expectedServedQuantity: item.servedQuantity });
+        remaining -= quantity;
       }
-    } catch (error) {
-      // Hoàn lại optimistic update: mark-served validate trạng thái ở server nên có thể
-      // từ chối (409) khi dòng món vừa bị đổi ở nơi khác — ví dụ Phục vụ huỷ món sau bếp.
-      // Không hoàn lại thì thẻ sẽ hiển thị sai cho tới nhịp poll kế tiếp.
-      revertTicketStatus(ticket);
-
-      const isConflict = error instanceof ApiError && error.status === 409;
-      toast({
-        title: isConflict ? "Trạng thái món đã thay đổi" : "Lỗi",
-        description: isConflict
-          ? `${ticket.dishName} (${ticket.tableName}) vừa được cập nhật ở nơi khác. Danh sách đang được làm mới.`
-          : getErrorMessage(error),
-        variant: "danger",
+      return requests;
+    });
+    setServing(true);
+    try {
+      const results = await Promise.allSettled(updates.map((update) => markServedMutation.mutateAsync(update)));
+      const updatedDetails = new Map<number, OrderDetail>();
+      let servedPortions = 0;
+      results.forEach((result, index) => {
+        if (result.status === "fulfilled") {
+          updatedDetails.set(updates[index].id, result.value);
+          servedPortions += updates[index].quantity;
+        }
       });
+      setAllOrderDetails((prev) => prev.map((item) => {
+        const update = updatedDetails.get(item.detail.id);
+        return update
+          ? { ...item, detail: { ...item.detail, status: update.status, servedQuantity: update.servedQuantity } }
+          : item;
+      }));
+      const failed = selectedServePortions - servedPortions;
+      toast({
+        title: failed > 0 ? "Còn món chưa cập nhật" : "Đã cập nhật phục vụ",
+        description: failed > 0 ? `Đã phục vụ ${servedPortions} món. Còn ${failed} món, vui lòng kiểm tra lại.`
+          : `Đã phục vụ ${servedPortions} món.`,
+        variant: failed > 0 ? "danger" : "success",
+      });
+      setServeItems([]);
+    } finally {
+      setServing(false);
     }
   }
 
-  // Toggle chọn/bỏ chọn món trong modal xác nhận theo bàn
-  function handleToggleBatchItem(id: number) {
-    if (!batchModalState) return;
+  function updateBatchSelection(items: KDSTicketItem[], checked: boolean) {
     setBatchModalState((prev) => {
       if (!prev) return null;
       const next = new Set(prev.selectedIds);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
+      for (const item of items) {
+        if (checked) next.add(item.orderDetailId);
+        else next.delete(item.orderDetailId);
       }
       return { ...prev, selectedIds: next };
     });
   }
 
-  // Chọn tất cả hoặc bỏ chọn tất cả món trong modal
-  function handleToggleSelectAllBatch() {
-    if (!batchModalState) return;
-    const allSelected = batchModalState.selectedIds.size === batchModalState.items.length;
-    setBatchModalState((prev) => {
-      if (!prev) return null;
-      return {
-        ...prev,
-        selectedIds: allSelected ? new Set() : new Set(prev.items.map((i) => i.orderDetailId)),
-      };
-    });
+  function restoreBatchFocus(trigger: HTMLButtonElement | null) {
+    const target = trigger?.isConnected && !trigger.disabled && trigger.getClientRects().length > 0
+      ? trigger
+      : kitchenRegionRef.current;
+    target?.focus({ preventScroll: true });
   }
 
   // Thực hiện xác nhận hàng loạt các món đã chọn trong modal
   async function handleBatchConfirmSubmit() {
+    if (batchSubmittingRef.current) return;
     if (!batchModalState || batchModalState.selectedIds.size === 0) {
       toast({
         title: "Chưa chọn món",
@@ -532,41 +613,40 @@ export default function KitchenDisplayPage() {
       return;
     }
 
-    const selectedList = Array.from(batchModalState.selectedIds);
+    const pendingIds = new Set(tickets.filter((item) => item.status === "PENDING").map((item) => item.id));
+    const selectedItems = batchModalState.items.filter((item) =>
+      batchModalState.selectedIds.has(item.id) && pendingIds.has(item.id));
+    if (!selectedItems.length) {
+      setBatchModalState(null);
+      toast({ title: "Các món đã được cập nhật ở nơi khác", variant: "warning" });
+      return;
+    }
     const tableName = batchModalState.tableName;
-    const selectedCount = selectedList.length;
+    const trigger = batchTriggerRef.current;
 
+    batchSubmittingRef.current = true;
     try {
-      // Optimistic update cho các món đã chọn
+      const result = await batchConfirmMutation.mutateAsync({
+        orderDetailIds: selectedItems.map((item) => item.orderDetailId),
+      });
+      const statuses = new Map(result.map((item) => [item.id, item.status]));
+
       setAllOrderDetails((prev) =>
-        prev.map((item) =>
-          batchModalState.selectedIds.has(item.detail.id)
-            ? { ...item, detail: { ...item.detail, status: "PREPARING" } }
-            : item
-        )
+        prev.map((item) => {
+          const status = statuses.get(item.detail.id);
+          return status ? { ...item, detail: { ...item.detail, status } } : item;
+        })
       );
 
-      // Gọi API batch confirm ở backend
-      await batchConfirmMutation.mutateAsync({
-        orderDetailIds: selectedList,
-      });
-
-      // Lấy danh sách các món thực tế được chọn để in phiếu bếp
-      const selectedItemsToPrint = batchModalState.items.filter((item) =>
-        batchModalState.selectedIds.has(item.orderDetailId)
-      );
-
-      // In phiếu bếp qua trình duyệt (hỗ trợ máy in nhiệt 80mm/58mm)
-      printKitchenSlip({
-        branchName: branch?.name,
-        tableName: tableName,
-        items: selectedItemsToPrint,
-      });
+      const printable = selectedItems.filter((item) => statuses.get(item.id) === "PREPARING");
+      if (printable.length) {
+        printKitchenSlip({ branchName: branch?.name, tableName, items: printable, onPrintComplete: () => restoreBatchFocus(trigger) });
+      }
 
       toast({
-        title: "Đã xác nhận & In phiếu bếp",
-        description: `Đã xác nhận và in phiếu cho ${selectedCount} món của ${tableName}.`,
-        variant: "success",
+        title: printable.length ? "Đã xác nhận món" : "Các món đã được cập nhật ở nơi khác",
+        description: printable.length ? `${tableName} · ${countPortions(printable)} phần chuyển sang Đang chế biến.` : undefined,
+        variant: printable.length ? "success" : "warning",
       });
 
       setBatchModalState(null);
@@ -576,6 +656,8 @@ export default function KitchenDisplayPage() {
         description: getErrorMessage(error),
         variant: "danger",
       });
+    } finally {
+      batchSubmittingRef.current = false;
     }
   }
 
@@ -638,327 +720,268 @@ export default function KitchenDisplayPage() {
     setWeightUnit(nextUnit);
   }
 
-  const COLUMN_META: Record<
-    KDSColumn,
-    { title: string; dotClass: string; visibleInFilter: KDSFilter[] }
-  > = {
-    AWAITING_CONFIRM: {
-      title: "Chờ xác nhận",
-      dotClass: "bg-status-info",
-      visibleInFilter: ["ALL", "AWAITING_CONFIRM"],
-    },
-    COOKING: {
-      title: "Đang chế biến",
-      dotClass: "bg-status-warning",
-      visibleInFilter: ["ALL", "COOKING"],
-    },
+  const targetColumn = hasNotification
+    ? tickets.find((item) => item.tableSessionId === targetSession && item.orderId === targetOrder && item.column === "AWAITING_CONFIRM")?.column
+      ?? tickets.find((item) => item.tableSessionId === targetSession && item.orderId === targetOrder)?.column
+    : undefined;
+  const mobileTab = targetColumn && mobileSelection.key !== locationKey ? targetColumn : mobileSelection.tab;
+  const activeFilter = targetColumn ? "ALL" : filter;
+  const query = normalizeSearch(hasNotification ? "" : search);
+  const matchesSearch = (ticket: KDSTicketItem) =>
+    normalizeSearch(formatTableName(ticket.tableName)).includes(query) || normalizeSearch(ticket.dishName).includes(query);
+  const matchingGroups = {
+    AWAITING_CONFIRM: groupTicketsByTable(byColumn.AWAITING_CONFIRM).filter((group) => group.some(matchesSearch)),
+    COOKING: groupTicketsByTable(byColumn.COOKING).filter((group) => group.some(matchesSearch)),
   };
-
-  const visibleColumns = (Object.keys(COLUMN_META) as KDSColumn[]).filter(
-    (col) => COLUMN_META[col].visibleInFilter.includes(filter),
-  );
-
-  const mobileTickets = byColumn[mobileTab];
+  const columns = MOBILE_TABS.map((tab) => tab.value);
+  const populatedColumns = columns.filter((column) => matchingGroups[column].length > 0);
+  const desktopColumns = activeFilter === "ALL"
+    ? (populatedColumns.length > 0 ? populatedColumns : ["AWAITING_CONFIRM"])
+    : [activeFilter];
+  const splitColumns = desktopColumns.length > 1;
   const loadError = sessionsError ? getErrorMessage(sessionsError) : detailsError;
+  const isLoading = sessionsLoading || (Boolean(sessions?.length) && !detailsLoaded);
+  const subtitle = isLoading ? "Đang tải món…" : buildSubtitle(totalCount);
+  const orderPath = hasNotification ? getOrderRoundPath(role, targetSession, targetOrder) : null;
+  const relatedSession = hasNotification ? sessions?.find((session) => session.id === targetSession) : undefined;
+
+  React.useEffect(() => {
+    if (!targetColumn || scrolledLocation.current === locationKey) return;
+    const ticket = document.getElementById(`kitchen-${targetSession}-${targetColumn}`);
+    if (ticket?.getClientRects().length) {
+      ticket.scrollIntoView({ block: "nearest" });
+      scrolledLocation.current = locationKey;
+    }
+  }, [locationKey, mobileTab, targetColumn, targetSession]);
+
+  function clearNotification() {
+    if (!hasNotification) return;
+    const next = new URLSearchParams(params);
+    next.delete("session");
+    next.delete("round");
+    setParams(next, { replace: true, preventScrollReset: true });
+  }
+
+  function renderFilter(tab: KDSFilter, label: string, active: boolean, onClick: () => void) {
+    const count = tab === "ALL" ? totalCount : countPortions(byColumn[tab]);
+    return (
+      <Button
+        key={tab}
+        type="button"
+        variant="secondary"
+        aria-pressed={active}
+        onClick={onClick}
+        className={cn("gap-1.5 px-3 text-xs sm:text-sm", active && "bg-brand-primary-subtle text-orange-950 hover:bg-brand-primary-subtle")}
+      >
+        {label}
+        <span className="tabular-nums">{count}</span>
+      </Button>
+    );
+  }
 
   return (
-    <div className="flex flex-1 flex-col min-h-screen bg-surface-page">
-      {loadError && (
-        <p role="alert" className="mx-4 mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-          Không cập nhật được danh sách món. {loadError}
-        </p>
-      )}
-      {/* ============================================================
-          A. GIAO DIỆN MOBILE (< md) - KHỚP MOCKUP 375PX
-          ============================================================ */}
-      <div className="flex flex-col md:hidden">
-        {/* 1. Header riêng ĐÃ BỎ: trùng hoàn toàn với MobileHeader biến thể "app" của
-            StaffLayout (avatar · tiêu đề + dòng phụ · đăng xuất). Tiêu đề và dòng phụ
-            nay đẩy lên đó bằng usePageHeader. */}
+    <div ref={kitchenRegionRef} tabIndex={-1} role="region" aria-label="Danh sách món chế biến" className="flex min-h-full flex-1 flex-col bg-surface-page">
+      <PageHeader
+        title="Gọi món & Chế biến"
+        subtitle={subtitle}
+        actions={FILTER_TABS.map((tab) => renderFilter(tab.value, tab.label, activeFilter === tab.value, () => {
+          clearNotification();
+          setFilter(tab.value);
+        }))}
+      />
 
-        {/* 2. Mobile Pill Filter Tabs */}
-        <div className="flex items-center gap-2 px-4 pt-3 pb-2 overflow-x-auto no-scrollbar select-none">
-          {MOBILE_TABS.map((tab) => {
-            const isSelected = mobileTab === tab.value;
-            const count = byColumn[tab.value].length;
-
-            return (
-              <button
-                key={tab.value}
-                type="button"
-                onClick={() => setMobileTab(tab.value)}
-                className={cn(
-                  "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-xs font-bold transition-all shrink-0 cursor-pointer select-none",
-                  isSelected
-                    ? "bg-status-info text-white shadow-xs"
-                    : "border border-border-strong bg-surface-card text-text-secondary hover:bg-surface-muted",
-                )}
-              >
-                <span
-                  className={cn(
-                    "size-2 rounded-full",
-                    isSelected ? "bg-white" : tab.dotColor,
-                  )}
-                />
-                <span>{tab.label}</span>
-                <span className="ml-0.5">{count}</span>
-              </button>
-            );
-          })}
+      <div className="space-y-4 px-4 py-4 sm:px-6 lg:px-8">
+        <div role="group" aria-label="Lọc trạng thái món" className="flex flex-wrap gap-2 md:hidden">
+          {MOBILE_TABS.map((tab) => renderFilter(tab.value, tab.label, mobileTab === tab.value, () => {
+            setMobileSelection({ key: locationKey, tab: tab.value });
+          }))}
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="w-full sm:max-w-80">
+            <SearchInput
+              aria-label="Tìm bàn hoặc món"
+              placeholder="Tìm bàn hoặc món…"
+              variant="rounded"
+              value={hasNotification ? "" : search}
+              onChange={(event) => {
+                clearNotification();
+                setSearch(event.target.value);
+              }}
+              onClear={() => setSearch("")}
+              className="h-11 border-border-default bg-surface-card placeholder:text-text-secondary"
+            />
+          </div>
+          {pendingTickets.length > 0 ? (
+            <p className="flex items-center gap-1.5 text-xs text-text-secondary">
+              Chờ xác nhận lâu nhất <WaitLabel minutes={getOldestWait(pendingTickets)} />
+            </p>
+          ) : null}
         </div>
 
-        {/* 3. Mobile Ticket Cards List */}
-        <div className="flex flex-col gap-3 p-4">
-          {mobileTickets.length > 0 ? (
-            mobileTickets.map((ticket) => {
-              const isWeighing = ticket.requiresWeighing;
-
-              // Card món chờ cân (VD: Tôm hùm hấp bia)
-              if (isWeighing) {
-                return (
-                  <div
-                    key={ticket.id}
-                    className="flex flex-col rounded-[20px] border border-status-warning/50 bg-status-warning-subtle/40 p-4 shadow-2xs transition-all"
-                  >
-                    {/* Badge Chờ cân */}
-                    <div className="mb-2">
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-status-warning-subtle px-2.5 py-0.5 text-xs font-bold text-status-warning">
-                        <span className="size-1.5 rounded-full bg-status-warning" />
-                        Chờ cân
-                      </span>
-                    </div>
-
-                    {/* Header: Bàn + Thời gian */}
-                    <div className="flex items-center justify-between">
-                      <span className="rounded-md bg-surface-muted px-2.5 py-0.5 text-xs font-bold text-text-primary">
-                        {ticket.tableName}
-                      </span>
-                      <span className="text-xs text-text-tertiary">
-                        {ticket.timeAgo}
-                      </span>
-                    </div>
-
-                    {/* Món & Hướng dẫn */}
-                    <div className="my-3 space-y-1">
-                      <h3 className="text-base font-bold text-text-primary">
-                        {ticket.quantity ?? 1}× {ticket.dishName}
-                      </h3>
-                      {ticket.options && ticket.options.length > 0 ? (
-                        <div className="space-y-0.5">
-                          {ticket.options.map((opt) => (
-                            <p key={opt.id} className="text-xs text-brand-primary">
-                              + {opt.optionItemName}
-                            </p>
-                          ))}
-                        </div>
-                      ) : null}
-                      <p className="text-xs font-normal text-brand-primary">
-                        {ticket.hint || "Bán theo cân · cần cân trước khi gửi bếp"}
-                      </p>
-                    </div>
-
-                    {/* Nút Nhập số cân */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setWeighModalTicket(ticket);
-                        setWeightUnit("kg");
-                        setWeightInput("1.2");
-                      }}
-                      className="flex h-11 w-full items-center justify-center rounded-[14px] bg-status-danger text-sm font-bold text-white shadow-2xs transition-all hover:bg-status-danger/90 active:scale-[0.99] cursor-pointer"
-                    >
-                      Nhập số cân
-                    </button>
-                  </div>
-                );
-              }
-
-              // Card món thông thường (Chờ xác nhận / Đang nấu / Đã sẵn sàng)
-              return (
-                <div
-                  key={ticket.id}
-                  className="flex flex-col rounded-[20px] bg-surface-card p-4 shadow-2xs transition-all border border-border-default"
-                >
-                  {/* Header: Bàn + Thời gian */}
-                  <div className="flex items-center justify-between">
-                    <span className="rounded-md bg-surface-muted px-2.5 py-0.5 text-xs font-bold text-text-primary">
-                      {ticket.tableName}
-                    </span>
-                    <span className="text-xs text-text-tertiary">
-                      {ticket.timeAgo}
-                    </span>
-                  </div>
-
-                  {/* Món & Ghi chú */}
-                  <div className="my-3 space-y-1">
-                    <h3 className="text-base font-bold text-text-primary">
-                      {ticket.quantity ?? 1}× {ticket.dishName}
-                    </h3>
-                    {ticket.options && ticket.options.length > 0 ? (
-                      <div className="space-y-0.5">
-                        {ticket.options.map((opt) => (
-                          <p key={opt.id} className="text-xs text-brand-primary">
-                            + {opt.optionItemName}
-                          </p>
-                        ))}
-                      </div>
-                    ) : null}
-                    {ticket.note ? (
-                      <p className="text-xs font-normal text-brand-primary">
-                        {ticket.note}
-                      </p>
-                    ) : null}
-                    {ticket.weightKg != null ? (
-                      <p className="flex items-center gap-1 text-xs font-medium text-text-tertiary">
-                        <Scale className="size-3" />
-                        Khối lượng: {formatWeight(ticket.weightKg)}
-                      </p>
-                    ) : null}
-                  </div>
-
-                  {/* Nút hành động tương ứng trạng thái */}
-                  {ticket.column === "AWAITING_CONFIRM" && (
-                    <button
-                      type="button"
-                      onClick={() => handleAction(ticket)}
-                      className="flex h-11 w-full items-center justify-center rounded-[14px] bg-status-info text-sm font-bold text-white shadow-2xs transition-all hover:bg-status-info/90 active:scale-[0.99] cursor-pointer"
-                    >
-                      Xác nhận
-                    </button>
-                  )}
-                  {ticket.column === "COOKING" && (
-                    <button
-                      type="button"
-                      onClick={() => handleAction(ticket)}
-                      className="flex h-11 w-full items-center justify-center rounded-[14px] bg-status-warning text-sm font-bold text-white shadow-2xs transition-all hover:bg-status-warning/90 active:scale-[0.99] cursor-pointer"
-                    >
-                      Đã phục vụ
-                    </button>
-                  )}
-                </div>
-              );
-            })
-          ) : (
-            <div className="flex h-40 flex-col items-center justify-center rounded-[20px] border border-dashed border-border-strong bg-surface-card p-6 text-center text-xs text-text-tertiary">
-              <p className="font-medium">Không có món nào trong mục này</p>
+        {hasNotification ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-card border border-border-default bg-surface-card px-4 py-2.5">
+            <p role="status" className="text-sm font-medium">
+              {relatedSession && `${formatTableName(relatedSession.tableName || String(relatedSession.tableId))} · `}
+              Lượt gọi #{targetOrder}
+              {!isLoading && !loadError && !targetColumn && <span className="ml-2 text-text-secondary">Đã rời hàng chế biến.</span>}
+            </p>
+            <div className="flex items-center gap-3">
+              {orderPath && <Link to={orderPath} className="text-sm font-semibold text-brand-primary hover:underline">Xem đơn món</Link>}
+              <Button type="button" variant="ghost" size="sm" onClick={clearNotification}>Bỏ đánh dấu</Button>
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        ) : null}
 
-      {/* ============================================================
-          B. GIAO DIỆN DESKTOP (md+) - 3 CỘT KDS NGUYÊN BẢN
-          ============================================================ */}
-      <div className="hidden md:flex flex-1 flex-col">
-        <PageHeader
-          className="md:block"
-          title="Hàng món chờ chế biến"
-          subtitle={
-            <span className="flex items-center gap-2">
-              {sessionsLoading ? "Đang tải..." : buildSubtitle(totalCount)}
-              {sessionsLoading && (
-                <RefreshCw className="size-3.5 animate-spin text-text-tertiary" />
-              )}
-            </span>
-          }
-          mobileSubtitle={
-            sessionsLoading ? "Đang tải..." : buildSubtitle(totalProcessing)
-          }
-          actions={FILTER_TABS.map((tab) => {
-            const isSelected = filter === tab.value;
+        {loadError ? (
+          <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+            Không cập nhật được danh sách món. {loadError}
+          </p>
+        ) : null}
+
+        <div className={cn("grid items-start gap-4", splitColumns && "md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]")}>
+          {MOBILE_TABS.map(({ value: column, label, dotColor }) => {
+            const groups = matchingGroups[column];
+            const itemCount = groups.reduce((sum, group) => sum + countPortions(group), 0);
             return (
-              <button
-                key={tab.value}
-                type="button"
-                onClick={() => setFilter(tab.value)}
+              <section
+                key={column}
+                aria-label={label}
                 className={cn(
-                  "h-9 rounded-pill px-4 text-sm font-semibold transition-colors cursor-pointer",
-                  isSelected
-                    ? "bg-brand-primary text-text-on-brand shadow-xs"
-                    : "border border-border-default bg-surface-card text-text-secondary hover:border-border-strong hover:text-text-primary",
+                  "min-w-0 space-y-2",
+                  column !== mobileTab && "hidden",
+                  desktopColumns.includes(column) ? "md:block" : "md:hidden",
                 )}
               >
-                {tab.label}
-              </button>
-            );
-          })}
-        />
-
-        {/* 2 Cột KDS Desktop */}
-        <div
-          className={cn(
-            "grid flex-1 gap-6 px-6 py-6 sm:px-8 sm:py-8",
-            visibleColumns.length === 1
-              ? "grid-cols-1 max-w-3xl"
-              : "grid-cols-1 md:grid-cols-2",
-          )}
-        >
-          {visibleColumns.map((col) => {
-            const meta = COLUMN_META[col];
-            const items = byColumn[col];
-
-            return (
-              <div
-                key={col}
-                className="flex flex-col gap-4 rounded-card bg-surface-muted/60 p-4"
-              >
-                {/* Header cột */}
-                <div className="flex items-center justify-between px-1">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn("size-2.5 rounded-full", meta.dotClass)}
-                    />
-                    <h2 className="text-sm font-bold text-text-primary">
-                      {meta.title}
-                    </h2>
-                  </div>
-                  <span className="flex size-6 items-center justify-center rounded-full bg-surface-card text-xs font-bold text-text-secondary shadow-2xs">
-                    {items.length}
-                  </span>
+                <div className="flex flex-wrap items-center gap-2 px-0.5">
+                  <h2 className="flex items-center gap-2 text-sm font-bold text-text-primary">
+                    <span aria-hidden="true" className={cn("size-2 rounded-full", dotColor)} />
+                    {label}
+                  </h2>
+                  <span className="rounded-full bg-surface-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-text-secondary">{itemCount} món</span>
                 </div>
-
-                {/* Danh sách phiếu */}
-                <div className="flex flex-col gap-3">
-                  {items.length > 0 ? (
-                    items.map((ticket) => (
-                      <KDSTicket
-                        key={ticket.id}
-                        tableName={ticket.tableName}
-                        timeAgo={ticket.timeAgo}
-                        dishName={ticket.dishName}
-                        quantity={ticket.quantity}
-                        note={ticket.note}
-                        hint={ticket.hint}
-                        options={ticket.options}
-                        badgeLabel={
-                          ticket.requiresWeighing ? "Chờ cân" : undefined
-                        }
-                        status={
-                          ticket.requiresWeighing
-                            ? "weighing"
-                            : col === "AWAITING_CONFIRM"
-                              ? "pending"
-                              : "cooking"
-                        }
-                        onAction={() => handleAction(ticket)}
+                {groups.length > 0 ? (
+                  <div className={cn("grid gap-2.5 sm:grid-cols-2",
+                    splitColumns ? (column === "AWAITING_CONFIRM" ? "md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3" : "md:grid-cols-1") : "xl:grid-cols-3",
+                  )}>
+                    {groups.map((items) => (
+                      <KitchenTableTicket
+                        key={items[0].tableSessionId}
+                        items={items}
+                        focusedOrder={hasNotification && items[0].tableSessionId === targetSession &&
+                          items.some((item) => item.orderId === targetOrder) ? targetOrder : undefined}
+                        onReview={canConfirm ? openBatchReview : undefined}
+                        onServe={canServe ? (dishes, trigger) => {
+                          serveTriggerRef.current = trigger;
+                          setServeQuantities({});
+                          setServeItems(dishes);
+                        } : undefined}
+                        onWeigh={canWeigh ? (item) => {
+                          setWeighModalTicket(item);
+                          setWeightUnit("kg");
+                          setWeightInput("1.2");
+                        } : undefined}
                       />
-                    ))
-                  ) : (
-                    <div className="flex h-32 items-center justify-center rounded-card border border-dashed border-border-default bg-surface-card/60 text-center text-xs text-text-tertiary">
-                      Không có món nào trong mục này
-                    </div>
-                  )}
-                </div>
-              </div>
+                    ))}
+                  </div>
+                ) : !loadError ? (
+                  <p className="rounded-card border border-dashed border-border-default bg-surface-card p-6 text-center text-sm text-text-secondary">
+                    {isLoading ? "Đang tải danh sách món…" : query ? "Không tìm thấy bàn hoặc món phù hợp." : "Không có món nào trong mục này."}
+                  </p>
+                ) : null}
+              </section>
             );
           })}
         </div>
       </div>
+
+      <Dialog open={canServe && serveItems.length > 0} onOpenChange={(open) => { if (!open && !serving) setServeItems([]); }}>
+        <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col gap-3 p-4 sm:p-6" showCloseButton={!serving} onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          restoreBatchFocus(serveTriggerRef.current);
+          serveTriggerRef.current = null;
+        }}>
+          <DialogHeader className="shrink-0 pr-7">
+            <DialogTitle>{serveItems[0]?.takeaway ? "Đóng gói xong" : "Đã phục vụ"} · {serveItems[0] ? formatTableName(serveItems[0].tableName) : ""}</DialogTitle>
+            <DialogDescription>{serveItems[0]?.takeaway ? "Chọn số phần đã đóng gói." : "Chọn số phần đã mang ra bàn."}</DialogDescription>
+          </DialogHeader>
+          {availableServePortions > 0 ? (
+            <>
+              <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 border-y border-border-default">
+                <label htmlFor={serveCheckboxId} className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold">
+                  <Checkbox
+                    id={serveCheckboxId}
+                    checked={allServeItemsSelected ? true : selectedServePortions > 0 ? "indeterminate" : false}
+                    onCheckedChange={(checked) => setServeQuantities(checked === true
+                      ? Object.fromEntries(serveGroups.map(({ key, total }) => [key, total]))
+                      : {})}
+                    disabled={serving}
+                  />
+                  Chọn tất cả
+                </label>
+                <span role="status" className="text-sm text-text-secondary">
+                  Đã chọn {selectedServePortions}/{availableServePortions} phần
+                </span>
+              </div>
+              <div className="min-h-0 space-y-2 overflow-y-auto px-1">
+                {serveGroups.map(({ key, items: [item], total, selected }) => {
+                  const itemLabelId = `${serveCheckboxId}-${item.id}`;
+                  function adjustQuantity(delta: number) {
+                    setServeQuantities((previous) => ({
+                      ...previous,
+                      [key]: Math.max(0, Math.min(total, Math.min(previous[key] ?? 0, total) + delta)),
+                    }));
+                  }
+                  return (
+                    <div
+                      key={key}
+                      role="group"
+                      aria-labelledby={itemLabelId}
+                      className={cn(
+                        "flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-lg border p-3",
+                        selected > 0 ? "border-sky-200 bg-sky-50" : "border-border-default",
+                      )}
+                    >
+                      <div id={itemLabelId} className="min-w-0 flex-1 basis-32 break-words text-sm">
+                        <p className="font-semibold">{item.dishName}</p>
+                        {item.options?.length ? (
+                          <p className="text-xs text-text-secondary">{item.options.map((opt) => opt.optionItemName).join(" · ")}</p>
+                        ) : null}
+                        {item.note ? <p className="text-xs text-text-secondary">Ghi chú: {item.note}</p> : null}
+                        {item.isTakeAway ? <p className="text-xs text-text-secondary">Mang về</p> : null}
+                        {item.weightKg != null ? <p className="text-xs text-text-secondary">{formatWeight(item.weightKg)}</p> : null}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1 rounded-lg border border-border-default bg-surface-card p-0.5">
+                        <Button type="button" variant="ghost" size="icon" className="size-11"
+                          aria-label="Giảm số phần" disabled={serving || selected === 0} onClick={() => adjustQuantity(-1)}>
+                          <Minus aria-hidden="true" />
+                        </Button>
+                        <span className="min-w-10 text-center text-sm font-semibold tabular-nums">{selected}/{total}</span>
+                        <Button type="button" variant="ghost" size="icon" className="size-11 text-sky-800"
+                          aria-label="Tăng số phần" disabled={serving || selected === total} onClick={() => adjustQuantity(1)}>
+                          <Plus aria-hidden="true" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <p role="status" className="text-sm text-text-secondary">Các món trong danh sách đã được cập nhật.</p>
+          )}
+          <DialogFooter className="shrink-0">
+            <DialogClose asChild><Button type="button" variant="outline" disabled={serving}>Hủy</Button></DialogClose>
+            <Button type="button" onClick={() => void handleServeTable()} disabled={serving || selectedServePortions === 0}>
+              {serving ? "Đang cập nhật…" : selectedServePortions > 0 ? `Xác nhận ${selectedServePortions} phần` : "Xác nhận đã phục vụ"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ============================================================
           MODAL: NHẬP SỐ CÂN CHO MÓN BÁN THEO CÂN (dùng chung mobile + desktop)
           ============================================================ */}
-      {weighModalTicket && (
+      {canWeigh && weighModalTicket && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in">
           <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
@@ -1064,146 +1087,26 @@ export default function KitchenDisplayPage() {
         </div>
       )}
 
-      {/* Modal xác nhận nhiều món cùng bàn */}
-      {batchModalState && batchModalState.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl flex flex-col max-h-[85vh]">
-            {/* Header */}
-            <div className="flex items-start justify-between pb-4 border-b border-[#EAECF0]">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EFF8FF] text-[#175CD3]">
-                  <Utensils className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-[#101828]">
-                    Xác nhận món theo bàn — {batchModalState.tableName}
-                  </h3>
-                  <p className="text-xs text-[#667085] mt-0.5">
-                    Bàn này có {batchModalState.items.length} món đang chờ. Bạn có thể xác nhận nhiều món cùng lúc:
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setBatchModalState(null)}
-                className="rounded-lg p-1 text-[#98A2B3] hover:bg-gray-100 cursor-pointer transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Sub-header: Chọn tất cả */}
-            <div className="flex items-center justify-between py-3 px-1 border-b border-[#F2F4F7]">
-              <label
-                className="flex items-center gap-2 text-xs font-semibold text-[#344054] cursor-pointer select-none"
-                onClick={handleToggleSelectAllBatch}
-              >
-                <Checkbox
-                  checked={
-                    batchModalState.selectedIds.size === batchModalState.items.length
-                      ? true
-                      : batchModalState.selectedIds.size > 0
-                        ? "indeterminate"
-                        : false
-                  }
-                  onCheckedChange={handleToggleSelectAllBatch}
-                />
-                <span>Chọn tất cả ({batchModalState.items.length} món)</span>
-              </label>
-              <span className="text-xs text-[#475467] font-medium">
-                Đã chọn: <strong className="text-[#175CD3]">{batchModalState.selectedIds.size}</strong> món
-              </span>
-            </div>
-
-            {/* List items */}
-            <div className="flex-1 overflow-y-auto divide-y divide-[#F2F4F7] my-2 pr-1">
-              {batchModalState.items.map((item) => {
-                const isChecked = batchModalState.selectedIds.has(item.orderDetailId);
-                return (
-                  <div
-                    key={item.orderDetailId}
-                    onClick={() => handleToggleBatchItem(item.orderDetailId)}
-                    className={cn(
-                      "flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-colors border my-1",
-                      isChecked
-                        ? "border-[#B2DDFF] bg-[#F5FAFF]"
-                        : "border-transparent bg-white hover:bg-gray-50"
-                    )}
-                  >
-                    <Checkbox
-                      checked={isChecked}
-                      onCheckedChange={() => handleToggleBatchItem(item.orderDetailId)}
-                      className="mt-0.5"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-bold text-sm text-[#101828] truncate">
-                          {item.dishName}
-                        </span>
-                        <span className="shrink-0 text-xs font-bold px-2 py-0.5 rounded-full bg-[#E0F2FE] text-[#026AA2]">
-                          x{item.quantity}
-                        </span>
-                      </div>
-
-                      {/* Options nếu có */}
-                      {item.options && item.options.length > 0 && (
-                        <div className="text-xs text-[#667085] mt-1 flex flex-wrap gap-1">
-                          {item.options.map((opt) => (
-                            <span
-                              key={opt.id}
-                              className="inline-block bg-[#F2F4F7] px-1.5 py-0.5 rounded text-[11px]"
-                            >
-                              +{opt.optionItemName}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Note nếu có */}
-                      {item.note && (
-                        <p className="text-xs text-[#D92D20] mt-1 italic font-medium">
-                          Ghi chú: {item.note}
-                        </p>
-                      )}
-
-                      <div className="text-[11px] text-[#98A2B3] mt-1">
-                        Thời gian gọi: {item.timeAgo}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Footer actions */}
-            <div className="flex gap-3 pt-3 border-t border-[#EAECF0]">
-              <button
-                type="button"
-                onClick={() => setBatchModalState(null)}
-                className="h-11 flex-1 rounded-xl border border-[#D0D5DD] bg-white text-sm font-bold text-[#344054] hover:bg-gray-50 cursor-pointer transition-colors"
-              >
-                Hủy
-              </button>
-              <button
-                type="button"
-                onClick={handleBatchConfirmSubmit}
-                disabled={batchModalState.selectedIds.size === 0 || batchConfirmMutation.isPending}
-                className={cn(
-                  "h-11 flex-1 rounded-xl text-sm font-bold text-white transition-colors cursor-pointer flex items-center justify-center gap-2",
-                  batchModalState.selectedIds.size === 0 || batchConfirmMutation.isPending
-                    ? "bg-[#D0D5DD] cursor-not-allowed"
-                    : "bg-[#2E90FA] hover:bg-[#1570EF]"
-                )}
-              >
-                <Printer className="h-4 w-4" />
-                {batchConfirmMutation.isPending
-                  ? "Đang xử lý..."
-                  : `Xác nhận & In ${batchModalState.selectedIds.size} món`}
-              </button>
-            </div>
-          </div>
-        </div>
+      {canConfirm && batchModalState && (
+        <BatchReviewDialog
+          tableName={batchModalState.tableName}
+          items={batchModalState.items}
+          selectedIds={batchModalState.selectedIds}
+          now={now}
+          submitting={batchConfirmMutation.isPending}
+          onSelectionChange={updateBatchSelection}
+          onConfirm={handleBatchConfirmSubmit}
+          onClose={() => {
+            if (!batchSubmittingRef.current) setBatchModalState(null);
+          }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            restoreBatchFocus(batchTriggerRef.current);
+            batchTriggerRef.current = null;
+          }}
+        />
       )}
+
     </div>
   );
 }

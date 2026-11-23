@@ -80,6 +80,10 @@ export const qk = {
     byTable: (tableId: number) => ["table-sessions", "table", tableId] as const,
     billPreview: (id: number) => ["table-sessions", "bill-preview", id] as const,
   },
+  takeawayOrders: {
+    all: ["takeaway-orders"] as const,
+    byBranch: (branchId?: number) => ["takeaway-orders", branchId] as const,
+  },
   categories: {
     all: ["categories"] as const,
     detail: (id: number) => ["categories", "detail", id] as const,
@@ -128,6 +132,7 @@ export const qk = {
   },
   orderDetails: {
     all: ["order-details"] as const,
+    checkoutRemoval: ["order-details", "checkout-removal"] as const,
     detail: (id: number) => ["order-details", "detail", id] as const,
     byOrder: (orderId: number) => ["order-details", "order", orderId] as const,
     bySession: (tableSessionId: number, status?: string) =>

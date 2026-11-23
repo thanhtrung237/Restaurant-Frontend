@@ -9,7 +9,6 @@ import {
 import {
   format,
   subDays,
-  subMonths,
   addMonths,
   startOfDay,
   endOfDay,
@@ -18,7 +17,7 @@ import {
   startOfWeek,
   endOfWeek,
   eachDayOfInterval,
-  startOfQuarter,
+  differenceInCalendarDays,
   isSameDay,
   isAfter,
   isBefore,
@@ -41,11 +40,9 @@ export type PresetKey =
   | "today"
   | "yesterday"
   | "7days"
-  | "30days"
   | "thisMonth"
-  | "lastMonth"
-  | "thisQuarter"
   | "thisYear"
+  | "lastYear"
   | "custom"
 
 interface PresetOption {
@@ -83,37 +80,10 @@ export const PRESET_OPTIONS: PresetOption[] = [
     }),
   },
   {
-    key: "30days",
-    label: "30 ngày",
-    getRange: (now) => ({
-      from: startOfDay(subDays(now, 29)),
-      to: endOfDay(now),
-    }),
-  },
-  {
     key: "thisMonth",
     label: "Tháng này",
     getRange: (now) => ({
       from: startOfMonth(now),
-      to: endOfDay(now),
-    }),
-  },
-  {
-    key: "lastMonth",
-    label: "Tháng trước",
-    getRange: (now) => {
-      const prev = subMonths(now, 1)
-      return {
-        from: startOfMonth(prev),
-        to: endOfMonth(prev),
-      }
-    },
-  },
-  {
-    key: "thisQuarter",
-    label: "Quý này",
-    getRange: (now) => ({
-      from: startOfQuarter(now),
       to: endOfDay(now),
     }),
   },
@@ -123,6 +93,14 @@ export const PRESET_OPTIONS: PresetOption[] = [
     getRange: (now) => ({
       from: new Date(now.getFullYear(), 0, 1),
       to: endOfDay(now),
+    }),
+  },
+  {
+    key: "lastYear",
+    label: "Năm trước",
+    getRange: (now) => ({
+      from: new Date(now.getFullYear() - 1, 0, 1),
+      to: endOfDay(new Date(now.getFullYear() - 1, 11, 31)),
     }),
   },
 ]
@@ -172,6 +150,15 @@ export function TimeRangeDropdown({
   const [viewingMonth, setViewingMonth] = React.useState<Date>(range.to || range.from)
 
   const now = React.useMemo(() => new Date(), [])
+  const currentYear = now.getFullYear()
+  const viewingYear = viewingMonth.getFullYear()
+  const earliestYear = Math.min(currentYear - 99, range.from.getFullYear(), viewingYear)
+  const years = Array.from({ length: currentYear - earliestYear + 1 }, (_, index) => currentYear - index)
+
+  function goToCalendarMonth(year: number, month: number) {
+    setHoverDate(null)
+    setViewingMonth(new Date(year, year === currentYear ? Math.min(month, now.getMonth()) : month, 1))
+  }
 
   // Sync state whenever popover opens or active range changes
   React.useEffect(() => {
@@ -264,7 +251,7 @@ export function TimeRangeDropdown({
       )
     }
     const toStr = format(tempTo, "dd/MM/yyyy", { locale: vi })
-    const days = Math.round(Math.abs(tempTo.getTime() - tempFrom.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    const days = differenceInCalendarDays(tempTo, tempFrom) + 1
     return (
       <span className="text-text-secondary text-xs">
         Đã chọn: <strong className="text-text-primary">{fromStr} – {toStr}</strong> ({days} ngày)
@@ -293,6 +280,7 @@ export function TimeRangeDropdown({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
+          aria-label={`Chọn khoảng thời gian báo cáo · ${triggerText}`}
           className={cn(
             "flex items-center gap-2 transition-colors justify-start text-left font-normal cursor-pointer select-none",
             variant === "toolbar"
@@ -320,14 +308,14 @@ export function TimeRangeDropdown({
       <PopoverContent
         align="end"
         side="bottom"
-        className="w-[390px] p-4 bg-surface-card border border-border-default/90 shadow-2xl rounded-2xl z-50 text-text-primary"
+        className="w-[390px] max-w-[calc(100vw-1rem)] max-h-(--radix-popover-content-available-height) overflow-y-auto p-4 bg-surface-card border border-border-default/90 shadow-2xl rounded-2xl z-50 text-text-primary"
       >
-        {/* 1. Quick Presets Grid (2 rows x 4 pills) */}
+        {/* 1. Quick Presets Grid */}
         <div className="mb-3.5">
           <div className="text-[11px] font-bold uppercase tracking-wider text-text-tertiary mb-2">
             Chọn nhanh khoảng thời gian
           </div>
-          <div className="grid grid-cols-4 gap-1.5">
+          <div className="grid grid-cols-3 gap-1.5">
             {PRESET_OPTIONS.map((p) => {
               const isActive = activePresetKey === p.key
               return (
@@ -352,9 +340,11 @@ export function TimeRangeDropdown({
         <div className="border-t border-border-default/60 pt-3 mb-3">
           {/* 2. From & To Date Preview Boxes */}
           <div className="flex items-center gap-2 mb-3">
-            <div
+            <button
+              type="button"
+              aria-pressed={pickingStep === "from"}
               className={cn(
-                "flex-1 rounded-xl border px-3 py-1.5 transition-all cursor-pointer",
+                "flex-1 rounded-xl border px-3 py-1.5 text-left transition-all cursor-pointer",
                 pickingStep === "from"
                   ? "border-brand-primary bg-brand-primary-subtle/30 ring-1 ring-brand-primary/20"
                   : "border-border-default bg-surface-page"
@@ -367,13 +357,15 @@ export function TimeRangeDropdown({
               <span className="text-xs font-bold text-text-primary">
                 {tempFrom ? format(tempFrom, "dd/MM/yyyy") : "Chọn ngày"}
               </span>
-            </div>
+            </button>
 
             <ArrowRight className="size-3.5 text-text-tertiary shrink-0" />
 
-            <div
+            <button
+              type="button"
+              aria-pressed={pickingStep === "to"}
               className={cn(
-                "flex-1 rounded-xl border px-3 py-1.5 transition-all cursor-pointer",
+                "flex-1 rounded-xl border px-3 py-1.5 text-left transition-all cursor-pointer",
                 pickingStep === "to"
                   ? "border-brand-primary bg-brand-primary-subtle/30 ring-1 ring-brand-primary/20"
                   : "border-border-default bg-surface-page"
@@ -397,27 +389,48 @@ export function TimeRangeDropdown({
                   ? "Chọn ngày kết thúc..."
                   : "Chưa chọn"}
               </span>
-            </div>
+            </button>
           </div>
 
           {/* 3. Month Navigation Header */}
           <div className="flex items-center justify-between px-1 mb-2">
             <button
               type="button"
-              onClick={() => setViewingMonth(subMonths(viewingMonth, 1))}
+              aria-label="Tháng liền trước"
+              onClick={() => goToCalendarMonth(viewingYear, viewingMonth.getMonth() - 1)}
               className="flex size-7 items-center justify-center rounded-lg hover:bg-surface-muted text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
             >
               <ChevronLeft className="size-4" />
             </button>
 
-            <span className="text-sm font-bold text-text-primary capitalize">
-              {format(viewingMonth, "MMMM, yyyy", { locale: vi })}
-            </span>
+            <div className="flex items-center gap-2">
+              <select
+                aria-label="Tháng hiển thị"
+                value={viewingMonth.getMonth()}
+                onChange={(event) => goToCalendarMonth(viewingYear, Number(event.target.value))}
+                className="h-9 cursor-pointer rounded-md border border-border-default bg-surface-card px-2 text-sm font-semibold focus-visible:outline-brand-primary"
+              >
+                {Array.from({ length: 12 }, (_, month) => (
+                  <option key={month} value={month} disabled={viewingYear === currentYear && month > now.getMonth()}>
+                    Tháng {month + 1}
+                  </option>
+                ))}
+              </select>
+              <select
+                aria-label="Năm hiển thị"
+                value={viewingYear}
+                onChange={(event) => goToCalendarMonth(Number(event.target.value), viewingMonth.getMonth())}
+                className="h-9 cursor-pointer rounded-md border border-border-default bg-surface-card px-2 text-sm font-semibold focus-visible:outline-brand-primary"
+              >
+                {years.map((year) => <option key={year} value={year}>{year}</option>)}
+              </select>
+            </div>
 
             <button
               type="button"
+              aria-label="Tháng liền sau"
               disabled={isAfter(startOfMonth(addMonths(viewingMonth, 1)), startOfMonth(now))}
-              onClick={() => setViewingMonth(addMonths(viewingMonth, 1))}
+              onClick={() => goToCalendarMonth(viewingYear, viewingMonth.getMonth() + 1)}
               className="flex size-7 items-center justify-center rounded-lg hover:bg-surface-muted text-text-secondary hover:text-text-primary transition-colors cursor-pointer disabled:opacity-20 disabled:pointer-events-none"
             >
               <ChevronRight className="size-4" />
@@ -476,6 +489,7 @@ export function TimeRangeDropdown({
                 >
                   <button
                     type="button"
+                    aria-label={format(day, "dd/MM/yyyy")}
                     disabled={isFuture}
                     onClick={() => handleDayClick(day)}
                     className={cn(

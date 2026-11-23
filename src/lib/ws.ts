@@ -8,6 +8,7 @@ export function getWsUrl(): string {
   if (apiBase) {
     return apiBase.replace(/\/api\/v1\/?$/, "") + "/ws"
   }
+  if (import.meta.env.DEV) return "/ws"
   const host = typeof window !== "undefined" ? window.location.hostname : "localhost"
   return `http://${host}:8080/ws`
 }

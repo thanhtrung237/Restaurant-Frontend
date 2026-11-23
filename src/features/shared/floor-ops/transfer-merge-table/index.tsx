@@ -58,7 +58,9 @@ export default function TransferMergeTablePage() {
   // Map session theo tableId
   const sessionsByTableId = React.useMemo(() => {
     const map = new Map<number, TableSession>()
-    sessionsData.forEach((s) => map.set(s.tableId, s))
+    sessionsData.forEach((s) => {
+      if (s.tableId != null) map.set(s.tableId, s)
+    })
     return map
   }, [sessionsData])
 

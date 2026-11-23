@@ -1,188 +1,78 @@
-import * as React from "react"
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  ResponsiveContainer,
-  Tooltip,
-} from "recharts"
-import { type ChartConfig, ChartContainer } from "@/components/ui/chart"
-import type { DailyRevenueItem } from "../types"
+import { ChartNoAxesColumn } from "lucide-react"
+import { Bar, BarChart, Rectangle, Tooltip, XAxis, useChartWidth, type BarShapeProps } from "recharts"
+import { ChartContainer, type ChartConfig } from "@/components/ui/chart"
+
+interface RevenueChartPoint {
+  day: string
+  fullDay: string
+  revenue: number
+}
 
 interface RevenueBarChartProps {
-  data: DailyRevenueItem[]
-  title?: string
+  data: RevenueChartPoint[]
+  title: string
+  subtitle?: string
+  maxBarSize?: number
 }
 
 const chartConfig = {
-  revenue: {
-    label: "Doanh thu",
-    color: "#F0522B",
-  },
+  revenue: { label: "Doanh thu", color: "#FDD7C7" },
 } satisfies ChartConfig
 
-/**
- * CustomActiveBar được Recharts tự động render tại vị trí cột đang hover:
- * - props có sẵn: x, y (đỉnh cột), width, height, payload
- * - Hộp đen doanh số nằm ngay trên đỉnh cột 8px (y - boxHeight - 8), bám sát từng cột thấp/cao
- * - Cột chuyển sang màu đỏ cam #EA4A2A
- * - pointer-events-none để mượt mà 100%, không bao giờ chớp giật
- */
-function CustomActiveBar(props: any) {
-  const { x = 0, y = 0, width = 0, height = 0, payload } = props
-  if (!payload) return null
+function ActiveRevenueBar({ x, y, width, height, payload }: BarShapeProps) {
+  const chartWidth = useChartWidth()
+  const point: RevenueChartPoint | undefined = payload
+  if (!point || !chartWidth) return null
 
-  const boxWidth = 136
-  const boxHeight = 44
-  const boxX = Math.max(4, x + width / 2 - boxWidth / 2)
-  // Nằm ngay trên đỉnh cột cách đúng 8px
-  const boxY = Math.max(4, y - boxHeight - 8)
-  const formattedRevenue = `${payload.revenue.toLocaleString("vi-VN")}đ`
+  const tooltipWidth = Math.min(168, chartWidth - 8)
+  const tooltipX = Math.max(4, Math.min(x + width / 2 - tooltipWidth / 2, chartWidth - tooltipWidth - 4))
 
   return (
     <g className="pointer-events-none">
-      {/* 1. Cột đang active chuyển sang màu đỏ cam #EA4A2A */}
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        rx={6}
-        ry={6}
-        fill="#EA4A2A"
-      />
-
-      {/* 2. Hộp đen bo góc nằm ngay trên đỉnh cột */}
-      <rect
-        x={boxX}
-        y={boxY}
-        width={boxWidth}
-        height={boxHeight}
-        rx={8}
-        ry={8}
-        fill="#1E2229"
-        className="filter drop-shadow-md"
-      />
-
-      {/* Dòng 1: Tên thứ / ngày */}
-      <text
-        x={boxX + boxWidth / 2}
-        y={boxY + 16}
-        textAnchor="middle"
-        fill="#A0AEC0"
-        fontSize={11}
-        fontWeight={400}
-      >
-        {payload.fullDay}
-      </text>
-
-      {/* Dòng 2: Doanh thu (vd: 12.437.000đ) */}
-      <text
-        x={boxX + boxWidth / 2}
-        y={boxY + 34}
-        textAnchor="middle"
-        fill="#FFFFFF"
-        fontSize={13}
-        fontWeight={700}
-      >
-        {formattedRevenue}
-      </text>
+      <Rectangle x={x} y={y} width={width} height={height} radius={6} fill="#EA4A2A" />
+      <foreignObject x={tooltipX} y={Math.max(4, Math.min(y, y + height) - 56)} width={tooltipWidth} height={56}>
+        <div className="mx-auto mt-1 w-fit max-w-full rounded-lg bg-[#1E2229] px-3 py-1.5 text-center shadow-md">
+          <p className="truncate text-[11px] text-slate-300" title={point.fullDay}>{point.fullDay}</p>
+          <p className="whitespace-nowrap text-[13px] font-bold text-white">{point.revenue.toLocaleString("vi-VN")}đ</p>
+        </div>
+      </foreignObject>
     </g>
   )
 }
 
-/**
- * Custom XAxis Tick: Chỉ đỏ và in đậm khi đưa chuột vào đúng cột đó
- */
-function CustomXAxisTick(props: any) {
-  const { x, y, payload, index, hoveredIndex, isCompact } = props
-  const isHovered = hoveredIndex === index
+export function RevenueBarChart({ data, title, subtitle, maxBarSize = 48 }: RevenueBarChartProps) {
+  const hasRevenue = data.some((point) => point.revenue !== 0)
 
   return (
-    <g transform={`translate(${x},${y})`}>
-      <text
-        x={0}
-        y={14}
-        textAnchor="middle"
-        fill={isHovered ? "#EA4A2A" : "#868E96"}
-        fontSize={isCompact ? 11 : 13}
-        fontWeight={isHovered ? 700 : 500}
-        className="transition-colors duration-150"
-      >
-        {payload.value}
-      </text>
-    </g>
-  )
-}
+    <div className="h-full rounded-card border border-border-default/80 bg-surface-card p-4 shadow-2xs sm:p-6">
+      <h3 className="text-base font-bold tracking-tight text-text-primary">{title}</h3>
+      {subtitle && <p className="mt-1 text-sm text-text-secondary">{subtitle}</p>}
 
-export function RevenueBarChart({
-  data,
-  title = "Doanh thu 7 ngày qua",
-}: RevenueBarChartProps) {
-  const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null)
-  const isCompact = data.length > 14
-  const axisInterval = data.length > 22 ? 1 : 0
-  const maxBarWidth = data.length > 20 ? 16 : data.length > 10 ? 24 : 36
-
-  return (
-    <div className="rounded-card border border-border-default/80 bg-surface-card p-6 shadow-2xs">
-      <h3 className="text-base font-bold text-text-primary tracking-tight">
-        {title}
-      </h3>
-
-      <div className="mt-6 w-full h-[320px]">
-        <ChartContainer config={chartConfig} className="w-full h-full aspect-auto">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={data}
-              margin={{ top: 60, right: 16, left: 16, bottom: 8 }}
-              onMouseMove={(state: any) => {
-                if (
-                  state &&
-                  state.isTooltipActive &&
-                  typeof state.activeTooltipIndex === "number"
-                ) {
-                  if (hoveredIndex !== state.activeTooltipIndex) {
-                    setHoveredIndex(state.activeTooltipIndex)
-                  }
-                } else if (hoveredIndex !== null) {
-                  setHoveredIndex(null)
-                }
-              }}
-              onMouseLeave={() => {
-                if (hoveredIndex !== null) {
-                  setHoveredIndex(null)
-                }
-              }}
-            >
-              {/* Tooltip ẩn cursor và content để Recharts kích hoạt activeBar của cột */}
-              <Tooltip
-                cursor={false}
-                content={() => null}
-                isAnimationActive={false}
-              />
-              <XAxis
-                dataKey="day"
-                axisLine={false}
-                tickLine={false}
-                tick={(props) => (
-                  <CustomXAxisTick {...props} hoveredIndex={hoveredIndex} isCompact={isCompact} />
-                )}
-                interval={axisInterval}
-              />
-              <Bar
-                dataKey="revenue"
-                fill="#FDD7C7"
-                radius={[6, 6, 6, 6]}
-                maxBarSize={maxBarWidth}
-                minPointSize={6}
-                cursor="pointer"
-                activeBar={<CustomActiveBar />}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+      {hasRevenue ? (
+        <ChartContainer config={chartConfig} className="mt-5 h-[280px] w-full aspect-auto sm:h-[320px]">
+          <BarChart data={data} margin={{ top: 72, right: 12, left: 12, bottom: 4 }}>
+            <XAxis dataKey="day" axisLine={false} tickLine={false} tickMargin={10} minTickGap={12} />
+            <Tooltip cursor={false} content={() => null} isAnimationActive={false} />
+            <Bar
+              dataKey="revenue"
+              name="Doanh thu"
+              fill="var(--color-revenue)"
+              radius={6}
+              maxBarSize={maxBarSize}
+              activeBar={(props: BarShapeProps) => <ActiveRevenueBar {...props} />}
+              isAnimationActive={false}
+            />
+          </BarChart>
         </ChartContainer>
-      </div>
+      ) : (
+        <div className="mt-5 flex min-h-48 flex-col items-center justify-center gap-2 rounded-xl bg-surface-page px-4 text-center sm:min-h-56">
+          <div className="rounded-full bg-surface-muted p-3 text-text-secondary">
+            <ChartNoAxesColumn className="size-5" aria-hidden="true" />
+          </div>
+          <p className="text-sm font-semibold text-text-primary">Chưa có doanh thu trong khoảng này</p>
+          <p className="text-xs text-text-secondary">Chọn khoảng thời gian khác để xem biểu đồ.</p>
+        </div>
+      )}
     </div>
   )
 }

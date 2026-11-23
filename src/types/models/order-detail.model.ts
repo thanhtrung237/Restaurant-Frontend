@@ -35,6 +35,7 @@ export interface OrderDetail extends BaseResponse {
   promotionId?: number
   promotionName?: string
   quantity: number
+  servedQuantity?: number
   priceAtOrderTime: number // BigDecimal
   promotionDiscountAmount?: number
   weightKg?: number

@@ -39,6 +39,8 @@ export interface TableCardProps {
   /** Icon phụ góc trên bên phải (cạnh dot trạng thái) */
   topRightIcon?: React.ReactNode
   selected?: boolean
+  compactOnMobile?: boolean
+  disabled?: boolean
   onClick?: (table: DiningTable) => void
   className?: string
 }
@@ -105,6 +107,10 @@ const CARD_STYLE_BY_DISPLAY_STATUS: Record<
   },
 }
 
+export function getTableGuestUrl(qrCode: string) {
+  return `${typeof window !== "undefined" ? window.location.origin : "http://localhost:5173"}/ban/${qrCode}`
+}
+
 /**
  * Mã QR bàn có thể kéo thả (drag & drop) sang tab mới của trình duyệt
  * hoặc click để mở trực tiếp trang gọi món của bàn.
@@ -121,7 +127,7 @@ export function DraggableTableQr({
   const [dataUrl, setDataUrl] = React.useState<string>("")
   const [exportFailed, setExportFailed] = React.useState(false)
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null)
-  const tableUrl = `${typeof window !== "undefined" ? window.location.origin : "http://localhost:5173"}/ban/${qrCode}`
+  const tableUrl = getTableGuestUrl(qrCode)
 
   /**
    * Xuất Data URL từ canvas ngầm để trình duyệt hỗ trợ kéo ảnh và chuột phải lưu ảnh.
@@ -245,6 +251,8 @@ export function TableCard({
   onClick,
   className,
   variant = "status",
+  compactOnMobile = false,
+  disabled = false,
   areaName,
   onPrintQr,
   onEdit,
@@ -252,6 +260,7 @@ export function TableCard({
   // Giao diện riêng cho màn hình Quản lý bàn & QR theo Figma Desktop / Quản lý bàn & QR.png
   if (variant === "qr") {
     const isAvailable = table.status === "AVAILABLE"
+    const isInactive = table.status === "INACTIVE"
     return (
       <div
         className={cn(
@@ -275,13 +284,15 @@ export function TableCard({
           <div className="mt-1 flex items-center gap-1.5 text-xs text-text-tertiary">
             <User className="size-3.5 shrink-0" />
             <span>
-              {table.capacity} chỗ · {areaName || "Tầng 1"}
+              {table.capacity} chỗ · {areaName || "Chưa phân khu"}
             </span>
           </div>
 
           {/* Hàng 3: Mã QR — Cho phép kéo thả ra tab khác hoặc click để mở trang gọi món */}
           <div className="my-3.5 flex items-center justify-center rounded-xl bg-surface-muted h-[104px] text-text-primary p-2 overflow-hidden">
-            {table.qrCode ? (
+            {isInactive ? (
+              <span className="text-center text-sm font-medium text-text-secondary">Ngừng sử dụng</span>
+            ) : table.qrCode ? (
               <DraggableTableQr qrCode={table.qrCode} tableName={table.name} size={76} />
             ) : (
               <QrCode className="size-10 stroke-[1.75] text-text-tertiary" />
@@ -295,6 +306,7 @@ export function TableCard({
             type="button"
             variant="outline"
             size="sm"
+            disabled={isInactive}
             onClick={() => onPrintQr?.(table)}
             className="flex-1 h-9 rounded-xl border-border-default bg-surface-card text-xs font-medium text-text-primary hover:bg-surface-muted hover:border-border-strong cursor-pointer"
           >
@@ -335,15 +347,19 @@ export function TableCard({
       calculatedInfoLine = `${guests} khách · ${elapsedMinutes} phút`
     } else if (guests && currentStatus === "OCCUPIED") {
       calculatedInfoLine = `${guests} khách`
+    } else if (guestCount && currentStatus === "AWAITING_PAYMENT") {
+      calculatedInfoLine = `${guestCount} khách`
     }
   }
 
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={onClick ? () => onClick(table) : undefined}
       className={cn(
-        "group relative flex h-48 w-full flex-col rounded-[16px] border-[1.5px] p-5 text-left transition-all duration-200 cursor-pointer shadow-xs",
+        "group relative flex w-full flex-col rounded-[16px] border-[1.5px] text-left transition-colors cursor-pointer shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary disabled:cursor-default",
+        compactOnMobile ? "min-h-24 min-w-0 p-2.5 lg:min-h-48 lg:p-5" : "h-48 p-5",
         style.border,
         style.bg,
         selected && "ring-2 ring-brand-primary ring-offset-2",
@@ -351,46 +367,48 @@ export function TableCard({
       )}
     >
       {/* Hàng 1: Tên bàn + Chấm tròn trạng thái góc trên phải */}
-      <div className="flex w-full items-center justify-between gap-2">
-        <span className="text-2xl font-bold text-text-primary tracking-tight">{table.name}</span>
+      <div className="flex w-full items-start justify-between gap-1.5">
+        <span className={cn(
+          "min-w-0 break-words font-bold tracking-tight text-text-primary",
+          compactOnMobile ? "text-base leading-snug lg:text-2xl" : "text-2xl",
+        )}>{table.name}</span>
         <div className="flex items-center gap-1.5 shrink-0">
           {topRightIcon}
-          <span className={cn("size-3.5 rounded-full", style.dot)} />
+          <span className={cn("rounded-full", compactOnMobile ? "mt-1 size-2.5 lg:size-3.5" : "size-3.5", style.dot)} />
         </div>
       </div>
 
-      {/* Hàng 2: Chip trạng thái (pill badge) */}
-      <div className="mt-2">
+      <div className={cn("flex w-full flex-wrap items-center gap-x-2 gap-y-0.5", compactOnMobile ? "mt-1 lg:mt-2" : "mt-2")}>
         <span
           className={cn(
-            "inline-flex items-center rounded-pill border px-3.5 py-0.5 text-xs font-semibold tracking-wide shadow-2xs",
+            "inline-flex max-w-full items-center rounded-pill border py-0.5 text-xs font-semibold shadow-2xs",
+            compactOnMobile ? "px-1.5 leading-tight lg:px-3.5 lg:leading-normal" : "px-3.5 tracking-wide",
             style.chip,
           )}
         >
           {statusText}
         </span>
+        {table.capacity != null && table.capacity > 0 ? (
+          <span className="whitespace-nowrap text-xs font-medium text-text-secondary">{table.capacity} chỗ</span>
+        ) : null}
       </div>
 
       {/* Hàng 3: Dòng thông tin phụ (Số khách · Số phút / Nhấn để mở bàn / vừa quét QR) */}
-      <div className="mt-3.5 min-h-[1.25rem]">
-        {calculatedInfoLine ? (
-          <span className="text-sm font-medium text-[#64748B] dark:text-zinc-400">
-            {calculatedInfoLine}
-          </span>
-        ) : null}
-
-        {subLabel ? (
-          <span className="text-sm font-medium text-[#94A3B8] dark:text-zinc-500">
-            {subLabel}
-          </span>
-        ) : null}
+      <div className={cn(
+        "break-words font-medium",
+        compactOnMobile ? "mt-1 text-xs text-text-secondary lg:mt-3.5 lg:min-h-5 lg:text-sm" : "mt-3.5 min-h-5 text-sm text-text-tertiary",
+      )}>
+        {subLabel || calculatedInfoLine}
       </div>
 
       {/* Hàng cuối: Tạm tính */}
       {subtotal !== undefined ? (
-        <div className="mt-auto flex w-full items-center justify-between pt-2">
+        <div className={cn(
+          "mt-auto flex w-full flex-wrap items-center justify-between gap-x-2 pt-2",
+          compactOnMobile && subtotal === "—" && "hidden lg:flex",
+        )}>
           <span className="text-sm text-[#94A3B8] dark:text-zinc-500">Tạm tính</span>
-          <span className="text-xl font-bold text-text-primary">{subtotal}</span>
+          <span className={cn("font-bold text-text-primary", compactOnMobile ? "text-sm lg:text-xl" : "text-xl")}>{subtotal}</span>
         </div>
       ) : null}
     </button>

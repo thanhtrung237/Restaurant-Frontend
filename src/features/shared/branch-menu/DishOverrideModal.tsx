@@ -92,19 +92,10 @@ export function DishOverrideModal({
   // Pre-fill form when editing existing override
   useEffect(() => {
     if (open && dish) {
-      if (overrideId && dish.hasOverride) {
-        // Editing existing override
-        form.reset({
-          overridePrice: dish.overridePrice?.toString() || '',
-          isHidden: dish.isHidden || false,
-        });
-      } else {
-        // Creating new override
-        form.reset({
-          overridePrice: '',
-          isHidden: false,
-        });
-      }
+      form.reset({
+        overridePrice: overrideId ? (dish.overridePrice?.toString() ?? '') : '',
+        isHidden: Boolean(overrideId && dish.isHidden),
+      });
     }
   }, [open, dish, overrideId, form]);
 
@@ -121,7 +112,7 @@ export function DishOverrideModal({
         // Update existing override
         await updateMutation.mutateAsync({
           id: overrideId,
-          body: payload,
+          body: { ...payload, clearOverridePrice: dish.hasOverride && payload.overridePrice === undefined ? true : undefined },
         });
         toast.success('Cập nhật ghi đè thành công');
       } else {
@@ -151,7 +142,7 @@ export function DishOverrideModal({
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? 'Sửa ghi đè' : 'Tạo ghi đè'} - {dish.dishName}
+            Giá và hiển thị · {dish.dishName}
           </DialogTitle>
           <DialogDescription>
             {isEditing
@@ -184,7 +175,7 @@ export function DishOverrideModal({
                       />
                     </FormControl>
                     <FormDescription>
-                      Giá áp dụng riêng cho chi nhánh này. Để trống nếu chỉ muốn ẩn món.
+                      Giá áp dụng riêng cho chi nhánh này. Để trống để dùng giá gốc.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

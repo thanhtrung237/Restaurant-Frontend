@@ -15,10 +15,13 @@ import type { Payment } from "./payment.model"
  * `grandTotal`, `totalPaid`, `remainingAmount` (= còn phải trả, dùng cho màn thu ngân).
  */
 export interface Invoice extends BaseResponse {
+  quoteShared?: boolean
+  discountApprovalPending?: boolean
   branchId: number
   branchName?: string
   tableSessionId: number
   tableName?: string
+  takeaway?: boolean
   promotionId?: number
   promotionName?: string
   /** Đánh số riêng theo chi nhánh (BR-19). */
@@ -41,6 +44,9 @@ export interface Invoice extends BaseResponse {
   remainingAmount?: number
   createdAt?: string
   modifiedAt?: string
+  eInvoiceRef?: string
+  eInvoiceIssuedAt?: string
+  taxCodeUsed?: string
 }
 
 /**

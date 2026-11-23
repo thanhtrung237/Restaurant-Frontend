@@ -1,7 +1,7 @@
 import * as React from "react"
+import { reportPaymentQrOpened } from "@/api/invoices.api"
 import { useNavigate, useParams, generatePath } from "react-router-dom"
 import { Bell, AlertTriangle } from "lucide-react"
-import { PseudoQrCode } from "@/components/common/PseudoQrCode"
 import { getBankLabel } from "@/config/banks"
 import { ApiError } from "@/lib/http"
 import { cn } from "@/lib/utils"
@@ -76,7 +76,6 @@ export default function PaymentQrPage() {
   const tableName = tableSession?.tableName || tableByQr?.name || "Bàn"
   const tableCode = tableName.replace(/^Bàn\s*/, "")
   const tableSessionId = tableSession?.id
-
   const startPayment = useCustomerPaymentStore((s) => s.startPayment)
   const markPaid = useCustomerPaymentStore((s) => s.markPaid)
   const markFailed = useCustomerPaymentStore((s) => s.markFailed)
@@ -95,7 +94,7 @@ export default function PaymentQrPage() {
   // Lấy dữ liệu VietQR chính thức từ backend (theo session ID hoặc invoice ID)
   const { data: qrDataBySession, isLoading: qrSessionLoading, error: qrSessionError } =
     useInvoiceQrCodeBySession(tableSessionId)
-  const { data: qrDataByInvoice, isLoading: qrInvoiceLoading, error: qrInvoiceError } =
+  const { data: qrDataByInvoice, isLoading: qrInvoiceLoading, error: qrInvoiceError, refetch: refetchInvoiceQr } =
     useInvoiceQrCode(invoice?.id)
   const qrData = qrDataByInvoice || qrDataBySession
   const qrLoading = (qrInvoiceLoading && !qrData) || (qrSessionLoading && !qrData)
@@ -108,7 +107,7 @@ export default function PaymentQrPage() {
 
   const sessionNumber = tableSessionId ? String(tableSessionId).replace(/[^0-9]/g, "") || "1" : "1"
   const transferContent = qrData?.transferContent || (invoice?.invoiceNumber ? `TT ${invoice.invoiceNumber.replace(/-/g, "")}` : `PV ${tableCode || "B01"} PHIEN${sessionNumber}`)
-  const amountToShow = qrData?.remainingAmount ?? invoice?.grandTotal ?? 0
+  const amountToShow = invoice?.remainingAmount ?? invoice?.grandTotal ?? qrData?.remainingAmount ?? 0
 
   /**
    * Chi nhánh chưa cấu hình tài khoản ngân hàng ⇒ không có QR để hiện.
@@ -173,7 +172,28 @@ export default function PaymentQrPage() {
     * Đồng hồ này là hạn của mã QR. Nếu để nó chạy trong lúc chờ Thu ngân lập hoá đơn
     * thì sau 3:20 khách bị đẩy sang trang "thanh toán thất bại" dù chưa hề có gì để quét.
     */
-  const hasQrCode = !!qrData?.qrImageUrl
+  const qrUrl = qrData?.qrImageUrl;
+  const qrTotal = qrData?.grandTotal;
+  const currentTotal = invoice?.grandTotal;
+  const latestQrMatchesInvoice = currentTotal === undefined || qrTotal === currentTotal;
+  const [confirmedQrUrl, setConfirmedQrUrl] = React.useState("");
+  const [quoteError, setQuoteError] = React.useState(false);
+  const [quoteAttempt, setQuoteAttempt] = React.useState(0);
+  React.useEffect(() => {
+    if (!latestQrMatchesInvoice && invoice?.status === "PENDING") void refetchInvoiceQr();
+  }, [latestQrMatchesInvoice, currentTotal, invoice?.status, refetchInvoiceQr]);
+  React.useEffect(() => {
+    if (tableSessionId === undefined || !qrUrl || !qrTotal || !latestQrMatchesInvoice || isPaid) return;
+    let active = true;
+    setQuoteError(false);
+    void reportPaymentQrOpened(tableSessionId, qrTotal).then(() => {
+      if (active) setConfirmedQrUrl(qrUrl);
+    }).catch(() => {
+      if (active) setQuoteError(true);
+    });
+    return () => { active = false; };
+  }, [tableSessionId, qrUrl, qrTotal, latestQrMatchesInvoice, isPaid, quoteAttempt]);
+  const hasQrCode = Boolean(qrUrl && qrUrl === confirmedQrUrl && latestQrMatchesInvoice);
   React.useEffect(() => {
     if (!hasQrCode) return
     const timer = setInterval(() => {
@@ -242,7 +262,9 @@ export default function PaymentQrPage() {
               Quét mã để chuyển khoản
             </h1>
             <p className="mt-1.5 max-w-xs text-xs sm:text-sm leading-relaxed text-text-secondary">
-              Dùng app ngân hàng quét mã QR bên dưới. Hệ thống tự xác nhận ngay khi nhận được tiền.
+              Dùng app ngân hàng quét mã QR bên dưới.
+              {qrData?.automaticVerification ? " Hệ thống tự xác nhận khi ngân hàng báo nhận đủ tiền."
+                : " Nhân viên sẽ đối chiếu giao dịch sau khi bạn chuyển khoản."}
             </p>
 
             {/* ---- Khung mã QR VietQR thật ---- */}
@@ -269,19 +291,25 @@ export default function PaymentQrPage() {
                     Vui lòng thanh toán với thu ngân.
                   </p>
                 </div>
-              ) : qrData?.qrImageUrl ? (
+              ) : hasQrCode && qrUrl ? (
                 <img
-                  src={qrData.qrImageUrl}
+                  src={qrUrl}
                   alt="VietQR Thanh toán"
                   className="w-[220px] max-w-full rounded-xl object-contain"
                 />
-              ) : qrLoading ? (
+              ) : quoteError ? (
+                <div className="space-y-2 p-4 text-center" role="alert">
+                  <p className="text-sm">Chưa xác nhận được mã thanh toán.</p>
+                  <button type="button" className="text-sm font-semibold text-brand-primary"
+                    onClick={() => setQuoteAttempt((attempt) => attempt + 1)}>Thử lại</button>
+                </div>
+              ) : qrLoading || qrUrl ? (
                 <div className="flex h-[180px] w-[180px] flex-col items-center justify-center gap-2">
                   <div className="size-8 animate-spin rounded-full border-4 border-gray-200 border-t-brand-primary" />
                   <span className="text-xs text-text-tertiary">Đang tạo mã VietQR...</span>
                 </div>
               ) : (
-                <PseudoQrCode seed={`PV-${tableCode || "B01"}-${amountToShow}`} size={180} />
+                <p className="p-4 text-sm text-text-secondary">Vui lòng thanh toán với thu ngân.</p>
               )}
             </div>
 
@@ -318,7 +346,7 @@ export default function PaymentQrPage() {
             <div
               className={cn(
                 "mt-5 w-full rounded-[20px] bg-[#F8F9FA] p-4 sm:p-5 text-left text-sm",
-                (isAwaitingCashierInvoice || isUnconfiguredBankAccount) && "hidden",
+                !hasQrCode && "hidden",
               )}
             >
               <div className="space-y-2.5">

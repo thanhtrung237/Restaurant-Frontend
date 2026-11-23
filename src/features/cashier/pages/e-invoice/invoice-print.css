@@ -1,0 +1,117 @@
+#invoice-print {
+  display: none;
+}
+
+@page invoice-receipt {
+  margin: 6mm;
+}
+
+@media print {
+  html:has(> body > #invoice-print),
+  body:has(> #invoice-print) {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  body:has(> #invoice-print) > :not(#invoice-print) {
+    display: none !important;
+  }
+
+  #invoice-print {
+    display: block;
+    page: invoice-receipt;
+    max-width: 155mm;
+    margin-inline: auto;
+    color: black;
+    background: white;
+    font: 9pt/1.4 Arial, sans-serif;
+    overflow-wrap: anywhere;
+  }
+
+  #invoice-print header {
+    text-align: center;
+    margin-bottom: 4mm;
+    break-inside: avoid;
+  }
+
+  #invoice-print h1 {
+    margin-block: 1mm;
+    font-size: 13pt;
+    font-weight: bold;
+  }
+
+  #invoice-print table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  #invoice-print thead {
+    display: table-header-group;
+  }
+
+  #invoice-print tr {
+    break-inside: avoid;
+  }
+
+  #invoice-print th,
+  #invoice-print td {
+    padding: 1mm;
+    border-bottom: 1px solid #aaa;
+    vertical-align: top;
+    text-align: right;
+  }
+
+  #invoice-print th:first-child,
+  #invoice-print td:first-child {
+    text-align: left;
+  }
+
+  #invoice-print th:nth-child(2),
+  #invoice-print td:nth-child(2) {
+    text-align: center;
+  }
+
+  #invoice-print td:not(:first-child) {
+    white-space: nowrap;
+  }
+
+  .invoice-print-totals {
+    margin-top: 4mm;
+    margin-left: auto;
+    max-width: 76mm;
+    break-inside: avoid;
+  }
+
+  .invoice-print-totals > div {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1mm 3mm;
+    margin-block: 1mm;
+  }
+
+  .invoice-print-totals dd {
+    text-align: right;
+  }
+
+  .invoice-print-grand-total {
+    padding-block: 1.5mm;
+    border-block: 1px solid black;
+    font-weight: bold;
+  }
+
+  .invoice-print-transfer {
+    margin-top: 4mm;
+    text-align: center;
+    break-inside: avoid;
+  }
+
+  .invoice-print-transfer img {
+    width: 40mm;
+    max-width: 100%;
+    margin-inline: auto;
+  }
+}

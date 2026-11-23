@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react"
-import { useNavigate } from "react-router-dom"
 import { Download } from "lucide-react"
 import {
   HeaderOverflowMenu,
@@ -17,12 +16,10 @@ import {
 import { AuditLogFilterBar } from "./components/AuditLogFilterBar"
 import { AuditLogPager } from "./components/AuditLogPager"
 import { AuditLogTable } from "./components/AuditLogTable"
-import { StaffTabs } from "../staff-management/components/StaffTabs"
+import { StaffNavigationTabs } from "../staff-management/components/StaffTabs"
 import { buildRoleLookup, dateRangeParams, filterAuditLogs, toAuditLogRow } from "./lib"
 import { usePerformerOptions } from "./use-performer-options"
-import { RESTAURANT_ADMIN_PATHS } from "@/app/router/paths"
 import type { AuditLog } from "@/types/models"
-import type { StaffTabType } from "../staff-management/types"
 import type { AuditActionFilter, AuditDateRangeId, AuditPerformerFilter } from "./types"
 
 /** Tham chiếu ổn định để các `useMemo` phía dưới không chạy lại mỗi lần render. */
@@ -46,7 +43,6 @@ const EXPORT_TOOLTIP = "Chưa hỗ trợ"
  * - Loại thao tác lọc phía client: `GET /audit-logs` chưa có tham số `actionType`.
  */
 export default function AuditLogPage() {
-  const navigate = useNavigate()
   const restaurantId = useAuthStore((s) => s.account?.restaurantId)
 
   const [selectedAction, setSelectedAction] = useState<AuditActionFilter>("ALL")
@@ -135,16 +131,6 @@ export default function AuditLogPage() {
     ? Math.max(1, Math.ceil(filteredLogs.length / PAGE_SIZE))
     : (listQuery.data?.totalPages ?? 1)
 
-  const handleTabChange = (tab: StaffTabType) => {
-    if (tab === "staff") {
-      navigate(RESTAURANT_ADMIN_PATHS.STAFF_MANAGEMENT)
-    } else if (tab === "roles") {
-      navigate(RESTAURANT_ADMIN_PATHS.ROLES_PERMISSIONS)
-    } else if (tab === "audit-log") {
-      navigate(RESTAURANT_ADMIN_PATHS.AUDIT_LOG)
-    }
-  }
-
   // <md: nút "Xuất log" chuyển vào menu "⋯" trên MobileHeader. KHÔNG bỏ hẳn vì
   // FR-LOG-01 yêu cầu xuất được .xlsx — giữ chỗ ở trạng thái khoá.
   const headerActions = useMemo<OverflowMenuAction[]>(
@@ -190,13 +176,13 @@ export default function AuditLogPage() {
             </Button>
           </span>
         }
-        tabs={<StaffTabs activeTab="audit-log" onTabChange={handleTabChange} />}
+        tabs={<StaffNavigationTabs activeTab="audit-log" />}
       />
 
       <div className="flex flex-col gap-6 p-6 lg:p-8">
         {/* <md: PageHeader ẩn nên tab phải hiện lại ở đây */}
         <div className="md:hidden">
-          <StaffTabs activeTab="audit-log" onTabChange={handleTabChange} />
+          <StaffNavigationTabs activeTab="audit-log" />
         </div>
 
         <AuditLogFilterBar

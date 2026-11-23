@@ -113,7 +113,7 @@ export function StopSellingDialog({
             <div className="space-y-2">
               <p>
                 Ngừng bán <strong className="text-text-primary">{dish?.name}</strong> sẽ ẩn
-                món ở <strong className="text-text-primary">tất cả chi nhánh</strong>.
+                món ở <strong className="text-text-primary">{dish?.branchId != null ? "chi nhánh này" : "tất cả chi nhánh"}</strong>.
               </p>
               {isLoadingCount ? (
                 <p className="text-xs">Đang kiểm tra số chi nhánh đang bán món...</p>

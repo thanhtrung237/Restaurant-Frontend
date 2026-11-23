@@ -37,8 +37,9 @@ export function batchConfirmOrderDetails(body: OrderDetailBatchConfirmRequest) {
 export function confirmWeight(id: number, body: OrderDetailConfirmWeightRequest) {
   return apiPost<OrderDetail>(`/order-details/${id}/confirm-weight`, body)
 }
-export function markServed(id: number) {
-  return apiPost<OrderDetail>(`/order-details/${id}/mark-served`)
+export function markServed(body: { id: number; quantity: number; expectedServedQuantity: number }) {
+  const { id, ...request } = body
+  return apiPost<OrderDetail>(`/order-details/${id}/serve-portions`, request)
 }
 /** Huỷ khi món CHƯA vào bếp — không cần lý do. */
 export function cancelBeforeKitchen(id: number) {

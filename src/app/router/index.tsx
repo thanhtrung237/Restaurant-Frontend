@@ -102,7 +102,7 @@ const BranchManagerBranchDetailPage = lazy(
 const BranchManagerBranchConfigPage = lazy(
   () => import("@/features/branch-manager/pages/branch-config"),
 );
-// "Thực đơn" dùng chung nguyên component của Quản trị NH (không phân biệt phạm vi trong UI mock)
+// Thực đơn dùng chung trang và giới hạn thao tác theo vai trò.
 const BranchManagerMenuPage = lazy(
   () => import("@/features/restaurant-admin/pages/menu-management"),
 );
@@ -141,6 +141,7 @@ const RestaurantBranchConfigPage = lazy(
 const StaffManagementPage = lazy(
   () => import("@/features/restaurant-admin/pages/staff-management"),
 );
+const BranchStaffPage = lazy(() => import("@/features/branch-manager/pages/branch-staff"));
 const RolesPermissionsPage = lazy(
   () => import("@/features/restaurant-admin/pages/roles-permissions"),
 );
@@ -254,6 +255,7 @@ export const router = createBrowserRouter([
               // OpenTableModal ngay trên Sơ đồ bàn. Giữ redirect cho URL cũ (bookmark, lịch sử)
               // để người dùng về đúng Sơ đồ bàn của vai trò, không rơi ra ngoài layout.
               { path: "so-do-ban/:tableId/mo-ban", element: <Navigate to="/phuc-vu/so-do-ban" replace /> },
+              { path: "so-do-ban/them-don-mang-ve/:orderId?", element: <AddDishPage takeaway /> },
               { path: "order-che-bien", element: <KitchenDisplayPage /> }, // ORDER_AND_PREP -> dùng chung UI Bếp (KDS)
               // ORDER_CONFIRM route removed: items now go directly to KDS where kitchen staff confirms them (PENDING → PREPARING)
               { path: "order/:orderId", element: <OrderDetailPage /> }, // ORDER_DETAIL
@@ -276,6 +278,7 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <Navigate to="so-do-ban" replace /> },
               { path: "so-do-ban", element: <TableMapPage /> }, // CASHIER_PATHS.TABLE_MAP — "Xem tạm tính của bàn"
+              { path: "so-do-ban/them-don-mang-ve/:orderId?", element: <AddDishPage takeaway /> },
               { path: "chuyen-gop-ban", element: <TransferMergeTablePage /> }, // CASHIER_PATHS.TRANSFER_MERGE_TABLE — "Chuyển/gộp bàn" (X)
               { path: "thanh-toan/:tableSessionId", element: <CheckoutPage /> }, // CASHIER_PATHS.CHECKOUT — cũng là "Đóng phiên bàn"
               {
@@ -304,6 +307,7 @@ export const router = createBrowserRouter([
               // Vận hành sàn/bếp — QL chi nhánh có X cho toàn bộ nhóm này (mục 4.2), dùng chung
               // component với Phục vụ / Quản trị NH (@/features/shared/floor-ops).
               { path: "so-do-ban", element: <TableMapPage /> }, // BRANCH_MANAGER_PATHS.TABLE_MAP
+              { path: "so-do-ban/them-don-mang-ve/:orderId?", element: <AddDishPage takeaway /> },
               // Màn "Mở bàn" riêng đã bị gỡ: không nơi nào điều hướng tới, và store nuôi nó không
               // ai ghi vào nên modal bên trong không bao giờ hiện. Mở bàn thật làm bằng
               // OpenTableModal ngay trên Sơ đồ bàn. Giữ redirect cho URL cũ (bookmark, lịch sử)
@@ -318,6 +322,7 @@ export const router = createBrowserRouter([
               // 8 phân hệ chính — phạm vi chi nhánh của mình
               // Bang 4.2 "Thu tien, dong ban": QL chi nhanh cung duoc dong ban.
               { path: "thanh-toan/:tableSessionId", element: <CheckoutPage /> }, // CHECKOUT
+              { path: "thanh-toan/:tableSessionId/chuyen-khoan-qr", element: <QrTransferPaymentPage /> },
               { path: "thuc-don", element: <BranchManagerMenuPage /> }, // BRANCH_MENU
               // Bảng 4.3 để TRỐNG cột QL chi nhánh ở "Khuyến mãi" và "Quản lý nhân viên".
               // Các route bên dưới được GIỮ LẠI (không xoá file) nhưng bị RequirePermission
@@ -347,14 +352,13 @@ export const router = createBrowserRouter([
               //
               // Giữ lại một redirect cho URL cũ: người đã lưu bookmark sẽ về Sơ đồ bàn thay vì
               // rơi vào trang 404 nằm ngoài layout (không có menu để đi tiếp).
-              { path: "nhan-vien", element: <Navigate to="/quan-ly-chi-nhanh/so-do-ban" replace /> },
+              { path: "nhan-vien", element: <BranchStaffPage /> },
               { path: "cau-hinh", element: <BranchManagerBranchConfigPage /> }, // CONFIG — chỉ cấu hình chi nhánh mình
               { path: "chiet-khau-thu-cong", element: <ManualDiscountPage /> }, // MANUAL_DISCOUNT
               { path: "nhat-ky", element: <RestaurantAuditLogPage /> }, // AUDIT_LOG (tương thích ngược) — chỉ đọc (R)
+              { path: "vai-tro-phan-quyen", element: <RolesPermissionsPage /> },
               { path: "hoa-don", element: <InvoiceListPage /> }, // BRANCH_MANAGER_PATHS.INVOICES
               { path: "hoa-don/:invoiceId", element: <EInvoicePage /> }, // BRANCH_MANAGER_PATHS.E_INVOICE
-              // KHÔNG có: "Vai trò & phân quyền" và cấu hình cấp NHÀ HÀNG (VAT/phí DV/MST)
-              // — các quyền này chỉ Quản trị NH mới có (mục 4.3).
 
             ],
           },
@@ -371,6 +375,7 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <Navigate to="so-do-ban" replace /> },
               { path: "so-do-ban", element: <TableMapPage /> }, // SƠ ĐỒ BÀN
+              { path: "so-do-ban/them-don-mang-ve/:orderId?", element: <AddDishPage takeaway /> },
               // Màn "Mở bàn" riêng đã bị gỡ: không nơi nào điều hướng tới, và store nuôi nó không
               // ai ghi vào nên modal bên trong không bao giờ hiện. Mở bàn thật làm bằng
               // OpenTableModal ngay trên Sơ đồ bàn. Giữ redirect cho URL cũ (bookmark, lịch sử)
@@ -384,6 +389,8 @@ export const router = createBrowserRouter([
               { path: "chuyen-gop-ban", element: <TransferMergeTablePage /> },
               // Bang 4.2 "Thu tien, dong ban": Quan tri nha hang cung duoc dong ban.
               { path: "thanh-toan/:tableSessionId", element: <CheckoutPage /> }, // CHECKOUT
+              { path: "thanh-toan/:tableSessionId/chuyen-khoan-qr", element: <QrTransferPaymentPage /> },
+              { path: "hoa-don/:invoiceId", element: <EInvoicePage /> },
               { path: "thuc-don", element: <MenuManagementPage /> }, // THỰC ĐƠN
               { path: "khuyen-mai", element: <PromotionsPage /> }, // KHUYẾN MÃI
               { path: "khuyen-mai/tao-moi", element: <PromotionCreatePage /> },

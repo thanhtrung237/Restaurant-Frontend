@@ -17,7 +17,10 @@ import type { TableSessionStatus } from "../enums"
  * Nhóm `reservation*`: dành cho luồng đặt bàn trước (status = RESERVED).
  */
 export interface TableSession extends BaseResponse {
-  tableId: number
+  tableId: number | null
+  takeaway?: boolean
+  canAddTakeawayItems?: boolean
+  pickedUpAt?: string | null
   tableName?: string
   /** BE bắt buộc có (`nullable = false`) — dùng để scope theo chi nhánh. */
   branchId: number

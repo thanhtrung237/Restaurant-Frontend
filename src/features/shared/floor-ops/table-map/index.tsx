@@ -1,17 +1,22 @@
+import { useBranchOperationalPermissions } from "@/api/operational-permissions.api";
+import { getStaffPaymentPaths } from "@/app/router/paths/staff-payment.paths";
 import * as React from "react";
-import { useNavigate, generatePath } from "react-router-dom";
-import { Bell, CalendarCheck, Plus, ArrowRightLeft } from "lucide-react";
+import { Link, useLocation, useNavigate, useSearchParams, generatePath } from "react-router-dom";
+import { useTakeawayOrders } from "@/api/takeaway-orders.api";
+import { ServiceModeLinks, TakeawayOrders } from "../TakeawayOrders";
+import { takeawayCreatePath } from "@/app/router/paths/takeaway.paths";
+import { StaffCallNotice } from "@/features/shared/floor-ops/StaffCallNotice";
+import { Bell, CalendarCheck, Plus, ArrowRightLeft, CircleAlert } from "lucide-react";
 import { Chip } from "@/components/common/Chip";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { NotificationBell } from "@/components/layout/NotificationBell";
-import { FAB } from "@/components/common/FAB";
-import { FAB_POSITION_CLASS } from "@/components/layout/StickyActionBar";
 import {
   TableCard,
   type TableDisplayStatus,
 } from "@/components/common/TableCard";
 import { SearchInput } from "@/components/common/SearchInput";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/auth.store";
 import { APP_ROLE } from "@/config/roles";
@@ -55,6 +60,38 @@ interface TableItem extends DiningTable {
   hasAlert?: boolean;
 }
 
+const EMPTY_TABLES: DiningTable[] = [];
+const EMPTY_SESSIONS: TableSession[] = [];
+const UNASSIGNED_AREA = "unassigned";
+
+function groupTablesByArea(tables: TableItem[]) {
+  const groups = new Map<string, { key: string; label: string; name?: string; tables: TableItem[] }>();
+
+  for (const table of tables) {
+    const name = table.areaName?.trim() || undefined;
+    const key = table.areaId != null ? `area-${table.areaId}` : name ? `name-${name.toLowerCase()}` : UNASSIGNED_AREA;
+    const group = groups.get(key);
+    if (group) {
+      group.tables.push(table);
+      if (name && !group.name) {
+        group.name = name;
+        group.label = name;
+      }
+    } else {
+      const label = name ?? (table.areaId != null ? `Khu vực #${table.areaId}` : "Chưa phân khu");
+      groups.set(key, { key, label, name, tables: [table] });
+    }
+  }
+
+  const unassigned = groups.get(UNASSIGNED_AREA);
+  groups.delete(UNASSIGNED_AREA);
+  return unassigned ? [...groups.values(), unassigned] : [...groups.values()];
+}
+
+function normalizeSearch(value: string) {
+  return value.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/đ/g, "d").trim();
+}
+
 function computeDisplayStatus(
   table: DiningTable,
   session?: TableSession,
@@ -92,7 +129,9 @@ function mergeTableData(
   sessions: TableSession[],
 ): TableItem[] {
   const sessionsByTable = new Map<number, TableSession>();
-  sessions.forEach((s) => sessionsByTable.set(s.tableId, s));
+  sessions.forEach((s) => {
+    if (s.tableId != null) sessionsByTable.set(s.tableId, s);
+  });
 
   return tables.map((table) => {
     const session = sessionsByTable.get(table.id);
@@ -109,7 +148,7 @@ function mergeTableData(
 
     // Tùy chỉnh subLabel theo trạng thái
     if (displayStatus === "WAITING_OPEN") {
-      item.subLabel = "— khách · vừa quét QR";
+      item.subLabel = "Vừa quét QR";
       item.subtotal = "—";
     } else if (displayStatus === "AVAILABLE") {
       item.subLabel = "Nhấn để mở bàn";
@@ -199,10 +238,25 @@ const STATUS_LEGENDS: Array<{
  * thanh tìm kiếm & lọc nhanh, và kích hoạt modal mở bàn khi nhân viên tương tác.
  */
 export default function TableMapPage() {
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  const role = useAuthStore((s) => s.role);
   const branchId = useAuthStore((s) => s.branchId);
+  const [params] = useSearchParams();
+  const { pathname } = useLocation();
+  if (branchId && params.get("mode") === "takeaway") {
+    return <TakeawayOrders key={branchId} branchId={branchId} tableMapPath={pathname} />;
+  }
+  return <BranchTableMap key={branchId} branchId={branchId ?? undefined} />;
+}
+
+function BranchTableMap({ branchId }: { branchId?: number }) {
+  const canReserve = useBranchOperationalPermissions(branchId).can("RESERVE_TABLE");
+  const { toast } = useToast();
+  const { pathname } = useLocation();
+  const { data: takeawayOrders } = useTakeawayOrders(branchId);
+  const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const targetTableId = Number(params.get("table"));
+  const staffCallId = Number(params.get("staffCall"));
+  const role = useAuthStore((s) => s.role);
 
   // State cho modal và filter
   const [isModalOpen, setIsModalOpen] = React.useState(false);
@@ -211,26 +265,49 @@ export default function TableMapPage() {
   const [isReservationPanelOpen, setIsReservationPanelOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [selectedFilter, setSelectedFilter] = React.useState<TableDisplayStatus | "ALL">("ALL");
+  const [areaFilter, setAreaFilter] = React.useState("all");
+  const [minimumSeats, setMinimumSeats] = React.useState(0);
 
   // Fetch data từ API, tự động refresh mỗi 1 giây
-  const { data: tablesData = [], isLoading: tablesLoading } = useTablesByBranch(
-    branchId ?? undefined,
+  const tablesQuery = useTablesByBranch(
+    branchId,
     undefined,
     { refetchInterval: 1000 },
   );
-  const { data: sessionsData = [], isLoading: sessionsLoading } = useOpenSessionsByBranch(
-    branchId ?? undefined,
+  const sessionsQuery = useOpenSessionsByBranch(
+    branchId,
     { refetchInterval: 1000 },
   );
+  const tablesData = tablesQuery.data ?? EMPTY_TABLES;
+  const sessionsData = sessionsQuery.data ?? EMPTY_SESSIONS;
+  const mapLoading = tablesQuery.isLoading || sessionsQuery.isLoading;
+  const mapError = tablesQuery.isError || sessionsQuery.isError;
+  const hasSnapshot = tablesQuery.data !== undefined && sessionsQuery.data !== undefined;
+  const canUseTables = hasSnapshot && !mapError;
+  const retryingMap = (tablesQuery.isError && tablesQuery.isFetching) ||
+    (sessionsQuery.isError && sessionsQuery.isFetching);
+
+  React.useEffect(() => {
+    if (!mapError) return;
+    setIsModalOpen(false);
+    setSelectedTableForOpen(null);
+    setIsReservationModalOpen(false);
+    setIsReservationPanelOpen(false);
+  }, [mapError]);
+
+  function retryMap() {
+    if (tablesQuery.isError) void tablesQuery.refetch();
+    if (sessionsQuery.isError) void sessionsQuery.refetch();
+  }
 
   // Merge data
   const tables = React.useMemo(
-    () => mergeTableData(tablesData, sessionsData),
+    () => mergeTableData(tablesData, sessionsData).filter((table) => table.displayStatus !== "INACTIVE"),
     [tablesData, sessionsData],
   );
 
   // Cấu hình chi nhánh — cần `reservationHoldMinutes` để cảnh báo lịch sắp quá giờ (BR-29).
-  const { data: branch } = useBranch(branchId ?? undefined);
+  const { data: branch } = useBranch(branchId);
   // Chi nhánh ngừng hoạt động (FR-BRN-01): không mở phiên mới, không nhận đặt bàn mới.
   // BE chỉ chặn ở luồng khách quét QR nên FE phải ẩn/khoá các lối vào phía nhân viên.
   const isBranchInactive = branch?.status === "INACTIVE";
@@ -258,45 +335,56 @@ export default function TableMapPage() {
   // Dòng phụ của header mobile (StaffLayout) — Figma mobile hiển thị
   // "12 bàn · 5 đang phục vụ" ngay dưới tiêu đề. Trên mobile header riêng của trang
   // này bị ẩn nên số liệu phải đẩy lên header chung.
-  const headerSubtitle =
-    tablesLoading || sessionsLoading
-      ? "Đang tải..."
-      : `${totalCount} bàn · ${occupiedCount} đang phục vụ`;
-  // Lọc danh sách bàn theo từ khóa tìm kiếm và trạng thái được chọn
-  const filteredTables = React.useMemo(() => {
-    return tables.filter((table) => {
-      const matchSearch =
-        !searchQuery.trim() ||
-        table.name.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
-        (table.subLabel &&
-          table.subLabel
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase().trim()));
+  const headerStatus = mapError ? "Sơ đồ bàn chưa cập nhật"
+    : mapLoading ? "Đang tải sơ đồ bàn…"
+      : !hasSnapshot ? "Chọn chi nhánh để xem bàn"
+        : undefined;
+  const headerSubtitle = headerStatus ?? `${totalCount} bàn · ${occupiedCount} đang phục vụ`;
+  const tableAreas = React.useMemo(() => groupTablesByArea(tables), [tables]);
+  const selectedArea = tableAreas.some((area) => area.key === areaFilter) ? areaFilter : "all";
+  const seatOptions = React.useMemo(() => {
+    const capacities = tablesData.map((table) => table.capacity ?? 0).filter((seats) => seats > 0);
+    return [...new Set([minimumSeats, 2, 3, 4, 5, 6, 7, 8, ...capacities])]
+      .filter((seats) => seats > 0)
+      .sort((a, b) => a - b);
+  }, [tablesData, minimumSeats]);
+  const hasFilters = targetTableId > 0 || searchQuery.trim() !== "" || selectedFilter !== "ALL" || selectedArea !== "all" || minimumSeats > 0;
+  const filteredAreas = React.useMemo(() => {
+    const query = normalizeSearch(searchQuery);
+    return tableAreas.filter((area) => targetTableId > 0 || selectedArea === "all" || area.key === selectedArea).map((area) => ({
+      ...area,
+      tables: area.tables.filter((table) =>
+        targetTableId > 0 ? table.id === targetTableId :
+        (selectedFilter === "ALL" || table.displayStatus === selectedFilter) &&
+        (minimumSeats === 0 || (table.capacity ?? 0) >= minimumSeats) &&
+        (!query || normalizeSearch(area.label).includes(query) ||
+          normalizeSearch(table.name).includes(query) || normalizeSearch(table.subLabel ?? "").includes(query)),
+      ),
+    })).filter((area) => area.tables.length > 0);
+  }, [tableAreas, targetTableId, searchQuery, selectedFilter, selectedArea, minimumSeats]);
 
-      const matchStatus =
-        selectedFilter === "ALL" || table.displayStatus === selectedFilter;
+  function resetFilters() {
+    if (params.has("table")) {
+      const next = new URLSearchParams(params);
+      next.delete("table");
+      next.delete("staffCall");
+      setParams(next, { replace: true });
+    }
+    setSearchQuery("");
+    setSelectedFilter("ALL");
+    setAreaFilter("all");
+    setMinimumSeats(0);
+  }
 
-      return matchSearch && matchStatus;
-    });
-  }, [tables, searchQuery, selectedFilter]);
-
-  function handleTableClick(table: TableItem) {
-    // Bàn "Chờ thanh toán" — Thu ngân bấm vào để mở màn Thanh toán
-    if (
-      table.displayStatus === "AWAITING_PAYMENT" &&
-      role === APP_ROLE.CASHIER
-    ) {
-      if (table.session?.id) {
-        navigate(
-          generatePath(CASHIER_PATHS.CHECKOUT, {
-            tableSessionId: String(table.session.id),
-          }),
-        );
-      }
+  function handleTableClick(table: TableItem, areaLabel: string) {
+    if (!canUseTables) return;
+    const checkoutPath = getStaffPaymentPaths(role)?.CHECKOUT;
+    if (table.displayStatus === "AWAITING_PAYMENT" && table.session?.id && checkoutPath) {
+      navigate(generatePath(checkoutPath, { tableSessionId: String(table.session.id) }));
       return;
     }
 
-    // Bàn "Đang phục vụ" (hoặc "Chờ thanh toán" ở role không phải Thu ngân) — mở Order chi tiết
+    // Mở chi tiết đơn khi cần xem hoặc xử lý món.
     if (
       table.displayStatus === "OCCUPIED" ||
       table.displayStatus === "AWAITING_PAYMENT"
@@ -325,7 +413,7 @@ export default function TableMapPage() {
       });
       return;
     }
-    setSelectedTableForOpen(table);
+    setSelectedTableForOpen({ ...table, areaName: areaLabel });
     setIsModalOpen(true);
   }
 
@@ -345,9 +433,7 @@ export default function TableMapPage() {
       <PageHeader
         title="Sơ đồ bàn"
         subtitle={
-          tablesLoading || sessionsLoading
-            ? "Đang tải..."
-            : `${totalCount} bàn · ${occupiedCount} đang phục vụ · ${awaitingPaymentCount} chờ thanh toán`
+          headerStatus ?? `${totalCount} bàn · ${occupiedCount} đang phục vụ · ${awaitingPaymentCount} chờ thanh toán`
         }
         mobileSubtitle={headerSubtitle}
         actions={
@@ -355,10 +441,11 @@ export default function TableMapPage() {
           {/* Ô tìm kiếm — ẩn ở tablet cho đỡ chật (Figma 834 không có ô này) */}
           <div className="hidden w-56 lg:block lg:w-64">
             <SearchInput
+              aria-label="Tìm bàn"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onClear={() => setSearchQuery("")}
-              placeholder="Tìm bàn..."
+              placeholder="Tìm bàn, khu vực…"
               size="default"
               variant="pill"
             />
@@ -366,11 +453,17 @@ export default function TableMapPage() {
 
           {/* Chuông thông báo real-time qua WebSocket (FR-SRV-03, FR-CUS-10, FR-CUS-07) */}
           <NotificationBell variant="header" />
+          {branchId && (
+            <Link to={takeawayCreatePath(pathname)} className={buttonVariants({ variant: "outline" })}>
+              + Đơn mang về
+            </Link>
+          )}
 
           {/* Nút Danh sách đặt — số đếm lấy từ phiên ĐẶT TRƯỚC thật */}
           <Button
             type="button"
             variant="outline"
+            disabled={!canUseTables}
             onClick={() => setIsReservationPanelOpen(true)}
             className="h-10 border-border-strong bg-surface-card px-4 text-sm font-semibold text-text-primary hover:bg-surface-muted hover:text-text-primary gap-2 shadow-2xs"
           >
@@ -378,7 +471,7 @@ export default function TableMapPage() {
             {/* Tablet chỉ hiện icon + số đếm, desktop mới có chữ (Figma 834) */}
             <span className="hidden lg:inline">Danh sách đặt</span>
             <span className="sr-only lg:hidden">Danh sách đặt</span>
-            {reservedCount > 0 ? (
+            {canUseTables && reservedCount > 0 ? (
               <span className="flex size-5 items-center justify-center rounded-full bg-[#2E90FA] text-[11px] font-bold text-white">
                 {reservedCount}
               </span>
@@ -389,6 +482,7 @@ export default function TableMapPage() {
           <Button
             type="button"
             variant="outline"
+            disabled={!canUseTables}
             onClick={() => {
               const transferPath =
                 role === APP_ROLE.BRANCH_MANAGER
@@ -407,13 +501,14 @@ export default function TableMapPage() {
             <span className="sr-only lg:hidden">Chuyển / Gộp bàn</span>
           </Button>
 
-          {isBranchInactive ? null : (
+          {isBranchInactive || !canReserve ? null : (
           <>
           {/* Nút Đặt bàn — mở modal ĐẶT TRƯỚC.
               Trước đây nút này mở OpenTableModal, tức MỞ BÀN ngay cho khách vãng lai —
               sai nghiệp vụ: đặt bàn là giữ chỗ theo giờ hẹn (FR-TBL-03). */}
           <Button
             type="button"
+            disabled={!canUseTables}
             onClick={() => {
               if (availableTables.length === 0) {
                 toast({
@@ -435,6 +530,13 @@ export default function TableMapPage() {
         }
       />
 
+      {branchId && <ServiceModeLinks path={pathname} mode="table" count={takeawayOrders?.length} />}
+      {staffCallId > 0 && <StaffCallNotice notificationId={staffCallId} />}
+      {targetTableId > 0 && (
+        <div className="px-4 pt-4 sm:px-8">
+          <Button type="button" variant="outline" onClick={resetFilters}>Hiện tất cả bàn</Button>
+        </div>
+      )}
       {isBranchInactive ? (
         <div
           role="status"
@@ -445,17 +547,44 @@ export default function TableMapPage() {
         </div>
       ) : null}
 
-      {/* ============================================================
-          2. STATUS LEGEND / FILTER BAR
-          ============================================================ */}
+      <div className="flex items-center gap-2 px-4 pt-4 sm:px-8 lg:hidden">
+        <div className="min-w-0 flex-1">
+          <SearchInput
+            aria-label="Tìm bàn"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            onClear={() => setSearchQuery("")}
+            placeholder="Tìm bàn, khu vực…"
+            className="h-11 text-base"
+          />
+        </div>
+        <Button
+          type="button"
+          size="icon"
+          variant="outline"
+          aria-label={`Danh sách đặt bàn${canUseTables && reservedCount > 0 ? ` (${reservedCount} lịch)` : ""}`}
+          onClick={() => setIsReservationPanelOpen(true)}
+          disabled={!canUseTables}
+          className="relative border-border-default bg-surface-card text-text-primary md:hidden"
+        >
+          <CalendarCheck aria-hidden="true" />
+          {canUseTables && reservedCount > 0 ? (
+            <span aria-hidden="true" className="absolute -right-1 -top-1 min-w-5 rounded-full bg-status-info-subtle px-1 text-[11px] leading-5 text-sky-900">
+              {reservedCount}
+            </span>
+          ) : null}
+        </Button>
+      </div>
+
       {/* Chú giải có chấm màu — chỉ desktop, màn hẹp dùng chip lọc bên dưới */}
-      <div className="hidden flex-wrap items-center gap-6 px-6 pt-6 sm:px-8 lg:flex">
+      <div role="group" aria-label="Lọc trạng thái bàn" className="hidden flex-wrap items-center gap-6 px-6 pt-6 sm:px-8 lg:flex">
         {STATUS_LEGENDS.map((legend) => {
           const isSelected = selectedFilter === legend.status;
           return (
             <button
               key={legend.status}
               type="button"
+              aria-pressed={isSelected}
               onClick={() =>
                 setSelectedFilter(
                   selectedFilter === legend.status ? "ALL" : legend.status,
@@ -479,26 +608,17 @@ export default function TableMapPage() {
             </button>
           );
         })}
-
-        {selectedFilter !== "ALL" && (
-          <button
-            type="button"
-            onClick={() => setSelectedFilter("ALL")}
-            className="text-xs font-semibold text-brand-primary hover:underline ml-2"
-          >
-            Xóa bộ lọc
-          </button>
-        )}
       </div>
 
       {/* Chip lọc nhanh — tablet & mobile */}
-      <div className="flex items-center gap-2 overflow-x-auto px-4 pt-4 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:px-8 lg:hidden [&::-webkit-scrollbar]:hidden">
+      <div role="group" aria-label="Lọc trạng thái bàn" className="flex items-center gap-2 overflow-x-auto px-4 pt-2 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:px-8 lg:hidden [&::-webkit-scrollbar]:hidden">
         {QUICK_FILTERS.map((filter) => (
           <Chip
             key={filter.status}
+            aria-label={filter.label}
             selected={selectedFilter === filter.status}
             onClick={() => setSelectedFilter(filter.status)}
-            className="cursor-pointer"
+            className="h-11 shrink-0 cursor-pointer"
           >
             <span className="sm:hidden">{filter.shortLabel}</span>
             <span className="hidden sm:inline">{filter.label}</span>
@@ -506,118 +626,135 @@ export default function TableMapPage() {
         ))}
       </div>
 
-      {/* ============================================================
-          3. AREA SECTION & TABLE GRID
-          ============================================================ */}
-      <div className="space-y-4 px-6 pb-6 pt-6 sm:px-8 sm:pb-8">
-        {/* Phân khu */}
-        <h2 className="text-xs font-bold uppercase tracking-wider text-text-tertiary">
-          KHU VỰC TẦNG 1
-        </h2>
+      <div className="space-y-5 px-4 pb-6 pt-4 sm:px-8 sm:pb-8 lg:space-y-7 lg:pt-6">
+        {hasSnapshot && totalCount > 0 ? (
+          <div role="group" aria-label="Lọc theo khu vực và sức chứa" className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+            {tableAreas.length > 1 ? (
+              <Select value={selectedArea} onValueChange={setAreaFilter}>
+                <SelectTrigger aria-label="Khu vực" className="w-full min-w-0 sm:w-48 [&>span]:truncate">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-w-[calc(100vw-2rem)]">
+                  <SelectItem value="all">Tất cả khu vực</SelectItem>
+                  {tableAreas.map((area) => (
+                    <SelectItem key={area.key} value={area.key} className="break-words">{area.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : null}
+            <Select value={String(minimumSeats)} onValueChange={(value) => setMinimumSeats(Number(value))}>
+              <SelectTrigger aria-label="Sức chứa tối thiểu" className="w-full min-w-0 sm:w-44 [&>span]:truncate">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0">Mọi sức chứa</SelectItem>
+                {seatOptions.map((seats) => (
+                  <SelectItem key={seats} value={String(seats)}>Từ {seats} chỗ</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {hasFilters && filteredAreas.length > 0 ? (
+              <Button type="button" variant="link" onClick={resetFilters} className="col-span-2 w-fit px-0 sm:px-3">
+                Đặt lại bộ lọc
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+        {mapError ? (
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-card border border-amber-200 bg-amber-50 p-4 text-amber-950">
+            <div role="alert" className="flex min-w-0 items-start gap-2.5">
+              <CircleAlert aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
+              <div>
+                <p className="font-semibold">{hasSnapshot ? "Chưa cập nhật được sơ đồ bàn" : "Không tải được sơ đồ bàn"}</p>
+                <p className="mt-1 text-sm">
+                  {hasSnapshot
+                    ? "Dữ liệu có thể đã cũ. Thử tải lại để tiếp tục thao tác trên bàn."
+                    : "Chưa lấy được dữ liệu bàn hoặc phiên phục vụ. Vui lòng thử lại."}
+                </p>
+              </div>
+            </div>
+            <Button type="button" variant="outline" onClick={retryMap} disabled={retryingMap}>
+              {retryingMap ? "Đang tải lại…" : "Thử lại"}
+            </Button>
+          </div>
+        ) : !hasSnapshot ? (
+          <p role="status" className="rounded-card border border-border-default bg-surface-card p-6 text-center text-sm text-text-secondary">
+            {headerStatus}
+          </p>
+        ) : null}
 
-        {/* Lưới 12 bàn: 4 cột x 3 dòng */}
-        {filteredTables.length > 0 ? (
-          <div className="grid grid-cols-1 gap-4.5 sm:grid-cols-2 lg:grid-cols-4">
-            {filteredTables.map((table) => {
-              // Icon phụ góc trên phải cho bàn B01 (chuông gọi phục vụ / thông báo)
-              const topRightIcon = table.hasAlert ? (
-                <span className="flex size-6 items-center justify-center rounded-full bg-[#FEEBE4] text-[#F0522B]">
-                  <Bell className="size-3.5" />
-                </span>
-              ) : null;
-
-              return (
+        {hasSnapshot && filteredAreas.length > 0 ? filteredAreas.map((area) => (
+          <section key={area.key} aria-label={area.label} className="space-y-2.5 lg:space-y-3.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="min-w-0 break-words text-base font-bold text-text-primary">{area.label}</h2>
+              <span className="shrink-0 text-sm text-text-secondary">{area.tables.length} bàn</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4 lg:gap-4">
+              {area.tables.map((table) => (
                 <TableCard
                   key={table.id}
                   table={table}
                   displayStatus={table.displayStatus}
                   customStatusLabel={table.customStatusLabel}
-                  subLabel={table.subLabel}
+                  subLabel={table.displayStatus === "AVAILABLE" && !canUseTables ? undefined : table.subLabel}
                   elapsedMinutes={table.elapsedMinutes}
                   timeText={table.timeText}
                   guestCount={table.guestCount}
                   subtotal={table.subtotal}
-                  topRightIcon={topRightIcon}
-                  onClick={() => handleTableClick(table)}
+                  topRightIcon={table.hasAlert ? <Bell aria-hidden="true" className="size-3.5 text-brand-primary" /> : undefined}
+                  compactOnMobile
+                  disabled={!canUseTables}
+                  onClick={() => handleTableClick(table, area.label)}
                 />
-              );
-            })}
-          </div>
-        ) : (
-          <div className="flex h-64 flex-col items-center justify-center rounded-card border border-dashed border-border-strong bg-surface-card p-6 text-center">
-            <p className="text-sm font-semibold text-text-secondary">
-              Không tìm thấy bàn nào phù hợp
+              ))}
+            </div>
+          </section>
+        )) : canUseTables ? (
+          <div className="rounded-card border border-border-default bg-surface-card p-6 text-center">
+            <p className="font-semibold text-text-primary">
+              {totalCount === 0 ? "Chi nhánh chưa có bàn" : "Không tìm thấy bàn nào phù hợp"}
             </p>
-            <p className="mt-1 text-xs text-text-tertiary">
-              Hãy thử tìm kiếm với từ khóa khác hoặc tắt bớt bộ lọc trạng thái.
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setSearchQuery("");
-                setSelectedFilter("ALL");
-              }}
-              className="mt-4 text-xs"
-            >
-              Đặt lại bộ lọc
-            </Button>
+            {totalCount > 0 ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={resetFilters}
+                className="mt-3"
+              >
+                Đặt lại bộ lọc
+              </Button>
+            ) : null}
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* ============================================================
           4. MODAL MỞ BÀN (POPUP DIALOG)
           ============================================================ */}
       <OpenTableModal
-        isOpen={isModalOpen}
+        isOpen={canUseTables && isModalOpen}
         table={selectedTableForOpen}
         session={selectedTableForOpen?.session}
         onClose={handleCloseModal}
       />
 
-      {/* FAB — CHỈ mobile. Tablet/PC đã có nút "Danh sách đặt" và "Đặt bàn" trên thanh
-          tiêu đề, nhưng ở mobile thanh đó bị ẩn nên đây là lối vào duy nhất.
-          Mở PANEL danh sách (không mở thẳng modal đặt bàn): theo FR-TBL-03, Phục vụ cần
-          nhận bàn từ màn hình đặt trước, nên xem danh sách là thao tác chính. Muốn đặt
-          mới thì bấm "Đặt bàn mới" ở chân panel.
-          Vị trí lấy từ hằng số chung để mọi FAB xếp tầng nhất quán với BottomNav. */}
-      <div className={FAB_POSITION_CLASS}>
-        <FAB
-          variant="circle"
-          aria-label={`Danh sách đặt bàn${reservedCount > 0 ? ` (${reservedCount} lịch)` : ""}`}
-          title="Danh sách đặt bàn"
-          icon={<CalendarCheck className="size-6 text-white" strokeWidth={2.5} />}
-          onClick={() => setIsReservationPanelOpen(true)}
-          className="shadow-lg"
-        />
-        {reservedCount > 0 ? (
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute -right-1 -top-1 flex min-w-5 items-center justify-center rounded-full bg-[#2E90FA] px-1.5 text-[11px] font-bold text-white shadow-xs"
-          >
-            {reservedCount}
-          </span>
-        ) : null}
-      </div>
-
       {/* ============================================================
           5. ĐẶT BÀN TRƯỚC (FR-TBL-03)
           ============================================================ */}
       <ReservationModal
-        isOpen={isReservationModalOpen}
+        isOpen={canUseTables && canReserve && isReservationModalOpen}
         availableTables={availableTables}
         holdMinutes={branch?.reservationHoldMinutes}
         onClose={() => setIsReservationModalOpen(false)}
       />
 
       <ReservationListPanel
-        open={isReservationPanelOpen}
+        open={canUseTables && isReservationPanelOpen}
         onOpenChange={setIsReservationPanelOpen}
         sessions={sessionsData}
         holdMinutes={branch?.reservationHoldMinutes}
-        onCreateReservation={isBranchInactive ? undefined : () => {
+        canCancel={canReserve}
+        onCreateReservation={isBranchInactive || !canReserve ? undefined : () => {
           if (availableTables.length === 0) {
             toast({
               title: "Không còn bàn trống",

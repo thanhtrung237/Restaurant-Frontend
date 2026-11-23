@@ -3,9 +3,6 @@
  *
  * ⚠️ THIẾU API Ở BACKEND:
  * - Màn "Báo cáo" (3 tab theo ngày/giờ/so sánh chi nhánh): chưa có endpoint tổng hợp.
- * - Màn "Vai trò & phân quyền": `Role` ở BE chỉ có `name`/`code`/`scope`, KHÔNG có cột lưu
- *   ma trận quyền. Quyền hiện hard-code ở `config/permissions.ts` phía FE, nên trang này
- *   chưa thực sự cấu hình được gì qua API — cần chốt lại phạm vi với BE.
  */
 export { useRestaurant, useUpdateRestaurant } from "@/api/restaurants.api"
 export {

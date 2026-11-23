@@ -3,6 +3,33 @@ import { test, expect, type Page } from "@playwright/test"
 const table = { tableId: 1, branchId: 1, tableName: "Bàn test", branchName: "Chi nhánh test", restaurantName: "Nhà hàng test", locationRequired: true, joinRequired: false }
 const session = { id: 10, tableId: 1, branchId: 1, tableName: "Bàn test", status: "WAITING_FOR_OPEN", guestCount: 2 }
 const TOKEN = "server-issued-guest-capability"
+
+test("confirms the invoice total before showing the guest payment QR", async ({ page }) => {
+  await page.addInitScript(({ token, session }) => {
+    sessionStorage.setItem("restaurant-guest-credential-v1", JSON.stringify({ sessionId: session.id, token }))
+  }, { token: TOKEN, session })
+  await page.route("**/api/v1/**", (route) => {
+    const path = new URL(route.request().url()).pathname
+    const headers = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "GET,POST,OPTIONS" }
+    if (route.request().method() === "OPTIONS" || path.endsWith("/qr-opened")) return route.fulfill({ status: 204, headers })
+    let data: unknown = { id: 45, tableSessionId: 10, invoiceNumber: "HD-45", grandTotal: 22680, status: "PENDING" }
+    if (path.endsWith("/tables/branch/1/qr/QR-B1-T1")) data = { id: 1, name: "Bàn test" }
+    if (path.endsWith("/table-sessions/table/1/open")) data = { ...session, status: "WAITING_FOR_PAY" }
+    if (path.endsWith("/qr-code")) data = {
+      invoiceId: 45, remainingAmount: 22680, grandTotal: 22680, totalPaid: 0, bankName: "MB",
+      accountNo: "123456789", accountName: "Chi nhánh", transferContent: "PV45X", automaticVerification: true,
+      qrImageUrl: "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='1'%20height='1'/%3E",
+    }
+    return route.fulfill({ headers, json: { data } })
+  })
+  const reported = page.waitForRequest((request) => request.method() === "POST" && request.url().endsWith("/invoices/session/10/qr-opened"))
+  await page.goto("/ban/QR-B1-T1/thanh-toan-qr")
+  const request = await reported
+  expect(request.headers()["x-guest-token"]).toBe(TOKEN)
+  expect(request.postDataJSON()).toEqual({ expectedTotal: 22680 })
+  await expect(page.getByRole("img", { name: "VietQR Thanh toán" })).toBeVisible()
+})
+
 async function mockApi(page: Page, info = table, activeSession = session) {
   await page.route("**/api/v1/**", async (route) => {
     const url = new URL(route.request().url())

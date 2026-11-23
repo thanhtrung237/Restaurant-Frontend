@@ -16,6 +16,7 @@ export interface Payment extends BaseResponse {
   amount: number // BigDecimal
   paidAt?: string // LocalDateTime
   transactionRef?: string
+  bankVerified?: boolean
   amountTendered?: number
   changeAmount?: number
   createdAt?: string

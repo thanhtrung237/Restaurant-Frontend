@@ -104,18 +104,18 @@ export function Sidebar() {
 
       {/* User footer */}
       <div className="border-t border-border-default/60 p-3">
-        <div className="flex items-center justify-between gap-2 rounded-xl p-2 bg-surface-page/60">
-          <div className="flex min-w-0 flex-1 items-center gap-2.5">
+        <div className="flex items-center gap-1.5 rounded-xl bg-surface-page/60 p-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             <Avatar className="size-8 bg-text-primary text-text-on-brand font-bold text-xs shrink-0">
               <AvatarFallback className="bg-text-primary text-text-on-brand">
                 {initials}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1 text-left">
-              <p className="truncate text-xs font-bold text-text-primary">
+              <p className="text-xs leading-tight font-bold break-words text-text-primary">
                 {account?.fullName || "Quản lý"}
               </p>
-              <p className="truncate text-[11px] text-text-tertiary">
+              <p className="mt-0.5 text-[11px] leading-tight break-words text-text-secondary">
                 {role ? APP_ROLE_LABEL[role] : "Quản trị nhà hàng"}
               </p>
             </div>

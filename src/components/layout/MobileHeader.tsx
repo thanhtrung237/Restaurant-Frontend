@@ -1,5 +1,6 @@
 import * as React from "react"
-import { ChevronLeft, Bell, LogOut } from "lucide-react"
+import { ChevronLeft, LogOut } from "lucide-react"
+import { NotificationBell } from "@/components/layout/NotificationBell"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { BranchSwitcher } from "@/components/layout/BranchSwitcher"
 import { useLogout } from "@/features/auth/hooks/useLogout"
@@ -97,7 +98,6 @@ export function MobileHeader({
 
 /**
  * Biến thể "app" — dùng cho trang chính của khu vực nhân viên trên mobile.
- * Nút chuông hiện CHỈ là chỗ giữ chỗ: panel thông báo nằm ngoài phạm vi task này.
  */
 function AppMobileHeader({
   title,
@@ -162,16 +162,7 @@ function AppMobileHeader({
         {/* Chuông chỉ hiện khi trang KHÔNG có điều khiển riêng — đúng Figma: "Sơ đồ bàn ·
             Mobile" có chuông, còn "Báo cáo · Mobile" (đã có chip kỳ) thì không. Ở 375px
             nhồi cả hai sẽ ép tiêu đề trang cụt còn một chữ. */}
-        {rightActions ?? (headerActions ? null : (
-          <button
-            type="button"
-            aria-label="Thông báo"
-            title="Thông báo"
-            className="relative flex size-9 items-center justify-center rounded-full border border-border-default bg-surface-card text-text-secondary transition-colors hover:bg-surface-muted"
-          >
-            <Bell className="size-4" />
-          </button>
-        ))}
+        {rightActions ?? (headerActions ? null : <NotificationBell className="size-9" />)}
       </div>
     </header>
   )
