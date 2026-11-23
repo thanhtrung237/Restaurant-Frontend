@@ -33,6 +33,7 @@ export function useCreatePayment() {
       void qc.invalidateQueries({ queryKey: qk.payments.all })
       // Hoá đơn đổi `totalPaid`/`remainingAmount`/`status` sau khi thanh toán.
       void qc.invalidateQueries({ queryKey: qk.invoices.all })
+      void qc.invalidateQueries({ queryKey: qk.takeawayOrders.all })
     },
   })
 }

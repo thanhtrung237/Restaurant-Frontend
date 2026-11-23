@@ -1,165 +1,122 @@
-/**
- * useStaffWebSocket — Kết nối STOMP/SockJS đến backend và phân phát thông báo real-time.
- *
- * Subscribe các topic theo branchId:
- *   /topic/branch/{branchId}/new-order       → NEW_ORDER (FR-SRV-03)
- *   /topic/branch/{branchId}/payment-request → PAYMENT_REQUESTED (FR-CUS-10)
- *   /topic/branch/{branchId}/staff-call      → STAFF_CALL (FR-CUS-07)
- *
- * Khi branchId = null (Quản trị nhà hàng chưa chọn chi nhánh), hook không kết nối.
- * Tất cả thông báo lưu vào Zustand store (useNotificationStore) và bắn toast trực quan.
- */
-
-import { getAccessToken } from "@/lib/auth-token"
-import * as React from "react"
+import { useEffect } from "react"
 import { Client } from "@stomp/stompjs"
 import SockJS from "sockjs-client"
 import { useQueryClient } from "@tanstack/react-query"
-import { useNotificationStore } from "@/stores/notification.store"
+import { getNotificationTableLabel, staffInboxKey } from "@/api/staff-notifications.api"
+import { useNotificationRing } from "@/stores/notification.store"
 import { useAuthStore } from "@/stores/auth.store"
 import { toast } from "@/hooks/use-toast"
+import { getAccessToken } from "@/lib/auth-token"
 import { qk } from "@/lib/query-keys"
 import { getWsUrl } from "@/lib/ws"
 
-/**
- * Chạy một bước của handler và KHÔNG để lỗi ở bước này làm mất các bước sau
- * (vd: lưu chuông lỗi vẫn phải hiện toast). Lỗi được log ra console thay vì nuốt im lặng.
- */
-function safely(label: string, fn: () => void) {
-  try {
-    fn()
-  } catch (err) {
-    console.error(`[WS] ${label} lỗi:`, err)
-  }
+interface StaffEvent {
+  type?: string
+  notificationId?: number
+  tableSessionId: number
+  tableNo?: string
+  orderId?: number
+  orderedById?: number
+  dishName?: string
 }
 
 export function useStaffWebSocket() {
-  const branchId = useAuthStore((s) => s.branchId)
-  const addNotification = useNotificationStore((s) => s.addNotification)
+  const branchId = useAuthStore((state) => state.branchId)
+  const accountId = useAuthStore((state) => state.account?.id)
   const queryClient = useQueryClient()
+  const ring = useNotificationRing((state) => state.ring)
 
-  React.useEffect(() => {
-    if (!branchId) return
-
+  useEffect(() => {
+    if (branchId == null || accountId == null) return
+    let active = true
+    const seen = new Set<string>()
+    const refreshInbox = () => void queryClient.invalidateQueries({ queryKey: staffInboxKey(accountId, branchId) })
+    const refreshTakeaway = () => void queryClient.invalidateQueries({ queryKey: qk.takeawayOrders.byBranch(branchId) })
     const client = new Client({
       webSocketFactory: () => new SockJS(getWsUrl()) as WebSocket,
       reconnectDelay: 5000,
       beforeConnect: () => { client.connectHeaders = { Authorization: `Bearer ${getAccessToken() ?? ""}` } },
       onStompError: (frame) => console.error("[WS] STOMP error:", frame.headers["message"], frame.body),
-      onWebSocketError: (evt) => console.error("[WS] Không kết nối được WebSocket:", evt),
+      onWebSocketError: (error) => console.error("[WS] Không kết nối được WebSocket:", error),
       onConnect: () => {
-        // FR-SRV-03: Order mới — Phục vụ và QL chi nhánh nhận thông báo trực quan để xác nhận order
-        client.subscribe(`/topic/branch/${branchId}/new-order`, (msg) => {
-          let data: {
-            type: string
-            orderId: number
-            tableSessionId: number
-            tableNo: string
-          }
+        if (!active) return
+        refreshInbox()
+        client.subscribe(`/topic/branch/${branchId}/takeaway-updated`, ({ body }) => {
+          if (!active) return
+          let event: StaffEvent
           try {
-            data = JSON.parse(msg.body)
-          } catch (err) {
-            console.error("[WS] new-order: payload không phải JSON:", msg.body, err)
+            event = JSON.parse(body)
+          } catch {
             return
           }
-          const tableName = data.tableNo ? `Bàn ${data.tableNo}` : `Phiên #${data.tableSessionId}`
-          safely("new-order/addNotification", () =>
-            addNotification({
-              type: "NEW_ORDER",
-              title: "Order mới",
-              body: `${tableName} vừa gửi order mới`,
-              meta: data,
-            }),
-          )
-          safely("new-order/toast", () =>
-            toast({
-              title: "Order mới!",
-              description: `${tableName} vừa gửi order #${data.orderId}. Vui lòng kiểm tra và xác nhận.`,
-              variant: "warning",
-            }),
-          )
-          // Invalidate queries để danh sách order và sơ đồ bàn cập nhật tức thì
-          safely("new-order/invalidate", () => {
-            void queryClient.invalidateQueries({ queryKey: qk.orders.all })
-            void queryClient.invalidateQueries({ queryKey: qk.orderDetails.all })
-            void queryClient.invalidateQueries({ queryKey: qk.tableSessions.all })
-          })
+          const sessionId = event?.tableSessionId
+          if (!Number.isSafeInteger(sessionId) || sessionId <= 0) return
+          refreshTakeaway()
+          void queryClient.invalidateQueries({ queryKey: qk.tableSessions.detail(sessionId) })
+          void queryClient.invalidateQueries({ queryKey: qk.tableSessions.billPreview(sessionId) })
+          void queryClient.invalidateQueries({ queryKey: qk.tableSessions.openByBranch(branchId) })
+          void queryClient.invalidateQueries({ queryKey: qk.orderDetails.bySession(sessionId) })
+          void queryClient.invalidateQueries({ queryKey: qk.invoices.bySession(sessionId) })
         })
-
-        // FR-CUS-10: Yêu cầu tính tiền — Hiện ngay kèm số bàn
-        client.subscribe(`/topic/branch/${branchId}/payment-request`, (msg) => {
-          let data: {
-            type: string
-            tableSessionId: number
-            tableNo: string
-          }
-          try {
-            data = JSON.parse(msg.body)
-          } catch (err) {
-            console.error("[WS] payment-request: payload không phải JSON:", msg.body, err)
-            return
-          }
-          const tableName = data.tableNo ? `Bàn ${data.tableNo}` : `Phiên #${data.tableSessionId}`
-          safely("payment-request/addNotification", () =>
-            addNotification({
-              type: "PAYMENT_REQUESTED",
-              title: "Yêu cầu tính tiền",
-              body: `${tableName} yêu cầu thanh toán`,
-              meta: data,
-            }),
-          )
-          safely("payment-request/toast", () =>
-            toast({
-              title: "Khách yêu cầu tính tiền!",
-              description: `${tableName} vừa gửi yêu cầu thanh toán.`,
-              variant: "info",
-            }),
-          )
-          safely("payment-request/invalidate", () => {
-            void queryClient.invalidateQueries({ queryKey: qk.tableSessions.all })
+        refreshTakeaway()
+        const subscribe = (topic: string, handle: (event: StaffEvent, tableName: string) => void) => {
+          client.subscribe(`/topic/branch/${branchId}/${topic}`, ({ body }) => {
+            if (!active) return
+            let event: StaffEvent
+            try {
+              event = JSON.parse(body)
+            } catch (error) {
+              console.error("[WS] Thông báo không hợp lệ:", error)
+              return
+            }
+            if (!Number.isSafeInteger(event?.tableSessionId)) return
+            const key = event.notificationId != null ? `notification-${event.notificationId}`
+              : event.orderId != null ? `order-${event.orderId}` : null
+            if (key && seen.has(key)) return
+            if (key) {
+              seen.add(key)
+              if (seen.size > 100) {
+                const oldest = seen.values().next().value
+                if (oldest) seen.delete(oldest)
+              }
+            }
+            refreshInbox()
+            ring(branchId)
+            handle(event, getNotificationTableLabel(event.tableNo, event.tableSessionId))
           })
-        })
+        }
 
-        // FR-CUS-07: Báo nhân viên — Yêu cầu có trạng thái Chờ xử lý -> Đã xử lý
-        client.subscribe(`/topic/branch/${branchId}/staff-call`, (msg) => {
-          let data: {
-            type: string
-            tableSessionId: number
-            orderDetailId: number | null
-            tableNo: string
-            dishName: string
+        subscribe("new-order", (event, table) => {
+          if (event.orderedById !== accountId) {
+            toast({ title: "Có món mới", description: `${table} · Lượt gọi #${event.orderId}`, variant: "warning" })
           }
-          try {
-            data = JSON.parse(msg.body)
-          } catch (err) {
-            console.error("[WS] staff-call: payload không phải JSON:", msg.body, err)
-            return
+          void queryClient.invalidateQueries({ queryKey: qk.orders.all })
+          void queryClient.invalidateQueries({ queryKey: qk.orderDetails.all })
+          void queryClient.invalidateQueries({ queryKey: qk.tableSessions.all })
+        })
+        subscribe("payment-request", (event, table) => {
+          const title = event.type === "PAYMENT_QR_OPENED" ? "Khách đã mở mã QR thanh toán"
+            : event.type === "BANK_PAYMENT_VERIFIED" ? "Ngân hàng đã xác nhận thanh toán"
+              : event.type === "DISCOUNT_APPROVAL" ? "Yêu cầu duyệt chiết khấu" : "Yêu cầu tính tiền"
+          toast({ title, description: table, variant: event.type === "BANK_PAYMENT_VERIFIED" ? "success" : "info" })
+          if (event.type === "BANK_PAYMENT_VERIFIED" || event.type === "DISCOUNT_APPROVAL") {
+            void queryClient.invalidateQueries({ queryKey: qk.invoices.bySession(event.tableSessionId) })
           }
-          const tableName = data.tableNo ? `Bàn ${data.tableNo}` : `Phiên #${data.tableSessionId}`
-          const content = data.dishName ? `Món "${data.dishName}"` : "Cần hỗ trợ"
-          safely("staff-call/addNotification", () =>
-            addNotification({
-              type: "STAFF_CALL",
-              title: "Khách báo nhân viên",
-              body: `${tableName} · ${content}`,
-              status: "PENDING",
-              meta: data,
-            }),
-          )
-          safely("staff-call/toast", () =>
-            toast({
-              title: "Khách gọi nhân viên!",
-              description: `${tableName} đang gọi nhân viên: ${content}`,
-              variant: "danger",
-            }),
-          )
+          void queryClient.invalidateQueries({ queryKey: qk.tableSessions.all })
+        })
+        subscribe("staff-call", (event, table) => {
+          toast({
+            title: "Khách gọi nhân viên",
+            description: event.dishName ? `${table} · Món “${event.dishName}”` : table,
+            variant: "danger",
+          })
         })
       },
     })
-
     client.activate()
     return () => {
-      client.deactivate()
+      active = false
+      void client.deactivate()
     }
-  }, [branchId, addNotification, queryClient])
+  }, [accountId, branchId, queryClient, ring])
 }

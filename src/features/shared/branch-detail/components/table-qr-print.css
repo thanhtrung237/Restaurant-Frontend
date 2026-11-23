@@ -1,0 +1,54 @@
+#bulk-table-qr-print {
+  display: none;
+}
+
+@page bulk-table-qr {
+  size: A4 portrait;
+  margin: 10mm;
+}
+
+@media print {
+  html:has(> body > #bulk-table-qr-print),
+  body:has(> #bulk-table-qr-print) {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  body:has(> #bulk-table-qr-print) > :not(#bulk-table-qr-print) {
+    display: none !important;
+  }
+
+  #bulk-table-qr-print {
+    display: block;
+    page: bulk-table-qr;
+  }
+
+  .bulk-table-qr-sheet {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4mm;
+    break-inside: avoid;
+  }
+
+  .bulk-table-qr-sheet + .bulk-table-qr-sheet {
+    break-before: page;
+  }
+
+  .bulk-table-qr-card {
+    min-height: 60mm;
+    padding: 3mm;
+    break-inside: avoid;
+    border-radius: 3mm;
+    box-shadow: none;
+    overflow-wrap: anywhere;
+  }
+
+  .bulk-table-qr-card svg {
+    width: 36mm;
+    height: 36mm;
+  }
+}

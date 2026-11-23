@@ -83,6 +83,20 @@ export function useUpdateTable() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.tables.all }),
   })
 }
+export function useDeleteTable() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: deleteTable,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.tables.all }),
+  })
+}
+export function useChangeTableStatus() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, status }: { id: number; status: DiningTableStatus }) => changeTableStatus(id, status),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.tables.all }),
+  })
+}
 export function useGenerateTableQrCode() {
   const qc = useQueryClient()
   return useMutation({

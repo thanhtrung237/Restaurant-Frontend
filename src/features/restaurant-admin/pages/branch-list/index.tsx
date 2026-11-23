@@ -1,9 +1,7 @@
 import { useMemo, useState } from "react"
-import { useNavigate } from "react-router-dom"
 import { AlertTriangle, Building2, Plus } from "lucide-react"
 import { FAB } from "@/components/common/FAB"
 import { FAB_POSITION_CLASS } from "@/components/layout/StickyActionBar"
-import { RESTAURANT_ADMIN_PATHS } from "@/app/router/paths"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/common/EmptyState"
@@ -38,7 +36,6 @@ import {
  * Không có nút "Xóa chi nhánh": chỉ Ngừng hoạt động / Kích hoạt lại (`PUT /branches/{id}/status`).
  */
 export default function BranchListPage() {
-  const navigate = useNavigate()
   const { toast } = useToast()
   const restaurantId = useAuthStore((s) => s.account?.restaurantId)
 
@@ -143,11 +140,6 @@ export default function BranchListPage() {
     }
   }
 
-  // Trang chi tiết chi nhánh (3 tab: Thông tin / Menu chi nhánh / Bàn & QR)
-  const handleViewBranch = (branchId: number) => {
-    navigate(`${RESTAURANT_ADMIN_PATHS.BRANCH}/${branchId}`, { state: { branchId } })
-  }
-
   const subtitle = branchesQuery.isLoading
     ? "Đang tải danh sách…"
     : `${branches.length} chi nhánh · ${activeCount} đang hoạt động`
@@ -206,7 +198,6 @@ export default function BranchListPage() {
           <BranchCard
             key={branch.id}
             branch={branch}
-            onView={handleViewBranch}
             onEdit={openEditModal}
             onToggleStatus={setStatusTarget}
           />

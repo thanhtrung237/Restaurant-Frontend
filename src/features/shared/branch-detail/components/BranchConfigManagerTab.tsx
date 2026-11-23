@@ -30,6 +30,7 @@ interface BranchConfigManagerTabProps {
    * cái là mục tạm biến mất, không quay lại giá trị gốc được nữa.
    */
   loadedBankName?: string
+  canEditBankAccount: boolean
   selectedBranch?: string
   onSave?: () => void
   isSaving?: boolean
@@ -43,6 +44,7 @@ export const BranchConfigManagerTab: React.FC<BranchConfigManagerTabProps> = ({
   config,
   onConfigChange,
   loadedBankName = "",
+  canEditBankAccount,
   selectedBranch = "Chi nhánh Quận 1",
   onSave,
   isSaving = false,
@@ -51,7 +53,7 @@ export const BranchConfigManagerTab: React.FC<BranchConfigManagerTabProps> = ({
 
   // Số tài khoản chỉ gồm chữ số (ô nhập đã lọc, đây là chốt chặn cuối).
   const bankAccountError =
-    config.bankAccountNo && !/^[0-9]+$/.test(config.bankAccountNo)
+    canEditBankAccount && config.bankAccountNo && !/^[0-9]+$/.test(config.bankAccountNo)
       ? "Số tài khoản chỉ được chứa chữ số."
       : undefined
 
@@ -64,7 +66,7 @@ export const BranchConfigManagerTab: React.FC<BranchConfigManagerTabProps> = ({
 
   // Ngân hàng và số tài khoản đi theo cặp — thiếu một nửa thì QR không sinh được.
   const bankPairError =
-    Boolean(config.bankAccountNo) !== Boolean(config.bankName)
+    canEditBankAccount && Boolean(config.bankAccountNo) !== Boolean(config.bankName)
       ? "Cần nhập ĐỦ cả ngân hàng và số tài khoản thì mới sinh được mã QR."
       : undefined
 
@@ -109,7 +111,7 @@ export const BranchConfigManagerTab: React.FC<BranchConfigManagerTabProps> = ({
   }
 
   return (
-    <div className="space-y-6 pt-2">
+    <div className="grid min-w-0 gap-6 lg:row-span-3 lg:grid-rows-subgrid">
       {/* ================= CARD: THÔNG TIN THỜI GIAN ================= */}
       <Card className="border-border-default bg-surface-card shadow-2xs">
         <CardHeader className="p-6 pb-4 space-y-0.5">
@@ -144,169 +146,172 @@ export const BranchConfigManagerTab: React.FC<BranchConfigManagerTabProps> = ({
         </CardContent>
       </Card>
 
-      {/* ================= CARD: TÀI KHOẢN NHẬN CHUYỂN KHOẢN ================= */}
-      <Card className="border-border-default bg-surface-card shadow-2xs">
-        <CardHeader className="p-6 pb-4 space-y-0.5">
-          <CardTitle className="text-base font-bold text-text-primary tracking-tight">
-            Tài khoản nhận chuyển khoản
-          </CardTitle>
-          <CardDescription className="text-xs text-text-tertiary">
-            Mỗi chi nhánh dùng tài khoản riêng · FR-PAY-03
-          </CardDescription>
-        </CardHeader>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-4">
+        {/* ================= CARD: TÀI KHOẢN NHẬN CHUYỂN KHOẢN ================= */}
+        <Card className="border-border-default bg-surface-card shadow-2xs">
+          <CardHeader className="p-6 pb-4 space-y-0.5">
+            <CardTitle className="text-base font-bold text-text-primary tracking-tight">
+              Tài khoản nhận chuyển khoản
+            </CardTitle>
+            <CardDescription className="text-xs text-text-tertiary">
+              {canEditBankAccount ? "Mỗi chi nhánh dùng tài khoản riêng · FR-PAY-03" : "Chỉ Quản trị nhà hàng được chỉnh sửa."}
+            </CardDescription>
+          </CardHeader>
 
-        <CardContent className="p-6 pt-0 space-y-4">
-          {/* Ngân hàng — BẮT BUỘC dropdown: backend chỉ map được 13 mã, giá trị lạ tạo ra
-              ảnh QR hỏng mà không báo lỗi (xem config/banks.ts). */}
-          <FormField label="Ngân hàng" htmlFor="branch-bank-name">
-            <Select
-              value={config.bankName || NO_BANK_VALUE}
-              onValueChange={(value) =>
-                onConfigChange({
-                  ...config,
-                  bankName: value === NO_BANK_VALUE ? "" : value,
-                })
-              }
+          <CardContent className="p-6 pt-0 space-y-4">
+            {/* Ngân hàng — BẮT BUỘC dropdown: backend chỉ map được 13 mã, giá trị lạ tạo ra
+                ảnh QR hỏng mà không báo lỗi (xem config/banks.ts). */}
+            <FormField label="Ngân hàng" htmlFor="branch-bank-name">
+              <Select
+                disabled={!canEditBankAccount}
+                value={config.bankName || NO_BANK_VALUE}
+                onValueChange={(value) =>
+                  onConfigChange({
+                    ...config,
+                    bankName: value === NO_BANK_VALUE ? "" : value,
+                  })
+                }
+              >
+                <SelectTrigger id="branch-bank-name" className="w-full">
+                  <SelectValue placeholder="Chọn ngân hàng" />
+                </SelectTrigger>
+                <SelectContent>
+                  {/* Radix không cho SelectItem mang value rỗng, nên phải đi qua một giá trị
+                      canh giữ. Thiếu mục này thì chọn rồi KHÔNG BỎ CHỌN ĐƯỢC — tức không gỡ
+                      được cấu hình chuyển khoản của chi nhánh. */}
+                  <SelectItem value={NO_BANK_VALUE} className="cursor-pointer">
+                    — Chưa cấu hình —
+                  </SelectItem>
+
+                  {/* Dữ liệu cũ có thể lưu tên đầy đủ ("Vietcombank") thay vì mã. Radix chỉ
+                      render text của mục KHỚP value, nên không có mục này thì ô hiện TRỐNG:
+                      người dùng tưởng chưa cấu hình, chọn bừa một ngân hàng và ghi đè mất
+                      cấu hình đang chạy. Mục tạm giữ nguyên giá trị gốc nên không mất dữ liệu. */}
+                  {legacyBankName ? (
+                    <SelectItem value={legacyBankName} className="cursor-pointer">
+                      {legacyBankName} (giá trị cũ)
+                    </SelectItem>
+                  ) : null}
+
+                  {BANK_OPTIONS.map((bank) => (
+                    <SelectItem key={bank.code} value={bank.code} className="cursor-pointer">
+                      {bank.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {canEditBankAccount && isLegacyBankSelected ? (
+                <p className="mt-1.5 text-xs text-status-warning">
+                  Giá trị này chưa theo danh sách chuẩn. Nên chọn lại ngân hàng tương ứng rồi
+                  Lưu.
+                </p>
+              ) : null}
+            </FormField>
+
+            {/* Số tài khoản — chỉ chữ số */}
+            <FormField
+              label="Số tài khoản"
+              htmlFor="branch-bank-account"
+              error={bankAccountError}
             >
-              <SelectTrigger id="branch-bank-name" className="w-full">
-                <SelectValue placeholder="Chọn ngân hàng" />
-              </SelectTrigger>
-              <SelectContent>
-                {/* Radix không cho SelectItem mang value rỗng, nên phải đi qua một giá trị
-                    canh giữ. Thiếu mục này thì chọn rồi KHÔNG BỎ CHỌN ĐƯỢC — tức không gỡ
-                    được cấu hình chuyển khoản của chi nhánh. */}
-                <SelectItem value={NO_BANK_VALUE} className="cursor-pointer">
-                  — Chưa cấu hình —
-                </SelectItem>
-
-                {/* Dữ liệu cũ có thể lưu tên đầy đủ ("Vietcombank") thay vì mã. Radix chỉ
-                    render text của mục KHỚP value, nên không có mục này thì ô hiện TRỐNG:
-                    người dùng tưởng chưa cấu hình, chọn bừa một ngân hàng và ghi đè mất
-                    cấu hình đang chạy. Mục tạm giữ nguyên giá trị gốc nên không mất dữ liệu. */}
-                {legacyBankName ? (
-                  <SelectItem value={legacyBankName} className="cursor-pointer">
-                    {legacyBankName} (giá trị cũ)
-                  </SelectItem>
-                ) : null}
-
-                {BANK_OPTIONS.map((bank) => (
-                  <SelectItem key={bank.code} value={bank.code} className="cursor-pointer">
-                    {bank.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {isLegacyBankSelected ? (
-              <p className="mt-1.5 text-xs text-status-warning">
-                Giá trị này chưa theo danh sách chuẩn. Nên chọn lại ngân hàng tương ứng rồi
-                Lưu.
+              <Input
+                id="branch-bank-account"
+                disabled={!canEditBankAccount}
+                inputMode="numeric"
+                value={config.bankAccountNo}
+                onChange={(e) =>
+                  onConfigChange({
+                    ...config,
+                    // Chặn ngay khi gõ: số tài khoản chỉ gồm chữ số
+                    bankAccountNo: e.target.value.replace(/[^0-9]/g, ""),
+                  })
+                }
+                placeholder="0071000988888"
+              />
+              <p className="mt-1.5 text-xs text-text-tertiary">
+                Dùng để sinh mã QR chuyển khoản cho hóa đơn của chi nhánh này (FR-PAY-03).
               </p>
-            ) : null}
-          </FormField>
+            </FormField>
+          </CardContent>
+        </Card>
 
-          {/* Số tài khoản — chỉ chữ số */}
-          <FormField
-            label="Số tài khoản"
-            htmlFor="branch-bank-account"
-            error={bankAccountError}
+        {/* ================= CARD: QUY TẮC VẬN HÀNH ================= */}
+        <Card className="border-border-default bg-surface-card shadow-2xs">
+          <CardHeader className="p-6 pb-4 space-y-0.5">
+            <CardTitle className="text-base font-bold text-text-primary tracking-tight">
+              Quy tắc vận hành
+            </CardTitle>
+            <CardDescription className="text-xs text-text-tertiary">
+              Ngưỡng thời gian tự động · áp dụng cho chi nhánh này
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="p-6 pt-0 space-y-4">
+            {/* Thời gian tự huỷ CHỜ MỞ BÀN (phút) */}
+            <FormField
+              label="Thời gian tự huỷ CHỜ MỞ BÀN (phút)"
+              htmlFor="auto-cancel-waiting"
+            >
+              <Input
+                id="auto-cancel-waiting"
+                type="number"
+                min={1}
+                value={config.autoCancelWaitingMinutes}
+                onChange={(e) =>
+                  onConfigChange({
+                    ...config,
+                    autoCancelWaitingMinutes: e.target.value,
+                  })
+                }
+                placeholder="10"
+              />
+              <p className="mt-1.5 text-xs text-text-tertiary">
+                Tối thiểu 1 phút
+              </p>
+            </FormField>
+
+            {/* Thời gian giữ chỗ đặt bàn (phút) */}
+            <FormField
+              label="Thời gian giữ chỗ đặt bàn (phút)"
+              htmlFor="reservation-holding"
+            >
+              <Input
+                id="reservation-holding"
+                type="number"
+                min={1}
+                value={config.reservationHoldingMinutes}
+                onChange={(e) =>
+                  onConfigChange({
+                    ...config,
+                    reservationHoldingMinutes: e.target.value,
+                  })
+                }
+                placeholder="15"
+              />
+              <p className="mt-1.5 text-xs text-text-tertiary">
+                Tối thiểu 1 phút
+              </p>
+            </FormField>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="space-y-4">
+        {bankPairError ? (
+          <p className="rounded-lg bg-status-warning-subtle px-3.5 py-2.5 text-xs font-medium text-status-warning">
+            {bankPairError}
+          </p>
+        ) : null}
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            onClick={handleSaveClick}
+            disabled={isSaving || hasError}
+            className="h-11 px-6 rounded-xl font-semibold bg-brand-primary text-text-on-brand hover:bg-brand-primary-hover shadow-2xs cursor-pointer"
           >
-            <Input
-              id="branch-bank-account"
-              inputMode="numeric"
-              value={config.bankAccountNo}
-              onChange={(e) =>
-                onConfigChange({
-                  ...config,
-                  // Chặn ngay khi gõ: số tài khoản chỉ gồm chữ số
-                  bankAccountNo: e.target.value.replace(/[^0-9]/g, ""),
-                })
-              }
-              placeholder="0071000988888"
-            />
-            <p className="mt-1.5 text-xs text-text-tertiary">
-              Dùng để sinh mã QR chuyển khoản cho hóa đơn của chi nhánh này (FR-PAY-03).
-            </p>
-          </FormField>
-        </CardContent>
-      </Card>
-
-      {/* ================= CARD: QUY TẮC VẬN HÀNH ================= */}
-      <Card className="border-border-default bg-surface-card shadow-2xs">
-        <CardHeader className="p-6 pb-4 space-y-0.5">
-          <CardTitle className="text-base font-bold text-text-primary tracking-tight">
-            Quy tắc vận hành
-          </CardTitle>
-          <CardDescription className="text-xs text-text-tertiary">
-            Ngưỡng thời gian tự động · áp dụng cho chi nhánh này
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent className="p-6 pt-0 space-y-4">
-          {/* Thời gian tự huỷ CHỜ MỞ BÀN (phút) */}
-          <FormField
-            label="Thời gian tự huỷ CHỜ MỞ BÀN (phút)"
-            htmlFor="auto-cancel-waiting"
-          >
-            <Input
-              id="auto-cancel-waiting"
-              type="number"
-              min={1}
-              value={config.autoCancelWaitingMinutes}
-              onChange={(e) =>
-                onConfigChange({
-                  ...config,
-                  autoCancelWaitingMinutes: e.target.value,
-                })
-              }
-              placeholder="10"
-            />
-            <p className="mt-1.5 text-xs text-text-tertiary">
-              Tối thiểu 1 phút
-            </p>
-          </FormField>
-
-          {/* Thời gian giữ chỗ đặt bàn (phút) */}
-          <FormField
-            label="Thời gian giữ chỗ đặt bàn (phút)"
-            htmlFor="reservation-holding"
-          >
-            <Input
-              id="reservation-holding"
-              type="number"
-              min={1}
-              value={config.reservationHoldingMinutes}
-              onChange={(e) =>
-                onConfigChange({
-                  ...config,
-                  reservationHoldingMinutes: e.target.value,
-                })
-              }
-              placeholder="15"
-            />
-            <p className="mt-1.5 text-xs text-text-tertiary">
-              Tối thiểu 1 phút
-            </p>
-          </FormField>
-        </CardContent>
-      </Card>
-
-      {/* Thiếu một nửa cặp ngân hàng/số TK thì QR không sinh được — báo ngay tại chỗ */}
-      {bankPairError ? (
-        <p className="rounded-lg bg-status-warning-subtle px-3.5 py-2.5 text-xs font-medium text-status-warning">
-          {bankPairError}
-        </p>
-      ) : null}
-
-      {/* Nút "Lưu thay đổi" căn phải dưới cùng */}
-      <div className="flex justify-end pt-2">
-        <Button
-          type="button"
-          onClick={handleSaveClick}
-          disabled={isSaving || hasError}
-          className="h-11 px-6 rounded-xl font-semibold bg-brand-primary text-text-on-brand hover:bg-brand-primary-hover shadow-2xs cursor-pointer"
-        >
-          {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
-        </Button>
+            {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
+          </Button>
+        </div>
       </div>
     </div>
   )

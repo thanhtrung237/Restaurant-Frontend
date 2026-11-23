@@ -11,6 +11,8 @@ import { PageHeader } from "@/components/layout/PageHeader"
 import { BranchDetailHeaderActions } from "./components/BranchDetailHeader"
 import { BranchInfoTab } from "./components/BranchInfoTab"
 import { BranchTableQrTab } from "./components/BranchTableQrTab"
+import { AddAreaDialog } from "./components/AddAreaDialog"
+import { BranchActionDialog } from "./components/BranchActionDialog"
 import { BranchMenuManagementTab } from "@/features/shared/branch-menu"
 import {
   AddTableModal,
@@ -25,9 +27,11 @@ import {
   useTablesByBranch,
   useCreateTable,
   useUpdateTable,
+  useDeleteTable,
+  useChangeTableStatus,
   useGenerateTableQrCode,
 } from "@/api/tables.api"
-import { useAreasByBranch } from "@/api/areas.api"
+import { useAreasByBranch, useDeleteArea } from "@/api/areas.api"
 import { useAssignmentsByBranch } from "@/api/assignments.api"
 import { useAuthStore } from "@/stores/auth.store"
 import { APP_ROLE } from "@/config/roles"
@@ -50,21 +54,30 @@ interface BranchDetailPageProps {
  * - In mã QR đơn lẻ hoặc hàng loạt
  */
 export function BranchDetailPage({ branchId, onConfigBranch }: BranchDetailPageProps) {
+  return <BranchDetail key={branchId} branchId={branchId} onConfigBranch={onConfigBranch} />
+}
+
+function BranchDetail({ branchId, onConfigBranch }: BranchDetailPageProps) {
   const { toast } = useToast()
   const userRole = useAuthStore((state) => state.role)
 
   // 1. Fetch dữ liệu từ backend
   const { data: branchData } = useBranch(branchId)
-  const { data: tables = [], isLoading: tablesLoading } = useTablesByBranch(branchId)
-  const { data: areas = [] } = useAreasByBranch(branchId)
+  const tablesQuery = useTablesByBranch(branchId)
+  const tables = tablesQuery.data ?? []
+  const areasQuery = useAreasByBranch(branchId)
+  const areas = areasQuery.data ?? []
   
   // Lấy phân công nhân viên (chỉ MANAGER và BRANCH_MANAGER được gọi - BR-18)
-  const canViewAssignments = userRole === APP_ROLE.BRANCH_MANAGER || userRole === APP_ROLE.RESTAURANT_ADMIN
-  const { data: assignments = [] } = useAssignmentsByBranch(canViewAssignments ? branchId : undefined)
+  const canManageBranch = userRole === APP_ROLE.BRANCH_MANAGER || userRole === APP_ROLE.RESTAURANT_ADMIN
+  const { data: assignments = [] } = useAssignmentsByBranch(canManageBranch ? branchId : undefined)
 
   // Mutations
   const createTableMutation = useCreateTable()
   const updateTableMutation = useUpdateTable()
+  const deleteTableMutation = useDeleteTable()
+  const changeTableStatus = useChangeTableStatus()
+  const deleteAreaMutation = useDeleteArea()
   const generateQrMutation = useGenerateTableQrCode()
 
   // Tab đang hoạt động: "info" | "menu" | "table-qr"
@@ -72,9 +85,15 @@ export function BranchDetailPage({ branchId, onConfigBranch }: BranchDetailPageP
 
   // State các Modal Bàn & QR
   const [isAddTableOpen, setAddTableOpen] = useState(false)
+  const [areaFilter, setAreaFilter] = useState("all")
+  const selectedArea = areas.find((area) => String(area.id) === areaFilter)
   const [isPrintAllQrOpen, setPrintAllQrOpen] = useState(false)
+  const [printAreaFilter, setPrintAreaFilter] = useState("all")
   const [editingTable, setEditingTable] = useState<DiningTable | null>(null)
   const [printingTable, setPrintingTable] = useState<DiningTable | null>(null)
+  const currentTable = editingTable && (tables.find((table) => table.id === editingTable.id) ?? editingTable)
+  const tableBusy = currentTable && (currentTable.hasOpenSession || currentTable.status === "OCCUPIED" || currentTable.status === "RESERVED")
+  const tableInactive = currentTable?.status === "INACTIVE"
 
   // Map thông tin chi nhánh cho Header & InfoTab
   const branch: BranchDetail = useMemo(() => {
@@ -98,7 +117,7 @@ export function BranchDetailPage({ branchId, onConfigBranch }: BranchDetailPageP
     let managerName = ""
     let staffCount = 0
     
-    if (canViewAssignments && assignments.length > 0) {
+    if (canManageBranch && assignments.length > 0) {
       // Lấy tên manager từ các phân công có roleCode = "BRANCH_MANAGER"
       const managers = assignments.filter(a => a.roleCode === "BRANCH_MANAGER")
       if (managers.length > 0) {
@@ -126,12 +145,13 @@ export function BranchDetailPage({ branchId, onConfigBranch }: BranchDetailPageP
       staffCount: staffCount,
       startDate: "", // BE không có field này, bỏ
     }
-  }, [branchData, tables.length, assignments, canViewAssignments, branchId])
+  }, [branchData, tables.length, assignments, canManageBranch, branchId])
 
   // --- Handlers Bàn & QR ---
   const handlePrintAllQr = useCallback(() => {
+    setPrintAreaFilter(areaFilter)
     setPrintAllQrOpen(true)
-  }, [])
+  }, [areaFilter])
 
   const handleAddTable = useCallback(() => {
     setAddTableOpen(true)
@@ -185,7 +205,7 @@ export function BranchDetailPage({ branchId, onConfigBranch }: BranchDetailPageP
   // Submit sửa bàn
   async function handleConfirmEditTable(
     id: number,
-    updateData: { name?: string; capacity?: number; areaId?: number }
+    updateData: { name?: string; capacity?: number; areaId?: number; clearArea?: boolean }
   ) {
     try {
       await updateTableMutation.mutateAsync({
@@ -262,10 +282,10 @@ export function BranchDetailPage({ branchId, onConfigBranch }: BranchDetailPageP
         }
       />
 
-      <div className="flex flex-col gap-6 p-6 lg:p-8">
+      <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8">
       {/* 2. 3 Tab: Thông tin, Menu chi nhánh, Bàn & QR */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="w-full justify-start gap-8 h-auto pb-0 bg-transparent rounded-none border-b border-border-default">
+        <TabsList className="w-full justify-start gap-3 sm:gap-8 h-auto pb-0 bg-transparent rounded-none border-b border-border-default">
           <TabsTrigger value="info" className="cursor-pointer">
             Thông tin
           </TabsTrigger>
@@ -295,7 +315,35 @@ export function BranchDetailPage({ branchId, onConfigBranch }: BranchDetailPageP
           <BranchTableQrTab
             tables={tables}
             areas={areas}
-            loading={tablesLoading}
+            areaFilter={areaFilter}
+            onAreaFilterChange={setAreaFilter}
+            areaAction={canManageBranch ? (
+              <>
+                <AddAreaDialog branchId={branchId} branchName={branch.name} onCreated={(id) => setAreaFilter(String(id))} />
+                {selectedArea ? (
+                  <BranchActionDialog
+                    key={selectedArea.id}
+                    label="Xóa khu vực"
+                    name={selectedArea.name}
+                    description="Khu vực sẽ được gỡ khỏi danh sách của chi nhánh."
+                    blocked={tablesQuery.isLoading || tablesQuery.isError ? "Cần tải được danh sách bàn trước khi xóa."
+                      : tables.some((table) => table.areaId === selectedArea.id) ? "Khu vực còn bàn. Hãy chỉnh sửa từng bàn để chuyển khu vực hoặc bỏ phân khu trước khi xóa."
+                        : undefined}
+                    onConfirm={async () => { await deleteAreaMutation.mutateAsync(selectedArea.id) }}
+                    onComplete={() => {
+                      setAreaFilter("all")
+                      toast({ title: "Đã xóa khu vực", variant: "success" })
+                    }}
+                  />
+                ) : null}
+              </>
+            ) : null}
+            areasUnavailable={areasQuery.isError}
+            onRetryAreas={() => void areasQuery.refetch()}
+            onAddTable={handleAddTable}
+            loading={tablesQuery.isLoading}
+            tablesUnavailable={tablesQuery.isError && !tablesQuery.data}
+            onRetryTables={() => void tablesQuery.refetch()}
             onPrintQr={handlePrintSingleQr}
             onEditTable={handleEditTable}
             onPrintAllQr={handlePrintAllQr}
@@ -322,7 +370,7 @@ export function BranchDetailPage({ branchId, onConfigBranch }: BranchDetailPageP
         open={isAddTableOpen}
         onOpenChange={setAddTableOpen}
         areas={areas}
-        branchId={branchId}
+        defaultAreaId={selectedArea?.id}
         onSuccess={handleConfirmAddTable}
       />
 
@@ -332,6 +380,35 @@ export function BranchDetailPage({ branchId, onConfigBranch }: BranchDetailPageP
         table={editingTable}
         areas={areas}
         onSuccess={handleConfirmEditTable}
+        actions={canManageBranch && currentTable ? (
+          <>
+            <BranchActionDialog
+              label={tableInactive ? "Sử dụng lại" : "Ngừng sử dụng"}
+              name={currentTable.name}
+              description={tableInactive ? "Bàn và mã QR sẽ hoạt động trở lại." : "Bàn sẽ ẩn khỏi Sơ đồ bàn và mã QR sẽ tạm dừng. Bạn có thể sử dụng lại bàn từ Bàn & QR."}
+              blocked={tableBusy ? "Bàn còn phiên hoạt động hoặc lịch đặt trước. Hãy xử lý phiên trước khi tiếp tục." : undefined}
+              destructive={false}
+              onConfirm={async () => {
+                await changeTableStatus.mutateAsync({ id: currentTable.id, status: tableInactive ? "AVAILABLE" : "INACTIVE" })
+              }}
+              onComplete={() => {
+                setEditingTable(null)
+                toast({ title: tableInactive ? "Đã mở lại bàn" : "Đã ngừng sử dụng bàn", variant: "success" })
+              }}
+            />
+            <BranchActionDialog
+              label="Xóa bàn"
+              name={currentTable.name}
+              description="Chỉ xóa được bàn chưa có lịch sử. Bàn và mã QR sẽ bị gỡ khỏi chi nhánh."
+              blocked={tableBusy ? "Bàn còn phiên hoạt động hoặc lịch đặt trước. Hãy xử lý phiên trước khi xóa." : undefined}
+              onConfirm={async () => { await deleteTableMutation.mutateAsync(currentTable.id) }}
+              onComplete={() => {
+                setEditingTable(null)
+                toast({ title: "Đã xóa bàn", variant: "success" })
+              }}
+            />
+          </>
+        ) : null}
       />
 
       <PrintSingleQrModal
@@ -341,12 +418,17 @@ export function BranchDetailPage({ branchId, onConfigBranch }: BranchDetailPageP
         branchName={branch.name}
       />
 
-      <PrintAllQrModal
-        open={isPrintAllQrOpen}
-        onOpenChange={setPrintAllQrOpen}
-        tables={tables}
-        branchName={branch.name}
-      />
+      {isPrintAllQrOpen ? (
+        <PrintAllQrModal
+          open
+          onOpenChange={setPrintAllQrOpen}
+          tables={tables}
+          areas={areas}
+          areaFilter={printAreaFilter}
+          onAreaFilterChange={setPrintAreaFilter}
+          branchName={branch.name}
+        />
+      ) : null}
     </div>
   )
 }
