@@ -78,9 +78,7 @@ export function SidebarRail() {
       {/* Chân: avatar + chuông thông báo + đăng xuất */}
       <div className="flex w-full flex-col items-center gap-2 border-t border-border-default/60 pt-3">
         <Avatar className="size-9 bg-text-primary text-text-on-brand text-xs font-bold">
-          <AvatarFallback className="bg-text-primary text-text-on-brand">
-            {initials}
-          </AvatarFallback>
+          <AvatarFallback className="bg-text-primary text-text-on-brand">{initials}</AvatarFallback>
         </Avatar>
         <span className="sr-only">
           {account?.fullName} — {role ? APP_ROLE_LABEL[role] : ""}

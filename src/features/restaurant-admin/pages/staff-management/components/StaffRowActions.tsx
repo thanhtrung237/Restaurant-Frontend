@@ -1,6 +1,12 @@
 import React from "react"
 import { KeyRound, MoreHorizontal, Pencil, ShieldCheck, ShieldOff } from "lucide-react"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { useEmployeeOperationalPermissions } from "@/api/operational-permissions.api"
 import { IconButton } from "@/components/ui/icon-button"
 import {
@@ -105,11 +111,20 @@ export const StaffRowActions: React.FC<{ staff: StaffRow } & StaffRowActionHandl
             {permissions.isError && <p role="alert">Chưa tải được quyền của nhân viên.</p>}
             {permissions.data?.length === 0 && <p>Nhân viên chưa có phân công.</p>}
             {permissions.data?.map((branch) => (
-              <section key={branch.branchId ?? "restaurant"} className="rounded-lg border border-border-default p-3 text-sm">
+              <section
+                key={branch.branchId ?? "restaurant"}
+                className="rounded-lg border border-border-default p-3 text-sm"
+              >
                 <h3 className="mb-1 font-semibold">{branch.branchName}</h3>
-                {branch.permissions.length ? <ul className="list-disc space-y-1 pl-5">
-                  {branch.permissions.map((permission) => <li key={permission.code}>{permission.label}</li>)}
-                </ul> : <p>Chưa có quyền vận hành được cấp.</p>}
+                {branch.permissions.length ? (
+                  <ul className="list-disc space-y-1 pl-5">
+                    {branch.permissions.map((permission) => (
+                      <li key={permission.code}>{permission.label}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>Chưa có quyền vận hành được cấp.</p>
+                )}
               </section>
             ))}
           </div>

@@ -20,7 +20,7 @@ export default function PaymentSuccessPage() {
 
   const tableSession = useCustomerSessionStore((s) => s.tableSession)
   const tableName = tableSession?.tableName || "Bàn"
-  
+
   const paymentAmount = useCustomerPaymentStore((s) => s.amount)
   const paymentMethod = useCustomerPaymentStore((s) => s.method)
   const clearSession = useCustomerSessionStore((s) => s.clearSession)
@@ -28,11 +28,16 @@ export default function PaymentSuccessPage() {
 
   const paymentMethodLabel = React.useMemo(() => {
     switch (paymentMethod) {
-      case "BANK_TRANSFER": return "chuyển khoản"
-      case "CASH": return "tiền mặt"
-      case "CARD": return "thẻ"
-      case "E_WALLET": return "ví điện tử"
-      default: return "thanh toán"
+      case "BANK_TRANSFER":
+        return "chuyển khoản"
+      case "CASH":
+        return "tiền mặt"
+      case "CARD":
+        return "thẻ"
+      case "E_WALLET":
+        return "ví điện tử"
+      default:
+        return "thanh toán"
     }
   }, [paymentMethod])
 
@@ -40,7 +45,7 @@ export default function PaymentSuccessPage() {
     // Clear toàn bộ session và payment state
     clearSession()
     resetPayment()
-    
+
     // Navigate về trang chủ hoặc close tab
     // Trong context mobile web, có thể hiển thị hướng dẫn đóng tab
     navigate("/", { replace: true })
@@ -59,7 +64,10 @@ export default function PaymentSuccessPage() {
           {/* ---- Vòng tròn thành công với animation ---- */}
           <div className="mb-6 flex size-[120px] items-center justify-center rounded-full bg-[#E6F7EF] animate-in zoom-in-50 duration-500">
             <div className="flex size-[88px] items-center justify-center rounded-full bg-[#12B76A]">
-              <Check className="size-12 text-white animate-in zoom-in duration-300 delay-150" strokeWidth={3} />
+              <Check
+                className="size-12 text-white animate-in zoom-in duration-300 delay-150"
+                strokeWidth={3}
+              />
             </div>
           </div>
 
@@ -70,9 +78,7 @@ export default function PaymentSuccessPage() {
 
           {/* ---- Thông tin thanh toán ---- */}
           <div className="mt-4 animate-in fade-in duration-500 delay-300">
-            <p className="text-sm text-text-secondary">
-              Đã thanh toán {paymentMethodLabel}
-            </p>
+            <p className="text-sm text-text-secondary">Đã thanh toán {paymentMethodLabel}</p>
             {paymentAmount ? (
               <p className="mt-1.5 text-3xl sm:text-4xl font-bold text-brand-primary">
                 {formatVnd(paymentAmount)}
@@ -82,11 +88,10 @@ export default function PaymentSuccessPage() {
 
           {/* ---- Thông điệp cảm ơn ---- */}
           <div className="mt-6 animate-in fade-in duration-500 delay-400">
-            <p className="text-base font-semibold text-text-primary">
-              Cảm ơn quý khách!
-            </p>
+            <p className="text-base font-semibold text-text-primary">Cảm ơn quý khách!</p>
             <p className="mt-1.5 max-w-[320px] text-sm leading-relaxed text-text-secondary">
-              Hóa đơn điện tử đã được gửi đến số điện thoại của quý khách. Hẹn gặp lại quý khách lần sau!
+              Hóa đơn điện tử đã được gửi đến số điện thoại của quý khách. Hẹn gặp lại quý khách lần
+              sau!
             </p>
           </div>
 
@@ -100,12 +105,13 @@ export default function PaymentSuccessPage() {
                 {tableName} · Phiên #{tableSession?.id ?? "—"}
               </p>
               <p className="mt-0.5 text-xs text-text-tertiary">
-                Đã hoàn tất · {new Date().toLocaleString("vi-VN", { 
-                  hour: "2-digit", 
+                Đã hoàn tất ·{" "}
+                {new Date().toLocaleString("vi-VN", {
+                  hour: "2-digit",
                   minute: "2-digit",
                   day: "2-digit",
                   month: "2-digit",
-                  year: "numeric"
+                  year: "numeric",
                 })}
               </p>
             </div>
@@ -124,7 +130,7 @@ export default function PaymentSuccessPage() {
           >
             Đánh giá trải nghiệm
           </Button> */}
-          
+
           <Button
             type="button"
             size="lg"
@@ -134,10 +140,8 @@ export default function PaymentSuccessPage() {
             <Home className="size-5" />
             <span>Hoàn tất</span>
           </Button>
-          
-          <p className="text-center text-xs text-text-tertiary">
-            Bạn có thể đóng tab này an toàn
-          </p>
+
+          <p className="text-center text-xs text-text-tertiary">Bạn có thể đóng tab này an toàn</p>
         </div>
       </div>
     </div>

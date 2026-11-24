@@ -1,15 +1,15 @@
-import { NavLink, useLocation } from "react-router-dom";
-import { LogOut } from "lucide-react";
-import { useAuthStore } from "@/stores/auth.store";
-import { APP_ROLE_LABEL } from "@/config/roles";
-import { getNavGroupsForRole } from "@/config/nav-items";
-import { isNavItemActive } from "@/config/nav-utils";
-import { useLogout } from "@/features/auth/hooks/useLogout";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { BranchSwitcher } from "@/components/layout/BranchSwitcher";
-import { RestaurantBrand, useRestaurantName } from "@/components/layout/RestaurantBrand";
-import { NotificationBell } from "@/components/layout/NotificationBell";
-import { cn } from "@/lib/utils";
+import { NavLink, useLocation } from "react-router-dom"
+import { LogOut } from "lucide-react"
+import { useAuthStore } from "@/stores/auth.store"
+import { APP_ROLE_LABEL } from "@/config/roles"
+import { getNavGroupsForRole } from "@/config/nav-items"
+import { isNavItemActive } from "@/config/nav-utils"
+import { useLogout } from "@/features/auth/hooks/useLogout"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { BranchSwitcher } from "@/components/layout/BranchSwitcher"
+import { RestaurantBrand, useRestaurantName } from "@/components/layout/RestaurantBrand"
+import { NotificationBell } from "@/components/layout/NotificationBell"
+import { cn } from "@/lib/utils"
 
 /**
  * Sidebar — khung điều hướng desktop dùng CHUNG cho các role nhân viên qua `StaffLayout`.
@@ -19,17 +19,17 @@ import { cn } from "@/lib/utils";
  * - Chân trang: Avatar + Tên / Vai trò nhân viên + Nút đăng xuất
  */
 export function Sidebar() {
-  const account = useAuthStore((s) => s.account);
-  const role = useAuthStore((s) => s.role);
-  const { logout, isLoggingOut } = useLogout();
+  const account = useAuthStore((s) => s.account)
+  const role = useAuthStore((s) => s.role)
+  const { logout, isLoggingOut } = useLogout()
 
   // Mặc định vai trò là Quản trị nhà hàng (RESTAURANT_ADMIN) để xem được toàn bộ màn hình
-  const currentRole = role && role !== "CUSTOMER" ? role : "RESTAURANT_ADMIN";
+  const currentRole = role && role !== "CUSTOMER" ? role : "RESTAURANT_ADMIN"
   // "desktop": bỏ các mục chỉ dành cho điều hướng mobile (xem NavItem.mobileOnly).
-  const navGroups = getNavGroupsForRole(currentRole, "desktop");
-  const { pathname } = useLocation();
+  const navGroups = getNavGroupsForRole(currentRole, "desktop")
+  const { pathname } = useLocation()
   // Tên hiện trên thanh bên lấy từ cấu hình nhà hàng thật (FR-ADM-03), không viết cứng.
-  const restaurantName = useRestaurantName();
+  const restaurantName = useRestaurantName()
 
   const initials =
     account?.fullName
@@ -37,7 +37,7 @@ export function Sidebar() {
       .slice(-2)
       .map((w) => w[0])
       .join("")
-      .toUpperCase() || "QL";
+      .toUpperCase() || "QL"
 
   return (
     <aside className="hidden lg:flex h-screen w-60 shrink-0 flex-col border-r border-border-default/80 bg-surface-card select-none sticky top-0">
@@ -59,10 +59,7 @@ export function Sidebar() {
       {/* Nav groups */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         {navGroups.map((group, groupIndex) => (
-          <div
-            key={group.title ?? groupIndex}
-            className={groupIndex > 0 ? "mt-4" : undefined}
-          >
+          <div key={group.title ?? groupIndex} className={groupIndex > 0 ? "mt-4" : undefined}>
             {group.title ? (
               <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
                 {group.title}
@@ -76,13 +73,13 @@ export function Sidebar() {
                     // Tự tính active thay vì dùng cờ của NavLink: mục "Nhân viên" còn
                     // phải sáng ở hai màn tab của nó (xem NavItem.activeAlsoOn).
                     className={() => {
-                      const isActive = isNavItemActive(item, pathname);
+                      const isActive = isNavItemActive(item, pathname)
                       return cn(
                         "flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-all",
                         isActive
                           ? "bg-brand-primary-subtle text-brand-primary font-semibold shadow-2xs"
                           : "text-text-secondary hover:bg-surface-muted hover:text-text-primary",
-                      );
+                      )
                     }}
                   >
                     <item.icon
@@ -135,5 +132,5 @@ export function Sidebar() {
         </div>
       </div>
     </aside>
-  );
+  )
 }

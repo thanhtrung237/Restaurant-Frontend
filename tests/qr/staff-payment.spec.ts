@@ -3,10 +3,22 @@
 import type { Page } from "@playwright/test"
 
 const session = { id: 12, tableId: 5, branchId: 2, tableName: "Bàn 5", status: "WAITING_FOR_PAY" }
-const invoice = { id: 45, tableSessionId: 12, branchId: 2, subTotalBeforeDiscount: 50000, grandTotal: 50000, status: "PENDING" }
+const invoice = {
+  id: 45,
+  tableSessionId: 12,
+  branchId: 2,
+  subTotalBeforeDiscount: 50000,
+  grandTotal: 50000,
+  status: "PENDING",
+}
 const roles = [
   { role: "BRANCH_MANAGER", prefix: "/quan-ly-chi-nhanh", branchId: 2, invoicePath: "hoa-don" },
-  { role: "RESTAURANT_ADMIN", prefix: "/quan-tri-nha-hang", branchId: null, invoicePath: "hoa-don" },
+  {
+    role: "RESTAURANT_ADMIN",
+    prefix: "/quan-tri-nha-hang",
+    branchId: null,
+    invoicePath: "hoa-don",
+  },
   { role: "CASHIER", prefix: "/thu-ngan", branchId: 2, invoicePath: "hoa-don-dien-tu" },
 ]
 
@@ -17,12 +29,19 @@ async function checkPaymentButtons(page: Page, selected: "Tiền mặt" | "Chuy�
   const inactive = group.getByRole("button", { pressed: false })
   await expect(active).toBeVisible()
   await expect(inactive).toBeVisible()
-  const [activeBounds, inactiveBounds] = await Promise.all([active.boundingBox(), inactive.boundingBox()])
+  const [activeBounds, inactiveBounds] = await Promise.all([
+    active.boundingBox(),
+    inactive.boundingBox(),
+  ])
   expect(Math.abs(activeBounds!.width - inactiveBounds!.width)).toBeLessThanOrEqual(1)
   expect(activeBounds!.height).toBe(inactiveBounds!.height)
   expect(activeBounds!.height).toBeGreaterThanOrEqual(48)
   expect(activeBounds!.y).toBe(inactiveBounds!.y)
-  return Promise.all([active, inactive].map((button) => button.evaluate((element) => getComputedStyle(element).backgroundColor)))
+  return Promise.all(
+    [active, inactive].map((button) =>
+      button.evaluate((element) => getComputedStyle(element).backgroundColor),
+    ),
+  )
 }
 
 for (const { role, prefix, branchId, invoicePath } of roles) {
@@ -35,47 +54,83 @@ for (const { role, prefix, branchId, invoicePath } of roles) {
     let verifyHigherTotal = false
     if (isMobileCheckout) await page.setViewportSize({ width: 390, height: 844 })
 
-    await page.addInitScript(({ role, branchId }) => {
-      localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
-      localStorage.setItem("pho-viet-auth", JSON.stringify({ version: 0, state: {
-        role, branchId, accessToken: "test-token", isAuthenticated: true,
-        account: { id: 1, restaurantId: 1, fullName: "Nhân viên test" },
-      } }))
-    }, { role, branchId })
+    await page.addInitScript(
+      ({ role, branchId }) => {
+        localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
+        localStorage.setItem(
+          "pho-viet-auth",
+          JSON.stringify({
+            version: 0,
+            state: {
+              role,
+              branchId,
+              accessToken: "test-token",
+              isAuthenticated: true,
+              account: { id: 1, restaurantId: 1, fullName: "Nhân viên test" },
+            },
+          }),
+        )
+      },
+      { role, branchId },
+    )
 
     await page.route("**/api/v1/**", async (route) => {
       const request = route.request()
       const path = new URL(request.url()).pathname
-      const headers = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "GET,POST,OPTIONS" }
+      const headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "*",
+        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+      }
       if (request.method() === "OPTIONS") {
         await route.fulfill({ status: 204, headers })
         return
       }
       let data: unknown = []
-      if (path.endsWith("/branches/2")) data = { id: 2, bankName: "VCB", bankAccountNo: "123456789" }
+      if (path.endsWith("/branches/2"))
+        data = { id: 2, bankName: "VCB", bankAccountNo: "123456789" }
       if (path.endsWith("/table-sessions/12")) data = session
       if (path.endsWith("/table-sessions/12/bill-preview")) {
         data = {
-          grossSubTotal: 50000, itemPromotionDiscount: 0, orderPromotionDiscount: 0,
-          manualDiscount: 0, serviceFeeRate: 0, serviceFee: 0,
-          vatRate: 0, vatOnServiceFee: true, vatBase: 50000, vatAmount: 0, grandTotal: 50000,
+          grossSubTotal: 50000,
+          itemPromotionDiscount: 0,
+          orderPromotionDiscount: 0,
+          manualDiscount: 0,
+          serviceFeeRate: 0,
+          serviceFee: 0,
+          vatRate: 0,
+          vatOnServiceFee: true,
+          vatBase: 50000,
+          vatAmount: 0,
+          grandTotal: 50000,
         }
       }
       if (path.endsWith("/invoices/session/12")) {
         if (!invoiceExists) {
-          await route.fulfill({ status: 404, headers, json: { message: "Chưa có hóa đơn cho phiên" } })
+          await route.fulfill({
+            status: 404,
+            headers,
+            json: { message: "Chưa có hóa đơn cho phiên" },
+          })
           return
         }
         data = invoice
       }
       if (path.endsWith("/invoices/45/qr-code")) {
-        await route.fulfill({ status: 409, headers, json: { message: "Chi nhánh chưa cấu hình tài khoản ngân hàng" } })
+        await route.fulfill({
+          status: 409,
+          headers,
+          json: { message: "Chi nhánh chưa cấu hình tài khoản ngân hàng" },
+        })
         return
       }
-      if (path.endsWith("/invoices/45")) data = {
-        ...invoice, grandTotal: verifyHigherTotal ? confirmedTotal : invoice.grandTotal,
-        status: cashPayments ? "ISSUED" : "PENDING", invoiceNumber: "HD-45",
-      }
+      if (path.endsWith("/invoices/45"))
+        data = {
+          ...invoice,
+          grandTotal: verifyHigherTotal ? confirmedTotal : invoice.grandTotal,
+          status: cashPayments ? "ISSUED" : "PENDING",
+          invoiceNumber: "HD-45",
+        }
       if (path.endsWith("/invoices") && request.method() === "POST") {
         expect(request.postDataJSON()).toMatchObject({ branchId: 2, tableSessionId: 12 })
         invoiceRequests += 1
@@ -84,7 +139,10 @@ for (const { role, prefix, branchId, invoicePath } of roles) {
       }
       if (path.endsWith("/payments") && request.method() === "POST") {
         expect(request.postDataJSON()).toMatchObject({
-          method: "CASH", amount: confirmedTotal, amountTendered: confirmedTotal, invoiceId: 45,
+          method: "CASH",
+          amount: confirmedTotal,
+          amountTendered: confirmedTotal,
+          invoiceId: 45,
         })
         cashPayments += 1
         data = { id: 1 }
@@ -105,7 +163,9 @@ for (const { role, prefix, branchId, invoicePath } of roles) {
     expect(qrColors).toEqual(cashColors)
     await expect(page.getByText("Đang chờ khách chuyển khoản")).toHaveCount(0)
     await expect(page.getByRole("button", { name: "Đối chiếu giao dịch" })).toHaveCount(0)
-    await expect(page.getByRole("button", { name: "Mở cấu hình chi nhánh" })).toHaveCount(isMobileCheckout ? 0 : 1)
+    await expect(page.getByRole("button", { name: "Mở cấu hình chi nhánh" })).toHaveCount(
+      isMobileCheckout ? 0 : 1,
+    )
     await page.getByRole("button", { name: "Chuyển sang tiền mặt" }).click()
     await expect(page).toHaveURL(checkout)
 
@@ -121,7 +181,9 @@ for (const { role, prefix, branchId, invoicePath } of roles) {
       const tenderBounds = await tender.boundingBox()
       const issueBounds = await issue.boundingBox()
       expect(issueBounds!.y).toBeGreaterThan(tenderBounds!.y + tenderBounds!.height)
-      expect(await issue.evaluate((element) => getComputedStyle(element.parentElement!).position)).toBe("static")
+      expect(
+        await issue.evaluate((element) => getComputedStyle(element.parentElement!).position),
+      ).toBe("static")
     }
 
     const initialInvoiceRequests = invoiceRequests
@@ -153,13 +215,24 @@ for (const { role, prefix, branchId, invoicePath } of roles) {
   })
 }
 
-test("cash and QR show the same persisted discount after replacing and removing it", async ({ page }) => {
+test("cash and QR show the same persisted discount after replacing and removing it", async ({
+  page,
+}) => {
   await page.addInitScript(() => {
     localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
-    localStorage.setItem("pho-viet-auth", JSON.stringify({ version: 0, state: {
-      role: "RESTAURANT_ADMIN", branchId: 2, accessToken: "test-token", isAuthenticated: true,
-      account: { id: 1, restaurantId: 1, fullName: "Nhân viên test" },
-    } }))
+    localStorage.setItem(
+      "pho-viet-auth",
+      JSON.stringify({
+        version: 0,
+        state: {
+          role: "RESTAURANT_ADMIN",
+          branchId: 2,
+          accessToken: "test-token",
+          isAuthenticated: true,
+          account: { id: 1, restaurantId: 1, fullName: "Nhân viên test" },
+        },
+      }),
+    )
   })
 
   let discount = 15000
@@ -171,7 +244,8 @@ test("cash and QR show the same persisted discount after replacing and removing 
     const request = route.request()
     const path = new URL(request.url()).pathname
     const headers = {
-      "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Headers": "*",
       "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
     }
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers })
@@ -201,16 +275,34 @@ test("cash and QR show the same persisted discount after replacing and removing 
     let data: unknown = []
     if (path.endsWith("/table-sessions/12")) data = session
     if (path.endsWith("/branches/2")) data = { id: 2, bankName: "VCB", bankAccountNo: "123456789" }
-    if (path.endsWith("/approval")) data = { requestId: "approval-45", requestedBy: 2, reason: "Bỏ chiết khấu toàn hóa đơn" }
-    if (path.endsWith("/invoices/session/12") || path.endsWith("/invoice/45") || path.endsWith("/approval/true")) {
-      data = { ...invoice, quoteShared: shared, discountApprovalPending: approvalPending,
-        totalManualDiscount: discount, grandTotal: total, remainingAmount: total }
+    if (path.endsWith("/approval"))
+      data = { requestId: "approval-45", requestedBy: 2, reason: "Bỏ chiết khấu toàn hóa đơn" }
+    if (
+      path.endsWith("/invoices/session/12") ||
+      path.endsWith("/invoice/45") ||
+      path.endsWith("/approval/true")
+    ) {
+      data = {
+        ...invoice,
+        quoteShared: shared,
+        discountApprovalPending: approvalPending,
+        totalManualDiscount: discount,
+        grandTotal: total,
+        remainingAmount: total,
+      }
     }
-    if (path.endsWith("/invoices/45/qr-code")) data = {
-      invoiceId: 45, grandTotal: total, remainingAmount: total, bankName: "VCB",
-      accountNo: "123456789", accountName: "Chi nhánh thử", transferContent: "PV45X",
-      qrImageUrl: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
-    }
+    if (path.endsWith("/invoices/45/qr-code"))
+      data = {
+        invoiceId: 45,
+        grandTotal: total,
+        remainingAmount: total,
+        bankName: "VCB",
+        accountNo: "123456789",
+        accountName: "Chi nhánh thử",
+        transferContent: "PV45X",
+        qrImageUrl:
+          "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+      }
     return route.fulfill({ headers, json: { data } })
   })
 

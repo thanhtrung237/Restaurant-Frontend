@@ -64,7 +64,9 @@ export function useBranchSwitcher() {
   const adminAssignment = assignments?.find(
     (assignment) => mapRoleCodeToAppRole(assignment.roleCode) === APP_ROLE.RESTAURANT_ADMIN,
   )
-  const restaurantBranches = useBranchesByRestaurant(adminAssignment ? account?.restaurantId : undefined)
+  const restaurantBranches = useBranchesByRestaurant(
+    adminAssignment ? account?.restaurantId : undefined,
+  )
 
   const choices = React.useMemo<BranchChoice[]>(() => {
     const mapped = (assignments ?? [])
@@ -113,10 +115,13 @@ export function useBranchSwitcher() {
   }, [assignments, adminAssignment, restaurantBranches.data])
 
   const activeChoice = React.useMemo(
-    () => choices.find((choice) =>
-      choice.role === role && choice.branchId === branchId &&
-      (choice.assignmentId === assignmentId || role === APP_ROLE.RESTAURANT_ADMIN)
-    ) ?? choices[0],
+    () =>
+      choices.find(
+        (choice) =>
+          choice.role === role &&
+          choice.branchId === branchId &&
+          (choice.assignmentId === assignmentId || role === APP_ROLE.RESTAURANT_ADMIN),
+      ) ?? choices[0],
     [choices, assignmentId, branchId, role],
   )
 
@@ -126,7 +131,12 @@ export function useBranchSwitcher() {
   const switchTo = React.useCallback(
     (choice: BranchChoice) => {
       if (!account || !accessToken) return
-      if (choice.assignmentId === assignmentId && choice.branchId === branchId && choice.role === role) return
+      if (
+        choice.assignmentId === assignmentId &&
+        choice.branchId === branchId &&
+        choice.role === role
+      )
+        return
 
       setSession({
         account,

@@ -42,8 +42,8 @@ export function DeleteCategoryDialog({
             Xoá danh mục
           </DialogTitle>
           <DialogDescription>
-            Xoá danh mục <strong className="text-text-primary">{category?.name}</strong>?
-            Thao tác này không hoàn tác được.
+            Xoá danh mục <strong className="text-text-primary">{category?.name}</strong>? Thao tác
+            này không hoàn tác được.
           </DialogDescription>
         </DialogHeader>
 
@@ -112,8 +112,11 @@ export function StopSellingDialog({
           <DialogDescription asChild>
             <div className="space-y-2">
               <p>
-                Ngừng bán <strong className="text-text-primary">{dish?.name}</strong> sẽ ẩn
-                món ở <strong className="text-text-primary">{dish?.branchId != null ? "chi nhánh này" : "tất cả chi nhánh"}</strong>.
+                Ngừng bán <strong className="text-text-primary">{dish?.name}</strong> sẽ ẩn món ở{" "}
+                <strong className="text-text-primary">
+                  {dish?.branchId != null ? "chi nhánh này" : "tất cả chi nhánh"}
+                </strong>
+                .
               </p>
               {isLoadingCount ? (
                 <p className="text-xs">Đang kiểm tra số chi nhánh đang bán món...</p>
@@ -173,8 +176,8 @@ export function DeleteOptionGroupDialog({
           </DialogTitle>
           <DialogDescription>
             Bạn có chắc chắn muốn xoá nhóm tùy chọn{" "}
-            <strong className="text-text-primary">{optionGroup?.name}</strong>? Toàn bộ các lựa
-            chọn trong nhóm và liên kết với các món ăn sẽ bị gỡ bỏ.
+            <strong className="text-text-primary">{optionGroup?.name}</strong>? Toàn bộ các lựa chọn
+            trong nhóm và liên kết với các món ăn sẽ bị gỡ bỏ.
           </DialogDescription>
         </DialogHeader>
 
@@ -200,4 +203,3 @@ export function DeleteOptionGroupDialog({
     </Dialog>
   )
 }
-

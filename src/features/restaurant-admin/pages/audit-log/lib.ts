@@ -215,10 +215,7 @@ function describeChange(log: AuditLog): { description: string; detail?: string }
         }
       }
       // Mở bàn thông thường
-      if (
-        (before.status === "WAITING_FOR_OPEN" || !before.status) &&
-        after.status === "SERVING"
-      ) {
+      if ((before.status === "WAITING_FOR_OPEN" || !before.status) && after.status === "SERVING") {
         const guests = after.guestCount ?? ""
         const time = fmtTime(after.openedAt)
         return {
@@ -296,9 +293,17 @@ function describeChange(log: AuditLog): { description: string; detail?: string }
   // ── Thanh toán ─────────────────────────────────────────────────────────────
   if (action === "PAYMENT") {
     const amount = after.amount ?? after.totalAmount
-    const method = after.method === "CASH" ? "tiền mặt" : after.method === "TRANSFER" ? "chuyển khoản" : after.method
+    const method =
+      after.method === "CASH"
+        ? "tiền mặt"
+        : after.method === "TRANSFER"
+          ? "chuyển khoản"
+          : after.method
     if (amount && method) {
-      return { description: `Thu tiền mặt ${Number(amount).toLocaleString("vi-VN")}đ qua ${method}`, detail: reason }
+      return {
+        description: `Thu tiền mặt ${Number(amount).toLocaleString("vi-VN")}đ qua ${method}`,
+        detail: reason,
+      }
     }
     return { description: "Ghi nhận thanh toán", detail: reason }
   }
@@ -316,7 +321,10 @@ function describeChange(log: AuditLog): { description: string; detail?: string }
   // ── Phân quyền ─────────────────────────────────────────────────────────────
   if (action === "PERMISSION_CHANGE") {
     if (entity === "OperationalPermission" || entity === "BranchStaffAssignment") {
-      return { description: reason ?? "Cập nhật quyền vận hành", detail: `${log.valueBefore ?? "—"} → ${log.valueAfter ?? "—"}` }
+      return {
+        description: reason ?? "Cập nhật quyền vận hành",
+        detail: `${log.valueBefore ?? "—"} → ${log.valueAfter ?? "—"}`,
+      }
     }
     return { description: reason ?? "Thay đổi phân quyền nhân viên" }
   }

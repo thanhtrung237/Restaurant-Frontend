@@ -37,7 +37,10 @@ export function useRolesByRestaurant(restaurantId?: number) {
 }
 export function useCreateRole() {
   const qc = useQueryClient()
-  return useMutation({ mutationFn: createRole, onSuccess: () => void qc.invalidateQueries({ queryKey: qk.roles.all }) })
+  return useMutation({
+    mutationFn: createRole,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.roles.all }),
+  })
 }
 export function useUpdateRole() {
   const qc = useQueryClient()
@@ -48,5 +51,8 @@ export function useUpdateRole() {
 }
 export function useDeleteRole() {
   const qc = useQueryClient()
-  return useMutation({ mutationFn: deleteRole, onSuccess: () => void qc.invalidateQueries({ queryKey: qk.roles.all }) })
+  return useMutation({
+    mutationFn: deleteRole,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.roles.all }),
+  })
 }

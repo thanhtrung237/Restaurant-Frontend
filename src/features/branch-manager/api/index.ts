@@ -10,12 +10,20 @@
  */
 export { useBranch, useUpdateBranchManagerConfig } from "@/api/branches.api"
 export { useAreasByBranch, useCreateArea, useUpdateArea } from "@/api/areas.api"
-export { useTablesByBranch, useCreateTable, useUpdateTable, useGenerateTableQrCode } from "@/api/tables.api"
+export {
+  useTablesByBranch,
+  useCreateTable,
+  useUpdateTable,
+  useGenerateTableQrCode,
+} from "@/api/tables.api"
 export { useBranchMenuOverview } from "@/api/branch-menu.api"
 export { useDishesByBranch } from "@/api/dishes.api"
 export { useCategoriesByRestaurant } from "@/api/categories.api"
 export {
-  useCreateDishOverride, useDeleteDishOverride, useDishOverridesByBranch, useUpdateDishOverride,
+  useCreateDishOverride,
+  useDeleteDishOverride,
+  useDishOverridesByBranch,
+  useUpdateDishOverride,
 } from "@/api/dish-overrides.api"
 export {
   useOutOfStockDishes as useOutOfStock,
@@ -23,7 +31,10 @@ export {
   useToggleBranchDishStock as useToggleDishStock,
 } from "@/api/branch-dish-stocks.api"
 export {
-  useAssignPromotionToBranch, useCreatePromotion, usePromotionsByBranch, usePromotionsByRestaurant,
+  useAssignPromotionToBranch,
+  useCreatePromotion,
+  usePromotionsByBranch,
+  usePromotionsByRestaurant,
 } from "@/api/promotions.api"
 export { useAccountsByRestaurant } from "@/api/accounts.api"
 export { useAssignmentsByBranch } from "@/api/assignments.api"

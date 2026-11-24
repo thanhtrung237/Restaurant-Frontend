@@ -1,191 +1,116 @@
-import { lazy } from "react";
-import { createBrowserRouter, Navigate } from "react-router-dom";
-import { APP_ROLE } from "@/config/roles";
-import RequireAuth from "./guards/RequireAuth";
-import RequireRole from "./guards/RequireRole";
-import RequirePermission from "./guards/RequirePermission";
-import RedirectIfAuthenticated from "./guards/RedirectIfAuthenticated";
-import RequireTableSession from "./guards/RequireTableSession";
+import { lazy } from "react"
+import { createBrowserRouter, Navigate } from "react-router-dom"
+import { APP_ROLE } from "@/config/roles"
+import RequireAuth from "./guards/RequireAuth"
+import RequireRole from "./guards/RequireRole"
+import RequirePermission from "./guards/RequirePermission"
+import RedirectIfAuthenticated from "./guards/RedirectIfAuthenticated"
+import RequireTableSession from "./guards/RequireTableSession"
 
 // ---- Layouts ----
-import AuthLayout from "@/layouts/AuthLayout";
-import CustomerLayout from "@/layouts/CustomerLayout";
-import StaffLayout from "@/layouts/StaffLayout";
-import PlatformLayout from "@/layouts/PlatformLayout";
+import AuthLayout from "@/layouts/AuthLayout"
+import CustomerLayout from "@/layouts/CustomerLayout"
+import StaffLayout from "@/layouts/StaffLayout"
+import PlatformLayout from "@/layouts/PlatformLayout"
 
 // ---- Fallback ----
-import NotFoundPage from "./fallback/NotFoundPage";
-import RoleHomeRedirect from "./RoleHomeRedirect";
-import ForbiddenPage from "./fallback/ForbiddenPage";
-import { FORBIDDEN_PATH } from "./post-login-target";
+import NotFoundPage from "./fallback/NotFoundPage"
+import RoleHomeRedirect from "./RoleHomeRedirect"
+import ForbiddenPage from "./fallback/ForbiddenPage"
+import { FORBIDDEN_PATH } from "./post-login-target"
 
 // ---- Auth pages ----
-const LoginPage = lazy(() => import("@/features/auth/pages/login"));
-const ForgotPasswordPage = lazy(
-  () => import("@/features/auth/pages/forgot-password"),
-);
-const FirstLoginPasswordPage = lazy(
-  () => import("@/features/auth/pages/first-login-password"),
-);
+const LoginPage = lazy(() => import("@/features/auth/pages/login"))
+const ForgotPasswordPage = lazy(() => import("@/features/auth/pages/forgot-password"))
+const FirstLoginPasswordPage = lazy(() => import("@/features/auth/pages/first-login-password"))
 
 // ---- Customer pages (Mobile / Khách hàng) ----
-const TableOpenQrPage = lazy(
-  () => import("@/features/customer/pages/table-open-qr"),
-);
-const WaitingTableOpenPage = lazy(
-  () => import("@/features/customer/pages/waiting-table-open"),
-);
-const MenuPage = lazy(() => import("@/features/customer/pages/menu"));
-const SearchDishPage = lazy(
-  () => import("@/features/customer/pages/search-dish"),
-);
-const DishDetailPage = lazy(
-  () => import("@/features/customer/pages/dish-detail"),
-);
-const CartPage = lazy(() => import("@/features/customer/pages/cart"));
-const OrderedItemsPage = lazy(
-  () => import("@/features/customer/pages/ordered-items"),
-);
-const RequestBillPage = lazy(
-  () => import("@/features/customer/pages/request-bill"),
-);
-const InvoicePage = lazy(() => import("@/features/customer/pages/invoice"));
-const PaymentQrPage = lazy(
-  () => import("@/features/customer/pages/payment-qr"),
-);
-const PaymentSuccessPage = lazy(
-  () => import("@/features/customer/pages/payment-success"),
-);
-const PaymentFailedPage = lazy(
-  () => import("@/features/customer/pages/payment-failed"),
-);
-const ReviewPage = lazy(() => import("@/features/customer/pages/review"));
-const OrderRejectedPage = lazy(
-  () => import("@/features/customer/pages/order-rejected"),
-);
+const TableOpenQrPage = lazy(() => import("@/features/customer/pages/table-open-qr"))
+const WaitingTableOpenPage = lazy(() => import("@/features/customer/pages/waiting-table-open"))
+const MenuPage = lazy(() => import("@/features/customer/pages/menu"))
+const SearchDishPage = lazy(() => import("@/features/customer/pages/search-dish"))
+const DishDetailPage = lazy(() => import("@/features/customer/pages/dish-detail"))
+const CartPage = lazy(() => import("@/features/customer/pages/cart"))
+const OrderedItemsPage = lazy(() => import("@/features/customer/pages/ordered-items"))
+const RequestBillPage = lazy(() => import("@/features/customer/pages/request-bill"))
+const InvoicePage = lazy(() => import("@/features/customer/pages/invoice"))
+const PaymentQrPage = lazy(() => import("@/features/customer/pages/payment-qr"))
+const PaymentSuccessPage = lazy(() => import("@/features/customer/pages/payment-success"))
+const PaymentFailedPage = lazy(() => import("@/features/customer/pages/payment-failed"))
+const ReviewPage = lazy(() => import("@/features/customer/pages/review"))
+const OrderRejectedPage = lazy(() => import("@/features/customer/pages/order-rejected"))
 
 // ---- Vận hành sàn / bếp (dùng chung: Phục vụ, Thu ngân*, QL chi nhánh, Quản trị NH — mục 4.2) ----
 // *Thu ngân chỉ dùng Sơ đồ bàn (xem tạm tính) và Chuyển/gộp bàn, không dùng các trang order/bếp.
-const TableMapPage = lazy(
-  () => import("@/features/shared/floor-ops/table-map"),
-);
+const TableMapPage = lazy(() => import("@/features/shared/floor-ops/table-map"))
 // Gọi món & Chế biến dùng chung UI với Bếp (KDS) — xem ghi chú trong kitchen-display/index.tsx
 // OrderConfirmPage removed: items now go directly to KDS where kitchen staff confirms them
-const OrderDetailPage = lazy(
-  () => import("@/features/shared/floor-ops/order-detail"),
-);
-const AddDishPage = lazy(
-  () => import("@/features/shared/floor-ops/add-dish"),
-);
-const KitchenDisplayPage = lazy(
-  () => import("@/features/shared/floor-ops/kitchen-display"),
-);
+const OrderDetailPage = lazy(() => import("@/features/shared/floor-ops/order-detail"))
+const AddDishPage = lazy(() => import("@/features/shared/floor-ops/add-dish"))
+const KitchenDisplayPage = lazy(() => import("@/features/shared/floor-ops/kitchen-display"))
 const TransferMergeTablePage = lazy(
   () => import("@/features/shared/floor-ops/transfer-merge-table"),
-);
-
-const InvoiceListPage = lazy(
-  () => import("@/features/shared/invoices/InvoiceListPage"),
 )
-const QrTransferPaymentPage = lazy(
-  () => import("@/features/cashier/pages/qr-transfer-payment"),
-);
-const EInvoicePage = lazy(() => import("@/features/cashier/pages/e-invoice"));
-const CheckoutPage = lazy(() => import("@/features/cashier/pages/checkout"));
 
+const InvoiceListPage = lazy(() => import("@/features/shared/invoices/InvoiceListPage"))
+const QrTransferPaymentPage = lazy(() => import("@/features/cashier/pages/qr-transfer-payment"))
+const EInvoicePage = lazy(() => import("@/features/cashier/pages/e-invoice"))
+const CheckoutPage = lazy(() => import("@/features/cashier/pages/checkout"))
 
 // ---- Branch manager pages (Desktop / Quản lý chi nhánh) ----
 // "Chi nhánh" và "Cấu hình" dùng chung component với Quản trị NH — @/features/shared/branch-detail
 const BranchManagerBranchDetailPage = lazy(
   () => import("@/features/branch-manager/pages/branch-detail"),
-);
+)
 const BranchManagerBranchConfigPage = lazy(
   () => import("@/features/branch-manager/pages/branch-config"),
-);
+)
 // Thực đơn dùng chung trang và giới hạn thao tác theo vai trò.
 const BranchManagerMenuPage = lazy(
   () => import("@/features/restaurant-admin/pages/menu-management"),
-);
-const BranchManagerPromotionsPage = lazy(
-  () => import("@/features/branch-manager/pages/promotions"),
-);
+)
+const BranchManagerPromotionsPage = lazy(() => import("@/features/branch-manager/pages/promotions"))
 const BranchManagerPromotionCreatePage = lazy(
   () => import("@/features/branch-manager/pages/promotion-create"),
-);
+)
 const BranchManagerPromotionEditPage = lazy(
   () => import("@/features/branch-manager/pages/promotion-edit"),
-);
-const ManualDiscountPage = lazy(
-  () => import("@/features/branch-manager/pages/manual-discount"),
-);
-const BranchReportPage = lazy(
-  () => import("@/features/branch-manager/pages/branch-report"),
-);
-const RevenueByHourPage = lazy(
-  () => import("@/features/branch-manager/pages/revenue-by-hour"),
-);
+)
+const ManualDiscountPage = lazy(() => import("@/features/branch-manager/pages/manual-discount"))
+const BranchReportPage = lazy(() => import("@/features/branch-manager/pages/branch-report"))
+const RevenueByHourPage = lazy(() => import("@/features/branch-manager/pages/revenue-by-hour"))
 
 // ---- Restaurant admin pages (Desktop / Quản trị nhà hàng) ----
-const BranchListPage = lazy(
-  () => import("@/features/restaurant-admin/pages/branch-list"),
-);
-const BranchDetailPage = lazy(
-  () => import("@/features/restaurant-admin/pages/branch-detail"),
-);
-const BranchTaxFeePage = lazy(
-  () => import("@/features/restaurant-admin/pages/branch-tax-fee"),
-);
+const BranchListPage = lazy(() => import("@/features/restaurant-admin/pages/branch-list"))
+const BranchDetailPage = lazy(() => import("@/features/restaurant-admin/pages/branch-detail"))
+const BranchTaxFeePage = lazy(() => import("@/features/restaurant-admin/pages/branch-tax-fee"))
 const RestaurantBranchConfigPage = lazy(
   () => import("@/features/restaurant-admin/pages/branch-config"),
-);
-const StaffManagementPage = lazy(
-  () => import("@/features/restaurant-admin/pages/staff-management"),
-);
-const BranchStaffPage = lazy(() => import("@/features/branch-manager/pages/branch-staff"));
+)
+const StaffManagementPage = lazy(() => import("@/features/restaurant-admin/pages/staff-management"))
+const BranchStaffPage = lazy(() => import("@/features/branch-manager/pages/branch-staff"))
 const RolesPermissionsPage = lazy(
   () => import("@/features/restaurant-admin/pages/roles-permissions"),
-);
+)
 const CategoryManagementPage = lazy(
   () => import("@/features/restaurant-admin/pages/category-management"),
-);
-const MenuManagementPage = lazy(
-  () => import("@/features/restaurant-admin/pages/menu-management"),
-);
-const PromotionsPage = lazy(
-  () => import("@/features/restaurant-admin/pages/promotions"),
-);
-const PromotionCreatePage = lazy(
-  () => import("@/features/restaurant-admin/pages/promotion-create"),
-);
-const PromotionEditPage = lazy(
-  () => import("@/features/restaurant-admin/pages/promotion-edit"),
-);
-const RestaurantAuditLogPage = lazy(
-  () => import("@/features/restaurant-admin/pages/audit-log"),
-);
-const RestaurantReportsPage = lazy(
-  () => import("@/features/restaurant-admin/pages/reports"),
-);
+)
+const MenuManagementPage = lazy(() => import("@/features/restaurant-admin/pages/menu-management"))
+const PromotionsPage = lazy(() => import("@/features/restaurant-admin/pages/promotions"))
+const PromotionCreatePage = lazy(() => import("@/features/restaurant-admin/pages/promotion-create"))
+const PromotionEditPage = lazy(() => import("@/features/restaurant-admin/pages/promotion-edit"))
+const RestaurantAuditLogPage = lazy(() => import("@/features/restaurant-admin/pages/audit-log"))
+const RestaurantReportsPage = lazy(() => import("@/features/restaurant-admin/pages/reports"))
 const RestaurantConfigPage = lazy(
   () => import("@/features/restaurant-admin/pages/restaurant-config"),
-);
+)
 
 // ---- Platform admin pages (Desktop / Quản trị nền tảng) ----
-const PlatformDashboardPage = lazy(
-  () => import("@/features/platform-admin/pages/dashboard"),
-);
-const RestaurantListPage = lazy(
-  () => import("@/features/platform-admin/pages/restaurant-list"),
-);
-const RestaurantDetailPage = lazy(
-  () => import("@/features/platform-admin/pages/restaurant-detail"),
-);
-const PlatformConfigPage = lazy(
-  () => import("@/features/platform-admin/pages/platform-config"),
-);
-const SystemAuditLogPage = lazy(
-  () => import("@/features/platform-admin/pages/system-audit-log"),
-);
+const PlatformDashboardPage = lazy(() => import("@/features/platform-admin/pages/dashboard"))
+const RestaurantListPage = lazy(() => import("@/features/platform-admin/pages/restaurant-list"))
+const RestaurantDetailPage = lazy(() => import("@/features/platform-admin/pages/restaurant-detail"))
+const PlatformConfigPage = lazy(() => import("@/features/platform-admin/pages/platform-config"))
+const SystemAuditLogPage = lazy(() => import("@/features/platform-admin/pages/system-audit-log"))
 
 /**
  * Cây route của toàn hệ thống. Mỗi nhánh dưới đây tương ứng 1-1 với 1 file
@@ -254,7 +179,10 @@ export const router = createBrowserRouter([
               // ai ghi vào nên modal bên trong không bao giờ hiện. Mở bàn thật làm bằng
               // OpenTableModal ngay trên Sơ đồ bàn. Giữ redirect cho URL cũ (bookmark, lịch sử)
               // để người dùng về đúng Sơ đồ bàn của vai trò, không rơi ra ngoài layout.
-              { path: "so-do-ban/:tableId/mo-ban", element: <Navigate to="/phuc-vu/so-do-ban" replace /> },
+              {
+                path: "so-do-ban/:tableId/mo-ban",
+                element: <Navigate to="/phuc-vu/so-do-ban" replace />,
+              },
               { path: "so-do-ban/them-don-mang-ve/:orderId?", element: <AddDishPage takeaway /> },
               { path: "order-che-bien", element: <KitchenDisplayPage /> }, // ORDER_AND_PREP -> dùng chung UI Bếp (KDS)
               // ORDER_CONFIRM route removed: items now go directly to KDS where kitchen staff confirms them (PENDING → PREPARING)
@@ -287,7 +215,6 @@ export const router = createBrowserRouter([
               }, // QR_TRANSFER_PAYMENT
               { path: "hoa-don-dien-tu/:invoiceId", element: <EInvoicePage /> }, // E_INVOICE
               { path: "hoa-don", element: <InvoiceListPage /> }, // CASHIER_PATHS.INVOICES
-
             ],
           },
         ],
@@ -312,7 +239,10 @@ export const router = createBrowserRouter([
               // ai ghi vào nên modal bên trong không bao giờ hiện. Mở bàn thật làm bằng
               // OpenTableModal ngay trên Sơ đồ bàn. Giữ redirect cho URL cũ (bookmark, lịch sử)
               // để người dùng về đúng Sơ đồ bàn của vai trò, không rơi ra ngoài layout.
-              { path: "so-do-ban/:tableId/mo-ban", element: <Navigate to="/quan-ly-chi-nhanh/so-do-ban" replace /> },
+              {
+                path: "so-do-ban/:tableId/mo-ban",
+                element: <Navigate to="/quan-ly-chi-nhanh/so-do-ban" replace />,
+              },
               { path: "order-che-bien", element: <KitchenDisplayPage /> }, // ORDER_AND_PREP -> dùng chung UI Bếp (KDS)
               // ORDER_CONFIRM route removed: items now go directly to KDS where kitchen staff confirms them (PENDING → PREPARING)
               { path: "order/:orderId", element: <OrderDetailPage /> }, // ORDER_DETAIL
@@ -322,7 +252,10 @@ export const router = createBrowserRouter([
               // 8 phân hệ chính — phạm vi chi nhánh của mình
               // Bang 4.2 "Thu tien, dong ban": QL chi nhanh cung duoc dong ban.
               { path: "thanh-toan/:tableSessionId", element: <CheckoutPage /> }, // CHECKOUT
-              { path: "thanh-toan/:tableSessionId/chuyen-khoan-qr", element: <QrTransferPaymentPage /> },
+              {
+                path: "thanh-toan/:tableSessionId/chuyen-khoan-qr",
+                element: <QrTransferPaymentPage />,
+              },
               { path: "thuc-don", element: <BranchManagerMenuPage /> }, // BRANCH_MENU
               // Bảng 4.3 để TRỐNG cột QL chi nhánh ở "Khuyến mãi" và "Quản lý nhân viên".
               // Các route bên dưới được GIỮ LẠI (không xoá file) nhưng bị RequirePermission
@@ -359,7 +292,6 @@ export const router = createBrowserRouter([
               { path: "vai-tro-phan-quyen", element: <RolesPermissionsPage /> },
               { path: "hoa-don", element: <InvoiceListPage /> }, // BRANCH_MANAGER_PATHS.INVOICES
               { path: "hoa-don/:invoiceId", element: <EInvoicePage /> }, // BRANCH_MANAGER_PATHS.E_INVOICE
-
             ],
           },
         ],
@@ -380,7 +312,10 @@ export const router = createBrowserRouter([
               // ai ghi vào nên modal bên trong không bao giờ hiện. Mở bàn thật làm bằng
               // OpenTableModal ngay trên Sơ đồ bàn. Giữ redirect cho URL cũ (bookmark, lịch sử)
               // để người dùng về đúng Sơ đồ bàn của vai trò, không rơi ra ngoài layout.
-              { path: "so-do-ban/:tableId/mo-ban", element: <Navigate to="/quan-tri-nha-hang/so-do-ban" replace /> },
+              {
+                path: "so-do-ban/:tableId/mo-ban",
+                element: <Navigate to="/quan-tri-nha-hang/so-do-ban" replace />,
+              },
               { path: "order-che-bien", element: <KitchenDisplayPage /> }, // GỌI MÓN & CHẾ BIẾN -> dùng chung UI Bếp (KDS)
               // ORDER_CONFIRM route removed: items now go directly to KDS where kitchen staff confirms them (PENDING → PREPARING)
               { path: "order/:orderId", element: <OrderDetailPage /> },
@@ -389,7 +324,10 @@ export const router = createBrowserRouter([
               { path: "chuyen-gop-ban", element: <TransferMergeTablePage /> },
               // Bang 4.2 "Thu tien, dong ban": Quan tri nha hang cung duoc dong ban.
               { path: "thanh-toan/:tableSessionId", element: <CheckoutPage /> }, // CHECKOUT
-              { path: "thanh-toan/:tableSessionId/chuyen-khoan-qr", element: <QrTransferPaymentPage /> },
+              {
+                path: "thanh-toan/:tableSessionId/chuyen-khoan-qr",
+                element: <QrTransferPaymentPage />,
+              },
               { path: "hoa-don/:invoiceId", element: <EInvoicePage /> },
               { path: "thuc-don", element: <MenuManagementPage /> }, // THỰC ĐƠN
               { path: "khuyen-mai", element: <PromotionsPage /> }, // KHUYẾN MÃI
@@ -410,8 +348,9 @@ export const router = createBrowserRouter([
               {
                 path: "chi-nhanh/:branchId/het-hang",
                 lazy: async () => {
-                  const { default: Component } = await import("@/features/restaurant-admin/pages/out-of-stock");
-                  return { Component };
+                  const { default: Component } =
+                    await import("@/features/restaurant-admin/pages/out-of-stock")
+                  return { Component }
                 },
               }, // OUT_OF_STOCK — Danh sách món đang hết hàng (GĐ2)
               { path: "nhan-vien", element: <StaffManagementPage /> }, // NHÂN VIÊN (3 tab)
@@ -458,4 +397,4 @@ export const router = createBrowserRouter([
    */
   { path: "/", element: <RoleHomeRedirect /> },
   { path: "*", element: <NotFoundPage /> },
-]);
+])

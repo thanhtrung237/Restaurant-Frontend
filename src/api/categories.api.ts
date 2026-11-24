@@ -41,7 +41,8 @@ export function useCreateCategory() {
 export function useUpdateCategory() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (vars: { id: number; body: CategoryUpdateRequest }) => updateCategory(vars.id, vars.body),
+    mutationFn: (vars: { id: number; body: CategoryUpdateRequest }) =>
+      updateCategory(vars.id, vars.body),
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.categories.all }),
   })
 }

@@ -11,7 +11,9 @@ export function getOptionItem(id: number) {
 export function getOptionItemsByGroup(optionGroupId: number) {
   return apiGet<OptionItem[]>(`/option-items/group/${optionGroupId}`)
 }
-export function listOptionItems(params?: PageParams & { optionGroupId?: number; keyword?: string }) {
+export function listOptionItems(
+  params?: PageParams & { optionGroupId?: number; keyword?: string },
+) {
   return apiGet<PageResponse<OptionItem>>("/option-items", { params })
 }
 export function createOptionItem(body: OptionItemAddRequest) {
@@ -41,7 +43,8 @@ export function useCreateOptionItem() {
 export function useUpdateOptionItem() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (vars: { id: number; body: OptionItemUpdateRequest }) => updateOptionItem(vars.id, vars.body),
+    mutationFn: (vars: { id: number; body: OptionItemUpdateRequest }) =>
+      updateOptionItem(vars.id, vars.body),
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.optionItems.all }),
   })
 }

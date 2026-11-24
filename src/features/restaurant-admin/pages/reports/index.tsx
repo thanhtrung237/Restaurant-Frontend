@@ -7,4 +7,3 @@ import { ReportDashboard } from "@/features/shared/reports/ReportDashboard"
 export default function ReportsPage() {
   return <ReportDashboard />
 }
-

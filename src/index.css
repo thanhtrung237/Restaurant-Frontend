@@ -7,34 +7,34 @@
   --radius: 0.625rem;
 
   /* ---- Brand ---- */
-  --color-brand-primary: #F0522B;
-  --color-brand-primary-hover: #D8431F;
-  --color-brand-primary-subtle: #FEEBE4;
+  --color-brand-primary: #f0522b;
+  --color-brand-primary-hover: #d8431f;
+  --color-brand-primary-subtle: #feebe4;
 
   /* ---- Text ---- */
   --color-text-primary: #212529;
   --color-text-secondary: #495057;
-  --color-text-tertiary: #868E96;
-  --color-text-on-brand: #FFFFFF;
+  --color-text-tertiary: #868e96;
+  --color-text-on-brand: #ffffff;
 
   /* ---- Surface ---- */
-  --color-surface-page: #F5F6F8;
-  --color-surface-card: #FFFFFF;
-  --color-surface-muted: #F1F3F5;
+  --color-surface-page: #f5f6f8;
+  --color-surface-card: #ffffff;
+  --color-surface-muted: #f1f3f5;
 
   /* ---- Border ---- */
-  --color-border-default: #E9ECEF;
-  --color-border-strong: #DEE2E6;
+  --color-border-default: #e9ecef;
+  --color-border-strong: #dee2e6;
 
   /* ---- Status ---- */
-  --color-status-success: #12B76A;
-  --color-status-success-subtle: #E6F7EF;
-  --color-status-warning: #F59E0B;
-  --color-status-warning-subtle: #FEF3E2;
-  --color-status-danger: #F04438;
-  --color-status-danger-subtle: #FEEDEC;
-  --color-status-info: #2E90FA;
-  --color-status-info-subtle: #E7F1FE;
+  --color-status-success: #12b76a;
+  --color-status-success-subtle: #e6f7ef;
+  --color-status-warning: #f59e0b;
+  --color-status-warning-subtle: #fef3e2;
+  --color-status-danger: #f04438;
+  --color-status-danger-subtle: #feedec;
+  --color-status-info: #2e90fa;
+  --color-status-info-subtle: #e7f1fe;
 
   /* ---- Spacing (thang cách đều 4px) ---- */
   --spacing-xs: 4px;
@@ -225,13 +225,21 @@
 
 /* Animation rung chuông (run run) khi có thông báo real-time mới */
 @keyframes bell-ring {
-  0%, 100% {
+  0%,
+  100% {
     transform: rotate(0);
   }
-  10%, 30%, 50%, 70%, 90% {
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
     transform: rotate(18deg);
   }
-  20%, 40%, 60%, 80% {
+  20%,
+  40%,
+  60%,
+  80% {
     transform: rotate(-18deg);
   }
 }
@@ -240,4 +248,3 @@
   animation: bell-ring 1s ease-in-out infinite;
   transform-origin: top center;
 }
-

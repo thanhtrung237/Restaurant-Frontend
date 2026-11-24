@@ -86,7 +86,8 @@ export const useCustomerSessionStore = create<CustomerSessionState>()(
        */
       version: 2,
       migrate: (persisted, version) => {
-        if (version < 2) return { qrCode: null, sessionToken: null, tableSession: null, appliedPromo: null }
+        if (version < 2)
+          return { qrCode: null, sessionToken: null, tableSession: null, appliedPromo: null }
         return persisted
       },
       // `pendingBillSessionId` cố ý KHÔNG nằm trong danh sách: khoá tạm chỉ sống trong
@@ -96,8 +97,8 @@ export const useCustomerSessionStore = create<CustomerSessionState>()(
         tableSession: state.tableSession,
         appliedPromo: state.appliedPromo,
       }),
-    }
-  )
+    },
+  ),
 )
 
 /**

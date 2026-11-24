@@ -28,13 +28,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 
 type ConfigTab =
-  | "general"
-  | "security"
-  | "session"
-  | "notifications"
-  | "maintenance"
-  | "backup"
-  | "history"
+  "general" | "security" | "session" | "notifications" | "maintenance" | "backup" | "history"
 
 interface ConfigHistoryItem {
   id: string
@@ -56,112 +50,110 @@ export default function PlatformConfigPage() {
   // 1. NHÓM: THÔNG TIN NỀN TẢNG
   // -------------------------------------------------------------
   const [platformName, setPlatformName] = useState(
-    () => localStorage.getItem("cfg_platform_name") || "QRestaurant SaaS Platform"
+    () => localStorage.getItem("cfg_platform_name") || "QRestaurant SaaS Platform",
   )
   const [systemVersion, setSystemVersion] = useState(
-    () => localStorage.getItem("cfg_system_version") || "v2.4.0-stable"
+    () => localStorage.getItem("cfg_system_version") || "v2.4.0-stable",
   )
   const [domain, setDomain] = useState(
-    () => localStorage.getItem("cfg_domain") || "app.qrestaurant.vn"
+    () => localStorage.getItem("cfg_domain") || "app.qrestaurant.vn",
   )
   const [supportEmail, setSupportEmail] = useState(
-    () => localStorage.getItem("cfg_support_email") || "support@qrestaurant.vn"
+    () => localStorage.getItem("cfg_support_email") || "support@qrestaurant.vn",
   )
-  const [hotline, setHotline] = useState(
-    () => localStorage.getItem("cfg_hotline") || "1900 8080"
-  )
+  const [hotline, setHotline] = useState(() => localStorage.getItem("cfg_hotline") || "1900 8080")
   const [logoPreview, setLogoPreview] = useState<string | null>(
-    () => localStorage.getItem("cfg_platform_logo") || null
+    () => localStorage.getItem("cfg_platform_logo") || null,
   )
 
   // -------------------------------------------------------------
   // 2. NHÓM: CẤU HÌNH BẢO MẬT
   // -------------------------------------------------------------
-  const [maxLoginAttempts, setMaxLoginAttempts] = useState(
-    () => parseInt(localStorage.getItem("cfg_max_login_attempts") || "5", 10)
+  const [maxLoginAttempts, setMaxLoginAttempts] = useState(() =>
+    parseInt(localStorage.getItem("cfg_max_login_attempts") || "5", 10),
   )
-  const [lockoutDurationMinutes, setLockoutDurationMinutes] = useState(
-    () => parseInt(localStorage.getItem("cfg_lockout_duration") || "15", 10)
+  const [lockoutDurationMinutes, setLockoutDurationMinutes] = useState(() =>
+    parseInt(localStorage.getItem("cfg_lockout_duration") || "15", 10),
   )
-  const [minPasswordLength, setMinPasswordLength] = useState(
-    () => parseInt(localStorage.getItem("cfg_min_password_len") || "8", 10)
+  const [minPasswordLength, setMinPasswordLength] = useState(() =>
+    parseInt(localStorage.getItem("cfg_min_password_len") || "8", 10),
   )
   const [requireSpecialChar, setRequireSpecialChar] = useState(
-    () => localStorage.getItem("cfg_req_special_char") !== "false"
+    () => localStorage.getItem("cfg_req_special_char") !== "false",
   )
   const [enforceAdmin2FA, setEnforceAdmin2FA] = useState(
-    () => localStorage.getItem("cfg_enforce_admin_2fa") === "true"
+    () => localStorage.getItem("cfg_enforce_admin_2fa") === "true",
   )
 
   // -------------------------------------------------------------
   // 3. NHÓM: CẤU HÌNH PHIÊN ĐĂNG NHẬP
   // -------------------------------------------------------------
-  const [accessTokenExpirationMin, setAccessTokenExpirationMin] = useState(
-    () => parseInt(localStorage.getItem("cfg_access_token_exp_min") || "60", 10)
+  const [accessTokenExpirationMin, setAccessTokenExpirationMin] = useState(() =>
+    parseInt(localStorage.getItem("cfg_access_token_exp_min") || "60", 10),
   )
-  const [refreshTokenExpirationDays, setRefreshTokenExpirationDays] = useState(
-    () => parseInt(localStorage.getItem("cfg_refresh_token_exp_days") || "7", 10)
+  const [refreshTokenExpirationDays, setRefreshTokenExpirationDays] = useState(() =>
+    parseInt(localStorage.getItem("cfg_refresh_token_exp_days") || "7", 10),
   )
   const [revokeOnNewDevice, setRevokeOnNewDevice] = useState(
-    () => localStorage.getItem("cfg_revoke_on_new_device") !== "false"
+    () => localStorage.getItem("cfg_revoke_on_new_device") !== "false",
   )
   const [allowRememberMe, setAllowRememberMe] = useState(
-    () => localStorage.getItem("cfg_allow_remember_me") !== "false"
+    () => localStorage.getItem("cfg_allow_remember_me") !== "false",
   )
 
   // -------------------------------------------------------------
   // 4. NHÓM: THÔNG BÁO HỆ THỐNG
   // -------------------------------------------------------------
   const [enableBroadcastBanner, setEnableBroadcastBanner] = useState(
-    () => localStorage.getItem("cfg_enable_broadcast") === "true"
+    () => localStorage.getItem("cfg_enable_broadcast") === "true",
   )
   const [broadcastLevel, setBroadcastLevel] = useState<"info" | "warning" | "urgent">(
-    () => (localStorage.getItem("cfg_broadcast_level") as any) || "info"
+    () => (localStorage.getItem("cfg_broadcast_level") as any) || "info",
   )
   const [broadcastTitle, setBroadcastTitle] = useState(
-    () => localStorage.getItem("cfg_broadcast_title") || "Thông báo cập nhật hệ thống"
+    () => localStorage.getItem("cfg_broadcast_title") || "Thông báo cập nhật hệ thống",
   )
   const [broadcastMessage, setBroadcastMessage] = useState(
     () =>
       localStorage.getItem("cfg_broadcast_msg") ||
-      "Nền tảng sẽ cập nhật các tính năng mới vào cuối tuần. Các nhà hàng vẫn hoạt động bình thường."
+      "Nền tảng sẽ cập nhật các tính năng mới vào cuối tuần. Các nhà hàng vẫn hoạt động bình thường.",
   )
 
   // -------------------------------------------------------------
   // 5. NHÓM: BẢO TRÌ HỆ THỐNG
   // -------------------------------------------------------------
   const [maintenanceMode, setMaintenanceMode] = useState(
-    () => localStorage.getItem("cfg_maintenance_mode") === "true"
+    () => localStorage.getItem("cfg_maintenance_mode") === "true",
   )
   const [maintenanceMessage, setMaintenanceMessage] = useState(
     () =>
       localStorage.getItem("cfg_maintenance_msg") ||
-      "Hệ thống đang được bảo trì nâng cấp hạ tầng kỹ thuật định kỳ. Vui lòng quay lại sau."
+      "Hệ thống đang được bảo trì nâng cấp hạ tầng kỹ thuật định kỳ. Vui lòng quay lại sau.",
   )
   const [maintenanceStart, setMaintenanceStart] = useState(
-    () => localStorage.getItem("cfg_maintenance_start") || ""
+    () => localStorage.getItem("cfg_maintenance_start") || "",
   )
   const [maintenanceEnd, setMaintenanceEnd] = useState(
-    () => localStorage.getItem("cfg_maintenance_end") || ""
+    () => localStorage.getItem("cfg_maintenance_end") || "",
   )
   const [allowSuperAdminBypass, setAllowSuperAdminBypass] = useState(
-    () => localStorage.getItem("cfg_maintenance_bypass_admin") !== "false"
+    () => localStorage.getItem("cfg_maintenance_bypass_admin") !== "false",
   )
 
   // -------------------------------------------------------------
   // 6. NHÓM: SAO LƯU DỰ PHÒNG
   // -------------------------------------------------------------
   const [autoBackupEnabled, setAutoBackupEnabled] = useState(
-    () => localStorage.getItem("cfg_backup_auto") !== "false"
+    () => localStorage.getItem("cfg_backup_auto") !== "false",
   )
   const [backupFrequency, setBackupFrequency] = useState(
-    () => localStorage.getItem("cfg_backup_freq") || "DAILY"
+    () => localStorage.getItem("cfg_backup_freq") || "DAILY",
   )
   const [lastBackupTime, setLastBackupTime] = useState(
-    () => localStorage.getItem("cfg_last_backup_time") || "2026-11-06 02:00:15"
+    () => localStorage.getItem("cfg_last_backup_time") || "2026-11-06 02:00:15",
   )
   const [backupStatus, setBackupStatus] = useState(
-    () => localStorage.getItem("cfg_backup_status") || "Thành công (dung lượng 248 MB)"
+    () => localStorage.getItem("cfg_backup_status") || "Thành công (dung lượng 248 MB)",
   )
   const [isBackingUp, setIsBackingUp] = useState(false)
 
@@ -337,14 +329,14 @@ export default function PlatformConfigPage() {
       activeTab === "general"
         ? "Thông tin nền tảng"
         : activeTab === "security"
-        ? "Bảo mật"
-        : activeTab === "session"
-        ? "Phiên đăng nhập"
-        : activeTab === "notifications"
-        ? "Thông báo"
-        : activeTab === "maintenance"
-        ? "Bảo trì"
-        : "Sao lưu"
+          ? "Bảo mật"
+          : activeTab === "session"
+            ? "Phiên đăng nhập"
+            : activeTab === "notifications"
+              ? "Thông báo"
+              : activeTab === "maintenance"
+                ? "Bảo trì"
+                : "Sao lưu"
 
     recordHistory(activeTabLabel, `Cập nhật cấu hình danh mục [${activeTabLabel}]`)
 
@@ -504,11 +496,7 @@ export default function PlatformConfigPage() {
           <div className="flex items-center gap-5 p-4 rounded-xl bg-gray-50/70 border border-gray-100">
             <div className="w-16 h-16 rounded-2xl bg-[#E03A14] flex items-center justify-center text-white shadow-sm overflow-hidden shrink-0">
               {logoPreview ? (
-                <img
-                  src={logoPreview}
-                  alt="Platform Logo"
-                  className="w-full h-full object-cover"
-                />
+                <img src={logoPreview} alt="Platform Logo" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-7 h-7 rotate-45 border-2 border-white bg-white/20" />
               )}
@@ -662,9 +650,7 @@ export default function PlatformConfigPage() {
           <div className="space-y-4 pt-4 border-t border-gray-100">
             <div className="flex items-center justify-between p-3.5 rounded-xl bg-gray-50/70 border border-gray-100">
               <div>
-                <div className="text-sm font-semibold text-gray-900">
-                  Yêu cầu mật khẩu phức tạp
-                </div>
+                <div className="text-sm font-semibold text-gray-900">Yêu cầu mật khẩu phức tạp</div>
                 <div className="text-xs text-gray-500">
                   Bắt buộc chứa chữ in hoa, chữ số và ít nhất một ký tự đặc biệt (@, #, $...)
                 </div>
@@ -715,7 +701,9 @@ export default function PlatformConfigPage() {
       {activeTab === "session" && (
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-6">
           <div>
-            <h2 className="font-bold text-gray-900 text-base">Cấu hình thời hạn phiên đăng nhập (JWT)</h2>
+            <h2 className="font-bold text-gray-900 text-base">
+              Cấu hình thời hạn phiên đăng nhập (JWT)
+            </h2>
             <p className="text-xs text-gray-500 mt-0.5">
               Kiểm soát vòng đời của Access Token và Refresh Token cho toàn bộ phiên làm việc
             </p>
@@ -895,8 +883,8 @@ export default function PlatformConfigPage() {
                 broadcastLevel === "urgent"
                   ? "bg-red-50 border-red-200 text-red-800"
                   : broadcastLevel === "warning"
-                  ? "bg-amber-50 border-amber-200 text-amber-800"
-                  : "bg-blue-50 border-blue-200 text-blue-800"
+                    ? "bg-amber-50 border-amber-200 text-amber-800"
+                    : "bg-blue-50 border-blue-200 text-blue-800"
               }`}
             >
               <Bell className="w-5 h-5 shrink-0 mt-0.5" />
@@ -920,7 +908,8 @@ export default function PlatformConfigPage() {
               <span>Chế độ bảo trì hệ thống (Maintenance Mode)</span>
             </h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              Tạm khóa truy cập người dùng để nâng cấp phần mềm, sửa lỗi hoặc di chuyển cơ sở dữ liệu
+              Tạm khóa truy cập người dùng để nâng cấp phần mềm, sửa lỗi hoặc di chuyển cơ sở dữ
+              liệu
             </p>
           </div>
 
@@ -1033,7 +1022,9 @@ export default function PlatformConfigPage() {
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-bold text-gray-900 text-base">Cấu hình sao lưu dữ liệu (Database Backup)</h2>
+              <h2 className="font-bold text-gray-900 text-base">
+                Cấu hình sao lưu dữ liệu (Database Backup)
+              </h2>
               <p className="text-xs text-gray-500 mt-0.5">
                 Thiết lập tần suất và giám sát các điểm sao lưu dự phòng cho cơ sở dữ liệu
               </p>
@@ -1043,7 +1034,11 @@ export default function PlatformConfigPage() {
               disabled={isBackingUp}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-900 text-white text-xs font-semibold hover:bg-black transition-colors cursor-pointer disabled:opacity-50"
             >
-              {isBackingUp ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+              {isBackingUp ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="w-3.5 h-3.5" />
+              )}
               <span>Tạo bản sao lưu ngay</span>
             </button>
           </div>
@@ -1155,9 +1150,7 @@ export default function PlatformConfigPage() {
                   </div>
                   <div className="text-gray-600 text-xs">{item.summary}</div>
                 </div>
-                <div className="text-xs text-gray-400 font-medium shrink-0">
-                  {item.timestamp}
-                </div>
+                <div className="text-xs text-gray-400 font-medium shrink-0">{item.timestamp}</div>
               </div>
             ))}
           </div>
@@ -1178,8 +1171,8 @@ export default function PlatformConfigPage() {
           </DialogHeader>
 
           <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 my-2">
-            Hành động này sẽ tác động tức thì tới người dùng và nhân sự của tất cả các nhà hàng
-            trên toàn bộ nền tảng SaaS. Bạn có chắc chắn muốn áp dụng thay đổi này không?
+            Hành động này sẽ tác động tức thì tới người dùng và nhân sự của tất cả các nhà hàng trên
+            toàn bộ nền tảng SaaS. Bạn có chắc chắn muốn áp dụng thay đổi này không?
           </div>
 
           <DialogFooter className="mt-4 pt-2">

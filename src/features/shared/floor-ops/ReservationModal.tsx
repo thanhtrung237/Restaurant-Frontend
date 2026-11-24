@@ -180,8 +180,8 @@ function ReservationForm({
           Đặt bàn trước
         </DialogTitle>
         <DialogDescription className="text-sm font-normal text-text-secondary">
-          Giữ chỗ cho khách trong ngày hôm nay. Bàn bị khoá ngay từ lúc đặt và tự giải
-          phóng sau {holdMinutes} phút kể từ giờ hẹn nếu khách chưa đến.
+          Giữ chỗ cho khách trong ngày hôm nay. Bàn bị khoá ngay từ lúc đặt và tự giải phóng sau{" "}
+          {holdMinutes} phút kể từ giờ hẹn nếu khách chưa đến.
         </DialogDescription>
       </DialogHeader>
 
@@ -274,8 +274,10 @@ function ReservationForm({
               <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-status-warning" />
               <p className="text-xs text-status-warning">
                 Bàn sẽ bị khoá ngay bây giờ trong khoảng{" "}
-                <span className="font-semibold">{Math.round(minutesUntilReservation / 60)} tiếng</span>.
-                Cân nhắc đặt gần giờ khách đến hơn để không lãng phí công suất bàn.
+                <span className="font-semibold">
+                  {Math.round(minutesUntilReservation / 60)} tiếng
+                </span>
+                . Cân nhắc đặt gần giờ khách đến hơn để không lãng phí công suất bàn.
               </p>
             </div>
           ) : null}
@@ -283,9 +285,7 @@ function ReservationForm({
 
         {/* Số khách dự kiến */}
         <div className="space-y-2">
-          <span className="block text-sm font-semibold text-text-primary">
-            Số khách dự kiến
-          </span>
+          <span className="block text-sm font-semibold text-text-primary">Số khách dự kiến</span>
           <div className="inline-flex items-center gap-3">
             <button
               type="button"
@@ -346,10 +346,7 @@ function ReservationForm({
         <Button type="button" variant="outline" onClick={onClose}>
           Huỷ
         </Button>
-        <Button
-          type="submit"
-          disabled={reserveMutation.isPending || availableTables.length === 0}
-        >
+        <Button type="submit" disabled={reserveMutation.isPending || availableTables.length === 0}>
           {reserveMutation.isPending ? "Đang lưu..." : "Xác nhận đặt bàn"}
         </Button>
       </div>

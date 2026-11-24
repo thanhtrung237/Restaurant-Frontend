@@ -114,8 +114,8 @@ function RestaurantBranchCell({ restaurant }: { restaurant: RestaurantListItem }
     restaurant.branchCount && restaurant.branchCount > 0
       ? restaurant.branchCount
       : branches && branches.length > 0
-      ? branches.length
-      : restaurant.branchCount ?? 0
+        ? branches.length
+        : (restaurant.branchCount ?? 0)
 
   const isChain = count >= 2
 
@@ -173,7 +173,11 @@ export default function RestaurantListPage() {
   })
 
   // Queries & Mutations
-  const { data: pageData, isLoading, refetch } = useRestaurantsPage({
+  const {
+    data: pageData,
+    isLoading,
+    refetch,
+  } = useRestaurantsPage({
     page: 0,
     size: 50,
   })
@@ -188,11 +192,11 @@ export default function RestaurantListPage() {
   // Counts
   const activeCount = useMemo(
     () => restaurants.filter((r) => r.status === "ACTIVE").length,
-    [restaurants]
+    [restaurants],
   )
   const inactiveCount = useMemo(
     () => restaurants.filter((r) => r.status === "INACTIVE").length,
-    [restaurants]
+    [restaurants],
   )
 
   // Filter local by search & status + clean text
@@ -243,7 +247,11 @@ export default function RestaurantListPage() {
       return
     }
     if (!/^[A-Z0-9]+$/.test(createForm.code.toUpperCase().trim())) {
-      toast({ variant: "danger", title: "Mã không hợp lệ", description: "Mã nhà hàng chỉ được chứa chữ in hoa và số (không dấu, không dấu cách)." })
+      toast({
+        variant: "danger",
+        title: "Mã không hợp lệ",
+        description: "Mã nhà hàng chỉ được chứa chữ in hoa và số (không dấu, không dấu cách).",
+      })
       return
     }
     setCreateStep(2)
@@ -256,19 +264,35 @@ export default function RestaurantListPage() {
     // Validate bước 2 (nếu không bỏ qua)
     if (!createForm.skipOwner) {
       if (!createForm.ownerFullName.trim()) {
-        toast({ variant: "danger", title: "Lỗi", description: "Họ tên chủ nhà hàng không được để trống." })
+        toast({
+          variant: "danger",
+          title: "Lỗi",
+          description: "Họ tên chủ nhà hàng không được để trống.",
+        })
         return
       }
       if (!createForm.ownerUsername.trim()) {
-        toast({ variant: "danger", title: "Lỗi", description: "Tên đăng nhập không được để trống." })
+        toast({
+          variant: "danger",
+          title: "Lỗi",
+          description: "Tên đăng nhập không được để trống.",
+        })
         return
       }
       if (!createForm.ownerPassword || createForm.ownerPassword.length < 8) {
-        toast({ variant: "danger", title: "Mật khẩu quá ngắn", description: "Mật khẩu phải có ít nhất 8 ký tự." })
+        toast({
+          variant: "danger",
+          title: "Mật khẩu quá ngắn",
+          description: "Mật khẩu phải có ít nhất 8 ký tự.",
+        })
         return
       }
       if (createForm.ownerPassword !== createForm.ownerPasswordConfirm) {
-        toast({ variant: "danger", title: "Mật khẩu không khớp", description: "Xác nhận mật khẩu không khớp với mật khẩu đã nhập." })
+        toast({
+          variant: "danger",
+          title: "Mật khẩu không khớp",
+          description: "Xác nhận mật khẩu không khớp với mật khẩu đã nhập.",
+        })
         return
       }
     }
@@ -305,7 +329,9 @@ export default function RestaurantListPage() {
           toast({
             variant: "danger",
             title: "Nhà hàng đã tạo — Tài khoản chủ chưa tạo được",
-            description: error.response?.data?.message || "Nhà hàng đã được tạo nhưng tài khoản chủ bị lỗi. Vui lòng vào trang chi tiết nhà hàng để tạo tài khoản sau.",
+            description:
+              error.response?.data?.message ||
+              "Nhà hàng đã được tạo nhưng tài khoản chủ bị lỗi. Vui lòng vào trang chi tiết nhà hàng để tạo tài khoản sau.",
           })
         }
       } else {
@@ -405,7 +431,7 @@ export default function RestaurantListPage() {
   const handleDelete = async (restaurant: RestaurantListItem) => {
     if (
       !window.confirm(
-        `Bạn có chắc chắn muốn xóa nhà hàng "${restaurant.name}"? Dữ liệu chi nhánh và nhân viên sẽ bị ảnh hưởng!`
+        `Bạn có chắc chắn muốn xóa nhà hàng "${restaurant.name}"? Dữ liệu chi nhánh và nhân viên sẽ bị ảnh hưởng!`,
       )
     ) {
       return
@@ -570,9 +596,7 @@ export default function RestaurantListPage() {
                             <div className="font-semibold text-gray-900 group-hover:text-[#E03A14] transition-colors">
                               {cleanedName}
                             </div>
-                            <div className="text-xs text-gray-400 mt-0.5">
-                              ID: #{restaurant.id}
-                            </div>
+                            <div className="text-xs text-gray-400 mt-0.5">ID: #{restaurant.id}</div>
                           </div>
                         </div>
                       </td>
@@ -608,10 +632,7 @@ export default function RestaurantListPage() {
                       </td>
 
                       {/* Dropdown Action */}
-                      <td
-                        className="py-4 px-6 text-right"
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                      <td className="py-4 px-6 text-right" onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <button
@@ -673,7 +694,12 @@ export default function RestaurantListPage() {
             {/* Pagination footer */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50/50 text-xs text-gray-500">
               <div>
-                Hiển thị <strong>{filteredRestaurants.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}</strong> - <strong>{Math.min(currentPage * pageSize, filteredRestaurants.length)}</strong> trên tổng số <strong>{filteredRestaurants.length}</strong> nhà hàng
+                Hiển thị{" "}
+                <strong>
+                  {filteredRestaurants.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}
+                </strong>{" "}
+                - <strong>{Math.min(currentPage * pageSize, filteredRestaurants.length)}</strong>{" "}
+                trên tổng số <strong>{filteredRestaurants.length}</strong> nhà hàng
               </div>
 
               {totalPages > 1 && (
@@ -716,18 +742,24 @@ export default function RestaurantListPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>Tạo nhà hàng mới</span>
-              <span className="text-xs font-normal text-gray-400 ml-2">
-                Bước {createStep}/2
-              </span>
+              <span className="text-xs font-normal text-gray-400 ml-2">Bước {createStep}/2</span>
             </DialogTitle>
             {/* Step indicator */}
             <div className="flex items-center gap-2 mt-3">
-              <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${createStep === 1 ? "bg-[#E03A14] text-white" : "bg-emerald-100 text-emerald-700"}`}>
-                {createStep > 1 ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Store className="w-3.5 h-3.5" />}
+              <div
+                className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${createStep === 1 ? "bg-[#E03A14] text-white" : "bg-emerald-100 text-emerald-700"}`}
+              >
+                {createStep > 1 ? (
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                ) : (
+                  <Store className="w-3.5 h-3.5" />
+                )}
                 Thông tin nhà hàng
               </div>
               <div className="h-px flex-1 bg-gray-200" />
-              <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${createStep === 2 ? "bg-[#E03A14] text-white" : "bg-gray-100 text-gray-400"}`}>
+              <div
+                className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${createStep === 2 ? "bg-[#E03A14] text-white" : "bg-gray-100 text-gray-400"}`}
+              >
                 <User className="w-3.5 h-3.5" />
                 Tài khoản chủ
               </div>
@@ -753,21 +785,28 @@ export default function RestaurantListPage() {
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
                   Mã nhà hàng <span className="text-red-500">*</span>
-                  <span className="text-gray-400 font-normal ml-1">(chữ in hoa và số, không dấu cách)</span>
+                  <span className="text-gray-400 font-normal ml-1">
+                    (chữ in hoa và số, không dấu cách)
+                  </span>
                 </label>
                 <input
                   type="text"
                   placeholder="VD: PHOVIET"
                   value={createForm.code}
                   onChange={(e) =>
-                    setCreateForm({ ...createForm, code: e.target.value.toUpperCase().replace(/\s/g, "") })
+                    setCreateForm({
+                      ...createForm,
+                      code: e.target.value.toUpperCase().replace(/\s/g, ""),
+                    })
                   }
                   className="w-full px-3.5 py-2 text-sm font-mono rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Mã số thuế</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Mã số thuế
+                  </label>
                   <input
                     type="text"
                     placeholder="VD: 0109823456"
@@ -777,7 +816,9 @@ export default function RestaurantListPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Số điện thoại</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Số điện thoại
+                  </label>
                   <input
                     type="text"
                     placeholder="VD: 0901234567"
@@ -788,7 +829,9 @@ export default function RestaurantListPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Địa chỉ trụ sở</label>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Địa chỉ trụ sở
+                </label>
                 <input
                   type="text"
                   placeholder="VD: 123 Lê Lợi, Q.1, TP.HCM"
@@ -801,7 +844,10 @@ export default function RestaurantListPage() {
               <DialogFooter className="mt-6 pt-2">
                 <button
                   type="button"
-                  onClick={() => { setIsCreateOpen(false); resetCreateForm() }}
+                  onClick={() => {
+                    setIsCreateOpen(false)
+                    resetCreateForm()
+                  }}
                   className="px-4 py-2 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
                 >
                   Hủy
@@ -843,7 +889,9 @@ export default function RestaurantListPage() {
                       autoFocus
                       placeholder="VD: Nguyễn Văn A"
                       value={createForm.ownerFullName}
-                      onChange={(e) => setCreateForm({ ...createForm, ownerFullName: e.target.value })}
+                      onChange={(e) =>
+                        setCreateForm({ ...createForm, ownerFullName: e.target.value })
+                      }
                       className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
                     />
                   </div>
@@ -856,7 +904,9 @@ export default function RestaurantListPage() {
                         type="text"
                         placeholder="VD: admin_phoviet"
                         value={createForm.ownerUsername}
-                        onChange={(e) => setCreateForm({ ...createForm, ownerUsername: e.target.value })}
+                        onChange={(e) =>
+                          setCreateForm({ ...createForm, ownerUsername: e.target.value })
+                        }
                         className="w-full px-3.5 py-2 text-sm font-mono rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
                       />
                     </div>
@@ -869,7 +919,9 @@ export default function RestaurantListPage() {
                         type="email"
                         placeholder="VD: owner@example.com"
                         value={createForm.ownerEmail}
-                        onChange={(e) => setCreateForm({ ...createForm, ownerEmail: e.target.value })}
+                        onChange={(e) =>
+                          setCreateForm({ ...createForm, ownerEmail: e.target.value })
+                        }
                         className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
                       />
                     </div>
@@ -884,7 +936,9 @@ export default function RestaurantListPage() {
                         type="password"
                         placeholder="Tối thiểu 8 ký tự"
                         value={createForm.ownerPassword}
-                        onChange={(e) => setCreateForm({ ...createForm, ownerPassword: e.target.value })}
+                        onChange={(e) =>
+                          setCreateForm({ ...createForm, ownerPassword: e.target.value })
+                        }
                         className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
                       />
                     </div>
@@ -896,7 +950,9 @@ export default function RestaurantListPage() {
                         type="password"
                         placeholder="Nhập lại mật khẩu"
                         value={createForm.ownerPasswordConfirm}
-                        onChange={(e) => setCreateForm({ ...createForm, ownerPasswordConfirm: e.target.value })}
+                        onChange={(e) =>
+                          setCreateForm({ ...createForm, ownerPasswordConfirm: e.target.value })
+                        }
                         className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
                       />
                     </div>
@@ -984,7 +1040,9 @@ export default function RestaurantListPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Số điện thoại</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Số điện thoại
+              </label>
               <input
                 type="text"
                 placeholder="VD: 0901234567"
@@ -994,7 +1052,9 @@ export default function RestaurantListPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Địa chỉ trụ sở</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Địa chỉ trụ sở
+              </label>
               <input
                 type="text"
                 placeholder="VD: 123 Lê Lợi, Q.1, TP.HCM"

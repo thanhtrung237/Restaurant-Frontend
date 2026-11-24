@@ -1,9 +1,6 @@
 import { useMemo, useState } from "react"
 import { Download } from "lucide-react"
-import {
-  HeaderOverflowMenu,
-  type OverflowMenuAction,
-} from "@/components/layout/HeaderOverflowMenu"
+import { HeaderOverflowMenu, type OverflowMenuAction } from "@/components/layout/HeaderOverflowMenu"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { Button } from "@/components/ui/button"
 import { useAuthStore } from "@/stores/auth.store"
@@ -86,7 +83,8 @@ export default function AuditLogPage() {
   const byPerformer = selectedPerformer !== "ALL"
   // Memo hoá: `?? []` tạo mảng mới mỗi lần render, làm useMemo phía dưới mất tác dụng.
   const sourceLogs = useMemo(
-    () => (byPerformer ? (performerQuery.data ?? EMPTY_LOGS) : (listQuery.data?.content ?? EMPTY_LOGS)),
+    () =>
+      byPerformer ? (performerQuery.data ?? EMPTY_LOGS) : (listQuery.data?.content ?? EMPTY_LOGS),
     [byPerformer, performerQuery.data, listQuery.data],
   )
   const isLoading = byPerformer ? performerQuery.isLoading : listQuery.isLoading
@@ -124,7 +122,10 @@ export default function AuditLogPage() {
    * khi đang chọn một nhân viên thì `sourceLogs` chỉ còn bản ghi của người đó, dropdown sẽ
    * co lại đúng một mục và không đổi sang người khác được nữa.
    */
-  const performerOptions = usePerformerOptions(accountsQuery.data, listQuery.data?.content ?? EMPTY_LOGS)
+  const performerOptions = usePerformerOptions(
+    accountsQuery.data,
+    listQuery.data?.content ?? EMPTY_LOGS,
+  )
 
   const totalElements = byPerformer ? filteredLogs.length : (listQuery.data?.totalElements ?? 0)
   const totalPages = byPerformer

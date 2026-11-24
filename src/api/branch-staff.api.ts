@@ -24,11 +24,13 @@ export interface BranchStaffCreate {
   roles: BranchStaffRole[]
 }
 
-type StaffChange = { create: BranchStaffCreate } | {
-  accountId: number
-  expected: string[]
-  roles: BranchStaffRole[]
-}
+type StaffChange =
+  | { create: BranchStaffCreate }
+  | {
+      accountId: number
+      expected: string[]
+      roles: BranchStaffRole[]
+    }
 
 const staffPath = (branchId: number) => `/branches/${branchId}/staff`
 
@@ -51,13 +53,16 @@ export function useSaveBranchStaff(branchId: number) {
     mutationFn: (change: StaffChange) => {
       if ("create" in change) return apiPost<BranchStaffMember>(staffPath(branchId), change.create)
       return apiPut<BranchStaffMember>(`${staffPath(branchId)}/${change.accountId}/roles`, {
-        expected: change.expected, roles: change.roles,
+        expected: change.expected,
+        roles: change.roles,
       })
     },
     onSuccess: (saved) => {
-      cache.setQueryData<BranchStaffMember[]>(key, (previous) => [
-        ...(previous ?? []).filter(({ id }) => id !== saved.id), saved,
-      ].sort((a, b) => a.fullName.localeCompare(b.fullName, "vi") || a.id - b.id))
+      cache.setQueryData<BranchStaffMember[]>(key, (previous) =>
+        [...(previous ?? []).filter(({ id }) => id !== saved.id), saved].sort(
+          (a, b) => a.fullName.localeCompare(b.fullName, "vi") || a.id - b.id,
+        ),
+      )
       void cache.invalidateQueries({ queryKey: key })
     },
   })

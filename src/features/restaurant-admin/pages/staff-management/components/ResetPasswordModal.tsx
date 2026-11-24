@@ -126,8 +126,8 @@ function ResetPasswordForm({
       </FormField>
 
       <p className="rounded-md bg-surface-muted px-3 py-2 text-xs text-text-tertiary">
-        Hệ thống <strong>chưa</strong> buộc đổi mật khẩu ở lần đăng nhập kế tiếp. Hãy đưa mật
-        khẩu này cho nhân viên và nhắc họ tự đổi.
+        Hệ thống <strong>chưa</strong> buộc đổi mật khẩu ở lần đăng nhập kế tiếp. Hãy đưa mật khẩu
+        này cho nhân viên và nhắc họ tự đổi.
       </p>
 
       <DialogFooter className="gap-2 sm:gap-2">

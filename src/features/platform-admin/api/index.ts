@@ -20,4 +20,3 @@ export {
 export { useBranchesByRestaurant, useBranchesPage } from "@/api/branches.api"
 export { useAuditLogs } from "@/api/audit-logs.api"
 export { useAccountsByRestaurant, usePlatformAdmins, useCreateAccount } from "@/api/accounts.api"
-

@@ -22,8 +22,7 @@ interface DanhMucTabProps {
  */
 function buildBlockedDeleteHint(cat: CategoryItem): string {
   const branchOnly = cat.totalDishCount - cat.dishCount
-  const suffix =
-    branchOnly > 0 ? ` (trong đó ${branchOnly} món riêng chi nhánh)` : ""
+  const suffix = branchOnly > 0 ? ` (trong đó ${branchOnly} món riêng chi nhánh)` : ""
   return `Danh mục còn ${cat.totalDishCount} món${suffix}, chuyển hoặc ngừng bán món trước`
 }
 
@@ -103,11 +102,7 @@ export const DanhMucTab: React.FC<DanhMucTabProps> = ({
                   disabled={cat.totalDishCount > 0}
                   onClick={() => onDeleteCategory?.(cat)}
                   className="cursor-pointer"
-                  title={
-                    cat.totalDishCount > 0
-                      ? buildBlockedDeleteHint(cat)
-                      : "Xoá danh mục"
-                  }
+                  title={cat.totalDishCount > 0 ? buildBlockedDeleteHint(cat) : "Xoá danh mục"}
                   aria-label={
                     cat.totalDishCount > 0
                       ? buildBlockedDeleteHint(cat)

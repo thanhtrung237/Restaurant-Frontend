@@ -37,7 +37,5 @@ export const KITCHEN_STATION_OPTIONS: readonly KitchenStationOption[] = [
 export function getKitchenStationLabel(code: string | null | undefined): string {
   if (!code) return ""
   const normalized = code.trim().toUpperCase()
-  return (
-    KITCHEN_STATION_OPTIONS.find((s) => s.code === normalized)?.name ?? code
-  )
+  return KITCHEN_STATION_OPTIONS.find((s) => s.code === normalized)?.name ?? code
 }

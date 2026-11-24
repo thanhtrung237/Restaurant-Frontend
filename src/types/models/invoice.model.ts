@@ -83,4 +83,3 @@ export interface BillPreviewResponse {
   grandTotal?: number
   hasPendingWeight?: boolean
 }
-

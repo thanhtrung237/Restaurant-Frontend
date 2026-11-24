@@ -32,7 +32,9 @@ export function changeAccountStatus(id: number, status: AccountStatus) {
   return apiPut<Account>(`/accounts/${id}/status`, null, { params: { status } })
 }
 export function changePassword(id: number, oldPassword: string, newPassword: string) {
-  return apiPut<void>(`/accounts/${id}/change-password`, null, { params: { oldPassword, newPassword } })
+  return apiPut<void>(`/accounts/${id}/change-password`, null, {
+    params: { oldPassword, newPassword },
+  })
 }
 /** Admin đặt lại mật khẩu hộ — dùng cho luồng "Quên mật khẩu" (BE không có endpoint tự phục hồi). */
 export function resetPassword(id: number, newPassword: string) {
@@ -75,14 +77,16 @@ export function useCreateAccount() {
 export function useUpdateAccount() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (vars: { id: number; body: AccountUpdateRequest }) => updateAccount(vars.id, vars.body),
+    mutationFn: (vars: { id: number; body: AccountUpdateRequest }) =>
+      updateAccount(vars.id, vars.body),
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.accounts.all }),
   })
 }
 export function useChangeAccountStatus() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (vars: { id: number; status: AccountStatus }) => changeAccountStatus(vars.id, vars.status),
+    mutationFn: (vars: { id: number; status: AccountStatus }) =>
+      changeAccountStatus(vars.id, vars.status),
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.accounts.all }),
   })
 }

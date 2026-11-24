@@ -37,29 +37,32 @@ export const APP_ROLE_LABEL: Record<AppRole, string> = {
 
 /**
  * Map Role.code từ backend sang AppRole cho frontend.
- * 
+ *
  * Backend role codes (từ data.sql):
  * - MANAGER → RESTAURANT_ADMIN (Quản lý nhà hàng)
  * - BRANCH_MANAGER → BRANCH_MANAGER (Quản lý chi nhánh)
  * - WAITER → WAITER (Nhân viên phục vụ)
  * - CASHIER → CASHIER (Thu ngân)
- * 
+ *
  * Hàm này xử lý cả mapping trực tiếp và các alias.
  */
 export function mapRoleCodeToAppRole(code?: string | null): AppRole | null {
   if (!code) return null
 
-  const normalized = code.trim().toUpperCase().replace(/[\s-]+/g, "_")
+  const normalized = code
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, "_")
 
   // Bảng mapping: Backend code → Frontend APP_ROLE
   const roleMapping: Record<string, AppRole> = {
-    'MANAGER': APP_ROLE.RESTAURANT_ADMIN,  // Backend dùng MANAGER
-    'RESTAURANT_ADMIN': APP_ROLE.RESTAURANT_ADMIN,
-    'BRANCH_MANAGER': APP_ROLE.BRANCH_MANAGER,
-    'WAITER': APP_ROLE.WAITER,
-    'CASHIER': APP_ROLE.CASHIER,
-    'PLATFORM_ADMIN': APP_ROLE.PLATFORM_ADMIN,
+    MANAGER: APP_ROLE.RESTAURANT_ADMIN, // Backend dùng MANAGER
+    RESTAURANT_ADMIN: APP_ROLE.RESTAURANT_ADMIN,
+    BRANCH_MANAGER: APP_ROLE.BRANCH_MANAGER,
+    WAITER: APP_ROLE.WAITER,
+    CASHIER: APP_ROLE.CASHIER,
+    PLATFORM_ADMIN: APP_ROLE.PLATFORM_ADMIN,
   }
-  
+
   return roleMapping[normalized] || null
 }

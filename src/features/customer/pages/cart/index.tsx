@@ -36,7 +36,6 @@ type CartModal =
   // FR-CUS-05: Khuyến mãi vừa hết lượt trước lúc gửi order
   | { kind: "promoExpired"; message: string }
 
-
 /**
  * Giỏ hàng — Gửi order xuống bếp
  * Nguồn: Mobile / Giỏ hàng · Mobile / Giỏ hàng trống · Mobile / Xác nhận gửi order · Mobile / Gửi order thành công
@@ -96,7 +95,7 @@ export default function CartPage() {
           effectivePrice: line.unitPrice,
         },
         line.quantity,
-        activePromotions
+        activePromotions,
       )
       return {
         line,
@@ -181,8 +180,7 @@ export default function CartPage() {
         setModal({
           kind: "promoExpired",
           message:
-            errorMsg ||
-            "Chương trình khuyến mãi vừa hết lượt. Đơn hàng sẽ được tính theo giá gốc.",
+            errorMsg || "Chương trình khuyến mãi vừa hết lượt. Đơn hàng sẽ được tính theo giá gốc.",
         })
         return
       }
@@ -203,7 +201,6 @@ export default function CartPage() {
       })
       setModal({ kind: "none" })
     }
-
   }
 
   /** Hỏi lại server những dòng nào trong `lines` đang hết. */
@@ -266,7 +263,8 @@ export default function CartPage() {
 
           <h1 className="text-2xl font-bold text-text-primary">Đã gửi món!</h1>
           <p className="mt-2 max-w-xs text-center text-sm text-text-secondary">
-            Nhà bếp đã nhận order #{modal.orderNumber} của {tableName}. Món sẽ được phục vụ trong ít phút.
+            Nhà bếp đã nhận order #{modal.orderNumber} của {tableName}. Món sẽ được phục vụ trong ít
+            phút.
           </p>
 
           <div className="mt-8 flex w-full max-w-sm gap-3">
@@ -274,7 +272,9 @@ export default function CartPage() {
               type="button"
               variant="outline"
               size="lg"
-              onClick={() => navigate(generatePath(CUSTOMER_PATHS.ORDERED_ITEMS, { qrCode: qrCode ?? "" }))}
+              onClick={() =>
+                navigate(generatePath(CUSTOMER_PATHS.ORDERED_ITEMS, { qrCode: qrCode ?? "" }))
+              }
               className="flex-1"
             >
               Xem món đã gọi
@@ -390,8 +390,8 @@ export default function CartPage() {
               </Button>
             </div>
           </div>
-      </>
-    )}
+        </>
+      )}
 
       {/* ---- Bottom sheet: Xác nhận gửi order ---- */}
       {modal.kind === "confirmSend" ? (
@@ -471,8 +471,8 @@ export default function CartPage() {
           </DialogHeader>
 
           <p className="mt-3 text-sm text-text-secondary">
-            Các món dưới đây vừa hết tại chi nhánh này. Bỏ khỏi giỏ để tiếp tục gửi
-            những món còn lại.
+            Các món dưới đây vừa hết tại chi nhánh này. Bỏ khỏi giỏ để tiếp tục gửi những món còn
+            lại.
           </p>
 
           <ul className="mt-4 space-y-5 rounded-card border border-brand-primary/20 bg-brand-primary-subtle/25 px-4 py-5">
@@ -482,7 +482,10 @@ export default function CartPage() {
                   <span className="font-bold">{line.name}</span>
                   <span className="text-text-tertiary"> × {line.quantity}</span>
                 </span>
-                <Badge variant="danger" className="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold">
+                <Badge
+                  variant="danger"
+                  className="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold"
+                >
                   Đã hết
                 </Badge>
               </li>
@@ -496,9 +499,7 @@ export default function CartPage() {
               onClick={() => void handleRemoveOutOfStockAndSend()}
               disabled={createOrderMutation.isPending}
             >
-              {createOrderMutation.isPending
-                ? "Đang gửi..."
-                : "Bỏ món đã hết & gửi order"}
+              {createOrderMutation.isPending ? "Đang gửi..." : "Bỏ món đã hết & gửi order"}
             </Button>
             <Button
               variant="ghost"
@@ -563,8 +564,6 @@ export default function CartPage() {
           </div>
         </DialogContent>
       </Dialog>
-
-
     </div>
   )
 }

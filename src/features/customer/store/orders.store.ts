@@ -109,7 +109,7 @@ export const useCustomerOrdersStore = create<CustomerOrdersState>((set, get) => 
           : {
               ...b,
               lines: b.lines.map((l) => (l.id === lineId ? { ...l, status: "CANCELLED" } : l)),
-            }
+            },
       ),
     })),
 

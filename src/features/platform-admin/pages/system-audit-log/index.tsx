@@ -86,10 +86,7 @@ function cleanText(str?: string | null): string {
 }
 
 /** Cấu hình nhãn và màu sắc chuẩn cho các loại hành động */
-const ACTION_BADGES: Record<
-  string,
-  { label: string; bg: string; text: string; border: string }
-> = {
+const ACTION_BADGES: Record<string, { label: string; bg: string; text: string; border: string }> = {
   LOGIN: {
     label: "Đăng nhập",
     bg: "bg-blue-50",
@@ -268,7 +265,7 @@ export default function SystemAuditLogPage() {
       startDate: dateRange.startDate,
       endDate: dateRange.endDate,
     }),
-    [pageIndex, pageSize, actionFilter, dateRange.startDate, dateRange.endDate]
+    [pageIndex, pageSize, actionFilter, dateRange.startDate, dateRange.endDate],
   )
 
   // Gọi API backend (GET /api/v1/audit-logs)
@@ -303,12 +300,7 @@ export default function SystemAuditLogPage() {
       const entity = cleanText(log.restaurantName || log.entityType).toLowerCase()
       const action = (log.actionType || "").toLowerCase()
       const reason = (log.reason || "").toLowerCase()
-      return (
-        admin.includes(q) ||
-        entity.includes(q) ||
-        action.includes(q) ||
-        reason.includes(q)
-      )
+      return admin.includes(q) || entity.includes(q) || action.includes(q) || reason.includes(q)
     })
   }, [rawLogs, searchTerm])
 
@@ -352,7 +344,15 @@ export default function SystemAuditLogPage() {
       description: "Hệ thống đang tải file CSV nhật ký hệ thống...",
     })
 
-    const header = ["Mã log", "Thời điểm", "Quản trị viên", "Thao tác", "Đối tượng", "Chi tiết / Lý do", "Kết quả"]
+    const header = [
+      "Mã log",
+      "Thời điểm",
+      "Quản trị viên",
+      "Thao tác",
+      "Đối tượng",
+      "Chi tiết / Lý do",
+      "Kết quả",
+    ]
     const rows = rawLogs.map((log) => {
       const badge = getActionBadge(log.actionType)
       const date = new Date(log.occurredAt).toLocaleString("vi-VN")
@@ -481,7 +481,9 @@ export default function SystemAuditLogPage() {
         ) : filteredLogs.length === 0 ? (
           <div className="p-16 text-center text-gray-400 space-y-2">
             <Clock className="w-10 h-10 mx-auto text-gray-300" />
-            <p className="font-semibold text-gray-700 text-base">Không có dữ liệu nhật ký phù hợp</p>
+            <p className="font-semibold text-gray-700 text-base">
+              Không có dữ liệu nhật ký phù hợp
+            </p>
             <p className="text-xs text-gray-400">
               Hãy thử chọn khoảng thời gian khác hoặc điều chỉnh lại bộ lọc tìm kiếm.
             </p>
@@ -526,7 +528,8 @@ export default function SystemAuditLogPage() {
                         second: "2-digit",
                       })
                       const adminName = cleanText(log.performedByName) || "Super Admin"
-                      const targetName = cleanText(log.restaurantName || log.entityType) || "Hệ thống"
+                      const targetName =
+                        cleanText(log.restaurantName || log.entityType) || "Hệ thống"
 
                       return (
                         <tr
@@ -583,7 +586,10 @@ export default function SystemAuditLogPage() {
                           </td>
 
                           {/* Xem chi tiết */}
-                          <td className="py-3.5 px-6 text-right" onClick={(e) => e.stopPropagation()}>
+                          <td
+                            className="py-3.5 px-6 text-right"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <button
                               onClick={() => setSelectedLog(log)}
                               title="Xem chi tiết thao tác"

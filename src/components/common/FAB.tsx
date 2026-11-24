@@ -40,14 +40,12 @@ export function FAB({
         "inline-flex shrink-0 items-center justify-center bg-brand-primary text-text-on-brand transition-all duration-200 hover:bg-brand-primary-hover active:scale-95 outline-none select-none",
         variantStyles[variant],
         fixed && "fixed bottom-6 right-6 z-40",
-        className
+        className,
       )}
       {...props}
     >
       {icon ?? <Plus className="size-6 text-white" strokeWidth={2.5} />}
-      {variant === "extended" && label ? (
-        <span className="text-sm font-bold">{label}</span>
-      ) : null}
+      {variant === "extended" && label ? <span className="text-sm font-bold">{label}</span> : null}
     </button>
   )
 }

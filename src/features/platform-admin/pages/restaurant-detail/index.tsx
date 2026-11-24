@@ -54,7 +54,9 @@ export default function RestaurantDetailPage() {
 
   const ownerAccount =
     accounts.find((a) =>
-      a.assignments?.some((asg) => asg.roleCode === "MANAGER" || asg.roleCode === "RESTAURANT_ADMIN")
+      a.assignments?.some(
+        (asg) => asg.roleCode === "MANAGER" || asg.roleCode === "RESTAURANT_ADMIN",
+      ),
     ) || accounts[0]
 
   const handleOpenEdit = () => {
@@ -179,8 +181,11 @@ export default function RestaurantDetailPage() {
             )}
           </div>
           <p className="text-sm text-gray-500">
-            {restaurant.code} · {branches.length || restaurant.branchCount || 0} chi nhánh · tạo ngày{" "}
-            {restaurant.createdAt ? new Date(restaurant.createdAt).toLocaleDateString("vi-VN") : "12/01/2025"}
+            {restaurant.code} · {branches.length || restaurant.branchCount || 0} chi nhánh · tạo
+            ngày{" "}
+            {restaurant.createdAt
+              ? new Date(restaurant.createdAt).toLocaleDateString("vi-VN")
+              : "12/01/2025"}
           </p>
         </div>
 
@@ -246,9 +251,7 @@ export default function RestaurantDetailPage() {
             </div>
             <div>
               <div className="text-xs text-gray-400 font-medium">Mã số thuế</div>
-              <div className="text-gray-900 font-mono mt-1">
-                {restaurant.taxCode || "—"}
-              </div>
+              <div className="text-gray-900 font-mono mt-1">{restaurant.taxCode || "—"}</div>
             </div>
             <div>
               <div className="text-xs text-gray-400 font-medium">Ngày tạo</div>
@@ -300,7 +303,9 @@ export default function RestaurantDetailPage() {
               <div>
                 <div className="text-xs text-gray-400 font-medium">Tên đăng nhập / Mã NV</div>
                 <div className="text-gray-900 mt-1 flex items-center gap-1.5 font-mono">
-                  <span>{ownerAccount.username} ({ownerAccount.employeeCode || "—"})</span>
+                  <span>
+                    {ownerAccount.username} ({ownerAccount.employeeCode || "—"})
+                  </span>
                 </div>
               </div>
               <div>
@@ -338,10 +343,15 @@ export default function RestaurantDetailPage() {
         <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
           {branches.length > 0 ? (
             branches.map((b) => (
-              <div key={b.id} className="p-4 hover:bg-gray-50/70 transition-colors flex items-center justify-between">
+              <div
+                key={b.id}
+                className="p-4 hover:bg-gray-50/70 transition-colors flex items-center justify-between"
+              >
                 <div>
                   <div className="font-semibold text-gray-900">{b.name}</div>
-                  <div className="text-xs text-gray-500 mt-0.5">{b.address || "Chưa có địa chỉ"}</div>
+                  <div className="text-xs text-gray-500 mt-0.5">
+                    {b.address || "Chưa có địa chỉ"}
+                  </div>
                 </div>
                 <span
                   className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
@@ -402,7 +412,9 @@ export default function RestaurantDetailPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Hotline / Số điện thoại</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Hotline / Số điện thoại
+              </label>
               <input
                 type="text"
                 value={editForm.phone}
@@ -411,7 +423,9 @@ export default function RestaurantDetailPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Địa chỉ trụ sở</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Địa chỉ trụ sở
+              </label>
               <input
                 type="text"
                 value={editForm.address}

@@ -57,7 +57,8 @@ export default function OrderRejectedPage() {
             Chưa thể gọi món
           </h1>
           <p className="mt-2 max-w-[290px] text-xs sm:text-sm leading-relaxed text-text-secondary">
-            Chi nhánh này hiện đang tạm ngưng nhận gọi món qua QR. Vui lòng liên hệ nhân viên để được hỗ trợ đặt món trực tiếp.
+            Chi nhánh này hiện đang tạm ngưng nhận gọi món qua QR. Vui lòng liên hệ nhân viên để
+            được hỗ trợ đặt món trực tiếp.
           </p>
 
           {/* Thẻ thông tin bàn và chi nhánh */}
@@ -69,9 +70,7 @@ export default function OrderRejectedPage() {
               <p className="truncate text-sm font-bold text-text-primary">
                 Phở Việt · {branchName}
               </p>
-              <p className="mt-0.5 text-xs text-text-tertiary">
-                {tableName} · mã QR hợp lệ
-              </p>
+              <p className="mt-0.5 text-xs text-text-tertiary">{tableName} · mã QR hợp lệ</p>
             </div>
           </div>
 

@@ -23,14 +23,14 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           "focus:border-brand-primary focus:ring-1 focus:ring-brand-primary",
           "disabled:cursor-not-allowed disabled:border-transparent disabled:bg-surface-muted disabled:text-text-tertiary",
           error && "border-status-danger focus:border-status-danger focus:ring-status-danger",
-          className
+          className,
         )}
         ref={ref}
         disabled={disabled}
         {...props}
       />
     )
-  }
+  },
 )
 Input.displayName = "Input"
 

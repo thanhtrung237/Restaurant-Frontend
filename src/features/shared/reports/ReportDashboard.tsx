@@ -6,7 +6,12 @@ import { ReportHeaderActions } from "./components/ReportHeader"
 import { DailyReportTab } from "./components/DailyReportTab"
 import { HourlyReportTab } from "./components/HourlyReportTab"
 import { BranchCompareTab } from "./components/BranchCompareTab"
-import { TimeRangeDropdown, detectActivePreset, PRESET_OPTIONS, type DateRangeValue } from "./components/TimeRangeDropdown"
+import {
+  TimeRangeDropdown,
+  detectActivePreset,
+  PRESET_OPTIONS,
+  type DateRangeValue,
+} from "./components/TimeRangeDropdown"
 import { HourlyTimePicker } from "./components/HourlyTimePicker"
 import { useAuthStore } from "@/stores/auth.store"
 import { useBranchesByRestaurant } from "@/api/branches.api"
@@ -15,10 +20,7 @@ import { getErrorMessage } from "@/lib/http"
 import { APP_ROLE } from "@/config/roles"
 import { format as formatDate } from "date-fns"
 
-const TAB_HEADER_META: Record<
-  string,
-  { title: string; subtitle: string }
-> = {
+const TAB_HEADER_META: Record<string, { title: string; subtitle: string }> = {
   daily: {
     title: "Báo cáo doanh thu",
     subtitle: "Doanh thu theo thời gian (FR-RPT-01)",
@@ -39,7 +41,10 @@ interface ReportDashboardProps {
   canExport?: boolean
 }
 
-export function ReportDashboard({ showBranchCompare = true, canExport = true }: ReportDashboardProps = {}) {
+export function ReportDashboard({
+  showBranchCompare = true,
+  canExport = true,
+}: ReportDashboardProps = {}) {
   const { toast } = useToast()
   const { account, role, branchId } = useAuthStore()
   const [currentTab, setCurrentTab] = React.useState<string>("daily")
@@ -60,9 +65,7 @@ export function ReportDashboard({ showBranchCompare = true, canExport = true }: 
   const restaurantId = account?.restaurantId
 
   // Fetch branches for Restaurant Admin
-  const { data: branchesData, isLoading: branchesLoading } = useBranchesByRestaurant(
-    restaurantId,
-  )
+  const { data: branchesData, isLoading: branchesLoading } = useBranchesByRestaurant(restaurantId)
 
   // Initialize selectedBranchIds based on role
   React.useEffect(() => {
@@ -108,8 +111,8 @@ export function ReportDashboard({ showBranchCompare = true, canExport = true }: 
 
   // Hourly datetime range for Hourly tab
   const hourlyDateTimeRange = React.useMemo(() => {
-    const startHourPadded = String(hourlyStartHour).padStart(2, '0')
-    const endHourPadded = String(hourlyEndHour).padStart(2, '0')
+    const startHourPadded = String(hourlyStartHour).padStart(2, "0")
+    const endHourPadded = String(hourlyEndHour).padStart(2, "0")
     const fromBase = dateFrom.split("T")[0]
     const toBase = dateTo.split("T")[0]
     return {
@@ -129,11 +132,12 @@ export function ReportDashboard({ showBranchCompare = true, canExport = true }: 
         description: `Hệ thống đang chuẩn bị dữ liệu [${tabTitle}] và tạo file ${format.toUpperCase()}...`,
       })
 
-      const type = currentTab === "hourly"
-        ? "HOURLY"
-        : currentTab === "branch"
-        ? "BRANCH_COMPARISON"
-        : "REVENUE"
+      const type =
+        currentTab === "hourly"
+          ? "HOURLY"
+          : currentTab === "branch"
+            ? "BRANCH_COMPARISON"
+            : "REVENUE"
 
       const from = currentTab === "hourly" ? hourlyDateTimeRange.from : dateFrom
       const to = currentTab === "hourly" ? hourlyDateTimeRange.to : dateTo
@@ -175,11 +179,7 @@ export function ReportDashboard({ showBranchCompare = true, canExport = true }: 
   const headerActions = React.useMemo(
     () => (
       <div className="flex items-center gap-2">
-        <TimeRangeDropdown
-          variant="chip"
-          range={dateRange}
-          onChangeRange={setDateRange}
-        />
+        <TimeRangeDropdown variant="chip" range={dateRange} onChangeRange={setDateRange} />
         {currentTab === "hourly" && (
           <HourlyTimePicker
             variant="chip"
@@ -213,8 +213,8 @@ export function ReportDashboard({ showBranchCompare = true, canExport = true }: 
           currentTab === "daily"
             ? dateDisplayLabel
             : currentTab === "branch"
-            ? `${dateDisplayLabel} · Xếp hạng & cảnh báo chỉ số bất thường (FR-RPT-04)`
-            : headerMeta.subtitle
+              ? `${dateDisplayLabel} · Xếp hạng & cảnh báo chỉ số bất thường (FR-RPT-04)`
+              : headerMeta.subtitle
         }
         mobileSubtitle=""
         mobileHeaderActions={headerActions}
@@ -241,11 +241,7 @@ export function ReportDashboard({ showBranchCompare = true, canExport = true }: 
 
       <div className="flex flex-col gap-6 p-6 lg:p-8">
         {/* Tabs Navigation & Content */}
-        <Tabs
-          value={currentTab}
-          onValueChange={setCurrentTab}
-          className="w-full space-y-6"
-        >
+        <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full space-y-6">
           <TabsList className="w-full justify-start gap-8 border-b border-border-default/80 bg-transparent p-0 rounded-none">
             <TabsTrigger
               value="daily"
@@ -271,11 +267,7 @@ export function ReportDashboard({ showBranchCompare = true, canExport = true }: 
 
           {/* Tab 1: Theo ngày */}
           <TabsContent value="daily" className="outline-none">
-            <DailyReportTab
-              branchIds={selectedBranchIds}
-              from={dateFrom}
-              to={dateTo}
-            />
+            <DailyReportTab branchIds={selectedBranchIds} from={dateFrom} to={dateTo} />
           </TabsContent>
 
           {/* Tab 2: Theo khung giờ */}
@@ -290,11 +282,7 @@ export function ReportDashboard({ showBranchCompare = true, canExport = true }: 
           {/* Tab 3: So sánh chi nhánh — chỉ Quản trị NH (mục 4.3) */}
           {showBranchCompare && restaurantId && (
             <TabsContent value="branch" className="outline-none">
-              <BranchCompareTab
-                restaurantId={restaurantId}
-                from={dateFrom}
-                to={dateTo}
-              />
+              <BranchCompareTab restaurantId={restaurantId} from={dateFrom} to={dateTo} />
             </TabsContent>
           )}
         </Tabs>

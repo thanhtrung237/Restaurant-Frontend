@@ -1,40 +1,42 @@
-import { getStaffPaymentPaths } from "@/app/router/paths/staff-payment.paths";
-import { takeawayListPath } from "@/app/router/paths/takeaway.paths";
-import * as React from "react";
-import { useNavigate, useParams, generatePath } from "react-router-dom";
-import { FileStack, ChevronLeft, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Divider } from "@/components/ui/divider";
-import { StatusBadge } from "@/components/common/StatusBadge";
+import { getStaffPaymentPaths } from "@/app/router/paths/staff-payment.paths"
+import { takeawayListPath } from "@/app/router/paths/takeaway.paths"
+import * as React from "react"
+import { useNavigate, useParams, generatePath } from "react-router-dom"
+import { FileStack, ChevronLeft, Trash2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Divider } from "@/components/ui/divider"
+import { StatusBadge } from "@/components/common/StatusBadge"
+import { HeaderOverflowMenu, type OverflowMenuAction } from "@/components/layout/HeaderOverflowMenu"
+import { useInvoiceBySession } from "@/api/invoices.api"
 import {
-  HeaderOverflowMenu,
-  type OverflowMenuAction,
-} from "@/components/layout/HeaderOverflowMenu";
-import { useInvoiceBySession } from "@/api/invoices.api";
-import { useSaveInvoiceDiscount, usePendingDiscountApproval, useDecideDiscountApproval, type InvoiceDiscountInput } from "@/api/manual-discounts.api";
-import { useBranch } from "@/api/branches.api";
-import { hasBranchTransferAccount } from "@/features/cashier/lib/branch-transfer-account";
-import { useToast } from "@/hooks/use-toast";
-import { usePageHeader } from "@/hooks/use-page-header";
-import { CASHIER_PATHS } from "@/app/router/paths";
-import { ROLE_HOME } from "@/app/router/RoleHomeRedirect";
-import { useGoBack } from "@/hooks/use-go-back";
-import { useBill } from "@/hooks/useBill";
+  useSaveInvoiceDiscount,
+  usePendingDiscountApproval,
+  useDecideDiscountApproval,
+  type InvoiceDiscountInput,
+} from "@/api/manual-discounts.api"
+import { useBranch } from "@/api/branches.api"
+import { hasBranchTransferAccount } from "@/features/cashier/lib/branch-transfer-account"
+import { useToast } from "@/hooks/use-toast"
+import { usePageHeader } from "@/hooks/use-page-header"
+import { CASHIER_PATHS } from "@/app/router/paths"
+import { ROLE_HOME } from "@/app/router/RoleHomeRedirect"
+import { useGoBack } from "@/hooks/use-go-back"
+import { useBill } from "@/hooks/useBill"
 import {
   useTableSession,
   useOrderDetailsBySession,
   useCreateInvoice,
   useCreatePayment,
-} from "@/features/cashier/api";
-import { useAuthStore } from "@/stores/auth.store";
-import { ManualDiscountModal } from "@/features/cashier/components/ManualDiscountModal";
-import { PaymentMethodButtons } from "@/features/cashier/components/PaymentMethodButtons";
-import { cn } from "@/lib/utils";
-import { useIsMutating } from "@tanstack/react-query";
-import { CheckoutLines } from "./CheckoutLines";
-import { qk } from "@/lib/query-keys";
+} from "@/features/cashier/api"
+import { useAuthStore } from "@/stores/auth.store"
+import { ManualDiscountModal } from "@/features/cashier/components/ManualDiscountModal"
+import { PaymentMethodButtons } from "@/features/cashier/components/PaymentMethodButtons"
+import { cn } from "@/lib/utils"
+import { useIsMutating } from "@tanstack/react-query"
+import { CheckoutLines } from "./CheckoutLines"
+import { qk } from "@/lib/query-keys"
 
-const formatVnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`;
+const formatVnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`
 
 /**
  * Thanh toán (Checkout)
@@ -49,166 +51,193 @@ const formatVnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`;
  * FE KHÔNG tự tính tiền — mọi con số lấy từ `useBill` / invoice của BE.
  */
 export default function CheckoutPage() {
-  const { tableSessionId: sessionIdParam } = useParams<{ tableSessionId: string }>();
-  const tableSessionId = sessionIdParam ? parseInt(sessionIdParam, 10) : undefined;
-  return <Checkout key={sessionIdParam} tableSessionId={tableSessionId} />;
+  const { tableSessionId: sessionIdParam } = useParams<{ tableSessionId: string }>()
+  const tableSessionId = sessionIdParam ? parseInt(sessionIdParam, 10) : undefined
+  return <Checkout key={sessionIdParam} tableSessionId={tableSessionId} />
 }
 
 function Checkout({ tableSessionId }: { tableSessionId?: number }) {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const currentUser = useAuthStore((s) => s.account);
-  const branchId = useAuthStore((s) => s.branchId);
-  const role = useAuthStore((s) => s.role);
-  const paymentPaths = getStaffPaymentPaths(role);
+  const navigate = useNavigate()
+  const { toast } = useToast()
+  const currentUser = useAuthStore((s) => s.account)
+  const branchId = useAuthStore((s) => s.branchId)
+  const role = useAuthStore((s) => s.role)
+  const paymentPaths = getStaffPaymentPaths(role)
   // Màn Thanh toán mở được bởi Thu ngân / QL chi nhánh / Quản trị NH (Bảng 4.2 "Thu tiền, đóng
   // bàn") nên fallback của nút "Quay lại" phải theo vai trò — ROLE_HOME là Sơ đồ bàn của vai trò.
   // Fetch data
-  const { data: session, isLoading: sessionLoading } = useTableSession(tableSessionId);
-  const tableMapPath = role ? ROLE_HOME[role] : CASHIER_PATHS.TABLE_MAP;
-  const goBack = useGoBack(session?.takeaway ? takeawayListPath(tableMapPath) : tableMapPath);
-  const { data: orderDetails = [], isLoading: orderDetailsLoading } = useOrderDetailsBySession(tableSessionId);
+  const { data: session, isLoading: sessionLoading } = useTableSession(tableSessionId)
+  const tableMapPath = role ? ROLE_HOME[role] : CASHIER_PATHS.TABLE_MAP
+  const goBack = useGoBack(session?.takeaway ? takeawayListPath(tableMapPath) : tableMapPath)
+  const { data: orderDetails = [], isLoading: orderDetailsLoading } =
+    useOrderDetailsBySession(tableSessionId)
 
   // Lấy bill từ BE (invoice nếu có, preview nếu chưa)
-  const { data: bill, isLoading: billLoading } = useBill(tableSessionId);
+  const { data: bill, isLoading: billLoading } = useBill(tableSessionId)
 
   // Mutations
-  const createInvoiceMutation = useCreateInvoice();
-  const createPaymentMutation = useCreatePayment();
-  const saveInvoiceDiscount = useSaveInvoiceDiscount(tableSessionId);
+  const createInvoiceMutation = useCreateInvoice()
+  const createPaymentMutation = useCreatePayment()
+  const saveInvoiceDiscount = useSaveInvoiceDiscount(tableSessionId)
   const { data: currentInvoice } = useInvoiceBySession(tableSessionId, {
-    refetchInterval: (query) => query.state.data?.status === "PENDING" ? 2500 : false,
-  });
-  const canReview = role === "BRANCH_MANAGER" || role === "RESTAURANT_ADMIN";
-  const approvalPending = currentInvoice?.discountApprovalPending ?? false;
-  const sharedQuote = currentInvoice?.quoteShared ?? false;
-  const approval = usePendingDiscountApproval(approvalPending ? currentInvoice?.id : undefined);
-  const decideApproval = useDecideDiscountApproval(tableSessionId);
-  const adjusting = useIsMutating({ mutationKey: qk.orderDetails.checkoutRemoval }) > 0;
+    refetchInterval: (query) => (query.state.data?.status === "PENDING" ? 2500 : false),
+  })
+  const canReview = role === "BRANCH_MANAGER" || role === "RESTAURANT_ADMIN"
+  const approvalPending = currentInvoice?.discountApprovalPending ?? false
+  const sharedQuote = currentInvoice?.quoteShared ?? false
+  const approval = usePendingDiscountApproval(approvalPending ? currentInvoice?.id : undefined)
+  const decideApproval = useDecideDiscountApproval(tableSessionId)
+  const adjusting = useIsMutating({ mutationKey: qk.orderDetails.checkoutRemoval }) > 0
 
-  const effectiveBranchId = session?.branchId ?? branchId;
-  const transferBranch = useBranch(session?.branchId);
-  const canSelectQr = transferBranch.isSuccess && hasBranchTransferAccount(transferBranch.data);
+  const effectiveBranchId = session?.branchId ?? branchId
+  const transferBranch = useBranch(session?.branchId)
+  const canSelectQr = transferBranch.isSuccess && hasBranchTransferAccount(transferBranch.data)
 
   // Local state
-  const [cashTendered, setCashTendered] = React.useState<number | null>(null);
-  const [verifiedTotal, setVerifiedTotal] = React.useState<number | null>(null);
-  const [isDiscountModalOpen, setDiscountModalOpen] = React.useState(false);
-  const [savingDiscount, setSavingDiscount] = React.useState(false);
-  const [isIssuingInvoice, setIssuingInvoice] = React.useState(false);
+  const [cashTendered, setCashTendered] = React.useState<number | null>(null)
+  const [verifiedTotal, setVerifiedTotal] = React.useState<number | null>(null)
+  const [isDiscountModalOpen, setDiscountModalOpen] = React.useState(false)
+  const [savingDiscount, setSavingDiscount] = React.useState(false)
+  const [isIssuingInvoice, setIssuingInvoice] = React.useState(false)
   // Chặn double-submit: React state (isPending) chỉ cập nhật sau khi re-render,
   // nên nếu bấm 2 lần liên tiếp rất nhanh (hoặc double-click) trước khi nút kịp
   // disable, handleIssueInvoice có thể chạy song song 2 lần và tạo 2 hóa đơn /
   // gọi đóng phiên 2 lần -> lỗi "Phiên bàn phải ở trạng thái CHỜ THANH TOÁN...".
   // Dùng ref để chặn ngay lập tức, đồng bộ, không phụ thuộc vào re-render.
-  const isSubmittingRef = React.useRef(false);
+  const isSubmittingRef = React.useRef(false)
 
   // Tiền hàng = tổng giá đã giảm của các món (gốc − KM món)
-  const itemsSubTotal = Math.max(
-    0,
-    (bill?.grossSubTotal ?? 0) - (bill?.itemPromotionDiscount ?? 0),
-  );
+  const itemsSubTotal = Math.max(0, (bill?.grossSubTotal ?? 0) - (bill?.itemPromotionDiscount ?? 0))
 
-  const effectiveOrderPromoDiscount = bill?.orderPromotionDiscount ?? 0;
-  const displayOrderPromoName = bill?.orderPromotionName;
-  const discountBaseAmount = Math.max(0, itemsSubTotal - effectiveOrderPromoDiscount);
-  const effectiveManualDiscountAmount = bill?.manualDiscount ?? 0;
-  const serviceFeeRate = bill?.serviceFeeRate ?? 0;
-  const effectiveServiceFee = bill?.serviceFee ?? 0;
-  const vatRate = bill?.vatRate ?? 0;
-  const effectiveVatAmount = bill?.vatAmount ?? 0;
-  const displayGrandTotal = bill?.grandTotal ?? 0;
+  const effectiveOrderPromoDiscount = bill?.orderPromotionDiscount ?? 0
+  const displayOrderPromoName = bill?.orderPromotionName
+  const discountBaseAmount = Math.max(0, itemsSubTotal - effectiveOrderPromoDiscount)
+  const effectiveManualDiscountAmount = bill?.manualDiscount ?? 0
+  const serviceFeeRate = bill?.serviceFeeRate ?? 0
+  const effectiveServiceFee = bill?.serviceFee ?? 0
+  const vatRate = bill?.vatRate ?? 0
+  const effectiveVatAmount = bill?.vatAmount ?? 0
+  const displayGrandTotal = bill?.grandTotal ?? 0
 
-  const grandTotal = verifiedTotal ?? displayGrandTotal;
-  const checkoutBusy = isIssuingInvoice || savingDiscount || decideApproval.isPending || adjusting;
-  const canEditDiscount = !approvalPending && session?.status === "WAITING_FOR_PAY" &&
-    (!currentInvoice || (currentInvoice.status === "PENDING" && (currentInvoice.totalPaid ?? 0) === 0));
-  const changeAmount = cashTendered == null ? null : cashTendered - grandTotal;
+  const grandTotal = verifiedTotal ?? displayGrandTotal
+  const checkoutBusy = isIssuingInvoice || savingDiscount || decideApproval.isPending || adjusting
+  const canEditDiscount =
+    !approvalPending &&
+    session?.status === "WAITING_FOR_PAY" &&
+    (!currentInvoice ||
+      (currentInvoice.status === "PENDING" && (currentInvoice.totalPaid ?? 0) === 0))
+  const changeAmount = cashTendered == null ? null : cashTendered - grandTotal
   const canIssueCashInvoice =
     !checkoutBusy &&
     session?.status === "WAITING_FOR_PAY" &&
     grandTotal > 0 &&
     cashTendered !== null &&
-    cashTendered >= grandTotal;
-  const next100k = Math.ceil(grandTotal / 100_000) * 100_000;
-  const next500k = Math.ceil((next100k + 1) / 500_000) * 500_000;
-  const quickAmounts = [next100k, next500k].filter((amount) => amount > grandTotal);
+    cashTendered >= grandTotal
+  const next100k = Math.ceil(grandTotal / 100_000) * 100_000
+  const next500k = Math.ceil((next100k + 1) / 500_000) * 500_000
+  const quickAmounts = [next100k, next500k].filter((amount) => amount > grandTotal)
 
   function goToQrTransfer(printPrebill = false) {
-    if (!tableSessionId || !paymentPaths || !canSelectQr || checkoutBusy) return;
+    if (!tableSessionId || !paymentPaths || !canSelectQr || checkoutBusy) return
     navigate(
       generatePath(paymentPaths.QR_TRANSFER_PAYMENT, { tableSessionId: String(tableSessionId) }),
       { state: { printPrebill } },
-    );
+    )
   }
 
   async function handleSaveDiscount(discount: InvoiceDiscountInput | null) {
-    if (!tableSessionId || !effectiveBranchId || !canEditDiscount || checkoutBusy || isSubmittingRef.current) return;
-    isSubmittingRef.current = true;
-    setSavingDiscount(true);
+    if (
+      !tableSessionId ||
+      !effectiveBranchId ||
+      !canEditDiscount ||
+      checkoutBusy ||
+      isSubmittingRef.current
+    )
+      return
+    isSubmittingRef.current = true
+    setSavingDiscount(true)
     try {
       const invoice = currentInvoice
         ? currentInvoice
         : await createInvoiceMutation.mutateAsync({
             branchId: effectiveBranchId,
             tableSessionId,
-          });
-      setVerifiedTotal(null);
-      const updated = await saveInvoiceDiscount.mutateAsync({ invoiceId: invoice.id, discount });
-      setCashTendered(null);
-      setDiscountModalOpen(false);
-      toast({ title: updated.discountApprovalPending ? "Đã gửi yêu cầu duyệt" : discount ? "Đã lưu chiết khấu tay" : "Đã bỏ chiết khấu tay", variant: "success" });
+          })
+      setVerifiedTotal(null)
+      const updated = await saveInvoiceDiscount.mutateAsync({ invoiceId: invoice.id, discount })
+      setCashTendered(null)
+      setDiscountModalOpen(false)
+      toast({
+        title: updated.discountApprovalPending
+          ? "Đã gửi yêu cầu duyệt"
+          : discount
+            ? "Đã lưu chiết khấu tay"
+            : "Đã bỏ chiết khấu tay",
+        variant: "success",
+      })
     } catch (error) {
       toast({
         title: "Chưa cập nhật được chiết khấu",
         description: error instanceof Error ? error.message : "Vui lòng thử lại.",
         variant: "danger",
-      });
+      })
     } finally {
-      setSavingDiscount(false);
-      isSubmittingRef.current = false;
+      setSavingDiscount(false)
+      isSubmittingRef.current = false
     }
   }
 
   async function reviewDiscount(approved: boolean) {
-    if (!currentInvoice || !approval.data || checkoutBusy) return;
+    if (!currentInvoice || !approval.data || checkoutBusy) return
     try {
-      await decideApproval.mutateAsync({ invoiceId: currentInvoice.id, requestId: approval.data.requestId, approved });
-      setVerifiedTotal(null);
-      setCashTendered(null);
-      toast({ title: approved ? "Đã duyệt. Hãy gửi lại tạm tính mới cho khách." : "Đã từ chối yêu cầu", variant: "success" });
+      await decideApproval.mutateAsync({
+        invoiceId: currentInvoice.id,
+        requestId: approval.data.requestId,
+        approved,
+      })
+      setVerifiedTotal(null)
+      setCashTendered(null)
+      toast({
+        title: approved ? "Đã duyệt. Hãy gửi lại tạm tính mới cho khách." : "Đã từ chối yêu cầu",
+        variant: "success",
+      })
     } catch (error) {
       toast({
         title: "Chưa xử lý được yêu cầu",
         description: error instanceof Error ? error.message : "Vui lòng thử lại.",
         variant: "danger",
-      });
+      })
     }
   }
 
   async function handleIssueInvoice() {
     if (
-      !tableSessionId || !effectiveBranchId || !paymentPaths ||
-      !canIssueCashInvoice || cashTendered === null || isSubmittingRef.current
-    ) return;
-    isSubmittingRef.current = true;
-    setIssuingInvoice(true);
+      !tableSessionId ||
+      !effectiveBranchId ||
+      !paymentPaths ||
+      !canIssueCashInvoice ||
+      cashTendered === null ||
+      isSubmittingRef.current
+    )
+      return
+    isSubmittingRef.current = true
+    setIssuingInvoice(true)
 
     try {
       const invoice = await createInvoiceMutation.mutateAsync({
         branchId: effectiveBranchId,
         tableSessionId,
-      });
+      })
 
-      const amountDue = invoice.grandTotal;
+      const amountDue = invoice.grandTotal
       if (amountDue !== grandTotal || amountDue <= 0 || cashTendered < amountDue) {
-        setVerifiedTotal(amountDue);
+        setVerifiedTotal(amountDue)
         toast({
           title: "Số tiền phải thu đã thay đổi",
           description: "Kiểm tra lại tổng tiền trước khi tiếp tục.",
           variant: "danger",
-        });
-        return;
+        })
+        return
       }
 
       await createPaymentMutation.mutateAsync({
@@ -216,29 +245,29 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
         method: "CASH",
         amount: amountDue,
         amountTendered: cashTendered,
-      });
+      })
 
       toast({
         title: "Thu tiền thành công",
         description: `Đã phát hành hóa đơn #${invoice.id}.`,
         variant: "success",
-      });
+      })
 
       navigate(
         generatePath(paymentPaths.E_INVOICE, {
           invoiceId: String(invoice.id),
-        })
-      );
+        }),
+      )
     } catch (error) {
-      console.error("Error issuing invoice:", error);
+      console.error("Error issuing invoice:", error)
       toast({
         title: "Lỗi phát hành hóa đơn",
         description: error instanceof Error ? error.message : "Vui lòng thử lại",
         variant: "danger",
-      });
+      })
     } finally {
-      isSubmittingRef.current = false;
-      setIssuingInvoice(false);
+      isSubmittingRef.current = false
+      setIssuingInvoice(false)
     }
   }
 
@@ -246,8 +275,8 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
     toast({
       title: "Tách hóa đơn",
       description: "Tính năng tách hóa đơn sẽ được triển khai ở phase tiếp theo.",
-    });
-  }, [toast]);
+    })
+  }, [toast])
 
   // Header mobile — phải gọi TRƯỚC các nhánh return sớm bên dưới (quy tắc hook).
   // "Tách hóa đơn" là thao tác phụ, đặc tả không yêu cầu, nên ở <md nó vào menu "⋯".
@@ -261,11 +290,11 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
       },
     ],
     [handleSplitInvoice],
-  );
+  )
   const checkoutHeaderOverflow = React.useMemo(
     () => <HeaderOverflowMenu actions={checkoutOverflowActions} />,
     [checkoutOverflowActions],
-  );
+  )
   usePageHeader({
     title: session
       ? `${session.tableName || `Bàn #${session.tableId}`} · ${session.takeaway ? "Thanh toán" : "Chốt bàn"}`
@@ -274,7 +303,7 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
       ? `${session.guestCount || 0} khách · Phiên #${session.id} · ${currentUser?.fullName || "Thu ngân"}`
       : undefined,
     headerActions: checkoutHeaderOverflow,
-  });
+  })
 
   // Loading state
   if (sessionLoading || orderDetailsLoading || billLoading) {
@@ -285,7 +314,7 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
           <p className="text-sm text-text-secondary">Đang tải thông tin bàn...</p>
         </div>
       </div>
-    );
+    )
   }
 
   if (!session) {
@@ -295,20 +324,18 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
           <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-status-danger-subtle">
             <span className="text-2xl">⚠️</span>
           </div>
-          <h2 className="text-lg font-bold text-text-primary">
-            Không tìm thấy phiên bàn
-          </h2>
+          <h2 className="text-lg font-bold text-text-primary">Không tìm thấy phiên bàn</h2>
           <Button className="mt-6" onClick={goBack}>
             Quay lại
           </Button>
         </div>
       </div>
-    );
+    )
   }
 
-  const tableName = session.tableName || `Bàn #${session.tableId}`;
-  const guestCount = session.guestCount || 0;
-  const waiterName = currentUser?.fullName || "Thu ngân";
+  const tableName = session.tableName || `Bàn #${session.tableId}`
+  const guestCount = session.guestCount || 0
+  const waiterName = currentUser?.fullName || "Thu ngân"
 
   return (
     <div className="flex flex-1 flex-col min-h-screen bg-surface-page lg:flex-row">
@@ -340,29 +367,37 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
         </div>
 
         <div className="p-4 sm:p-8">
-        {/* <md: badge trạng thái tách riêng vì thanh tiêu đề trên đã ẩn */}
-        <div className="mb-4 md:hidden">
-          <StatusBadge type="tableSession" status={session.status} />
-        </div>
+          {/* <md: badge trạng thái tách riêng vì thanh tiêu đề trên đã ẩn */}
+          <div className="mb-4 md:hidden">
+            <StatusBadge type="tableSession" status={session.status} />
+          </div>
 
-        <CheckoutLines details={orderDetails} session={session} busy={checkoutBusy} onAdjusted={() => setVerifiedTotal(null)} />
+          <CheckoutLines
+            details={orderDetails}
+            session={session}
+            busy={checkoutBusy}
+            onAdjusted={() => setVerifiedTotal(null)}
+          />
         </div>
       </div>
 
       {/* ============================================================
           2. CỘT PHẢI: THANH TOÁN
           ============================================================ */}
-      <section aria-labelledby="checkout-payment-title" className="order-first w-full shrink-0 border-b border-border-default bg-surface-card p-4 sm:p-8 lg:order-none lg:w-[380px] lg:border-b-0 lg:border-l">
-        <h2 id="checkout-payment-title" className="text-xl font-bold text-text-primary">Thanh toán</h2>
+      <section
+        aria-labelledby="checkout-payment-title"
+        className="order-first w-full shrink-0 border-b border-border-default bg-surface-card p-4 sm:p-8 lg:order-none lg:w-[380px] lg:border-b-0 lg:border-l"
+      >
+        <h2 id="checkout-payment-title" className="text-xl font-bold text-text-primary">
+          Thanh toán
+        </h2>
 
         <div className="mt-5 space-y-3">
           {bill && (
             <>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-text-secondary">Tiền hàng</span>
-                <span className="font-medium text-text-primary">
-                  {formatVnd(itemsSubTotal)}
-                </span>
+                <span className="font-medium text-text-primary">{formatVnd(itemsSubTotal)}</span>
               </div>
 
               <div className="flex items-center justify-between text-sm">
@@ -370,7 +405,9 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
                   Khuyến mãi đơn{displayOrderPromoName ? ` (${displayOrderPromoName})` : ""}
                 </span>
                 <span className="shrink-0 font-medium text-text-secondary">
-                  {effectiveOrderPromoDiscount > 0 ? `−${formatVnd(effectiveOrderPromoDiscount)}` : "—"}
+                  {effectiveOrderPromoDiscount > 0
+                    ? `−${formatVnd(effectiveOrderPromoDiscount)}`
+                    : "—"}
                 </span>
               </div>
 
@@ -399,15 +436,17 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
                       </button>
                     )}
                   </div>
-                ) : canEditDiscount && (
-                  <button
-                    type="button"
-                    onClick={() => setDiscountModalOpen(true)}
-                    disabled={checkoutBusy}
-                    className="rounded-pill bg-brand-primary-subtle px-3 py-1 text-xs font-semibold text-brand-primary hover:bg-brand-primary/20"
-                  >
-                    + Nhập chiết khấu
-                  </button>
+                ) : (
+                  canEditDiscount && (
+                    <button
+                      type="button"
+                      onClick={() => setDiscountModalOpen(true)}
+                      disabled={checkoutBusy}
+                      className="rounded-pill bg-brand-primary-subtle px-3 py-1 text-xs font-semibold text-brand-primary hover:bg-brand-primary/20"
+                    >
+                      + Nhập chiết khấu
+                    </button>
+                  )
                 )}
               </div>
 
@@ -421,9 +460,7 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
               </div>
 
               <div className="flex items-center justify-between text-sm">
-                <span className="text-text-secondary">
-                  VAT ({vatRate.toFixed(0)}%)
-                </span>
+                <span className="text-text-secondary">VAT ({vatRate.toFixed(0)}%)</span>
                 <span className="font-medium text-text-primary">
                   {formatVnd(effectiveVatAmount)}
                 </span>
@@ -437,16 +474,26 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
             <p className="font-semibold">Chiết khấu đang chờ quản lý duyệt</p>
             {approval.data && (
               <>
-                <p>{approval.data.type === "PERCENTAGE" ? `Giảm ${approval.data.value}%`
-                  : approval.data.type === "FIXED_AMOUNT" ? `Giảm ${formatVnd(approval.data.value ?? 0)}`
-                    : "Bỏ chiết khấu hiện tại"}</p>
+                <p>
+                  {approval.data.type === "PERCENTAGE"
+                    ? `Giảm ${approval.data.value}%`
+                    : approval.data.type === "FIXED_AMOUNT"
+                      ? `Giảm ${formatVnd(approval.data.value ?? 0)}`
+                      : "Bỏ chiết khấu hiện tại"}
+                </p>
                 <p className="break-words text-text-secondary">{approval.data.reason}</p>
                 {canReview && approval.data.requestedBy !== currentUser?.id && (
                   <div className="flex gap-2">
-                    <Button variant="outline" disabled={checkoutBusy} onClick={() => void reviewDiscount(false)}>
+                    <Button
+                      variant="outline"
+                      disabled={checkoutBusy}
+                      onClick={() => void reviewDiscount(false)}
+                    >
                       Từ chối
                     </Button>
-                    <Button disabled={checkoutBusy} onClick={() => void reviewDiscount(true)}>Duyệt</Button>
+                    <Button disabled={checkoutBusy} onClick={() => void reviewDiscount(true)}>
+                      Duyệt
+                    </Button>
                   </div>
                 )}
               </>
@@ -471,28 +518,49 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
             "aria-describedby": !canSelectQr ? "checkout-qr-availability" : undefined,
           }}
         />
-        <Button type="button" variant="outline" className="mt-3 w-full"
-          disabled={!canSelectQr || checkoutBusy || grandTotal <= 0 || session.status !== "WAITING_FOR_PAY"}
-          onClick={() => goToQrTransfer(true)}>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-3 w-full"
+          disabled={
+            !canSelectQr || checkoutBusy || grandTotal <= 0 || session.status !== "WAITING_FOR_PAY"
+          }
+          onClick={() => goToQrTransfer(true)}
+        >
           In tạm tính có QR
         </Button>
         {!canSelectQr ? (
-          <div id="checkout-qr-availability" role="status" className="mt-2 text-sm text-text-secondary">
+          <div
+            id="checkout-qr-availability"
+            role="status"
+            className="mt-2 text-sm text-text-secondary"
+          >
             {transferBranch.isError ? (
               <>
                 Chưa kiểm tra được tài khoản nhận chuyển khoản.
-                <Button type="button" variant="link" size="sm" className="px-2" onClick={() => void transferBranch.refetch()}>
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className="px-2"
+                  onClick={() => void transferBranch.refetch()}
+                >
                   Thử lại
                 </Button>
               </>
             ) : transferBranch.isSuccess ? (
               "QR chưa khả dụng vì chi nhánh chưa cấu hình tài khoản ngân hàng. Bạn có thể thu tiền mặt."
-            ) : "Đang kiểm tra tài khoản nhận chuyển khoản…"}
+            ) : (
+              "Đang kiểm tra tài khoản nhận chuyển khoản…"
+            )}
           </div>
         ) : null}
 
         <div className="mt-4 space-y-1.5">
-          <label htmlFor="checkout-cash-tendered" className="block text-sm font-semibold text-text-primary">
+          <label
+            htmlFor="checkout-cash-tendered"
+            className="block text-sm font-semibold text-text-primary"
+          >
             Tiền khách đưa
           </label>
           <input
@@ -503,13 +571,11 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
             aria-describedby="checkout-cash-status"
             aria-invalid={changeAmount !== null && changeAmount < 0}
             disabled={checkoutBusy}
-            value={
-              cashTendered != null ? cashTendered.toLocaleString("vi-VN") : ""
-            }
+            value={cashTendered != null ? cashTendered.toLocaleString("vi-VN") : ""}
             onChange={(e) => {
-              const raw = e.target.value.replace(/\D/g, "");
-              const amount = Number(raw);
-              setCashTendered(raw && Number.isSafeInteger(amount) ? amount : null);
+              const raw = e.target.value.replace(/\D/g, "")
+              const amount = Number(raw)
+              setCashTendered(raw && Number.isSafeInteger(amount) ? amount : null)
             }}
             placeholder="Nhập số tiền"
             className="h-11 w-full rounded-md border border-border-default bg-surface-card px-3 text-lg font-semibold tabular-nums text-text-primary outline-none placeholder:text-base placeholder:font-normal placeholder:text-text-secondary focus:border-brand-primary focus:ring-1 focus:ring-brand-primary aria-invalid:border-status-danger"
@@ -540,14 +606,22 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
           ))}
         </div>
 
-        <p id="checkout-cash-status" role="status" className={cn(
-          "mt-3 min-h-5 text-sm font-medium tabular-nums",
-          changeAmount !== null && changeAmount < 0 ? "text-red-800" : "text-text-secondary",
-        )}>
-          {session.status !== "WAITING_FOR_PAY" ? "Phiên bàn hiện không ở trạng thái chờ thanh toán."
-            : changeAmount === null ? "Nhập tiền khách đưa hoặc chọn Khách đưa đủ."
-              : changeAmount < 0 ? `Còn thiếu ${formatVnd(-changeAmount)}`
-                : changeAmount === 0 ? "Khách đưa đủ tiền."
+        <p
+          id="checkout-cash-status"
+          role="status"
+          className={cn(
+            "mt-3 min-h-5 text-sm font-medium tabular-nums",
+            changeAmount !== null && changeAmount < 0 ? "text-red-800" : "text-text-secondary",
+          )}
+        >
+          {session.status !== "WAITING_FOR_PAY"
+            ? "Phiên bàn hiện không ở trạng thái chờ thanh toán."
+            : changeAmount === null
+              ? "Nhập tiền khách đưa hoặc chọn Khách đưa đủ."
+              : changeAmount < 0
+                ? `Còn thiếu ${formatVnd(-changeAmount)}`
+                : changeAmount === 0
+                  ? "Khách đưa đủ tiền."
                   : `Tiền thối lại ${formatVnd(changeAmount)}`}
         </p>
 
@@ -560,8 +634,8 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
               Phiên không có món nào tính tiền
             </p>
             <p className="mt-1 text-xs text-text-secondary">
-              Không phát hành được hoá đơn 0đ. Liên hệ Quản lý chi nhánh để huỷ phiên và giải
-              phóng bàn.
+              Không phát hành được hoá đơn 0đ. Liên hệ Quản lý chi nhánh để huỷ phiên và giải phóng
+              bàn.
             </p>
           </div>
         ) : null}
@@ -601,7 +675,6 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
         requiresApproval={sharedQuote}
         onSubmit={handleSaveDiscount}
       />
-
     </div>
-  );
+  )
 }

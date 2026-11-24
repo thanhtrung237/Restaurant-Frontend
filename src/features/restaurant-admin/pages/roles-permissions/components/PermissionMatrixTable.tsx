@@ -52,10 +52,7 @@ export const PermissionMatrixTable: React.FC<PermissionMatrixTableProps> = ({ se
                 </td>
                 {section.columns.map((col) => (
                   <td key={col.key} className="px-4 py-3.5 text-center">
-                    <PermissionBadge
-                      level={row.cells[col.key]}
-                      note={row.cellNotes?.[col.key]}
-                    />
+                    <PermissionBadge level={row.cells[col.key]} note={row.cellNotes?.[col.key]} />
                   </td>
                 ))}
               </tr>
@@ -72,8 +69,8 @@ export const PermissionMatrixTable: React.FC<PermissionMatrixTableProps> = ({ se
               .filter((col) => row.cellNotes?.[col.key])
               .map((col) => (
                 <p key={`${row.id}-${col.key}`}>
-                  <span className="font-bold text-[#EA4A2A]">*</span> {row.feature} ·{" "}
-                  {col.label}: {row.cellNotes?.[col.key]}
+                  <span className="font-bold text-[#EA4A2A]">*</span> {row.feature} · {col.label}:{" "}
+                  {row.cellNotes?.[col.key]}
                 </p>
               )),
           )}

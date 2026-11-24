@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react"
 import {
   LayoutGrid,
   LayoutDashboard,
@@ -14,28 +14,28 @@ import {
   SlidersHorizontal,
   Clock,
   ReceiptText,
-} from "lucide-react";
-import { APP_ROLE, type AppRole } from "@/config/roles";
+} from "lucide-react"
+import { APP_ROLE, type AppRole } from "@/config/roles"
 import {
   WAITER_PATHS,
   CASHIER_PATHS,
   BRANCH_MANAGER_PATHS,
   RESTAURANT_ADMIN_PATHS,
   PLATFORM_ADMIN_PATHS,
-} from "@/app/router/paths";
-import { type PermissionKey, hasPermission } from "./permissions";
+} from "@/app/router/paths"
+import { type PermissionKey, hasPermission } from "./permissions"
 
 export interface NavItem {
-  label: string;
+  label: string
   /**
    * Nhãn rút gọn cho BottomNav (mobile 375px) — Figma dùng "Đơn món" thay vì
    * "Gọi món & Chế biến". Bỏ trống thì BottomNav dùng luôn `label`.
    * Cố ý để ở đây thay vì tạo bảng nhãn riêng, để menu vẫn chỉ có MỘT nguồn.
    */
-  shortLabel?: string;
-  path: string;
-  icon: LucideIcon;
-  permission?: PermissionKey;
+  shortLabel?: string
+  path: string
+  icon: LucideIcon
+  permission?: PermissionKey
   /**
    * Chỉ hiện ở điều hướng MOBILE (NavDrawer / BottomNav), ẩn khỏi Sidebar và SidebarRail
    * của desktop.
@@ -44,7 +44,7 @@ export interface NavItem {
    * ngay trong trang (vd "Nhật ký hoạt động" của Quản trị NH là một tab trong trang Nhân
    * viên), nhưng bản Mobile lại cần vì ở đó không có hàng tab đó.
    */
-  mobileOnly?: boolean;
+  mobileOnly?: boolean
   /**
    * Các đường dẫn khác cũng làm mục này sáng trên Sidebar.
    *
@@ -52,12 +52,12 @@ export interface NavItem {
    * "Vai trò & phân quyền" hay "Nhật ký hoạt động", mục sáng vẫn là "Nhân viên" — vì hai
    * màn đó là tab trong trang Nhân viên, không phải mục menu riêng.
    */
-  activeAlsoOn?: string[];
+  activeAlsoOn?: string[]
 }
 
 export interface NavGroup {
-  title?: string;
-  items: NavItem[];
+  title?: string
+  items: NavItem[]
 }
 
 /**
@@ -110,10 +110,7 @@ export const RESTAURANT_MANAGEMENT_NAV: NavItem[] = [
     icon: Users,
     permission: "STAFF",
     // "Vai trò & phân quyền" và "Nhật ký hoạt động" là TAB trong trang Nhân viên
-    activeAlsoOn: [
-      RESTAURANT_ADMIN_PATHS.ROLES_PERMISSIONS,
-      RESTAURANT_ADMIN_PATHS.AUDIT_LOG,
-    ],
+    activeAlsoOn: [RESTAURANT_ADMIN_PATHS.ROLES_PERMISSIONS, RESTAURANT_ADMIN_PATHS.AUDIT_LOG],
   },
   {
     label: "Cấu hình",
@@ -133,12 +130,9 @@ export const RESTAURANT_MANAGEMENT_NAV: NavItem[] = [
     permission: "AUDIT_LOG",
     mobileOnly: true,
   },
-];
+]
 
-export const NAV_ITEMS_BY_ROLE: Record<
-  Exclude<AppRole, "CUSTOMER">,
-  NavGroup[]
-> = {
+export const NAV_ITEMS_BY_ROLE: Record<Exclude<AppRole, "CUSTOMER">, NavGroup[]> = {
   // Quản trị nhà hàng: Toàn quyền truy cập 8 phân hệ chính chuẩn theo ảnh thiết kế
   [APP_ROLE.RESTAURANT_ADMIN]: [
     {
@@ -296,19 +290,16 @@ export const NAV_ITEMS_BY_ROLE: Record<
       ],
     },
   ],
-};
+}
 
 /**
  * Lấy danh sách menu items hiển thị cho vai trò cụ thể, đã lọc qua quyền (permissions).
  */
 /** Bề mặt điều hướng đang hỏi menu — quyết định có áp `mobileOnly` hay không. */
-export type NavSurface = "desktop" | "mobile";
+export type NavSurface = "desktop" | "mobile"
 
-export function getNavGroupsForRole(
-  role: AppRole,
-  surface: NavSurface = "mobile",
-): NavGroup[] {
-  const groups = NAV_ITEMS_BY_ROLE[role as Exclude<AppRole, "CUSTOMER">] || [];
+export function getNavGroupsForRole(role: AppRole, surface: NavSurface = "mobile"): NavGroup[] {
+  const groups = NAV_ITEMS_BY_ROLE[role as Exclude<AppRole, "CUSTOMER">] || []
 
   // Lọc theo quyền cho MỌI vai trò, kể cả Quản trị NH — ROLE_PERMISSIONS đã liệt kê
   // đủ quyền của vai trò này nên không cần (và không nên) có lối tắt bỏ qua bộ lọc.
@@ -316,10 +307,10 @@ export function getNavGroupsForRole(
     .map((group) => ({
       ...group,
       items: group.items.filter((item) => {
-        if (surface === "desktop" && item.mobileOnly) return false;
-        if (!item.permission) return true;
-        return hasPermission(role, item.permission);
+        if (surface === "desktop" && item.mobileOnly) return false
+        if (!item.permission) return true
+        return hasPermission(role, item.permission)
       }),
     }))
-    .filter((group) => group.items.length > 0);
+    .filter((group) => group.items.length > 0)
 }

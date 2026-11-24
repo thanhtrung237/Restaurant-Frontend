@@ -25,11 +25,7 @@ import {
 import { vi } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 export interface DateRangeValue {
   from: Date
@@ -37,13 +33,7 @@ export interface DateRangeValue {
 }
 
 export type PresetKey =
-  | "today"
-  | "yesterday"
-  | "7days"
-  | "thisMonth"
-  | "thisYear"
-  | "lastYear"
-  | "custom"
+  "today" | "yesterday" | "7days" | "thisMonth" | "thisYear" | "lastYear" | "custom"
 
 interface PresetOption {
   key: PresetKey
@@ -153,11 +143,16 @@ export function TimeRangeDropdown({
   const currentYear = now.getFullYear()
   const viewingYear = viewingMonth.getFullYear()
   const earliestYear = Math.min(currentYear - 99, range.from.getFullYear(), viewingYear)
-  const years = Array.from({ length: currentYear - earliestYear + 1 }, (_, index) => currentYear - index)
+  const years = Array.from(
+    { length: currentYear - earliestYear + 1 },
+    (_, index) => currentYear - index,
+  )
 
   function goToCalendarMonth(year: number, month: number) {
     setHoverDate(null)
-    setViewingMonth(new Date(year, year === currentYear ? Math.min(month, now.getMonth()) : month, 1))
+    setViewingMonth(
+      new Date(year, year === currentYear ? Math.min(month, now.getMonth()) : month, 1),
+    )
   }
 
   // Sync state whenever popover opens or active range changes
@@ -254,7 +249,11 @@ export function TimeRangeDropdown({
     const days = differenceInCalendarDays(tempTo, tempFrom) + 1
     return (
       <span className="text-text-secondary text-xs">
-        Đã chọn: <strong className="text-text-primary">{fromStr} – {toStr}</strong> ({days} ngày)
+        Đã chọn:{" "}
+        <strong className="text-text-primary">
+          {fromStr} – {toStr}
+        </strong>{" "}
+        ({days} ngày)
       </span>
     )
   }, [tempFrom, tempTo])
@@ -286,13 +285,13 @@ export function TimeRangeDropdown({
             variant === "toolbar"
               ? "rounded-xl border border-border-default/90 bg-surface-card px-3.5 py-2 text-sm font-medium text-text-primary shadow-2xs hover:bg-surface-muted h-auto"
               : "rounded-pill bg-surface-muted px-3 py-1.5 text-xs font-semibold text-text-secondary hover:bg-border-strong h-auto",
-            className
+            className,
           )}
         >
           <CalendarIcon
             className={cn(
               "shrink-0 text-brand-primary",
-              variant === "toolbar" ? "size-4" : "size-3.5"
+              variant === "toolbar" ? "size-4" : "size-3.5",
             )}
           />
           <span className="font-semibold text-text-primary">{triggerText}</span>
@@ -327,7 +326,7 @@ export function TimeRangeDropdown({
                     "px-2 py-1.5 text-xs font-semibold rounded-lg text-center transition-all cursor-pointer truncate",
                     isActive
                       ? "bg-brand-primary text-text-on-brand shadow-xs font-bold"
-                      : "bg-surface-muted text-text-secondary hover:bg-surface-muted/80 hover:text-text-primary"
+                      : "bg-surface-muted text-text-secondary hover:bg-surface-muted/80 hover:text-text-primary",
                   )}
                 >
                   {p.label}
@@ -347,7 +346,7 @@ export function TimeRangeDropdown({
                 "flex-1 rounded-xl border px-3 py-1.5 text-left transition-all cursor-pointer",
                 pickingStep === "from"
                   ? "border-brand-primary bg-brand-primary-subtle/30 ring-1 ring-brand-primary/20"
-                  : "border-border-default bg-surface-page"
+                  : "border-border-default bg-surface-page",
               )}
               onClick={() => setPickingStep("from")}
             >
@@ -368,7 +367,7 @@ export function TimeRangeDropdown({
                 "flex-1 rounded-xl border px-3 py-1.5 text-left transition-all cursor-pointer",
                 pickingStep === "to"
                   ? "border-brand-primary bg-brand-primary-subtle/30 ring-1 ring-brand-primary/20"
-                  : "border-border-default bg-surface-page"
+                  : "border-border-default bg-surface-page",
               )}
               onClick={() => {
                 if (tempFrom) setPickingStep("to")
@@ -380,14 +379,16 @@ export function TimeRangeDropdown({
               <span
                 className={cn(
                   "text-xs font-bold",
-                  !tempTo && tempFrom ? "text-brand-primary italic animate-pulse" : "text-text-primary"
+                  !tempTo && tempFrom
+                    ? "text-brand-primary italic animate-pulse"
+                    : "text-text-primary",
                 )}
               >
                 {tempTo
                   ? format(tempTo, "dd/MM/yyyy")
                   : tempFrom
-                  ? "Chọn ngày kết thúc..."
-                  : "Chưa chọn"}
+                    ? "Chọn ngày kết thúc..."
+                    : "Chưa chọn"}
               </span>
             </button>
           </div>
@@ -411,7 +412,11 @@ export function TimeRangeDropdown({
                 className="h-9 cursor-pointer rounded-md border border-border-default bg-surface-card px-2 text-sm font-semibold focus-visible:outline-brand-primary"
               >
                 {Array.from({ length: 12 }, (_, month) => (
-                  <option key={month} value={month} disabled={viewingYear === currentYear && month > now.getMonth()}>
+                  <option
+                    key={month}
+                    value={month}
+                    disabled={viewingYear === currentYear && month > now.getMonth()}
+                  >
                     Tháng {month + 1}
                   </option>
                 ))}
@@ -419,10 +424,16 @@ export function TimeRangeDropdown({
               <select
                 aria-label="Năm hiển thị"
                 value={viewingYear}
-                onChange={(event) => goToCalendarMonth(Number(event.target.value), viewingMonth.getMonth())}
+                onChange={(event) =>
+                  goToCalendarMonth(Number(event.target.value), viewingMonth.getMonth())
+                }
                 className="h-9 cursor-pointer rounded-md border border-border-default bg-surface-card px-2 text-sm font-semibold focus-visible:outline-brand-primary"
               >
-                {years.map((year) => <option key={year} value={year}>{year}</option>)}
+                {years.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -456,10 +467,7 @@ export function TimeRangeDropdown({
 
               // Check if within confirmed range
               const isWithinRange =
-                tempFrom &&
-                tempTo &&
-                isAfter(day, tempFrom) &&
-                isBefore(day, tempTo)
+                tempFrom && tempTo && isAfter(day, tempFrom) && isBefore(day, tempTo)
 
               // Check if within hover range while picking end date
               const isHoverInRange =
@@ -480,8 +488,11 @@ export function TimeRangeDropdown({
                   className={cn(
                     "h-8 flex items-center justify-center relative",
                     isMiddle && "bg-[#FFF2EB]",
-                    isStart && !isSingleDay && (tempTo || hoverDate) && "bg-gradient-to-r from-transparent to-[#FFF2EB]",
-                    isEnd && !isSingleDay && "bg-gradient-to-l from-transparent to-[#FFF2EB]"
+                    isStart &&
+                      !isSingleDay &&
+                      (tempTo || hoverDate) &&
+                      "bg-gradient-to-r from-transparent to-[#FFF2EB]",
+                    isEnd && !isSingleDay && "bg-gradient-to-l from-transparent to-[#FFF2EB]",
                   )}
                   onMouseEnter={() => {
                     if (pickingStep === "to") setHoverDate(day)
@@ -498,17 +509,26 @@ export function TimeRangeDropdown({
                       (isStart || isEnd) &&
                         "bg-brand-primary text-text-on-brand font-bold shadow-xs scale-105",
                       // Middle range dates
-                      isMiddle && !(isStart || isEnd) && "text-brand-primary font-semibold hover:bg-brand-primary-subtle",
+                      isMiddle &&
+                        !(isStart || isEnd) &&
+                        "text-brand-primary font-semibold hover:bg-brand-primary-subtle",
                       // Normal days in current month
-                      isCurrentMonth && !isMiddle && !(isStart || isEnd) &&
+                      isCurrentMonth &&
+                        !isMiddle &&
+                        !(isStart || isEnd) &&
                         "text-text-primary hover:bg-surface-muted hover:text-brand-primary",
                       // Outside month days
-                      !isCurrentMonth && !isMiddle && !(isStart || isEnd) &&
+                      !isCurrentMonth &&
+                        !isMiddle &&
+                        !(isStart || isEnd) &&
                         "text-text-tertiary/40",
                       // Future days
-                      isFuture && "opacity-25 pointer-events-none cursor-not-allowed text-text-tertiary",
+                      isFuture &&
+                        "opacity-25 pointer-events-none cursor-not-allowed text-text-tertiary",
                       // Today mark if not selected
-                      isSameDay(day, now) && !(isStart || isEnd) && "ring-1 ring-brand-primary/40 font-bold text-brand-primary"
+                      isSameDay(day, now) &&
+                        !(isStart || isEnd) &&
+                        "ring-1 ring-brand-primary/40 font-bold text-brand-primary",
                     )}
                   >
                     {day.getDate()}

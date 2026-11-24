@@ -157,7 +157,9 @@ export default function SearchDishPage() {
               <div className="mb-3 flex items-center justify-between gap-3">
                 <p className="min-w-0 truncate text-sm text-text-secondary">
                   {results.length} kết quả cho{" "}
-                  <span className="font-semibold text-text-primary">&ldquo;{query.trim()}&rdquo;</span>
+                  <span className="font-semibold text-text-primary">
+                    &ldquo;{query.trim()}&rdquo;
+                  </span>
                 </p>
                 <button
                   type="button"
@@ -166,7 +168,7 @@ export default function SearchDishPage() {
                     "inline-flex shrink-0 items-center gap-1 rounded-pill px-2.5 py-1 text-xs font-semibold transition-colors",
                     ignoreDiacritics
                       ? "bg-status-success-subtle text-status-success"
-                      : "bg-surface-muted text-text-tertiary"
+                      : "bg-surface-muted text-text-tertiary",
                   )}
                 >
                   bỏ dấu
@@ -227,9 +229,7 @@ export default function SearchDishPage() {
               )}
             </>
           ) : isLoading ? (
-            <p className="pt-10 text-center text-sm text-text-tertiary">
-              Đang tải thực đơn...
-            </p>
+            <p className="pt-10 text-center text-sm text-text-tertiary">Đang tải thực đơn...</p>
           ) : (
             <p className="pt-10 text-center text-sm text-text-tertiary">
               Nhập tên món bạn muốn tìm, vd: &ldquo;gà nướng&rdquo;, &ldquo;phở&rdquo;...

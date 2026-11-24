@@ -38,12 +38,22 @@ const BRANCH_LEVEL: PermissionMatrixSection = {
     {
       id: 1,
       feature: "Quét QR, xem menu",
-      cells: { customer: "allow", waiter: "allow", branchManager: "allow", restaurantAdmin: "allow" },
+      cells: {
+        customer: "allow",
+        waiter: "allow",
+        branchManager: "allow",
+        restaurantAdmin: "allow",
+      },
     },
     {
       id: 2,
       feature: "Gửi order",
-      cells: { customer: "allow", waiter: "allow", branchManager: "allow", restaurantAdmin: "allow" },
+      cells: {
+        customer: "allow",
+        waiter: "allow",
+        branchManager: "allow",
+        restaurantAdmin: "allow",
+      },
     },
     {
       id: 3,
@@ -53,7 +63,12 @@ const BRANCH_LEVEL: PermissionMatrixSection = {
     {
       id: 4,
       feature: "Hủy món chưa chế biến",
-      cells: { customer: "allow", waiter: "allow", branchManager: "allow", restaurantAdmin: "allow" },
+      cells: {
+        customer: "allow",
+        waiter: "allow",
+        branchManager: "allow",
+        restaurantAdmin: "allow",
+      },
     },
     {
       id: 5,
@@ -101,14 +116,22 @@ const BRANCH_LEVEL: PermissionMatrixSection = {
     {
       id: 13,
       feature: "Chuyển / gộp bàn",
-      cells: { waiter: "approval", cashier: "allow", branchManager: "allow", restaurantAdmin: "allow" },
+      cells: {
+        waiter: "approval",
+        cashier: "allow",
+        branchManager: "allow",
+        restaurantAdmin: "allow",
+      },
     },
     {
       id: 14,
       feature: "Xem tạm tính của bàn",
       cells: {
-        customer: "allow", waiter: "allow", cashier: "allow",
-        branchManager: "allow", restaurantAdmin: "allow",
+        customer: "allow",
+        waiter: "allow",
+        cashier: "allow",
+        branchManager: "allow",
+        restaurantAdmin: "allow",
       },
     },
     {

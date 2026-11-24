@@ -33,17 +33,13 @@ export const BranchConfigAdminTab: React.FC<BranchConfigAdminTabProps> = ({
 
   // Validation
   const vatError =
-    config.vatRate < 0 || config.vatRate > 100
-      ? "Thuế VAT phải từ 0-100%."
-      : undefined
+    config.vatRate < 0 || config.vatRate > 100 ? "Thuế VAT phải từ 0-100%." : undefined
   const feeError =
     config.serviceFeeRate < 0 || config.serviceFeeRate > 100
       ? "Phí dịch vụ phải từ 0-100%."
       : undefined
   const thresholdError =
-    config.discountApprovalThreshold < 0
-      ? "Ngưỡng duyệt chiết khấu phải ≥ 0."
-      : undefined
+    config.discountApprovalThreshold < 0 ? "Ngưỡng duyệt chiết khấu phải ≥ 0." : undefined
 
   const hasError = Boolean(vatError || feeError || thresholdError)
 
@@ -77,8 +73,8 @@ export const BranchConfigAdminTab: React.FC<BranchConfigAdminTabProps> = ({
             Cấu hình Quản trị nhà hàng
           </CardTitle>
           <CardDescription className="text-xs text-text-tertiary">
-            {readOnly 
-              ? "Nhóm 2 · Chỉ xem (CHỈ Quản trị nhà hàng mới sửa được)" 
+            {readOnly
+              ? "Nhóm 2 · Chỉ xem (CHỈ Quản trị nhà hàng mới sửa được)"
               : "Nhóm 2 · CHỈ Quản trị nhà hàng được sửa (BR-08)"}
           </CardDescription>
         </CardHeader>
@@ -191,10 +187,7 @@ export const BranchConfigAdminTab: React.FC<BranchConfigAdminTabProps> = ({
           </FormField>
 
           {/* Mã số thuế riêng */}
-          <FormField
-            label="Mã số thuế chi nhánh"
-            htmlFor="admin-tax-code"
-          >
+          <FormField label="Mã số thuế chi nhánh" htmlFor="admin-tax-code">
             <Input
               id="admin-tax-code"
               value={config.taxCode}

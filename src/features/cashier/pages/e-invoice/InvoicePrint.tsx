@@ -15,7 +15,15 @@ export interface InvoiceAmountRow {
 
 const requestedPrints = new Set<string>()
 
-export function InvoicePrint({ invoice, issuedAt, tableName, items, amounts, autoPrint, transfer }: {
+export function InvoicePrint({
+  invoice,
+  issuedAt,
+  tableName,
+  items,
+  amounts,
+  autoPrint,
+  transfer,
+}: {
   invoice: Invoice
   issuedAt: string
   tableName: string
@@ -44,14 +52,21 @@ export function InvoicePrint({ invoice, issuedAt, tableName, items, amounts, aut
         <p>{invoice.branchName ?? "Nhà hàng"}</p>
         <h1>{transfer ? "Phiếu tạm tính" : "Hóa đơn thanh toán"}</h1>
         <p>Số hóa đơn {invoice.invoiceNumber}</p>
-        <p>{issuedAt} · {tableName}</p>
+        <p>
+          {issuedAt} · {tableName}
+        </p>
         {invoice.taxCodeUsed && <p>Mã số thuế {invoice.taxCodeUsed}</p>}
         {invoice.eInvoiceRef && <p>Mã tham chiếu {invoice.eInvoiceRef}</p>}
       </header>
 
       <table aria-label="Các món tính tiền">
         <thead>
-          <tr><th>Món</th><th>SL</th><th>Đơn giá</th><th>Thành tiền</th></tr>
+          <tr>
+            <th>Món</th>
+            <th>SL</th>
+            <th>Đơn giá</th>
+            <th>Thành tiền</th>
+          </tr>
         </thead>
         <tbody>
           {items.map((item) => (
@@ -59,13 +74,26 @@ export function InvoicePrint({ invoice, issuedAt, tableName, items, amounts, aut
               <td>
                 <strong>{item.name}</strong>
                 {!!item.options?.length && (
-                  <div>{item.options.map((option) =>
-                    option.priceSnapshot > 0 ? `${option.optionItemName} (+${formatVnd(option.priceSnapshot)})` : option.optionItemName,
-                  ).join(" · ")}</div>
+                  <div>
+                    {item.options
+                      .map((option) =>
+                        option.priceSnapshot > 0
+                          ? `${option.optionItemName} (+${formatVnd(option.priceSnapshot)})`
+                          : option.optionItemName,
+                      )
+                      .join(" · ")}
+                  </div>
                 )}
               </td>
-              <td>{item.weightKg != null ? `${item.weightKg.toLocaleString("vi-VN")} kg` : item.quantity}</td>
-              <td>{formatVnd(item.price)}{item.weightKg != null ? " / kg" : ""}</td>
+              <td>
+                {item.weightKg != null
+                  ? `${item.weightKg.toLocaleString("vi-VN")} kg`
+                  : item.quantity}
+              </td>
+              <td>
+                {formatVnd(item.price)}
+                {item.weightKg != null ? " / kg" : ""}
+              </td>
               <td>{formatVnd(item.lineTotal)}</td>
             </tr>
           ))}
@@ -74,13 +102,20 @@ export function InvoicePrint({ invoice, issuedAt, tableName, items, amounts, aut
 
       <dl className="invoice-print-totals">
         {amounts.map(({ label, amount }) => (
-          <div key={label}><dt>{label}</dt><dd>{formatVnd(amount)}</dd></div>
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd>{formatVnd(amount)}</dd>
+          </div>
         ))}
         <div className="invoice-print-grand-total">
-          <dt>Tổng cộng</dt><dd>{formatVnd(invoice.grandTotal)}</dd>
+          <dt>Tổng cộng</dt>
+          <dd>{formatVnd(invoice.grandTotal)}</dd>
         </div>
         {transfer && (
-          <div><dt>Còn phải chuyển</dt><dd>{formatVnd(transfer.remainingAmount)}</dd></div>
+          <div>
+            <dt>Còn phải chuyển</dt>
+            <dd>{formatVnd(transfer.remainingAmount)}</dd>
+          </div>
         )}
         {invoice.payments?.map((payment) => (
           <Fragment key={payment.id}>
@@ -89,10 +124,16 @@ export function InvoicePrint({ invoice, issuedAt, tableName, items, amounts, aut
               <dd>{formatVnd(payment.amount)}</dd>
             </div>
             {payment.method === "CASH" && payment.amountTendered != null && (
-              <div><dt>Khách đưa</dt><dd>{formatVnd(payment.amountTendered)}</dd></div>
+              <div>
+                <dt>Khách đưa</dt>
+                <dd>{formatVnd(payment.amountTendered)}</dd>
+              </div>
             )}
             {payment.method === "CASH" && payment.changeAmount != null && (
-              <div><dt>Tiền thối</dt><dd>{formatVnd(payment.changeAmount)}</dd></div>
+              <div>
+                <dt>Tiền thối</dt>
+                <dd>{formatVnd(payment.changeAmount)}</dd>
+              </div>
             )}
           </Fragment>
         ))}
@@ -100,9 +141,13 @@ export function InvoicePrint({ invoice, issuedAt, tableName, items, amounts, aut
       {transfer && (
         <section className="invoice-print-transfer">
           <img src={transfer.qrImageUrl} alt="VietQR chuyển khoản cho phiếu tạm tính" />
-          <p>{transfer.bankName} · {transfer.accountNo}</p>
+          <p>
+            {transfer.bankName} · {transfer.accountNo}
+          </p>
           <p>{transfer.accountName}</p>
-          <p>Nội dung chuyển khoản <strong>{transfer.transferContent}</strong></p>
+          <p>
+            Nội dung chuyển khoản <strong>{transfer.transferContent}</strong>
+          </p>
           <p>Vui lòng dùng phiếu mới nhất nếu có điều chỉnh món.</p>
         </section>
       )}

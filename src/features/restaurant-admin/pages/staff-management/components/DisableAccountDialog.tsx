@@ -47,8 +47,8 @@ export function DisableAccountDialog({
         </DialogHeader>
 
         <p className="rounded-md bg-surface-muted px-3 py-2 text-sm text-text-secondary">
-          Nhân viên sẽ không đăng nhập được cho tới khi kích hoạt lại. Dữ liệu và vết thao tác
-          cũ vẫn được giữ nguyên.
+          Nhân viên sẽ không đăng nhập được cho tới khi kích hoạt lại. Dữ liệu và vết thao tác cũ
+          vẫn được giữ nguyên.
         </p>
 
         <DialogFooter className="gap-2 sm:gap-2">

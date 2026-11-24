@@ -36,9 +36,7 @@ export const PromotionScopeCard: React.FC<PromotionScopeCardProps> = ({
 }) => {
   return (
     <div className="rounded-card border border-border-default bg-surface-card p-6 shadow-2xs space-y-6">
-      <h2 className="text-base font-bold text-text-primary tracking-tight">
-        Phạm vi & ưu tiên
-      </h2>
+      <h2 className="text-base font-bold text-text-primary tracking-tight">Phạm vi & ưu tiên</h2>
 
       {/* Chi nhánh áp dụng */}
       <FormField label="Chi nhánh áp dụng" required>
@@ -73,9 +71,7 @@ export const PromotionScopeCard: React.FC<PromotionScopeCardProps> = ({
                     <Checkbox
                       id={`branch-${branch.id}`}
                       checked={isChecked}
-                      onCheckedChange={(checked) =>
-                        onToggleBranch(branch.id, checked === true)
-                      }
+                      onCheckedChange={(checked) => onToggleBranch(branch.id, checked === true)}
                       className="cursor-pointer"
                     />
                     <label

@@ -49,10 +49,7 @@ function areaPrefixOf(role: AppRole): string {
  * Quy tắc: chỉ giữ `from` khi nó nằm trong khu vực của vai trò VỪA CHỌN và không
  * thuộc nhóm trang cấm. Còn lại về trang chủ của vai trò đó.
  */
-export function resolvePostLoginTarget(
-  role: AppRole,
-  from?: PostLoginFrom | null,
-): string {
+export function resolvePostLoginTarget(role: AppRole, from?: PostLoginFrom | null): string {
   const home = ROLE_HOME[role]
 
   const pathname = from?.pathname?.trim()

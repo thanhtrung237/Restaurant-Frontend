@@ -35,7 +35,9 @@ export function BranchCard({ branch, onEdit, onToggleStatus }: BranchCardProps) 
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <h3 className="min-w-0 break-words text-base font-bold tracking-tight text-text-primary">{branch.name}</h3>
+              <h3 className="min-w-0 break-words text-base font-bold tracking-tight text-text-primary">
+                {branch.name}
+              </h3>
               <StatusBadge type="branch" status={branch.status} />
             </div>
             <div className="mt-1.5 flex items-center gap-1.5 text-xs text-text-tertiary">
@@ -117,7 +119,11 @@ export function BranchCard({ branch, onEdit, onToggleStatus }: BranchCardProps) 
         <Link
           to={generatePath(RESTAURANT_ADMIN_PATHS.BRANCH_DETAIL, branchParams)}
           aria-label={`Xem chi tiết: ${branch.name}`}
-          className={cn(buttonVariants({ variant: "ghost" }), branchActionClass, "border border-border-default")}
+          className={cn(
+            buttonVariants({ variant: "ghost" }),
+            branchActionClass,
+            "border border-border-default",
+          )}
         >
           <Eye aria-hidden="true" />
           Xem chi tiết

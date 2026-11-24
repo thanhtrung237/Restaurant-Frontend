@@ -22,7 +22,9 @@ export function TopBar({ title, description, actions }: TopBarProps) {
     <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border bg-card px-6">
       <div className="min-w-0">
         <h1 className="truncate text-base font-semibold text-foreground">{title}</h1>
-        {description ? <p className="truncate text-xs text-muted-foreground">{description}</p> : null}
+        {description ? (
+          <p className="truncate text-xs text-muted-foreground">{description}</p>
+        ) : null}
       </div>
       <div className="flex shrink-0 items-center gap-3">
         {actions}

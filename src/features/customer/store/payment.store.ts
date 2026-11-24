@@ -50,5 +50,6 @@ export const useCustomerPaymentStore = create<CustomerPaymentState>((set) => ({
 
   markFailed: () => set({ status: "FAILED" }),
 
-  reset: () => set({ invoiceNumber: null, status: null, amount: null, method: null, paidAtLabel: null }),
+  reset: () =>
+    set({ invoiceNumber: null, status: null, amount: null, method: null, paidAtLabel: null }),
 }))

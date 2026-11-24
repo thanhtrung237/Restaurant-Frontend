@@ -37,7 +37,13 @@ function parsePromotionDate(value: string) {
   return isValidDateFormat(value) ? parse(value, DATE_FORMAT, new Date()) : undefined
 }
 
-function PromotionDatePicker({ id, label, value, onChange, minDate }: {
+function PromotionDatePicker({
+  id,
+  label,
+  value,
+  onChange,
+  minDate,
+}: {
   id: string
   label: string
   value: string
@@ -64,8 +70,12 @@ function PromotionDatePicker({ id, label, value, onChange, minDate }: {
             <CalendarDays aria-hidden="true" className="size-4 shrink-0 text-text-secondary" />
           </button>
         </PopoverTrigger>
-        <PopoverContent align="start" collisionPadding={8} aria-label={label}
-          className="w-max max-w-[calc(100vw-1rem)] rounded-card border-border-default bg-surface-card p-0">
+        <PopoverContent
+          align="start"
+          collisionPadding={8}
+          aria-label={label}
+          className="w-max max-w-[calc(100vw-1rem)] rounded-card border-border-default bg-surface-card p-0"
+        >
           <Calendar
             mode="single"
             required
@@ -76,11 +86,14 @@ function PromotionDatePicker({ id, label, value, onChange, minDate }: {
             labels={{
               labelPrevious: () => "Tháng trước",
               labelNext: () => "Tháng sau",
-              labelDayButton: (date, modifiers) => [
-                `Ngày ${format(date, DATE_FORMAT)}`,
-                modifiers.today && "Hôm nay",
-                modifiers.selected && "Đã chọn",
-              ].filter(Boolean).join(" · "),
+              labelDayButton: (date, modifiers) =>
+                [
+                  `Ngày ${format(date, DATE_FORMAT)}`,
+                  modifiers.today && "Hôm nay",
+                  modifiers.selected && "Đã chọn",
+                ]
+                  .filter(Boolean)
+                  .join(" · "),
             }}
             onSelect={(date) => {
               if (!date) return
@@ -114,18 +127,27 @@ export function PromotionTimeCard({
   const end = parsePromotionDate(endDate)
   return (
     <div className="rounded-card border border-border-default bg-surface-card p-6 shadow-2xs space-y-5">
-      <h2 className="text-base font-bold text-text-primary tracking-tight">
-        Thời gian
-      </h2>
+      <h2 className="text-base font-bold text-text-primary tracking-tight">Thời gian</h2>
 
       {/* Row 1: Từ ngày & Đến ngày */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <PromotionDatePicker id="start-date" label="Từ ngày" value={startDate} onChange={(value) => {
-          const nextStart = parsePromotionDate(value)
-          onStartDateChange(value)
-          if (end && nextStart && end < nextStart) onEndDateChange("")
-        }} />
-        <PromotionDatePicker id="end-date" label="Đến ngày" value={endDate} onChange={onEndDateChange} minDate={start} />
+        <PromotionDatePicker
+          id="start-date"
+          label="Từ ngày"
+          value={startDate}
+          onChange={(value) => {
+            const nextStart = parsePromotionDate(value)
+            onStartDateChange(value)
+            if (end && nextStart && end < nextStart) onEndDateChange("")
+          }}
+        />
+        <PromotionDatePicker
+          id="end-date"
+          label="Đến ngày"
+          value={endDate}
+          onChange={onEndDateChange}
+          minDate={start}
+        />
       </div>
 
       {/* Row 2: Từ giờ & Đến giờ */}
@@ -171,7 +193,7 @@ export function PromotionTimeCard({
                   "size-10 rounded-lg font-semibold text-sm flex items-center justify-center transition-colors cursor-pointer select-none",
                   isSelected
                     ? "bg-brand-primary text-text-on-brand hover:bg-brand-primary-hover shadow-2xs"
-                    : "bg-surface-muted text-text-secondary hover:bg-border-strong hover:text-text-primary"
+                    : "bg-surface-muted text-text-secondary hover:bg-border-strong hover:text-text-primary",
                 )}
                 aria-pressed={isSelected}
               >

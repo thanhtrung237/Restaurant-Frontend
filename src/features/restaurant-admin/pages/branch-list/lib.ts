@@ -23,7 +23,10 @@ export function buildBranchSchema(isEdit: boolean) {
     .object({
       // Luôn là string (khớp BranchFormValues). Khi tạo mới mới bắt buộc nhập — xem refine bên dưới.
       code: z.string().max(50, "Mã chi nhánh tối đa 50 ký tự"),
-      name: z.string().min(1, "Tên chi nhánh không được để trống").max(255, "Tên chi nhánh tối đa 255 ký tự"),
+      name: z
+        .string()
+        .min(1, "Tên chi nhánh không được để trống")
+        .max(255, "Tên chi nhánh tối đa 255 ký tự"),
       address: z.string().max(500, "Địa chỉ tối đa 500 ký tự").optional(),
       phone: z.string().max(20, "Số điện thoại tối đa 20 ký tự").optional(),
       vatRate: z.string(),

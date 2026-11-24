@@ -63,7 +63,8 @@ export default function BranchTaxFeePage() {
   }, [branch])
 
   const branchName = branch?.name ?? `Chi nhánh #${branchId ?? "—"}`
-  const vatChanged = branch != null && toNumberOrUndefined(vatRate) !== (branch.vatRate ?? undefined)
+  const vatChanged =
+    branch != null && toNumberOrUndefined(vatRate) !== (branch.vatRate ?? undefined)
   const feeChanged =
     branch != null && toNumberOrUndefined(serviceFeeRate) !== (branch.serviceFeeRate ?? undefined)
 
@@ -236,9 +237,7 @@ export default function BranchTaxFeePage() {
 
             <button
               type="button"
-              onClick={() =>
-                navigate(`${RESTAURANT_ADMIN_PATHS.BRANCH}/${branchId}/cau-hinh`)
-              }
+              onClick={() => navigate(`${RESTAURANT_ADMIN_PATHS.BRANCH}/${branchId}/cau-hinh`)}
               className="text-left text-xs text-text-tertiary underline-offset-2 hover:underline"
             >
               Giờ giấc, tài khoản ngân hàng, thời gian tự huỷ phiên → Cấu hình chi nhánh (nhóm 1)

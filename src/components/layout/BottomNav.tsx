@@ -49,7 +49,7 @@ export function BottomNav({
     <nav
       className={cn(
         "flex h-16 w-full items-center justify-around border-t border-border-default bg-surface-card px-2 select-none shadow-xs",
-        className
+        className,
       )}
     >
       {navItems.map((item) => {
@@ -66,7 +66,9 @@ export function BottomNav({
             }}
             className={cn(
               "relative flex flex-1 flex-col items-center justify-center gap-1 py-1 transition-colors outline-none",
-              isActive ? "text-brand-primary font-bold" : "text-text-tertiary hover:text-text-secondary"
+              isActive
+                ? "text-brand-primary font-bold"
+                : "text-text-tertiary hover:text-text-secondary",
             )}
           >
             <div className="relative">
@@ -77,9 +79,7 @@ export function BottomNav({
                 </span>
               ) : null}
             </div>
-            <span className="text-[11px] leading-tight">
-              {item.label}
-            </span>
+            <span className="text-[11px] leading-tight">{item.label}</span>
           </button>
         )
       })}

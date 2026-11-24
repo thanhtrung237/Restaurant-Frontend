@@ -51,8 +51,12 @@ export const OptionGroupTab: React.FC<OptionGroupTabProps> = ({
   if (loadError) {
     return (
       <div className="rounded-card border border-border-default bg-surface-card p-6 text-center">
-        <p role="alert" className="text-sm text-status-danger">{loadError}</p>
-        <Button type="button" variant="link" onClick={onRetry}>Thử lại</Button>
+        <p role="alert" className="text-sm text-status-danger">
+          {loadError}
+        </p>
+        <Button type="button" variant="link" onClick={onRetry}>
+          Thử lại
+        </Button>
       </div>
     )
   }
@@ -63,7 +67,9 @@ export const OptionGroupTab: React.FC<OptionGroupTabProps> = ({
         <EmptyState
           icon={Layers}
           title="Chưa có nhóm tùy chọn nào"
-          description={onAddGroup ? "Tạo nhóm tùy chọn để áp dụng cho các món trong thực đơn." : undefined}
+          description={
+            onAddGroup ? "Tạo nhóm tùy chọn để áp dụng cho các món trong thực đơn." : undefined
+          }
           action={
             onAddGroup
               ? {
@@ -122,7 +128,7 @@ function OptionGroupRow({
 
   // Fetch các món đang liên kết nhóm này (chiều ngược lại)
   const { data: linkedDishes = [], isLoading: dishesLoading } = useDishOptionGroupsByOptionGroup(
-    showManagement ? group.id : undefined
+    showManagement ? group.id : undefined,
   )
 
   const isRequired = group.selectionType === "REQUIRED"
@@ -144,7 +150,7 @@ function OptionGroupRow({
                   "rounded-full px-2 py-0.5 text-[11px] font-semibold",
                   isRequired
                     ? "bg-[#FEF3F2] text-[#B42318] border border-[#FECDCA]"
-                    : "bg-[#F2F4F7] text-[#344054] border border-[#EAECF0]"
+                    : "bg-[#F2F4F7] text-[#344054] border border-[#EAECF0]",
                 )}
               >
                 {isRequired ? "Bắt buộc" : "Tùy chọn"}
@@ -162,7 +168,12 @@ function OptionGroupRow({
               {itemsQuery.isLoading ? (
                 <span className="text-xs text-text-tertiary">Đang tải lựa chọn...</span>
               ) : itemsQuery.isError ? (
-                <Button type="button" variant="link" size="sm" onClick={() => void itemsQuery.refetch()}>
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  onClick={() => void itemsQuery.refetch()}
+                >
                   Không tải được lựa chọn · Thử lại
                 </Button>
               ) : items.length === 0 ? (
@@ -190,54 +201,52 @@ function OptionGroupRow({
         </div>
 
         {/* Cụm phải: Số món đang dùng + Nút mở rộng + Sửa / Xóa */}
-        {showManagement ? <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-          {/* Nút xem số món đang dùng (Requirement 6) */}
-          <button
-            type="button"
-            onClick={() => setIsExpanded((prev) => !prev)}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium text-text-secondary hover:bg-surface-muted transition-colors cursor-pointer"
-            title="Xem các món đang sử dụng nhóm này"
-          >
-            <UtensilsCrossed className="size-3.5 text-text-tertiary" />
-            <span>
-              {dishesLoading
-                ? "..."
-                : `${linkedDishes.length} món đang dùng`}
-            </span>
-            {isExpanded ? (
-              <ChevronUp className="size-3.5 text-text-tertiary" />
-            ) : (
-              <ChevronDown className="size-3.5 text-text-tertiary" />
-            )}
-          </button>
-
-          {/* Nút Sửa & Xóa */}
-          <div className="flex items-center gap-1">
-            <IconButton
+        {showManagement ? (
+          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+            {/* Nút xem số món đang dùng (Requirement 6) */}
+            <button
               type="button"
-              variant="row"
-              size="row"
-              onClick={onEdit}
-              title="Chỉnh sửa nhóm tùy chọn"
-              aria-label="Chỉnh sửa nhóm tùy chọn"
-              className="cursor-pointer"
+              onClick={() => setIsExpanded((prev) => !prev)}
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium text-text-secondary hover:bg-surface-muted transition-colors cursor-pointer"
+              title="Xem các món đang sử dụng nhóm này"
             >
-              <Pencil className="size-3.5" />
-            </IconButton>
+              <UtensilsCrossed className="size-3.5 text-text-tertiary" />
+              <span>{dishesLoading ? "..." : `${linkedDishes.length} món đang dùng`}</span>
+              {isExpanded ? (
+                <ChevronUp className="size-3.5 text-text-tertiary" />
+              ) : (
+                <ChevronDown className="size-3.5 text-text-tertiary" />
+              )}
+            </button>
 
-            <IconButton
-              type="button"
-              variant="row"
-              size="row"
-              onClick={onDelete}
-              title="Xóa nhóm tùy chọn"
-              aria-label="Xóa nhóm tùy chọn"
-              className="cursor-pointer hover:text-status-danger"
-            >
-              <Trash2 className="size-3.5" />
-            </IconButton>
+            {/* Nút Sửa & Xóa */}
+            <div className="flex items-center gap-1">
+              <IconButton
+                type="button"
+                variant="row"
+                size="row"
+                onClick={onEdit}
+                title="Chỉnh sửa nhóm tùy chọn"
+                aria-label="Chỉnh sửa nhóm tùy chọn"
+                className="cursor-pointer"
+              >
+                <Pencil className="size-3.5" />
+              </IconButton>
+
+              <IconButton
+                type="button"
+                variant="row"
+                size="row"
+                onClick={onDelete}
+                title="Xóa nhóm tùy chọn"
+                aria-label="Xóa nhóm tùy chọn"
+                className="cursor-pointer hover:text-status-danger"
+              >
+                <Trash2 className="size-3.5" />
+              </IconButton>
+            </div>
           </div>
-        </div> : null}
+        ) : null}
       </div>
 
       {/* Chiều ngược lại (Requirement 6): Hiển thị chi tiết các món đang dùng */}
@@ -249,7 +258,8 @@ function OptionGroupRow({
 
           {linkedDishes.length === 0 ? (
             <p className="text-xs text-text-tertiary italic">
-              Chưa có món nào sử dụng nhóm này. Bạn có thể gán nhóm này khi tạo hoặc sửa món trong tab "Món".
+              Chưa có món nào sử dụng nhóm này. Bạn có thể gán nhóm này khi tạo hoặc sửa món trong
+              tab "Món".
             </p>
           ) : (
             <div className="flex flex-wrap gap-2">

@@ -22,10 +22,10 @@ export function getOrdersByBranch(branchId: number, status?: OrderStatus) {
 export function updateOrder(id: number, body: OrderUpdateRequest) {
   return apiPut<Order>(`/orders/${id}`, body)
 }
-/** 
+/**
  * @deprecated No longer used in the new flow. Items now go directly to KDS with PENDING status.
  * Kitchen staff confirms items individually using PUT /order-details/{id}/status.
- * Phục vụ xác nhận order → món được đẩy xuống bếp. 
+ * Phục vụ xác nhận order → món được đẩy xuống bếp.
  */
 export function confirmOrder(id: number) {
   return apiPost<Order>(`/orders/${id}/confirm`)
@@ -82,7 +82,7 @@ export function useCreateOrder() {
   const qc = useQueryClient()
   return useMutation({ mutationFn: createOrder, onSuccess: () => invalidateOrderScope(qc) })
 }
-/** 
+/**
  * @deprecated No longer used in the new flow. Items now go directly to KDS with PENDING status.
  * Kitchen staff confirms items individually using PUT /order-details/{id}/status.
  */

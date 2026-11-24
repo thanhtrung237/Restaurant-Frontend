@@ -9,9 +9,11 @@ const iconButtonVariants = cva(
       variant: {
         ghost: "text-text-secondary hover:bg-surface-muted hover:text-text-primary",
         subtle: "bg-surface-muted text-text-primary hover:bg-border-strong",
-        outline: "border border-border-default bg-surface-card text-text-primary hover:bg-surface-muted",
+        outline:
+          "border border-border-default bg-surface-card text-text-primary hover:bg-surface-muted",
         primary: "bg-brand-primary text-text-on-brand hover:bg-brand-primary-hover shadow-xs",
-        danger: "bg-status-danger-subtle text-status-danger hover:bg-status-danger hover:text-white",
+        danger:
+          "bg-status-danger-subtle text-status-danger hover:bg-status-danger hover:text-white",
         /**
          * Thao tác trên DÒNG của bảng/thẻ (sửa · xoá · ⋯).
          *
@@ -35,12 +37,11 @@ const iconButtonVariants = cva(
       variant: "ghost",
       size: "default",
     },
-  }
+  },
 )
 
 export interface IconButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof iconButtonVariants> {}
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof iconButtonVariants> {}
 
 /**
  * IconButton — khớp component "Icon Button" trong UI Component (Figma):
@@ -56,7 +57,7 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
         {...props}
       />
     )
-  }
+  },
 )
 IconButton.displayName = "IconButton"
 

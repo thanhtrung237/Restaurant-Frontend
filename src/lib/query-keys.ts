@@ -47,7 +47,8 @@ export const qk = {
     list: (params?: unknown) => ["branches", "list", params ?? null] as const,
     detail: (id: number) => ["branches", "detail", id] as const,
     byRestaurant: (restaurantId: number) => ["branches", "restaurant", restaurantId] as const,
-    byCode: (restaurantId: number, code: string) => ["branches", "code", restaurantId, code] as const,
+    byCode: (restaurantId: number, code: string) =>
+      ["branches", "code", restaurantId, code] as const,
   },
   branchMenu: {
     all: ["branch-menu"] as const,
@@ -63,12 +64,14 @@ export const qk = {
     all: ["areas"] as const,
     list: (params?: unknown) => ["areas", "list", params ?? null] as const,
     detail: (id: number) => ["areas", "detail", id] as const,
-    byBranch: (branchId: number, status?: string) => ["areas", "branch", branchId, status ?? null] as const,
+    byBranch: (branchId: number, status?: string) =>
+      ["areas", "branch", branchId, status ?? null] as const,
   },
   tables: {
     all: ["tables"] as const,
     detail: (id: number) => ["tables", "detail", id] as const,
-    byBranch: (branchId: number, status?: string) => ["tables", "branch", branchId, status ?? null] as const,
+    byBranch: (branchId: number, status?: string) =>
+      ["tables", "branch", branchId, status ?? null] as const,
     byArea: (areaId: number) => ["tables", "area", areaId] as const,
     byQrCode: (branchId: number, qrCode: string) => ["tables", "qr", branchId, qrCode] as const,
   },
@@ -121,14 +124,16 @@ export const qk = {
     all: ["dish-option-groups"] as const,
     detail: (id: number) => ["dish-option-groups", "detail", id] as const,
     byDish: (dishId: number) => ["dish-option-groups", "dish", dishId] as const,
-    byOptionGroup: (optionGroupId: number) => ["dish-option-groups", "option-group", optionGroupId] as const,
+    byOptionGroup: (optionGroupId: number) =>
+      ["dish-option-groups", "option-group", optionGroupId] as const,
   },
   orders: {
     all: ["orders"] as const,
     detail: (id: number) => ["orders", "detail", id] as const,
     bySession: (tableSessionId: number, status?: string) =>
       ["orders", "session", tableSessionId, status ?? null] as const,
-    byBranch: (branchId: number, status?: string) => ["orders", "branch", branchId, status ?? null] as const,
+    byBranch: (branchId: number, status?: string) =>
+      ["orders", "branch", branchId, status ?? null] as const,
   },
   orderDetails: {
     all: ["order-details"] as const,
@@ -142,7 +147,8 @@ export const qk = {
     all: ["invoices"] as const,
     detail: (id: number) => ["invoices", "detail", id] as const,
     bySession: (tableSessionId: number) => ["invoices", "session", tableSessionId] as const,
-    byBranch: (branchId: number, status?: string) => ["invoices", "branch", branchId, status ?? null] as const,
+    byBranch: (branchId: number, status?: string) =>
+      ["invoices", "branch", branchId, status ?? null] as const,
   },
   payments: {
     all: ["payments"] as const,

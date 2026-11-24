@@ -28,7 +28,9 @@ export function useCustomerWebSocket(tableSessionId?: number) {
     const client = new Client({
       webSocketFactory: () => new SockJS(getWsUrl()) as WebSocket,
       reconnectDelay: 5000,
-      beforeConnect: () => { client.connectHeaders = { "X-Guest-Token": getGuestCredential()?.token ?? "" } },
+      beforeConnect: () => {
+        client.connectHeaders = { "X-Guest-Token": getGuestCredential()?.token ?? "" }
+      },
       onConnect: () => {
         client.subscribe(`/topic/session/${tableSessionId}/item-status`, (msg) => {
           try {

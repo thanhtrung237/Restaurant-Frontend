@@ -1,28 +1,73 @@
 import { test, expect, type Page } from "@playwright/test"
 
-const table = { tableId: 1, branchId: 1, tableName: "Bàn test", branchName: "Chi nhánh test", restaurantName: "Nhà hàng test", locationRequired: true, joinRequired: false }
-const session = { id: 10, tableId: 1, branchId: 1, tableName: "Bàn test", status: "WAITING_FOR_OPEN", guestCount: 2 }
+const table = {
+  tableId: 1,
+  branchId: 1,
+  tableName: "Bàn test",
+  branchName: "Chi nhánh test",
+  restaurantName: "Nhà hàng test",
+  locationRequired: true,
+  joinRequired: false,
+}
+const session = {
+  id: 10,
+  tableId: 1,
+  branchId: 1,
+  tableName: "Bàn test",
+  status: "WAITING_FOR_OPEN",
+  guestCount: 2,
+}
 const TOKEN = "server-issued-guest-capability"
 
 test("confirms the invoice total before showing the guest payment QR", async ({ page }) => {
-  await page.addInitScript(({ token, session }) => {
-    sessionStorage.setItem("restaurant-guest-credential-v1", JSON.stringify({ sessionId: session.id, token }))
-  }, { token: TOKEN, session })
+  await page.addInitScript(
+    ({ token, session }) => {
+      sessionStorage.setItem(
+        "restaurant-guest-credential-v1",
+        JSON.stringify({ sessionId: session.id, token }),
+      )
+    },
+    { token: TOKEN, session },
+  )
   await page.route("**/api/v1/**", (route) => {
     const path = new URL(route.request().url()).pathname
-    const headers = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "GET,POST,OPTIONS" }
-    if (route.request().method() === "OPTIONS" || path.endsWith("/qr-opened")) return route.fulfill({ status: 204, headers })
-    let data: unknown = { id: 45, tableSessionId: 10, invoiceNumber: "HD-45", grandTotal: 22680, status: "PENDING" }
-    if (path.endsWith("/tables/branch/1/qr/QR-B1-T1")) data = { id: 1, name: "Bàn test" }
-    if (path.endsWith("/table-sessions/table/1/open")) data = { ...session, status: "WAITING_FOR_PAY" }
-    if (path.endsWith("/qr-code")) data = {
-      invoiceId: 45, remainingAmount: 22680, grandTotal: 22680, totalPaid: 0, bankName: "MB",
-      accountNo: "123456789", accountName: "Chi nhánh", transferContent: "PV45X", automaticVerification: true,
-      qrImageUrl: "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='1'%20height='1'/%3E",
+    const headers = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Headers": "*",
+      "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     }
+    if (route.request().method() === "OPTIONS" || path.endsWith("/qr-opened"))
+      return route.fulfill({ status: 204, headers })
+    let data: unknown = {
+      id: 45,
+      tableSessionId: 10,
+      invoiceNumber: "HD-45",
+      grandTotal: 22680,
+      status: "PENDING",
+    }
+    if (path.endsWith("/tables/branch/1/qr/QR-B1-T1")) data = { id: 1, name: "Bàn test" }
+    if (path.endsWith("/table-sessions/table/1/open"))
+      data = { ...session, status: "WAITING_FOR_PAY" }
+    if (path.endsWith("/qr-code"))
+      data = {
+        invoiceId: 45,
+        remainingAmount: 22680,
+        grandTotal: 22680,
+        totalPaid: 0,
+        bankName: "MB",
+        accountNo: "123456789",
+        accountName: "Chi nhánh",
+        transferContent: "PV45X",
+        automaticVerification: true,
+        qrImageUrl:
+          "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='1'%20height='1'/%3E",
+      }
     return route.fulfill({ headers, json: { data } })
   })
-  const reported = page.waitForRequest((request) => request.method() === "POST" && request.url().endsWith("/invoices/session/10/qr-opened"))
+  const reported = page.waitForRequest(
+    (request) =>
+      request.method() === "POST" && request.url().endsWith("/invoices/session/10/qr-opened"),
+  )
   await page.goto("/ban/QR-B1-T1/thanh-toan-qr")
   const request = await reported
   expect(request.headers()["x-guest-token"]).toBe(TOKEN)
@@ -34,20 +79,39 @@ async function mockApi(page: Page, info = table, activeSession = session) {
   await page.route("**/api/v1/**", async (route) => {
     const url = new URL(route.request().url())
     if (route.request().method() === "OPTIONS") {
-      await route.fulfill({ status: 204, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "GET,POST,OPTIONS" } }); return
+      await route.fulfill({
+        status: 204,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Headers": "*",
+          "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+        },
+      })
+      return
     }
     let data: unknown = []
     if (url.pathname.endsWith("/guest/table")) data = info
     else if (url.pathname.endsWith("/guest/access")) data = { token: TOKEN, session: activeSession }
     else if (/\/table-sessions\/(10|table\/1\/open)$/.test(url.pathname)) data = activeSession
-    await route.fulfill({ json: { status: 200, message: "OK", data }, headers: { "Access-Control-Allow-Origin": "*" } })
+    await route.fulfill({
+      json: { status: 200, message: "OK", data },
+      headers: { "Access-Control-Allow-Origin": "*" },
+    })
   })
 }
 
-test("valid location creates a guest session and polling uses only the server token", async ({ page, context }) => {
+test("valid location creates a guest session and polling uses only the server token", async ({
+  page,
+  context,
+}) => {
   await context.grantPermissions(["geolocation"])
   await context.setGeolocation({ latitude: 10, longitude: 106, accuracy: 10 })
-  await page.addInitScript(() => localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "staff-token-must-not-leak", refreshToken: "staff-refresh" })))
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      "pho-viet-auth-tokens",
+      JSON.stringify({ accessToken: "staff-token-must-not-leak", refreshToken: "staff-refresh" }),
+    ),
+  )
   await mockApi(page)
   await page.goto("/ban/QR-B1-T1")
   const admission = page.waitForRequest((r) => r.url().endsWith("/guest/access"))
@@ -56,20 +120,32 @@ test("valid location creates a guest session and polling uses only the server to
   expect(request.postDataJSON().location.latitude).toBe(10)
   expect(request.headers().authorization).toBeUndefined()
   await expect(page).toHaveURL(/cho-mo-ban|waiting/)
-  await expect.poll(() => page.evaluate(() => JSON.parse(sessionStorage.getItem("restaurant-guest-credential-v1") ?? "null")?.token)).toBe(TOKEN)
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => JSON.parse(sessionStorage.getItem("restaurant-guest-credential-v1") ?? "null")?.token,
+      ),
+    )
+    .toBe(TOKEN)
   const polling = await page.waitForRequest((r) => /table-sessions\/10$/.test(r.url()))
   expect(polling.headers()["x-guest-token"]).toBe(TOKEN)
   await page.reload()
   await expect(page).toHaveURL(/cho-mo-ban|waiting/)
 })
 
-test("permission denied gives staff assistance and sends no admission", async ({ page, context }) => {
+test("permission denied gives staff assistance and sends no admission", async ({
+  page,
+  context,
+}) => {
   await context.clearPermissions()
   await page.addInitScript(() => {
-    navigator.geolocation.getCurrentPosition = (_success, failure) => failure?.({ code: 1, message: "denied" } as GeolocationPositionError)
+    navigator.geolocation.getCurrentPosition = (_success, failure) =>
+      failure?.({ code: 1, message: "denied" } as GeolocationPositionError)
   })
   let admissions = 0
-  page.on("request", (r) => { if (r.url().endsWith("/guest/access")) admissions++ })
+  page.on("request", (r) => {
+    if (r.url().endsWith("/guest/access")) admissions++
+  })
   await mockApi(page)
   await page.goto("/ban/QR-B1-T1")
   await page.getByRole("button", { name: "Gửi yêu cầu mở bàn" }).click()
@@ -96,15 +172,27 @@ test("a backend rejection is shown and does not save a token", async ({ page, co
   await context.grantPermissions(["geolocation"])
   await context.setGeolocation({ latitude: 11, longitude: 106 })
   await mockApi(page)
-  await page.route("**/api/v1/guest/access", (route) => route.fulfill({ status: 403, json: { message: "Bạn đang ngoài phạm vi gọi món của chi nhánh." }, headers: { "Access-Control-Allow-Origin": "*" } }))
+  await page.route("**/api/v1/guest/access", (route) =>
+    route.fulfill({
+      status: 403,
+      json: { message: "Bạn đang ngoài phạm vi gọi món của chi nhánh." },
+      headers: { "Access-Control-Allow-Origin": "*" },
+    }),
+  )
   await page.goto("/ban/QR-B1-T1")
   await page.getByRole("button", { name: "Gửi yêu cầu mở bàn" }).click()
   await expect(page.getByRole("alert")).toContainText("ngoài phạm vi")
-  expect(await page.evaluate(() => sessionStorage.getItem("restaurant-guest-credential-v1"))).toBeNull()
+  expect(
+    await page.evaluate(() => sessionStorage.getItem("restaurant-guest-credential-v1")),
+  ).toBeNull()
 })
 
 test("a disabled geofence does not request device location", async ({ page }) => {
-  await page.addInitScript(() => { navigator.geolocation.getCurrentPosition = () => { throw new Error("must not ask for location") } })
+  await page.addInitScript(() => {
+    navigator.geolocation.getCurrentPosition = () => {
+      throw new Error("must not ask for location")
+    }
+  })
   await mockApi(page, { ...table, locationRequired: false })
   await page.goto("/ban/QR-B1-T1")
   const admission = page.waitForRequest((r) => r.url().endsWith("/guest/access"))
@@ -113,8 +201,10 @@ test("a disabled geofence does not request device location", async ({ page }) =>
   await expect(page).toHaveURL(/cho-mo-ban|waiting/)
 })
 
-
-test("existing table needs only table confirmation and valid location", async ({ page, context }) => {
+test("existing table needs only table confirmation and valid location", async ({
+  page,
+  context,
+}) => {
   await context.grantPermissions(["geolocation"])
   await context.setGeolocation({ latitude: 10, longitude: 106, accuracy: 10 })
   await mockApi(page, { ...table, joinRequired: true })
@@ -130,7 +220,11 @@ test("existing table needs only table confirmation and valid location", async ({
 })
 
 test("existing table with geofence disabled joins without a code or location", async ({ page }) => {
-  await page.addInitScript(() => { navigator.geolocation.getCurrentPosition = () => { throw new Error("must not request location") } })
+  await page.addInitScript(() => {
+    navigator.geolocation.getCurrentPosition = () => {
+      throw new Error("must not request location")
+    }
+  })
   await mockApi(page, { ...table, joinRequired: true, locationRequired: false })
   await page.goto("/ban/QR-B1-T1")
   await expect(page.getByLabel("Mã hỗ trợ", { exact: true })).toHaveCount(0)
@@ -144,12 +238,19 @@ test("existing table with geofence disabled joins without a code or location", a
 
 test("a valid credential resumes the table without confirmation or location", async ({ page }) => {
   await page.addInitScript((token) => {
-    sessionStorage.setItem("restaurant-guest-credential-v1", JSON.stringify({ sessionId: 10, token }))
-    navigator.geolocation.getCurrentPosition = () => { throw new Error("must not request location on resume") }
+    sessionStorage.setItem(
+      "restaurant-guest-credential-v1",
+      JSON.stringify({ sessionId: 10, token }),
+    )
+    navigator.geolocation.getCurrentPosition = () => {
+      throw new Error("must not request location on resume")
+    }
   }, TOKEN)
   await mockApi(page, { ...table, joinRequired: true })
   let admissions = 0
-  page.on("request", (r) => { if (r.url().endsWith("/guest/access")) admissions++ })
+  page.on("request", (r) => {
+    if (r.url().endsWith("/guest/access")) admissions++
+  })
   await page.goto("/ban/QR-B1-T1")
   await expect(page).toHaveURL(/cho-mo-ban/)
   expect(admissions).toBe(0)

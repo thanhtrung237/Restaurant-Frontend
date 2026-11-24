@@ -1,9 +1,20 @@
 import { expect, test } from "@playwright/test"
 
-test("editing a dish loads saved options and can add, remove and relink groups", async ({ page }) => {
+test("editing a dish loads saved options and can add, remove and relink groups", async ({
+  page,
+}) => {
   const category = { id: 5, name: "Khai vị", status: "ACTIVE" }
-  const dish = { id: 8, restaurantId: 1, categoryId: 5, categoryName: category.name,
-    name: "Tàu hủ", basePrice: 15000, kitchenStationType: "KITCHEN", status: "ACTIVE", soldByWeight: false }
+  const dish = {
+    id: 8,
+    restaurantId: 1,
+    categoryId: 5,
+    categoryName: category.name,
+    name: "Tàu hủ",
+    basePrice: 15000,
+    kitchenStationType: "KITCHEN",
+    status: "ACTIVE",
+    soldByWeight: false,
+  }
   const groups = [
     { id: 20, name: "Topping", selectionType: "OPTIONAL", minSelect: 0, maxSelect: 3 },
     { id: 21, name: "Topping nước", selectionType: "OPTIONAL", minSelect: 0, maxSelect: 1 },
@@ -11,14 +22,26 @@ test("editing a dish loads saved options and can add, remove and relink groups",
   const links = new Map([[20, 30]])
   const mutations: string[] = []
   let allowInitialRead!: () => void
-  const initialRead = new Promise<void>((resolve) => { allowInitialRead = resolve })
+  const initialRead = new Promise<void>((resolve) => {
+    allowInitialRead = resolve
+  })
 
   await page.addInitScript(() => {
     localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
-    localStorage.setItem("pho-viet-auth", JSON.stringify({ version: 0, state: {
-      role: "RESTAURANT_ADMIN", branchId: null, assignmentId: 7, accessToken: "test-token", isAuthenticated: true,
-      account: { id: 1, restaurantId: 1, fullName: "Quản trị test" },
-    } }))
+    localStorage.setItem(
+      "pho-viet-auth",
+      JSON.stringify({
+        version: 0,
+        state: {
+          role: "RESTAURANT_ADMIN",
+          branchId: null,
+          assignmentId: 7,
+          accessToken: "test-token",
+          isAuthenticated: true,
+          account: { id: 1, restaurantId: 1, fullName: "Quản trị test" },
+        },
+      }),
+    )
   })
   await page.route("**/ws/**", (route) => route.abort())
   await page.route("**/api/v1/**", async (route) => {
@@ -26,7 +49,8 @@ test("editing a dish loads saved options and can add, remove and relink groups",
     const path = new URL(request.url()).pathname.replace("/api/v1", "")
     const method = request.method()
     const headers = {
-      "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Headers": "*",
       "Access-Control-Allow-Methods": "GET,PUT,POST,DELETE,OPTIONS",
     }
     if (method === "OPTIONS") return route.fulfill({ status: 204, headers })

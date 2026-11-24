@@ -2,10 +2,10 @@ import { BranchGeofenceConfig } from "./components/BranchGeofenceConfig"
 import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { PageHeader } from "@/components/layout/PageHeader"
-import { 
-  useBranch, 
+import {
+  useBranch,
   useUpdateBranchManagerConfig,
-  useUpdateBranchAdminConfig 
+  useUpdateBranchAdminConfig,
 } from "@/api/branches.api"
 import { useOpenSessionsByBranch } from "@/api/table-sessions.api"
 import { useAuthStore } from "@/stores/auth.store"
@@ -48,7 +48,7 @@ function blankToNull(value: string): string | null {
  * Cấu hình chi nhánh (FR-BRN-02) — chia 2 nhóm:
  * - Nhóm 1 (Quản lý chi nhánh + Quản trị NH): giờ giấc, TK ngân hàng, thời gian tự huỷ
  * - Nhóm 2 (CHỈ Quản trị NH): VAT, phí DV, ngưỡng duyệt chiết khấu, MST chi nhánh
- * 
+ *
  * Quản lý chi nhánh chỉ thấy Nhóm 1 (có nút Lưu) và Nhóm 2 dạng chỉ đọc (không có nút Lưu).
  * Quản trị nhà hàng thấy cả hai nhóm, mỗi nhóm có nút Lưu riêng.
  */
@@ -56,10 +56,10 @@ export function BranchConfigPage({ branchId }: BranchConfigPageProps) {
   const { toast } = useToast()
   const userRole = useAuthStore((state) => state.role)
   const isRestaurantAdmin = userRole === APP_ROLE.RESTAURANT_ADMIN
-  
+
   const { data: branch } = useBranch(branchId)
   const { data: openSessions = [] } = useOpenSessionsByBranch(branchId)
-  
+
   const updateManagerConfig = useUpdateBranchManagerConfig()
   const updateAdminConfig = useUpdateBranchAdminConfig()
 
@@ -85,7 +85,7 @@ export function BranchConfigPage({ branchId }: BranchConfigPageProps) {
   // Đổ dữ liệu thật của chi nhánh vào form khi tải xong / khi đổi chi nhánh.
   useEffect(() => {
     if (!branch) return
-    
+
     // Nhóm 1
     setManagerConfig((prev) => ({
       ...prev,
@@ -98,10 +98,9 @@ export function BranchConfigPage({ branchId }: BranchConfigPageProps) {
       bankName: branch.bankName ?? "",
       autoCancelWaitingMinutes:
         branch.pendingConfirmTimeoutMinutes ?? prev.autoCancelWaitingMinutes,
-      reservationHoldingMinutes:
-        branch.reservationHoldMinutes ?? prev.reservationHoldingMinutes,
+      reservationHoldingMinutes: branch.reservationHoldMinutes ?? prev.reservationHoldingMinutes,
     }))
-    
+
     // Nhóm 2
     setAdminConfig({
       vatRate: branch.vatRate ?? 0,
@@ -121,10 +120,12 @@ export function BranchConfigPage({ branchId }: BranchConfigPageProps) {
         id: branchId,
         body: {
           businessDayStartTime: toHhMmSs(managerConfig.businessDayStartTime),
-          ...(isRestaurantAdmin ? {
-            bankAccountNo: blankToNull(managerConfig.bankAccountNo),
-            bankName: blankToNull(managerConfig.bankName),
-          } : {}),
+          ...(isRestaurantAdmin
+            ? {
+                bankAccountNo: blankToNull(managerConfig.bankAccountNo),
+                bankName: blankToNull(managerConfig.bankName),
+              }
+            : {}),
           pendingConfirmTimeoutMinutes: Number(managerConfig.autoCancelWaitingMinutes) || undefined,
           reservationHoldMinutes: Number(managerConfig.reservationHoldingMinutes) || undefined,
         },
@@ -147,23 +148,23 @@ export function BranchConfigPage({ branchId }: BranchConfigPageProps) {
     // BR-08: Cảnh báo nếu có phiên đang mở và đổi VAT/phí dịch vụ
     const vatChanged = branch?.vatRate !== adminConfig.vatRate
     const feeChanged = branch?.serviceFeeRate !== adminConfig.serviceFeeRate
-    const hasOpenSessions = openSessions.filter(
-      s => s.status === "SERVING" || s.status === "WAITING_FOR_PAY"
-    ).length > 0
-    
+    const hasOpenSessions =
+      openSessions.filter((s) => s.status === "SERVING" || s.status === "WAITING_FOR_PAY").length >
+      0
+
     if ((vatChanged || feeChanged) && hasOpenSessions) {
       const openCount = openSessions.filter(
-        s => s.status === "SERVING" || s.status === "WAITING_FOR_PAY"
+        (s) => s.status === "SERVING" || s.status === "WAITING_FOR_PAY",
       ).length
-      
+
       const confirmed = window.confirm(
         `Hiện có ${openCount} phiên đang mở sẽ vẫn dùng mức VAT/phí dịch vụ cũ.\n\n` +
-        `Các phiên mới sẽ áp dụng mức mới. Xác nhận lưu?`
+          `Các phiên mới sẽ áp dụng mức mới. Xác nhận lưu?`,
       )
-      
+
       if (!confirmed) return
     }
-    
+
     try {
       const result = await updateAdminConfig.mutateAsync({
         id: branchId,
@@ -175,14 +176,17 @@ export function BranchConfigPage({ branchId }: BranchConfigPageProps) {
           taxCode: blankToNull(adminConfig.taxCode) ?? undefined,
         },
       })
-      
+
       // Kiểm tra số phiên BE báo với số phiên FE đếm được
-      if (result.openSessionCount !== undefined && result.openSessionCount !== openSessions.length) {
+      if (
+        result.openSessionCount !== undefined &&
+        result.openSessionCount !== openSessions.length
+      ) {
         console.warn(
-          `BE báo ${result.openSessionCount} phiên mở, FE đếm được ${openSessions.length}`
+          `BE báo ${result.openSessionCount} phiên mở, FE đếm được ${openSessions.length}`,
         )
       }
-      
+
       toast({
         title: "Thành công",
         description: `Đã lưu cấu hình quản trị cho ${branchName}.`,

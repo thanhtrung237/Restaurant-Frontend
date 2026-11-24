@@ -183,7 +183,7 @@ export function PermissionMatrix({
     <div
       className={cn(
         "overflow-x-auto rounded-card border border-border-default bg-surface-card",
-        className
+        className,
       )}
     >
       <table className="w-full text-left text-sm">
@@ -193,20 +193,19 @@ export function PermissionMatrix({
             <th className="px-4 py-4 text-center font-semibold text-text-secondary">Khách</th>
             <th className="px-4 py-4 text-center font-semibold text-text-secondary">Phục vụ</th>
             <th className="px-4 py-4 text-center font-semibold text-text-secondary">Thu ngân</th>
-            <th className="px-4 py-4 text-center font-semibold text-text-secondary">QL chi nhánh</th>
+            <th className="px-4 py-4 text-center font-semibold text-text-secondary">
+              QL chi nhánh
+            </th>
             <th className="px-4 py-4 text-center font-semibold text-text-secondary">QT nhà hàng</th>
-            <th className="py-4 pl-4 pr-6 text-center font-semibold text-text-secondary">QT nền tảng</th>
+            <th className="py-4 pl-4 pr-6 text-center font-semibold text-text-secondary">
+              QT nền tảng
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border-default">
           {data.map((row) => (
-            <tr
-              key={row.id}
-              className="transition-colors hover:bg-surface-page/40"
-            >
-              <td className="py-3.5 pl-6 pr-4 font-bold text-text-primary">
-                {row.feature}
-              </td>
+            <tr key={row.id} className="transition-colors hover:bg-surface-page/40">
+              <td className="py-3.5 pl-6 pr-4 font-bold text-text-primary">{row.feature}</td>
               <td className="px-4 py-3.5 text-center">
                 <PermissionBadge level={row.roles.customer} />
               </td>

@@ -61,7 +61,13 @@ export type DishStatus = (typeof DISH_STATUS)[number]
 // OrderDetailStatus.java — PENDING(0), PREPARING(1), SERVED(2), CANCELLED(3), PENDING_WEIGHT(4)
 // PENDING_WEIGHT: món bán theo cân, chờ nhân viên cân xong mới xác nhận số lượng/giá
 // (POST /order-details/{id}/confirm-weight) — quan trọng cho bếp/KDS.
-export const ORDER_DETAIL_STATUS = ["PENDING", "PREPARING", "SERVED", "CANCELLED", "PENDING_WEIGHT"] as const
+export const ORDER_DETAIL_STATUS = [
+  "PENDING",
+  "PREPARING",
+  "SERVED",
+  "CANCELLED",
+  "PENDING_WEIGHT",
+] as const
 export type OrderDetailStatus = (typeof ORDER_DETAIL_STATUS)[number]
 
 // OrderStatus.java — PENDING(0), CONFIRMED(1), COMPLETED(2), CANCELLED(3)
@@ -161,11 +167,7 @@ export const TABLE_SESSION_STATUS_LABEL: Record<TableSessionStatus, string> = {
  * Trạng thái HIỂN THỊ của thẻ bàn trên sơ đồ = `DiningTableStatus` (trạng thái vật lý
  * của bàn) mở rộng thêm mấy trạng thái suy ra từ phiên bàn. KHÔNG phải enum của backend.
  */
-export type TableDisplayStatus =
-  | DiningTableStatus
-  | "WAITING_OPEN"
-  | "AWAITING_PAYMENT"
-  | "MERGED"
+export type TableDisplayStatus = DiningTableStatus | "WAITING_OPEN" | "AWAITING_PAYMENT" | "MERGED"
 
 /**
  * Nhãn cho thẻ bàn + legend + bộ lọc ở sơ đồ bàn.

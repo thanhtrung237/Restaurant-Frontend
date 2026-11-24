@@ -9,7 +9,10 @@ import type { DishAddRequest, DishUpdateRequest } from "@/types/requests"
 export function getDish(id: number) {
   return apiGet<Dish>(`/dishes/${id}`)
 }
-export function getDishesByRestaurant(restaurantId: number, params?: PageParams & { status?: DishStatus }) {
+export function getDishesByRestaurant(
+  restaurantId: number,
+  params?: PageParams & { status?: DishStatus },
+) {
   return apiGet<PageResponse<Dish>>(`/dishes/restaurant/${restaurantId}`, { params })
 }
 export function getDishesByBranch(branchId: number) {
@@ -42,7 +45,10 @@ export function useDish(id?: number) {
     enabled: typeof id === "number",
   })
 }
-export function useDishesByRestaurant(restaurantId?: number, params?: PageParams & { status?: DishStatus }) {
+export function useDishesByRestaurant(
+  restaurantId?: number,
+  params?: PageParams & { status?: DishStatus },
+) {
   return useQuery({
     queryKey: qk.dishes.byRestaurant(restaurantId as number, params),
     queryFn: () => getDishesByRestaurant(restaurantId as number, params),
@@ -97,7 +103,8 @@ export function useCountAffectedBranches(id?: number, enabled = true) {
 export function useChangeDishStatus() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (vars: { id: number; status: DishStatus }) => changeDishStatus(vars.id, vars.status),
+    mutationFn: (vars: { id: number; status: DishStatus }) =>
+      changeDishStatus(vars.id, vars.status),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: qk.dishes.all })
       void qc.invalidateQueries({ queryKey: qk.branchMenu.all })

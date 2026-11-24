@@ -190,13 +190,7 @@ export function DraggableTableQr({
             draggable={true}
           />
         ) : (
-          <QRCodeSVG
-            value={tableUrl}
-            size={size}
-            bgColor="#ffffff"
-            fgColor="#111111"
-            level="M"
-          />
+          <QRCodeSVG value={tableUrl} size={size} bgColor="#ffffff" fgColor="#111111" level="M" />
         )}
 
         {/* Hover hint icon */}
@@ -271,7 +265,9 @@ export function TableCard({
         <div>
           {/* Hàng 1: Mã bàn + chấm trạng thái */}
           <div className="flex w-full items-center justify-between">
-            <span className="text-base font-bold text-text-primary tracking-tight">{table.name}</span>
+            <span className="text-base font-bold text-text-primary tracking-tight">
+              {table.name}
+            </span>
             <span
               className={cn(
                 "size-2 rounded-full shrink-0",
@@ -291,7 +287,9 @@ export function TableCard({
           {/* Hàng 3: Mã QR — Cho phép kéo thả ra tab khác hoặc click để mở trang gọi món */}
           <div className="my-3.5 flex items-center justify-center rounded-xl bg-surface-muted h-[104px] text-text-primary p-2 overflow-hidden">
             {isInactive ? (
-              <span className="text-center text-sm font-medium text-text-secondary">Ngừng sử dụng</span>
+              <span className="text-center text-sm font-medium text-text-secondary">
+                Ngừng sử dụng
+              </span>
             ) : table.qrCode ? (
               <DraggableTableQr qrCode={table.qrCode} tableName={table.name} size={76} />
             ) : (
@@ -330,7 +328,8 @@ export function TableCard({
   }
 
   const currentStatus: TableDisplayStatus = displayStatus || table.status
-  const style = CARD_STYLE_BY_DISPLAY_STATUS[currentStatus] || CARD_STYLE_BY_DISPLAY_STATUS.AVAILABLE
+  const style =
+    CARD_STYLE_BY_DISPLAY_STATUS[currentStatus] || CARD_STYLE_BY_DISPLAY_STATUS.AVAILABLE
 
   // Nhãn chip PHẢI theo currentStatus (displayStatus mở rộng), không phải table.status thô —
   // vì table.status chỉ mang nghĩa VẬT LÝ (BE set OCCUPIED ngay khi có session WAITING_FOR_OPEN/
@@ -368,47 +367,79 @@ export function TableCard({
     >
       {/* Hàng 1: Tên bàn + Chấm tròn trạng thái góc trên phải */}
       <div className="flex w-full items-start justify-between gap-1.5">
-        <span className={cn(
-          "min-w-0 break-words font-bold tracking-tight text-text-primary",
-          compactOnMobile ? "text-base leading-snug lg:text-2xl" : "text-2xl",
-        )}>{table.name}</span>
+        <span
+          className={cn(
+            "min-w-0 break-words font-bold tracking-tight text-text-primary",
+            compactOnMobile ? "text-base leading-snug lg:text-2xl" : "text-2xl",
+          )}
+        >
+          {table.name}
+        </span>
         <div className="flex items-center gap-1.5 shrink-0">
           {topRightIcon}
-          <span className={cn("rounded-full", compactOnMobile ? "mt-1 size-2.5 lg:size-3.5" : "size-3.5", style.dot)} />
+          <span
+            className={cn(
+              "rounded-full",
+              compactOnMobile ? "mt-1 size-2.5 lg:size-3.5" : "size-3.5",
+              style.dot,
+            )}
+          />
         </div>
       </div>
 
-      <div className={cn("flex w-full flex-wrap items-center gap-x-2 gap-y-0.5", compactOnMobile ? "mt-1 lg:mt-2" : "mt-2")}>
+      <div
+        className={cn(
+          "flex w-full flex-wrap items-center gap-x-2 gap-y-0.5",
+          compactOnMobile ? "mt-1 lg:mt-2" : "mt-2",
+        )}
+      >
         <span
           className={cn(
             "inline-flex max-w-full items-center rounded-pill border py-0.5 text-xs font-semibold shadow-2xs",
-            compactOnMobile ? "px-1.5 leading-tight lg:px-3.5 lg:leading-normal" : "px-3.5 tracking-wide",
+            compactOnMobile
+              ? "px-1.5 leading-tight lg:px-3.5 lg:leading-normal"
+              : "px-3.5 tracking-wide",
             style.chip,
           )}
         >
           {statusText}
         </span>
         {table.capacity != null && table.capacity > 0 ? (
-          <span className="whitespace-nowrap text-xs font-medium text-text-secondary">{table.capacity} chỗ</span>
+          <span className="whitespace-nowrap text-xs font-medium text-text-secondary">
+            {table.capacity} chỗ
+          </span>
         ) : null}
       </div>
 
       {/* Hàng 3: Dòng thông tin phụ (Số khách · Số phút / Nhấn để mở bàn / vừa quét QR) */}
-      <div className={cn(
-        "break-words font-medium",
-        compactOnMobile ? "mt-1 text-xs text-text-secondary lg:mt-3.5 lg:min-h-5 lg:text-sm" : "mt-3.5 min-h-5 text-sm text-text-tertiary",
-      )}>
+      <div
+        className={cn(
+          "break-words font-medium",
+          compactOnMobile
+            ? "mt-1 text-xs text-text-secondary lg:mt-3.5 lg:min-h-5 lg:text-sm"
+            : "mt-3.5 min-h-5 text-sm text-text-tertiary",
+        )}
+      >
         {subLabel || calculatedInfoLine}
       </div>
 
       {/* Hàng cuối: Tạm tính */}
       {subtotal !== undefined ? (
-        <div className={cn(
-          "mt-auto flex w-full flex-wrap items-center justify-between gap-x-2 pt-2",
-          compactOnMobile && subtotal === "—" && "hidden lg:flex",
-        )}>
+        <div
+          className={cn(
+            "mt-auto flex w-full flex-wrap items-center justify-between gap-x-2 pt-2",
+            compactOnMobile && subtotal === "—" && "hidden lg:flex",
+          )}
+        >
           <span className="text-sm text-[#94A3B8] dark:text-zinc-500">Tạm tính</span>
-          <span className={cn("font-bold text-text-primary", compactOnMobile ? "text-sm lg:text-xl" : "text-xl")}>{subtotal}</span>
+          <span
+            className={cn(
+              "font-bold text-text-primary",
+              compactOnMobile ? "text-sm lg:text-xl" : "text-xl",
+            )}
+          >
+            {subtotal}
+          </span>
         </div>
       ) : null}
     </button>

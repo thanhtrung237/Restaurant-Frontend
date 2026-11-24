@@ -85,7 +85,7 @@ export function DropdownMenuContent({
   if (!ctx) throw new Error("DropdownMenuContent must be inside DropdownMenu")
 
   const [actualSide, setActualSide] = React.useState<"top" | "bottom">(
-    side === "top" ? "top" : "bottom"
+    side === "top" ? "top" : "bottom",
   )
   const contentRef = React.useRef<HTMLDivElement>(null)
 
@@ -94,7 +94,9 @@ export function DropdownMenuContent({
       setActualSide("top")
     } else if (side === "auto" && contentRef.current) {
       const rect = contentRef.current.getBoundingClientRect()
-      const overflowParent = contentRef.current.closest(".overflow-x-auto, .overflow-y-auto, .overflow-hidden")
+      const overflowParent = contentRef.current.closest(
+        ".overflow-x-auto, .overflow-y-auto, .overflow-hidden",
+      )
       if (overflowParent) {
         const parentRect = overflowParent.getBoundingClientRect()
         if (rect.bottom > parentRect.bottom - 10) {
@@ -115,11 +117,7 @@ export function DropdownMenuContent({
   if (!ctx.open) return null
 
   const alignClass =
-    align === "left"
-      ? "left-0"
-      : align === "center"
-      ? "left-1/2 -translate-x-1/2"
-      : "right-0"
+    align === "left" ? "left-0" : align === "center" ? "left-1/2 -translate-x-1/2" : "right-0"
 
   const sideClass = actualSide === "top" ? "bottom-full mb-1.5" : "top-full mt-1.5"
 
@@ -131,7 +129,7 @@ export function DropdownMenuContent({
         "animate-in fade-in-0 zoom-in-95",
         alignClass,
         sideClass,
-        className
+        className,
       )}
     >
       {children}
@@ -139,8 +137,7 @@ export function DropdownMenuContent({
   )
 }
 
-export interface DropdownMenuItemProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface DropdownMenuItemProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "default" | "danger"
   icon?: React.ReactNode
 }
@@ -168,7 +165,7 @@ export function DropdownMenuItem({
           ? "text-text-primary hover:bg-surface-muted"
           : "text-status-danger hover:bg-status-danger-subtle",
         "[&_svg]:size-4 [&_svg]:shrink-0",
-        className
+        className,
       )}
       {...props}
     >

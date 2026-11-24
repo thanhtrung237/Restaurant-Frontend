@@ -25,7 +25,12 @@ interface BranchStatusDialogProps {
  * còn `DELETE /branches/{id}` ở BE xóa mềm kèm cascade bàn / khu vực / bản đè giá mà không
  * kiểm tra giao dịch.
  */
-export function BranchStatusDialog({ branch, onClose, onConfirm, isSaving = false }: BranchStatusDialogProps) {
+export function BranchStatusDialog({
+  branch,
+  onClose,
+  onConfirm,
+  isSaving = false,
+}: BranchStatusDialogProps) {
   const deactivating = branch?.status === "ACTIVE"
 
   return (
@@ -34,7 +39,9 @@ export function BranchStatusDialog({ branch, onClose, onConfirm, isSaving = fals
         <DialogHeader>
           <DialogTitle
             className={
-              deactivating ? "flex items-center gap-2 text-status-danger" : "flex items-center gap-2"
+              deactivating
+                ? "flex items-center gap-2 text-status-danger"
+                : "flex items-center gap-2"
             }
           >
             {deactivating ? <PowerOff className="size-5" /> : <Power className="size-5" />}
@@ -50,14 +57,16 @@ export function BranchStatusDialog({ branch, onClose, onConfirm, isSaving = fals
           <ul className="list-disc space-y-1.5 rounded-md bg-surface-muted py-3 pl-8 pr-3 text-sm text-text-secondary">
             <li>Chi nhánh sẽ không mở được phiên bàn mới; nút mở bàn và đặt bàn bị ẩn.</li>
             <li>
-              Dữ liệu lịch sử (hóa đơn, đơn gọi món) và báo cáo của chi nhánh vẫn xem được, không bị xóa.
+              Dữ liệu lịch sử (hóa đơn, đơn gọi món) và báo cáo của chi nhánh vẫn xem được, không bị
+              xóa.
             </li>
             <li>Phiên bàn đang phục vụ không bị đóng tự động — hãy thu tiền và đóng bàn trước.</li>
             <li>Có thể kích hoạt lại bất cứ lúc nào.</li>
           </ul>
         ) : (
           <p className="rounded-md bg-surface-muted px-3 py-2 text-sm text-text-secondary">
-            Chi nhánh hoạt động trở lại: có thể mở bàn và nhận đặt bàn mới. Dữ liệu cũ được giữ nguyên.
+            Chi nhánh hoạt động trở lại: có thể mở bàn và nhận đặt bàn mới. Dữ liệu cũ được giữ
+            nguyên.
           </p>
         )}
 

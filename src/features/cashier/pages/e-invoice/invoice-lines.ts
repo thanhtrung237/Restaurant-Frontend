@@ -21,9 +21,11 @@ export function groupInvoiceLines(details: OrderDetail[]): InvoiceLine[] {
     const price = detail.priceAtOrderTime ?? 0
     const weightKg = detail.weightKg ?? undefined
     const lineTotal = detail.price ?? price * (weightKg ?? detail.quantity)
-    const options = detail.options?.map((option) =>
-      JSON.stringify([option.optionItemId ?? option.optionItemName, option.priceSnapshot]),
-    ).sort()
+    const options = detail.options
+      ?.map((option) =>
+        JSON.stringify([option.optionItemId ?? option.optionItemName, option.priceSnapshot]),
+      )
+      .sort()
     const key = JSON.stringify([detail.dishId ?? name, price, weightKg != null, options ?? []])
     const existing = groups.get(key)
     if (existing) {
@@ -34,7 +36,16 @@ export function groupInvoiceLines(details: OrderDetail[]): InvoiceLine[] {
       continue
     }
 
-    groups.set(key, { id: detail.id, name, quantity: detail.quantity, weightKg, price, lineTotal, options: detail.options, details: [detail] })
+    groups.set(key, {
+      id: detail.id,
+      name,
+      quantity: detail.quantity,
+      weightKg,
+      price,
+      lineTotal,
+      options: detail.options,
+      details: [detail],
+    })
   }
   return [...groups.values()]
 }

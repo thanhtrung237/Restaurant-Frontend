@@ -84,11 +84,15 @@ export default function MenuManagementPage() {
   const tabParam = searchParams.get("tab")
   const isOptionsTab = tabParam === "tuy-chon" || tabParam === "options"
   const activeTab: MenuTabType =
-    isOptionsTab && (isRestaurantAdmin || isBranchManager) ? "tuy-chon"
-    : !isRestaurantAdmin ? "menu-chi-nhanh"
-    : tabParam === "danh-muc" || tabParam === "categories" ? "danh-muc"
-    : tabParam === "menu-chi-nhanh" || tabParam === "branch-menu" ? "menu-chi-nhanh"
-    : "mon"
+    isOptionsTab && (isRestaurantAdmin || isBranchManager)
+      ? "tuy-chon"
+      : !isRestaurantAdmin
+        ? "menu-chi-nhanh"
+        : tabParam === "danh-muc" || tabParam === "categories"
+          ? "danh-muc"
+          : tabParam === "menu-chi-nhanh" || tabParam === "branch-menu"
+            ? "menu-chi-nhanh"
+            : "mon"
   const [optionSearch, setOptionSearch] = useState("")
   const [localBranchId, setLocalBranchId] = useState<number | null>(null)
 
@@ -98,16 +102,25 @@ export default function MenuManagementPage() {
 
   // ---- Dữ liệu thật ----
   const categoriesQuery = useCategoriesByRestaurant(restaurantId)
-  const optionGroupsQuery = useOptionGroupsByRestaurant(activeTab === "tuy-chon" ? restaurantId : undefined)
+  const optionGroupsQuery = useOptionGroupsByRestaurant(
+    activeTab === "tuy-chon" ? restaurantId : undefined,
+  )
   const branchesQuery = useBranchesByRestaurant(isRestaurantAdmin ? restaurantId : undefined)
-  const ownBranchQuery = useBranch(isRestaurantAdmin ? undefined : scopeBranchId ?? undefined)
+  const ownBranchQuery = useBranch(isRestaurantAdmin ? undefined : (scopeBranchId ?? undefined))
   const branchQuery = isRestaurantAdmin ? branchesQuery : ownBranchQuery
-  const branches = isRestaurantAdmin ? branchesQuery.data ?? [] : ownBranchQuery.data ? [ownBranchQuery.data] : []
+  const branches = isRestaurantAdmin
+    ? (branchesQuery.data ?? [])
+    : ownBranchQuery.data
+      ? [ownBranchQuery.data]
+      : []
   const targetBranchId = scopeBranchId ?? (isRestaurantAdmin ? localBranchId : null)
   const selectedBranch = branches.find((branch) => branch.id === targetBranchId)
   // Lấy một trang lớn thay vì phân trang: màn này cần đếm & lọc trên toàn bộ danh sách.
   // Nếu vượt DISH_PAGE_SIZE thì cảnh báo trên UI (xem docs/todo.md).
-  const dishesQuery = useDishesByRestaurant(isRestaurantAdmin ? restaurantId : undefined, { page: 0, size: DISH_PAGE_SIZE })
+  const dishesQuery = useDishesByRestaurant(isRestaurantAdmin ? restaurantId : undefined, {
+    page: 0,
+    size: DISH_PAGE_SIZE,
+  })
 
   const apiCategories: Category[] = useMemo(
     () => categoriesQuery.data ?? [],
@@ -117,10 +130,7 @@ export default function MenuManagementPage() {
     () => optionGroupsQuery.data ?? [],
     [optionGroupsQuery.data],
   )
-  const allApiDishes: Dish[] = useMemo(
-    () => dishesQuery.data?.content ?? [],
-    [dishesQuery.data],
-  )
+  const allApiDishes: Dish[] = useMemo(() => dishesQuery.data?.content ?? [], [dishesQuery.data])
   const totalDishElements = dishesQuery.data?.totalElements ?? 0
   const isTruncated = totalDishElements > allApiDishes.length
 
@@ -148,16 +158,24 @@ export default function MenuManagementPage() {
   const unlinkDishFromOptionGroup = useUnlinkDishFromOptionGroup()
 
   // ---- Modal state ----
-  const [categoryModal, setCategoryModal] = useState<{ open: boolean; data: Category | null }>(
-    { open: false, data: null },
-  )
-  const [dishModal, setDishModal] = useState<{ open: boolean; data: Dish | null; branchId?: number }>({
+  const [categoryModal, setCategoryModal] = useState<{ open: boolean; data: Category | null }>({
+    open: false,
+    data: null,
+  })
+  const [dishModal, setDishModal] = useState<{
+    open: boolean
+    data: Dish | null
+    branchId?: number
+  }>({
     open: false,
     data: null,
   })
   const [isSavingDish, setIsSavingDish] = useState(false)
   const savingDish = useRef(false)
-  const [optionGroupModal, setOptionGroupModal] = useState<{ open: boolean; data: OptionGroup | null }>({
+  const [optionGroupModal, setOptionGroupModal] = useState<{
+    open: boolean
+    data: OptionGroup | null
+  }>({
     open: false,
     data: null,
   })
@@ -165,7 +183,10 @@ export default function MenuManagementPage() {
   const [dishToStop, setDishToStop] = useState<Dish | null>(null)
   const [optionGroupToDelete, setOptionGroupToDelete] = useState<OptionGroup | null>(null)
 
-  const affectedBranchesQuery = useCountAffectedBranches(dishToStop?.id, Boolean(dishToStop && dishToStop.branchId == null))
+  const affectedBranchesQuery = useCountAffectedBranches(
+    dishToStop?.id,
+    Boolean(dishToStop && dishToStop.branchId == null),
+  )
 
   // ---- Map sang kiểu hiển thị của các tab ----
   const dishes: DishItem[] = useMemo(
@@ -229,9 +250,9 @@ export default function MenuManagementPage() {
    */
   async function updateDishSaleStatus(dish: Dish, status: "ACTIVE" | "INACTIVE") {
     await changeDishStatus.mutateAsync({ id: dish.id, status })
-    setDishModal((current) => current.data?.id === dish.id
-      ? { ...current, data: { ...current.data, status } }
-      : current)
+    setDishModal((current) =>
+      current.data?.id === dish.id ? { ...current, data: { ...current.data, status } } : current,
+    )
   }
 
   async function handleToggleDishStatus(dish: Dish) {
@@ -306,7 +327,10 @@ export default function MenuManagementPage() {
 
           for (const groupId of selectedGroupIds) {
             if (!currentGroupIds.has(groupId)) {
-              await linkDishToOptionGroup.mutateAsync({ dishId: editing.id, optionGroupId: groupId })
+              await linkDishToOptionGroup.mutateAsync({
+                dishId: editing.id,
+                optionGroupId: groupId,
+              })
             }
           }
           for (const link of currentLinks) {
@@ -319,13 +343,13 @@ export default function MenuManagementPage() {
         toast({ title: "Đã lưu thay đổi món", variant: "success" })
       } else {
         const created = await createDish.mutateAsync({ restaurantId, ...dishData })
-        
+
         // Liên kết các nhóm tùy chọn cho món mới (Requirement 5)
         if (optionGroupIds && optionGroupIds.length > 0 && created?.id) {
           await Promise.all(
             optionGroupIds.map((groupId) =>
-              linkDishToOptionGroup.mutateAsync({ dishId: created.id, optionGroupId: groupId })
-            )
+              linkDishToOptionGroup.mutateAsync({ dishId: created.id, optionGroupId: groupId }),
+            ),
           )
         }
 
@@ -381,7 +405,7 @@ export default function MenuManagementPage() {
               optionGroupId: editing.id,
               name: i.name,
               extraPrice: i.extraPrice,
-            })
+            }),
           ),
           ...toUpdate.map((i) =>
             updateOptionItem.mutateAsync({
@@ -390,7 +414,7 @@ export default function MenuManagementPage() {
                 name: i.name,
                 extraPrice: i.extraPrice,
               },
-            })
+            }),
           ),
         ])
 
@@ -414,8 +438,8 @@ export default function MenuManagementPage() {
                 optionGroupId: created.id,
                 name: item.name,
                 extraPrice: item.extraPrice,
-              })
-            )
+              }),
+            ),
           )
         }
 
@@ -423,10 +447,7 @@ export default function MenuManagementPage() {
       }
       setOptionGroupModal({ open: false, data: null })
     } catch (error) {
-      notifyError(
-        editing ? "Không lưu được nhóm tùy chọn" : "Không tạo được nhóm tùy chọn",
-        error
-      )
+      notifyError(editing ? "Không lưu được nhóm tùy chọn" : "Không tạo được nhóm tùy chọn", error)
     }
   }
 
@@ -516,7 +537,9 @@ export default function MenuManagementPage() {
     if (activeTab === "tuy-chon") {
       return {
         title: "Tùy chọn món",
-        subtitle: isRestaurantAdmin ? `${optionGroups.length} nhóm tùy chọn · dùng chung cho các món` : "Nhóm tùy chọn dùng chung của nhà hàng",
+        subtitle: isRestaurantAdmin
+          ? `${optionGroups.length} nhóm tùy chọn · dùng chung cho các món`
+          : "Nhóm tùy chọn dùng chung của nhà hàng",
       }
     }
     if (activeTab === "menu-chi-nhanh") {
@@ -533,59 +556,98 @@ export default function MenuManagementPage() {
         : `Toàn nhà hàng · ${dishes.length} món · ${activeDishCount} đang bán`,
     }
   })()
-  const headerActions = activeTab === "menu-chi-nhanh" ? (
-    <div className="flex min-w-0 items-center gap-2">
-      {isRestaurantAdmin && scopeBranchId == null && branches.length > 0 ? (
-        <Select value={selectedBranch ? String(selectedBranch.id) : ""} onValueChange={(value) => setLocalBranchId(Number(value))}>
-          <SelectTrigger aria-label="Chọn chi nhánh" className="h-10 min-w-0 flex-1 md:w-48 [&>span]:truncate">
-            <SelectValue placeholder="Chọn chi nhánh" />
-          </SelectTrigger>
-          <SelectContent>
-            {branches.map((branch) => (
-              <SelectItem key={branch.id} value={String(branch.id)}>{branch.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      ) : null}
-      {isBranchManager ? (
-        <Button type="button" variant="outline" className="h-10 px-3" onClick={() => handleTabChange("tuy-chon")}>
-          Tùy chọn món
-        </Button>
-      ) : null}
-      {selectedBranch ? (
-        <Button type="button" className="h-10 px-4" onClick={() => setDishModal({ open: true, data: null, branchId: selectedBranch.id })}>
-          <Plus aria-hidden="true" />
-          Thêm món riêng
-        </Button>
-      ) : null}
-    </div>
-  ) : isBranchManager ? (
-    <Button type="button" variant="outline" className="h-10" onClick={() => handleTabChange("menu-chi-nhanh")}>
-      Về thực đơn chi nhánh
-    </Button>
-  ) : (
-    <MenuHeaderActions
-      activeTab={activeTab}
-      onTabChange={handleTabChange}
-      onAdd={activeTab === "mon" ? handleAddDish
-        : activeTab === "danh-muc" ? handleAddCategory : handleAddOptionGroup}
-    />
-  )
-  const editingDish = restaurantDishes.find((dish) => dish.id === dishModal.data?.id) ?? dishModal.data
+  const headerActions =
+    activeTab === "menu-chi-nhanh" ? (
+      <div className="flex min-w-0 items-center gap-2">
+        {isRestaurantAdmin && scopeBranchId == null && branches.length > 0 ? (
+          <Select
+            value={selectedBranch ? String(selectedBranch.id) : ""}
+            onValueChange={(value) => setLocalBranchId(Number(value))}
+          >
+            <SelectTrigger
+              aria-label="Chọn chi nhánh"
+              className="h-10 min-w-0 flex-1 md:w-48 [&>span]:truncate"
+            >
+              <SelectValue placeholder="Chọn chi nhánh" />
+            </SelectTrigger>
+            <SelectContent>
+              {branches.map((branch) => (
+                <SelectItem key={branch.id} value={String(branch.id)}>
+                  {branch.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : null}
+        {isBranchManager ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10 px-3"
+            onClick={() => handleTabChange("tuy-chon")}
+          >
+            Tùy chọn món
+          </Button>
+        ) : null}
+        {selectedBranch ? (
+          <Button
+            type="button"
+            className="h-10 px-4"
+            onClick={() => setDishModal({ open: true, data: null, branchId: selectedBranch.id })}
+          >
+            <Plus aria-hidden="true" />
+            Thêm món riêng
+          </Button>
+        ) : null}
+      </div>
+    ) : isBranchManager ? (
+      <Button
+        type="button"
+        variant="outline"
+        className="h-10"
+        onClick={() => handleTabChange("menu-chi-nhanh")}
+      >
+        Về thực đơn chi nhánh
+      </Button>
+    ) : (
+      <MenuHeaderActions
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        onAdd={
+          activeTab === "mon"
+            ? handleAddDish
+            : activeTab === "danh-muc"
+              ? handleAddCategory
+              : handleAddOptionGroup
+        }
+      />
+    )
+  const editingDish =
+    restaurantDishes.find((dish) => dish.id === dishModal.data?.id) ?? dishModal.data
 
   return (
     <div className="flex min-h-full flex-col bg-surface-page">
       <PageHeader
         title={headerMeta.title}
-        subtitle={<span className="block truncate" title={headerMeta.subtitle}>{headerMeta.subtitle}</span>}
+        subtitle={
+          <span className="block truncate" title={headerMeta.subtitle}>
+            {headerMeta.subtitle}
+          </span>
+        }
         mobileSubtitle={headerMeta.subtitle}
         actions={headerActions}
-        tabs={isRestaurantAdmin ? <MenuTabs activeTab={activeTab} onTabChange={handleTabChange} /> : undefined}
+        tabs={
+          isRestaurantAdmin ? (
+            <MenuTabs activeTab={activeTab} onTabChange={handleTabChange} />
+          ) : undefined
+        }
       />
 
       <div className="flex flex-col gap-4 p-4 sm:p-6 lg:p-8">
         <div className="space-y-3 md:hidden">
-          {isRestaurantAdmin ? <MenuTabs activeTab={activeTab} onTabChange={handleTabChange} /> : null}
+          {isRestaurantAdmin ? (
+            <MenuTabs activeTab={activeTab} onTabChange={handleTabChange} />
+          ) : null}
           {headerActions}
         </div>
 
@@ -623,31 +685,47 @@ export default function MenuManagementPage() {
               onDeleteGroup={isRestaurantAdmin ? handleDeleteOptionGroup : undefined}
               onAddGroup={isRestaurantAdmin ? handleAddOptionGroup : undefined}
               isLoading={optionGroupsQuery.isLoading}
-              loadError={optionGroupsQuery.isError ? getErrorMessage(optionGroupsQuery.error) : undefined}
+              loadError={
+                optionGroupsQuery.isError ? getErrorMessage(optionGroupsQuery.error) : undefined
+              }
               onRetry={() => void optionGroupsQuery.refetch()}
             />
           </>
         ) : selectedBranch ? (
-          <BranchMenuManagementTab key={selectedBranch.id} branchId={selectedBranch.id} editable onEditBranchDish={handleEditBranchDish} />
+          <BranchMenuManagementTab
+            key={selectedBranch.id}
+            branchId={selectedBranch.id}
+            editable
+            onEditBranchDish={handleEditBranchDish}
+          />
         ) : (
           <div className="rounded-card border border-border-default bg-surface-card px-4 py-10 text-center text-sm text-text-tertiary">
-            {branchQuery.isLoading ? "Đang tải chi nhánh…" : branchQuery.isError ? (
+            {branchQuery.isLoading ? (
+              "Đang tải chi nhánh…"
+            ) : branchQuery.isError ? (
               <>
                 <p>Không tải được chi nhánh</p>
-                <Button type="button" variant="link" onClick={() => void branchQuery.refetch()}>Thử lại</Button>
+                <Button type="button" variant="link" onClick={() => void branchQuery.refetch()}>
+                  Thử lại
+                </Button>
               </>
-            ) : !isRestaurantAdmin ? "Chọn chi nhánh được phân công để xem thực đơn."
-              : branches.length === 0 ? "Nhà hàng chưa có chi nhánh."
-              : scopeBranchId != null ? "Chi nhánh hiện tại không có trong danh sách. Hãy đổi chi nhánh ở thanh điều hướng."
-              : "Chọn chi nhánh để xem giá và trạng thái còn món."}
+            ) : !isRestaurantAdmin ? (
+              "Chọn chi nhánh được phân công để xem thực đơn."
+            ) : branches.length === 0 ? (
+              "Nhà hàng chưa có chi nhánh."
+            ) : scopeBranchId != null ? (
+              "Chi nhánh hiện tại không có trong danh sách. Hãy đổi chi nhánh ở thanh điều hướng."
+            ) : (
+              "Chọn chi nhánh để xem giá và trạng thái còn món."
+            )}
           </div>
         )}
       </div>
 
       {activeTab === "mon" && isTruncated ? (
         <p className="rounded-lg bg-status-warning-subtle px-3.5 py-2.5 text-xs font-medium text-status-warning">
-          Đang hiển thị {allApiDishes.length}/{totalDishElements} món. Danh sách vượt quá
-          giới hạn tải một lần — cần bổ sung phân trang.
+          Đang hiển thị {allApiDishes.length}/{totalDishElements} món. Danh sách vượt quá giới hạn
+          tải một lần — cần bổ sung phân trang.
         </p>
       ) : null}
 
@@ -668,12 +746,19 @@ export default function MenuManagementPage() {
         initialData={dishModal.data}
         isSaving={isSavingDish}
         currentBranchId={dishModal.data?.branchId ?? dishModal.branchId}
-        branchName={branches.find((branch) => branch.id === (dishModal.data?.branchId ?? dishModal.branchId))?.name}
-        saleStatus={editingDish ? {
-          isSelling: editingDish.status === "ACTIVE",
-          isUpdating: changeDishStatus.isPending,
-          onChange: () => void handleToggleDishStatus(editingDish),
-        } : undefined}
+        branchName={
+          branches.find((branch) => branch.id === (dishModal.data?.branchId ?? dishModal.branchId))
+            ?.name
+        }
+        saleStatus={
+          editingDish
+            ? {
+                isSelling: editingDish.status === "ACTIVE",
+                isUpdating: changeDishStatus.isPending,
+                onChange: () => void handleToggleDishStatus(editingDish),
+              }
+            : undefined
+        }
       />
 
       <OptionGroupModal
@@ -709,7 +794,6 @@ export default function MenuManagementPage() {
         onConfirm={handleConfirmStopSelling}
         isSaving={changeDishStatus.isPending}
       />
-
     </div>
   )
 }

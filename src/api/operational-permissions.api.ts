@@ -2,8 +2,14 @@ import { useQuery } from "@tanstack/react-query"
 import { apiGet } from "@/lib/http"
 import { useAuthStore } from "@/stores/auth.store"
 
-export type OperationalPermission = "RESERVE_TABLE" | "CONFIRM_ORDER" | "WEIGH_ORDER" | "SERVE_ORDER"
-  | "MANAGE_STOCK" | "VIEW_REPORT" | "EXPORT_REPORT"
+export type OperationalPermission =
+  | "RESERVE_TABLE"
+  | "CONFIRM_ORDER"
+  | "WEIGH_ORDER"
+  | "SERVE_ORDER"
+  | "MANAGE_STOCK"
+  | "VIEW_REPORT"
+  | "EXPORT_REPORT"
 
 export interface PermissionItem {
   code: OperationalPermission
@@ -41,6 +47,7 @@ export function useBranchOperationalPermissions(branchId?: number | null) {
   })
   return {
     ...query,
-    can: (permission: OperationalPermission) => role === "RESTAURANT_ADMIN" || (query.data?.includes(permission) ?? false),
+    can: (permission: OperationalPermission) =>
+      role === "RESTAURANT_ADMIN" || (query.data?.includes(permission) ?? false),
   }
 }

@@ -1,33 +1,33 @@
-import { create } from "zustand";
-import type { DiscountType, PaymentMethod } from "@/types/enums";
+import { create } from "zustand"
+import type { DiscountType, PaymentMethod } from "@/types/enums"
 
 export interface CheckoutLineItem {
-  id: number;
-  name: string;
-  note?: string;
-  quantity: number;
-  lineTotal: number;
+  id: number
+  name: string
+  note?: string
+  quantity: number
+  lineTotal: number
 }
 
 export interface ManualDiscountState {
-  scope: "INVOICE" | "ITEM";
-  type: DiscountType;
-  value: number;
-  reason: string;
-  amount: number;
+  scope: "INVOICE" | "ITEM"
+  type: DiscountType
+  value: number
+  reason: string
+  amount: number
   /** Vượt ngưỡng cho phép của chi nhánh (BR-10) — cần Quản lý chi nhánh duyệt */
-  requiresApproval: boolean;
+  requiresApproval: boolean
 }
 
 export interface ManualDiscountInput {
-  scope: "INVOICE" | "ITEM";
-  type: DiscountType;
-  value: number;
-  reason: string;
+  scope: "INVOICE" | "ITEM"
+  type: DiscountType
+  value: number
+  reason: string
 }
 
 /** Ngưỡng chiết khấu tay không cần duyệt — vượt mức này phải gửi Quản lý chi nhánh (BR-10) */
-export const MANUAL_DISCOUNT_APPROVAL_THRESHOLD_RATIO = 0.1;
+export const MANUAL_DISCOUNT_APPROVAL_THRESHOLD_RATIO = 0.1
 
 const INITIAL_ITEMS: CheckoutLineItem[] = [
   {
@@ -41,57 +41,57 @@ const INITIAL_ITEMS: CheckoutLineItem[] = [
   { id: 3, name: "Bún chả Hà Nội", quantity: 1, lineTotal: 70000 },
   { id: 4, name: "Trà tắc", note: "Ít đá", quantity: 2, lineTotal: 60000 },
   { id: 5, name: "Bia Saigon", quantity: 2, lineTotal: 40000 },
-];
+]
 
 export interface IssuedInvoice {
-  invoiceId: number;
-  invoiceNumber: string;
-  issuedAt: string; // dd/MM/yyyy · HH:mm
-  method: PaymentMethod;
-  amountTendered?: number;
-  changeAmount?: number;
-  cashierName: string;
-  grandTotal: number;
-  subTotal: number;
-  manualDiscount: ManualDiscountState | null;
-  serviceFee: number;
-  vatAmount: number;
-  items: CheckoutLineItem[];
-  promotionName?: string;
-  promotionAmount?: number;
+  invoiceId: number
+  invoiceNumber: string
+  issuedAt: string // dd/MM/yyyy · HH:mm
+  method: PaymentMethod
+  amountTendered?: number
+  changeAmount?: number
+  cashierName: string
+  grandTotal: number
+  subTotal: number
+  manualDiscount: ManualDiscountState | null
+  serviceFee: number
+  vatAmount: number
+  items: CheckoutLineItem[]
+  promotionName?: string
+  promotionAmount?: number
 }
 
 interface CheckoutState {
-  tableSessionId: number;
-  tableName: string;
-  guestCount: number;
-  sessionCode: string;
-  waiterName: string;
-  cashierName: string;
-  restaurantName: string;
-  restaurantAddress: string;
-  bankAccountLabel: string; // "Vietcombank · 0071 0009 88888"
-  bankAccountOwner: string; // "CTY TNHH PHO VIET"
+  tableSessionId: number
+  tableName: string
+  guestCount: number
+  sessionCode: string
+  waiterName: string
+  cashierName: string
+  restaurantName: string
+  restaurantAddress: string
+  bankAccountLabel: string // "Vietcombank · 0071 0009 88888"
+  bankAccountOwner: string // "CTY TNHH PHO VIET"
 
-  items: CheckoutLineItem[];
-  manualDiscount: ManualDiscountState | null;
-  selectedPromotion: any | null;
+  items: CheckoutLineItem[]
+  manualDiscount: ManualDiscountState | null
+  selectedPromotion: any | null
 
-  paymentMethod: PaymentMethod;
-  cashTendered: number | null;
-  qrPaid: boolean;
+  paymentMethod: PaymentMethod
+  cashTendered: number | null
+  qrPaid: boolean
 
-  lastInvoice: IssuedInvoice | null;
+  lastInvoice: IssuedInvoice | null
 
   // ---- actions ----
-  setPaymentMethod: (method: PaymentMethod) => void;
-  setCashTendered: (amount: number | null) => void;
-  setSelectedPromotion: (promo: any | null) => void;
-  setManualDiscount: (discount: ManualDiscountState | null) => void;
-  applyManualDiscount: (input: ManualDiscountInput) => ManualDiscountState;
-  removeManualDiscount: () => void;
-  markQrPaid: () => void;
-  resetPaymentState: () => void;
+  setPaymentMethod: (method: PaymentMethod) => void
+  setCashTendered: (amount: number | null) => void
+  setSelectedPromotion: (promo: any | null) => void
+  setManualDiscount: (discount: ManualDiscountState | null) => void
+  applyManualDiscount: (input: ManualDiscountInput) => ManualDiscountState
+  removeManualDiscount: () => void
+  markQrPaid: () => void
+  resetPaymentState: () => void
 }
 
 export const useCheckoutStore = create<CheckoutState>((set) => ({
@@ -133,9 +133,9 @@ export const useCheckoutStore = create<CheckoutState>((set) => ({
       reason: input.reason,
       amount: 0, // BE sẽ tính
       requiresApproval: false, // BE sẽ quyết định
-    };
-    set({ manualDiscount: next });
-    return next;
+    }
+    set({ manualDiscount: next })
+    return next
   },
 
   removeManualDiscount: () => set({ manualDiscount: null }),
@@ -151,4 +151,4 @@ export const useCheckoutStore = create<CheckoutState>((set) => ({
       qrPaid: false,
       lastInvoice: null,
     }),
-}));
+}))

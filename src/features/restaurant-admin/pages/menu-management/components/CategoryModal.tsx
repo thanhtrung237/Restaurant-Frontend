@@ -132,12 +132,7 @@ function CategoryForm({
 
   return (
     <form onSubmit={submit} className="space-y-4 py-2">
-      <FormField
-        label="Tên danh mục"
-        htmlFor="category-name"
-        required
-        error={errors.name?.message}
-      >
+      <FormField label="Tên danh mục" htmlFor="category-name" required error={errors.name?.message}>
         <Input id="category-name" {...register("name")} placeholder="VD: Khai vị" autoFocus />
       </FormField>
 

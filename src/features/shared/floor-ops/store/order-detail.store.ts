@@ -1,35 +1,35 @@
-import { create } from "zustand";
-import type { OrderDetailStatus } from "@/types/enums";
+import { create } from "zustand"
+import type { OrderDetailStatus } from "@/types/enums"
 
 export interface OrderLineItem {
-  id: number;
-  name: string;
-  status: OrderDetailStatus;
-  quantity: number;
-  unitPrice: number;
-  note?: string;
+  id: number
+  name: string
+  status: OrderDetailStatus
+  quantity: number
+  unitPrice: number
+  note?: string
 }
 
 export interface OrderRound {
-  id: number;
-  label: string;
-  time: string;
-  items: OrderLineItem[];
+  id: number
+  label: string
+  time: string
+  items: OrderLineItem[]
 }
 
 export interface DraftItem {
-  id: number;
-  name: string;
-  unitPrice: number;
-  quantity: number;
-  note?: string;
+  id: number
+  name: string
+  unitPrice: number
+  quantity: number
+  note?: string
 }
 
 export interface QuickAddSuggestion {
-  id: number;
-  name: string;
-  unitPrice: number;
-  note?: string;
+  id: number
+  name: string
+  unitPrice: number
+  note?: string
 }
 
 const INITIAL_ROUNDS: OrderRound[] = [
@@ -78,7 +78,7 @@ const INITIAL_ROUNDS: OrderRound[] = [
       },
     ],
   },
-];
+]
 
 const QUICK_ADD_SUGGESTIONS: QuickAddSuggestion[] = [
   { id: 201, name: "Bún chả hà nội", unitPrice: 70000, note: "Món chính" },
@@ -89,7 +89,7 @@ const QUICK_ADD_SUGGESTIONS: QuickAddSuggestion[] = [
     note: "Lẩu nồi 2–3 người",
   },
   { id: 203, name: "Trà tắc", unitPrice: 30000, note: "Đồ uống" },
-];
+]
 
 const INITIAL_DRAFT_ITEMS: DraftItem[] = [
   {
@@ -113,27 +113,27 @@ const INITIAL_DRAFT_ITEMS: DraftItem[] = [
     quantity: 2,
     note: "Đồ uống",
   },
-];
+]
 
 /** Ưu đãi tự động áp dụng (khớp promo "Combo trưa tiết kiệm" ở trang Thanh toán) */
-export const AUTO_PROMO_LABEL = "Combo trưa tiết kiệm";
-export const AUTO_PROMO_AMOUNT = 40000;
+export const AUTO_PROMO_LABEL = "Combo trưa tiết kiệm"
+export const AUTO_PROMO_AMOUNT = 40000
 
 interface OrderDetailState {
-  tableName: string;
-  guestCount: number;
-  sessionCode: string;
-  waiterName: string;
+  tableName: string
+  guestCount: number
+  sessionCode: string
+  waiterName: string
 
-  rounds: OrderRound[];
-  quickAddSuggestions: QuickAddSuggestion[];
-  draftItems: DraftItem[];
-  searchQuery: string;
+  rounds: OrderRound[]
+  quickAddSuggestions: QuickAddSuggestion[]
+  draftItems: DraftItem[]
+  searchQuery: string
 
-  setSearchQuery: (q: string) => void;
-  setDraftQuantity: (suggestionId: number, quantity: number) => void;
-  cancelItem: (roundId: number, itemId: number) => void;
-  sendDraftToKitchen: () => void;
+  setSearchQuery: (q: string) => void
+  setDraftQuantity: (suggestionId: number, quantity: number) => void
+  cancelItem: (roundId: number, itemId: number) => void
+  sendDraftToKitchen: () => void
 }
 
 export const useOrderDetailStore = create<OrderDetailState>((set, get) => ({
@@ -151,25 +151,21 @@ export const useOrderDetailStore = create<OrderDetailState>((set, get) => ({
 
   setDraftQuantity: (suggestionId, quantity) =>
     set((state) => {
-      const suggestion = state.quickAddSuggestions.find(
-        (s) => s.id === suggestionId,
-      );
-      if (!suggestion) return state;
+      const suggestion = state.quickAddSuggestions.find((s) => s.id === suggestionId)
+      if (!suggestion) return state
 
-      const existing = state.draftItems.find((d) => d.id === suggestionId);
+      const existing = state.draftItems.find((d) => d.id === suggestionId)
 
       if (quantity <= 0) {
         return {
           draftItems: state.draftItems.filter((d) => d.id !== suggestionId),
-        };
+        }
       }
 
       if (existing) {
         return {
-          draftItems: state.draftItems.map((d) =>
-            d.id === suggestionId ? { ...d, quantity } : d,
-          ),
-        };
+          draftItems: state.draftItems.map((d) => (d.id === suggestionId ? { ...d, quantity } : d)),
+        }
       }
 
       return {
@@ -183,7 +179,7 @@ export const useOrderDetailStore = create<OrderDetailState>((set, get) => ({
             quantity,
           },
         ],
-      };
+      }
     }),
 
   cancelItem: (roundId, itemId) =>
@@ -196,14 +192,13 @@ export const useOrderDetailStore = create<OrderDetailState>((set, get) => ({
     })),
 
   sendDraftToKitchen: () => {
-    const { draftItems, rounds } = get();
-    if (draftItems.length === 0) return;
+    const { draftItems, rounds } = get()
+    if (draftItems.length === 0) return
 
-    const nextRoundId = Math.max(...rounds.map((r) => r.id)) + 1;
-    const now = new Date();
-    const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-    let nextItemId =
-      Math.max(...rounds.flatMap((r) => r.items.map((i) => i.id))) + 1;
+    const nextRoundId = Math.max(...rounds.map((r) => r.id)) + 1
+    const now = new Date()
+    const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
+    let nextItemId = Math.max(...rounds.flatMap((r) => r.items.map((i) => i.id))) + 1
 
     const newRound: OrderRound = {
       id: nextRoundId,
@@ -217,8 +212,8 @@ export const useOrderDetailStore = create<OrderDetailState>((set, get) => ({
         unitPrice: d.unitPrice,
         note: d.note,
       })),
-    };
+    }
 
-    set({ rounds: [...rounds, newRound], draftItems: [] });
+    set({ rounds: [...rounds, newRound], draftItems: [] })
   },
-}));
+}))

@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button"
 import { PromotionTable } from "./components/PromotionTable"
 import { RESTAURANT_ADMIN_PATHS } from "@/app/router/paths"
 import { useAuthStore } from "@/stores/auth.store"
-import { 
-  usePromotionsByRestaurant, 
+import {
+  usePromotionsByRestaurant,
   useChangePromotionStatus,
-  useDeletePromotion 
+  useDeletePromotion,
 } from "@/api/promotions.api"
 import { useToast } from "@/hooks/use-toast"
 import type { Promotion } from "@/types/models"
@@ -49,11 +49,9 @@ export default function PromotionsPage({
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("ALL")
 
   // Fetch promotions từ API — Tự động làm mới mỗi 20 giây để cập nhật lượt dùng real-time
-  const { data, isLoading } = usePromotionsByRestaurant(
-    restaurantId,
-    undefined,
-    { refetchInterval: 20000 }
-  )
+  const { data, isLoading } = usePromotionsByRestaurant(restaurantId, undefined, {
+    refetchInterval: 20000,
+  })
   const changeStatusMutation = useChangePromotionStatus()
   const deleteMutation = useDeletePromotion()
 
@@ -86,7 +84,7 @@ export default function PromotionsPage({
   // Bật / tắt trạng thái hoạt động của chương trình khuyến mãi
   const handleToggleStatus = async (id: number, newStatus: boolean) => {
     const status: PromotionStatus = newStatus ? "ACTIVE" : "INACTIVE"
-    
+
     try {
       await changeStatusMutation.mutateAsync({ id, status })
       toast({
@@ -140,7 +138,11 @@ export default function PromotionsPage({
         subtitle="Hệ thống tự động áp dụng khi đủ điều kiện (BR-22) · Ưu tiên theo priority (BR-23)"
         mobileSubtitle="Tự động áp dụng khi đủ điều kiện"
         actions={
-          <Button type="button" onClick={handleCreatePromotion} className="h-10 gap-1.5 px-4 cursor-pointer">
+          <Button
+            type="button"
+            onClick={handleCreatePromotion}
+            className="h-10 gap-1.5 px-4 cursor-pointer"
+          >
             <Plus className="size-4 stroke-[2.5]" />
             <span>Tạo khuyến mãi</span>
           </Button>

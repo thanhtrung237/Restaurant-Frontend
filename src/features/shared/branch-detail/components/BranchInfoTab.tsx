@@ -10,7 +10,7 @@ interface BranchInfoTabProps {
 /**
  * Tab "Thông tin" — Hiển thị thẻ THÔNG TIN CHI NHÁNH
  * Chuẩn theo file: Chi tiết chi nhánh -Thông tin chi nhánh.png
- * 
+ *
  * Lưu ý: managerName/staffCount ẨN nếu không có dữ liệu (403 hoặc không gọi được API)
  * startDate bỏ vì BE không có field này
  */
@@ -24,7 +24,9 @@ export const BranchInfoTab: React.FC<BranchInfoTabProps> = ({ branch }) => {
     { label: "Giờ mở cửa", value: branch.openingHours },
     { label: "Số bàn", value: `${branch.tableCount} bàn` },
     // Chỉ hiện nếu có dữ liệu
-    branch.staffCount > 0 ? { label: "Số nhân viên", value: `${branch.staffCount} nhân viên` } : null,
+    branch.staffCount > 0
+      ? { label: "Số nhân viên", value: `${branch.staffCount} nhân viên` }
+      : null,
     // startDate bỏ vì BE không có
   ].filter(Boolean) as Array<{ label: string; value: string }>
 
@@ -42,14 +44,9 @@ export const BranchInfoTab: React.FC<BranchInfoTabProps> = ({ branch }) => {
         {/* Danh sách các cặp nhãn - giá trị */}
         <div className="divide-y divide-border-default">
           {infoRows.map((row) => (
-            <div
-              key={row.label}
-              className="py-3.5 flex items-center justify-between text-sm"
-            >
+            <div key={row.label} className="py-3.5 flex items-center justify-between text-sm">
               <span className="text-text-tertiary">{row.label}</span>
-              <span className="font-semibold text-text-primary text-right">
-                {row.value}
-              </span>
+              <span className="font-semibold text-text-primary text-right">{row.value}</span>
             </div>
           ))}
         </div>

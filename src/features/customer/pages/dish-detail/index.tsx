@@ -5,7 +5,12 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
 import { CUSTOMER_PATHS } from "@/app/router/paths"
-import { useDish, useDishOptionGroups, useOptionItemsByGroup, useBranchMenu } from "@/features/customer/api"
+import {
+  useDish,
+  useDishOptionGroups,
+  useOptionItemsByGroup,
+  useBranchMenu,
+} from "@/features/customer/api"
 import { useCustomerCartStore } from "@/features/customer/store/cart.store"
 import { useCustomerSessionStore } from "@/features/customer/store/session.store"
 import { useBillLocked } from "@/features/customer/hooks/use-bill-locked"
@@ -14,7 +19,6 @@ import { useActivePromotionsByBranch } from "@/api/promotions.api"
 import { evaluateItemPromotion } from "@/lib/promotion-display"
 import type { DishOptionGroup } from "@/types/models"
 import { cn } from "@/lib/utils"
-
 
 /**
  * Chi tiết món — Fetch từ API thực
@@ -54,7 +58,7 @@ export default function DishDetailPage() {
 
   const branchMenuItem = React.useMemo(
     () => menuItems.find((m) => m.dishId === dishIdNum),
-    [menuItems, dishIdNum]
+    [menuItems, dishIdNum],
   )
   const effectiveUnitPrice = branchMenuItem?.effectivePrice ?? dish?.basePrice ?? 0
 
@@ -74,10 +78,9 @@ export default function DishDetailPage() {
         effectivePrice: effectiveUnitPrice,
       },
       quantity,
-      activePromotions
+      activePromotions,
     )
   }, [dish, branchMenuItem, effectiveUnitPrice, quantity, activePromotions])
-
 
   // Nếu không tìm thấy món, quay lại Menu
   React.useEffect(() => {
@@ -104,7 +107,7 @@ export default function DishDetailPage() {
     setSelectedOptions((prev) => {
       const next = new Map(prev)
       const currentItems = next.get(groupId) || new Set()
-      
+
       if (isRadio) {
         // Radio behavior: only one selection (maxSelect === 1)
         next.set(groupId, new Set([itemId]))
@@ -160,13 +163,13 @@ export default function DishDetailPage() {
 
     // Build selected options for order submission
     const selectedOptionsForOrder = Array.from(selectedOptions.entries()).flatMap(
-      ([groupId, itemIds]) => Array.from(itemIds).map(itemId => ({ groupId, itemId }))
+      ([groupId, itemIds]) => Array.from(itemIds).map((itemId) => ({ groupId, itemId })),
     )
 
     // Build options summary for display in cart (e.g., "Cỡ vừa · 70% đường")
-    const selectedItemIds = new Set(selectedOptionsForOrder.map(opt => opt.itemId))
+    const selectedItemIds = new Set(selectedOptionsForOrder.map((opt) => opt.itemId))
     const optionsSummary = Array.from(selectedItemIds)
-      .map(itemId => optionItemNames.get(itemId))
+      .map((itemId) => optionItemNames.get(itemId))
       .filter(Boolean)
       .join(" · ")
 
@@ -196,7 +199,6 @@ export default function DishDetailPage() {
     goBack()
   }
 
-
   return (
     <div className="flex flex-1 flex-col bg-surface-page min-h-dvh w-full">
       <div className="flex-1 overflow-y-auto w-full">
@@ -220,13 +222,15 @@ export default function DishDetailPage() {
 
           {/* ---- Nội dung ---- */}
           <div className="-mt-4 rounded-t-2xl bg-surface-page px-5 sm:px-6 pt-5 pb-4">
-            <h1 className="text-xl sm:text-2xl font-bold break-words text-text-primary">{dish.name}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold break-words text-text-primary">
+              {dish.name}
+            </h1>
 
             <div className="mt-2 flex flex-wrap items-baseline gap-2">
               <span className="text-2xl sm:text-3xl font-bold text-brand-primary">
                 {promoEval.discountAmount > 0
                   ? Math.round(
-                      (effectiveUnitPrice * quantity - promoEval.discountAmount) / quantity
+                      (effectiveUnitPrice * quantity - promoEval.discountAmount) / quantity,
                     ).toLocaleString("vi-VN") + "đ"
                   : effectiveUnitPrice.toLocaleString("vi-VN") + "đ"}
               </span>
@@ -249,7 +253,6 @@ export default function DishDetailPage() {
                 <p className="text-xs text-[#B54708] font-medium leading-tight">{promoEval.hint}</p>
               </div>
             ) : null}
-
 
             {dish.description ? (
               <p className="mt-3 text-sm sm:text-base text-text-secondary">{dish.description}</p>
@@ -325,7 +328,7 @@ export default function DishDetailPage() {
                   ? "Đã yêu cầu tính tiền"
                   : (() => {
                       const selectedItemIds = new Set(
-                        Array.from(selectedOptions.entries()).flatMap(([, ids]) => Array.from(ids))
+                        Array.from(selectedOptions.entries()).flatMap(([, ids]) => Array.from(ids)),
                       )
                       const optionsTotal = Array.from(selectedItemIds).reduce(
                         (s, id) => s + (optionItemPrices.get(id) ?? 0),
@@ -335,7 +338,6 @@ export default function DishDetailPage() {
                       const finalTotal = Math.max(0, grossTotal - promoEval.discountAmount)
                       return `Thêm vào giỏ · ${finalTotal.toLocaleString("vi-VN")}đ`
                     })()}
-
               </span>
             </Button>
           </span>
@@ -386,7 +388,7 @@ function OptionGroupSection({
         <div className="mt-3 space-y-2.5">
           {items.map((item) => {
             const isSelected = selectedItems.has(item.id)
-            
+
             if (isRadio) {
               // Radio button UI
               return (
@@ -398,19 +400,23 @@ function OptionGroupSection({
                     "flex w-full items-center justify-between gap-3 rounded-md border px-4 py-3 text-left transition-colors",
                     isSelected
                       ? "border-brand-primary bg-brand-primary-subtle"
-                      : "border-border-default bg-surface-card hover:border-border-strong"
+                      : "border-border-default bg-surface-card hover:border-border-strong",
                   )}
                 >
                   <span className="flex min-w-0 items-center gap-3">
                     <span
                       className={cn(
                         "flex size-4.5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-                        isSelected ? "border-brand-primary" : "border-border-strong"
+                        isSelected ? "border-brand-primary" : "border-border-strong",
                       )}
                     >
-                      {isSelected ? <span className="size-2 rounded-full bg-brand-primary" /> : null}
+                      {isSelected ? (
+                        <span className="size-2 rounded-full bg-brand-primary" />
+                      ) : null}
                     </span>
-                    <span className="truncate text-sm font-medium text-text-primary">{item.name}</span>
+                    <span className="truncate text-sm font-medium text-text-primary">
+                      {item.name}
+                    </span>
                   </span>
                   {item.extraPrice > 0 ? (
                     <span className="shrink-0 text-sm font-semibold text-text-secondary">

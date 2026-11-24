@@ -75,13 +75,9 @@ export function MobileHeader({
           </button>
         ) : null}
         <div className="min-w-0">
-          <h2 className="truncate text-base font-bold leading-tight text-text-primary">
-            {title}
-          </h2>
+          <h2 className="truncate text-base font-bold leading-tight text-text-primary">{title}</h2>
           {subtitle ? (
-            <p className="mt-0.5 truncate text-xs leading-tight text-text-tertiary">
-              {subtitle}
-            </p>
+            <p className="mt-0.5 truncate text-xs leading-tight text-text-tertiary">{subtitle}</p>
           ) : null}
         </div>
       </div>
@@ -105,10 +101,7 @@ function AppMobileHeader({
   headerActions,
   rightActions,
   className,
-}: Pick<
-  MobileHeaderProps,
-  "title" | "subtitle" | "headerActions" | "rightActions" | "className"
->) {
+}: Pick<MobileHeaderProps, "title" | "subtitle" | "headerActions" | "rightActions" | "className">) {
   const account = useAuthStore((s) => s.account)
   const { logout, isLoggingOut } = useLogout()
 
@@ -128,19 +121,13 @@ function AppMobileHeader({
       )}
     >
       <Avatar className="size-10 shrink-0 bg-surface-muted text-xs font-bold text-text-primary">
-        <AvatarFallback className="bg-surface-muted text-text-primary">
-          {initials}
-        </AvatarFallback>
+        <AvatarFallback className="bg-surface-muted text-text-primary">{initials}</AvatarFallback>
       </Avatar>
 
       <div className="min-w-0 flex-1">
-        <h1 className="truncate text-[17px] font-bold leading-tight text-text-primary">
-          {title}
-        </h1>
+        <h1 className="truncate text-[17px] font-bold leading-tight text-text-primary">{title}</h1>
         {subtitle ? (
-          <p className="mt-0.5 truncate text-xs leading-tight text-text-tertiary">
-            {subtitle}
-          </p>
+          <p className="mt-0.5 truncate text-xs leading-tight text-text-tertiary">{subtitle}</p>
         ) : null}
       </div>
 

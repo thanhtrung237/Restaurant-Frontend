@@ -2,7 +2,11 @@ import { Check, ChevronDown } from "lucide-react"
 import { PopoverClose } from "@radix-ui/react-popover"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
-import { branchChoiceKey, useBranchSwitcher, type BranchChoice } from "@/features/auth/hooks/useBranchSwitcher"
+import {
+  branchChoiceKey,
+  useBranchSwitcher,
+  type BranchChoice,
+} from "@/features/auth/hooks/useBranchSwitcher"
 
 type BranchSwitcherVariant = "full" | "chip"
 
@@ -23,7 +27,15 @@ export interface BranchSwitcherProps {
  * Tài khoản chỉ có 1 phân công: hiển thị tĩnh, không mở được dropdown (FR-ADM-04).
  */
 export function BranchSwitcher({ variant = "full", className }: BranchSwitcherProps) {
-  const { choices, activeChoice, canSwitch, switchTo, branchListLoading, branchListError, retryBranchList } = useBranchSwitcher()
+  const {
+    choices,
+    activeChoice,
+    canSwitch,
+    switchTo,
+    branchListLoading,
+    branchListError,
+    retryBranchList,
+  } = useBranchSwitcher()
 
   if (!activeChoice) return null
 
@@ -127,9 +139,7 @@ function BranchSwitcherRow({
       <span
         className={cn(
           "flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
-          isActive
-            ? "bg-brand-primary text-text-on-brand"
-            : "bg-surface-muted text-text-secondary",
+          isActive ? "bg-brand-primary text-text-on-brand" : "bg-surface-muted text-text-secondary",
         )}
       >
         {choice.shortName}
@@ -144,12 +154,12 @@ function BranchSwitcherRow({
           {choice.name}
         </span>
         {choice.roleLabel ? (
-          <span className="block truncate text-xs text-text-tertiary">
-            {choice.roleLabel}
-          </span>
+          <span className="block truncate text-xs text-text-tertiary">{choice.roleLabel}</span>
         ) : null}
       </span>
-      {isActive ? <Check aria-hidden="true" className="size-4 shrink-0 text-brand-primary" /> : null}
+      {isActive ? (
+        <Check aria-hidden="true" className="size-4 shrink-0 text-brand-primary" />
+      ) : null}
     </PopoverClose>
   )
 }

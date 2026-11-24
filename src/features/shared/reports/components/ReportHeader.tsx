@@ -9,7 +9,12 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { MOCK_COMPARE_METRICS } from "../mock-data"
-import { TimeRangeDropdown, detectActivePreset, PRESET_OPTIONS, type DateRangeValue } from "./TimeRangeDropdown"
+import {
+  TimeRangeDropdown,
+  detectActivePreset,
+  PRESET_OPTIONS,
+  type DateRangeValue,
+} from "./TimeRangeDropdown"
 import { HourlyTimePicker } from "./HourlyTimePicker"
 import type { BranchListItem } from "@/types/models"
 import { cn } from "@/lib/utils"
@@ -147,7 +152,7 @@ export function ReportHeaderActions({
                     onClick={handleToggleAll}
                     className={cn(
                       "flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors outline-none",
-                      "text-text-primary hover:bg-surface-muted cursor-pointer"
+                      "text-text-primary hover:bg-surface-muted cursor-pointer",
                     )}
                   >
                     <div className="flex size-4 items-center justify-center">
@@ -169,7 +174,7 @@ export function ReportHeaderActions({
                   className={cn(
                     "flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors outline-none",
                     "text-text-primary hover:bg-surface-muted",
-                    isBranchManager ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+                    isBranchManager ? "cursor-not-allowed opacity-60" : "cursor-pointer",
                   )}
                 >
                   <div className="flex size-4 items-center justify-center">
@@ -193,7 +198,7 @@ export function ReportHeaderActions({
               "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer",
               activePresetKey === "today"
                 ? "bg-surface-card text-brand-primary shadow-xs font-bold"
-                : "text-text-secondary hover:text-text-primary"
+                : "text-text-secondary hover:text-text-primary",
             )}
           >
             Hôm nay
@@ -205,7 +210,7 @@ export function ReportHeaderActions({
               "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer",
               activePresetKey === "yesterday"
                 ? "bg-surface-card text-brand-primary shadow-xs font-bold"
-                : "text-text-secondary hover:text-text-primary"
+                : "text-text-secondary hover:text-text-primary",
             )}
           >
             Hôm qua
@@ -217,7 +222,7 @@ export function ReportHeaderActions({
               "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer",
               activePresetKey === "7days"
                 ? "bg-surface-card text-brand-primary shadow-xs font-bold"
-                : "text-text-secondary hover:text-text-primary"
+                : "text-text-secondary hover:text-text-primary",
             )}
           >
             7 ngày
@@ -229,7 +234,7 @@ export function ReportHeaderActions({
               "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer",
               activePresetKey === "thisMonth"
                 ? "bg-surface-card text-brand-primary shadow-xs font-bold"
-                : "text-text-secondary hover:text-text-primary"
+                : "text-text-secondary hover:text-text-primary",
             )}
           >
             Tháng này
@@ -255,49 +260,53 @@ export function ReportHeaderActions({
         )}
 
         {/* Export Button & Dropdown (FR-RPT-05: Xuất .xlsx / .csv) */}
-        {onExport && <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              disabled={isExporting}
-              className="rounded-xl bg-brand-primary px-4 py-2 text-sm font-semibold text-text-on-brand shadow-2xs hover:bg-brand-primary-hover active:scale-[0.99] transition-all flex items-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {isExporting ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  <span>Đang xuất...</span>
-                </>
-              ) : (
-                <>
-                  <Download className="size-4" />
-                  <span>Xuất báo cáo</span>
-                  <ChevronDown className="size-3.5 opacity-80" />
-                </>
-              )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="right" className="w-52">
-            <DropdownMenuItem
-              onClick={() => onExport("xlsx")}
-              className="cursor-pointer flex items-center gap-2.5 py-2 text-text-primary hover:bg-surface-muted"
-            >
-              <FileSpreadsheet className="size-4 text-emerald-600" />
-              <div className="flex flex-col">
-                <span className="font-medium text-sm">Xuất Excel (.xlsx)</span>
-                <span className="text-[11px] text-text-tertiary">Đầy đủ định dạng & bảng tính</span>
-              </div>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => onExport("csv")}
-              className="cursor-pointer flex items-center gap-2.5 py-2 text-text-primary hover:bg-surface-muted"
-            >
-              <FileText className="size-4 text-blue-600" />
-              <div className="flex flex-col">
-                <span className="font-medium text-sm">Xuất CSV (.csv)</span>
-                <span className="text-[11px] text-text-tertiary">Mã hóa UTF-8 có dấu</span>
-              </div>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>}
+        {onExport && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                disabled={isExporting}
+                className="rounded-xl bg-brand-primary px-4 py-2 text-sm font-semibold text-text-on-brand shadow-2xs hover:bg-brand-primary-hover active:scale-[0.99] transition-all flex items-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isExporting ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    <span>Đang xuất...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="size-4" />
+                    <span>Xuất báo cáo</span>
+                    <ChevronDown className="size-3.5 opacity-80" />
+                  </>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="right" className="w-52">
+              <DropdownMenuItem
+                onClick={() => onExport("xlsx")}
+                className="cursor-pointer flex items-center gap-2.5 py-2 text-text-primary hover:bg-surface-muted"
+              >
+                <FileSpreadsheet className="size-4 text-emerald-600" />
+                <div className="flex flex-col">
+                  <span className="font-medium text-sm">Xuất Excel (.xlsx)</span>
+                  <span className="text-[11px] text-text-tertiary">
+                    Đầy đủ định dạng & bảng tính
+                  </span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onExport("csv")}
+                className="cursor-pointer flex items-center gap-2.5 py-2 text-text-primary hover:bg-surface-muted"
+              >
+                <FileText className="size-4 text-blue-600" />
+                <div className="flex flex-col">
+                  <span className="font-medium text-sm">Xuất CSV (.csv)</span>
+                  <span className="text-[11px] text-text-tertiary">Mã hóa UTF-8 có dấu</span>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
     </>
   )

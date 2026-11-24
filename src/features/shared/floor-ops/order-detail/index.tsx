@@ -1,8 +1,14 @@
-import * as React from "react";
-import { GuestJoinCode } from "../GuestJoinCode";
-import { useLocation, useNavigate, useParams, useSearchParams, generatePath } from "react-router-dom";
-import { StaffCallNotice } from "@/features/shared/floor-ops/StaffCallNotice";
-import { takeawayListPath } from "@/app/router/paths/takeaway.paths";
+import * as React from "react"
+import { GuestJoinCode } from "../GuestJoinCode"
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+  generatePath,
+} from "react-router-dom"
+import { StaffCallNotice } from "@/features/shared/floor-ops/StaffCallNotice"
+import { takeawayListPath } from "@/app/router/paths/takeaway.paths"
 import {
   ChevronLeft,
   Trash2,
@@ -12,18 +18,15 @@ import {
   RefreshCw,
   DoorClosed,
   Tag,
-} from "lucide-react";
-import { StatusBadge } from "@/components/common/StatusBadge";
-import {
-  HeaderOverflowMenu,
-  type OverflowMenuAction,
-} from "@/components/layout/HeaderOverflowMenu";
-import { StickyActionBar } from "@/components/layout/StickyActionBar";
-import { useToast } from "@/hooks/use-toast";
-import { PageHeader } from "@/components/layout/PageHeader";
-import { useAuthStore } from "@/stores/auth.store";
-import { APP_ROLE } from "@/config/roles";
-import { cn } from "@/lib/utils";
+} from "lucide-react"
+import { StatusBadge } from "@/components/common/StatusBadge"
+import { HeaderOverflowMenu, type OverflowMenuAction } from "@/components/layout/HeaderOverflowMenu"
+import { StickyActionBar } from "@/components/layout/StickyActionBar"
+import { useToast } from "@/hooks/use-toast"
+import { PageHeader } from "@/components/layout/PageHeader"
+import { useAuthStore } from "@/stores/auth.store"
+import { APP_ROLE } from "@/config/roles"
+import { cn } from "@/lib/utils"
 import {
   Dialog,
   DialogContent,
@@ -31,10 +34,10 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import {
   useOrdersBySession,
   useOrderDetailsBySession,
@@ -46,13 +49,18 @@ import {
   useCloseSession,
   useCancelSession,
   useInvoiceBySession,
-} from "@/features/shared/floor-ops/api";
-import { isBillableDetail } from "@/lib/order-detail-billing";
-import { BRANCH_MANAGER_PATHS, CASHIER_PATHS, RESTAURANT_ADMIN_PATHS, WAITER_PATHS } from "@/app/router/paths";
-import { getErrorMessage } from "@/lib/http";
-import { CANCEL_REASON, CANCEL_REASON_LABEL } from "@/types/enums";
-import type { CancelReason } from "@/types/enums";
-import type { OrderDetail } from "@/types/models";
+} from "@/features/shared/floor-ops/api"
+import { isBillableDetail } from "@/lib/order-detail-billing"
+import {
+  BRANCH_MANAGER_PATHS,
+  CASHIER_PATHS,
+  RESTAURANT_ADMIN_PATHS,
+  WAITER_PATHS,
+} from "@/app/router/paths"
+import { getErrorMessage } from "@/lib/http"
+import { CANCEL_REASON, CANCEL_REASON_LABEL } from "@/types/enums"
+import type { CancelReason } from "@/types/enums"
+import type { OrderDetail } from "@/types/models"
 
 /**
  * Huỷ món chia 2 luồng theo trạng thái dòng món (khớp điều kiện của backend):
@@ -61,21 +69,21 @@ import type { OrderDetail } from "@/types/models";
  *  - AFTER_KITCHEN: PREPARING / SERVED → `POST /order-details/{id}/cancel-after-kitchen`,
  *    BẮT BUỘC có `cancelReason`; chính lý do quyết định món còn tính tiền hay không.
  */
-type CancelPhase = "BEFORE_KITCHEN" | "AFTER_KITCHEN";
+type CancelPhase = "BEFORE_KITCHEN" | "AFTER_KITCHEN"
 
 /** Hệ quả tính tiền của từng lý do — hiển thị để nhân viên chọn đúng, tránh thất thu. */
 const CANCEL_REASON_EFFECT: Record<CancelReason, string> = {
   RESTAURANT_ERROR: "Món sẽ KHÔNG tính tiền cho khách — nhà hàng chịu chi phí.",
   CUSTOMER_CHANGED_MIND: "Món VẪN tính tiền cho khách vì bếp đã làm.",
-};
-
-function cancelPhaseOf(status: OrderDetail["status"]): CancelPhase | null {
-  if (status === "PENDING" || status === "PENDING_WEIGHT") return "BEFORE_KITCHEN";
-  if (status === "PREPARING" || status === "SERVED") return "AFTER_KITCHEN";
-  return null;
 }
 
-const formatVnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`;
+function cancelPhaseOf(status: OrderDetail["status"]): CancelPhase | null {
+  if (status === "PENDING" || status === "PENDING_WEIGHT") return "BEFORE_KITCHEN"
+  if (status === "PREPARING" || status === "SERVED") return "AFTER_KITCHEN"
+  return null
+}
+
+const formatVnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`
 
 /**
  * Đơn món (Order chi tiết) — Hiển thị toàn bộ order-details của 1 table session
@@ -87,97 +95,97 @@ const formatVnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`;
  *      POST /order-details/{id}/cancel
  */
 export default function OrderDetailPage() {
-  const navigate = useNavigate();
-  const { key: locationKey } = useLocation();
-  const [params] = useSearchParams();
-  const targetRound = Number(params.get("round"));
-  const staffCallId = Number(params.get("staffCall"));
-  const { orderId } = useParams<{ orderId: string }>(); // Thực chất là tableSessionId
-  const { toast } = useToast();
+  const navigate = useNavigate()
+  const { key: locationKey } = useLocation()
+  const [params] = useSearchParams()
+  const targetRound = Number(params.get("round"))
+  const staffCallId = Number(params.get("staffCall"))
+  const { orderId } = useParams<{ orderId: string }>() // Thực chất là tableSessionId
+  const { toast } = useToast()
 
-  const tableSessionId = orderId ? Number.parseInt(orderId, 10) : undefined;
+  const tableSessionId = orderId ? Number.parseInt(orderId, 10) : undefined
 
   // Fetch table session info (làm mới mỗi 1s)
-  const { data: session } = useTableSession(tableSessionId, { refetchInterval: 1000 });
-  const { data: sessionInvoice } = useInvoiceBySession(tableSessionId);
-  const closeSessionMutation = useCloseSession();
-  const cancelSessionMutation = useCancelSession();
+  const { data: session } = useTableSession(tableSessionId, { refetchInterval: 1000 })
+  const { data: sessionInvoice } = useInvoiceBySession(tableSessionId)
+  const closeSessionMutation = useCloseSession()
+  const cancelSessionMutation = useCancelSession()
 
   // Fetch all orders of this session (làm mới mỗi 1s)
-  const { data: orders = [] } = useOrdersBySession(tableSessionId, undefined, { refetchInterval: 1000 });
+  const { data: orders = [] } = useOrdersBySession(tableSessionId, undefined, {
+    refetchInterval: 1000,
+  })
 
   // Fetch order details với auto-refresh 1 giây
   const { data: orderDetails = [], isLoading } = useOrderDetailsBySession(
     tableSessionId,
     undefined,
-    { refetchInterval: 1000 }
-  );
+    { refetchInterval: 1000 },
+  )
 
-  const cancelMutation = useCancelBeforeKitchen();
-  const cancelAfterKitchenMutation = useCancelAfterKitchen();
-  const requestPaymentMutation = useRequestPayment();
-  const reprintKitchenTicketMutation = useReprintKitchenTicket();
+  const cancelMutation = useCancelBeforeKitchen()
+  const cancelAfterKitchenMutation = useCancelAfterKitchen()
+  const requestPaymentMutation = useRequestPayment()
+  const reprintKitchenTicketMutation = useReprintKitchenTicket()
 
   /**
    * Đóng phiên bàn — đặc tả mục 4.2 chỉ cho Thu ngân / QL chi nhánh / Quản trị NH.
    * Phục vụ KHÔNG được đóng bàn (cột "Phục vụ" của dòng "Đóng phiên bàn" để trống),
    * nên nút này phải ẩn với vai trò đó ở MỌI kích thước màn hình.
    */
-  const role = useAuthStore((s) => s.role);
+  const role = useAuthStore((s) => s.role)
   const canCloseTable =
     role === APP_ROLE.CASHIER ||
     role === APP_ROLE.BRANCH_MANAGER ||
-    role === APP_ROLE.RESTAURANT_ADMIN;
+    role === APP_ROLE.RESTAURANT_ADMIN
   /**
    * Huỷ phiên — Bảng 2.2: CHỈ Quản lý chi nhánh (và Quản trị nhà hàng).
    * Thu ngân và Phục vụ KHÔNG thấy. Backend cũng chặn (`@PreAuthorize` trên
    * `POST /table-sessions/{id}/cancel`), đây chỉ là lớp ẩn nút.
    */
-  const canCancelSession =
-    role === APP_ROLE.BRANCH_MANAGER || role === APP_ROLE.RESTAURANT_ADMIN;
+  const canCancelSession = role === APP_ROLE.BRANCH_MANAGER || role === APP_ROLE.RESTAURANT_ADMIN
 
   // Modal states
-  const [isPrintModalOpen, setIsPrintModalOpen] = React.useState(false);
-  const [isTransferModalOpen, setIsTransferModalOpen] = React.useState(false);
-  const [isCloseTableModalOpen, setIsCloseTableModalOpen] = React.useState(false);
-  const [isCancelSessionModalOpen, setIsCancelSessionModalOpen] = React.useState(false);
-  const [cancelSessionReason, setCancelSessionReason] = React.useState("");
-  const [isCancellingSession, setIsCancellingSession] = React.useState(false);
-  const [isConfirmPayModalOpen, setIsConfirmPayModalOpen] = React.useState(false);
-  const [isProcessingPay, setIsProcessingPay] = React.useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = React.useState(false)
+  const [isTransferModalOpen, setIsTransferModalOpen] = React.useState(false)
+  const [isCloseTableModalOpen, setIsCloseTableModalOpen] = React.useState(false)
+  const [isCancelSessionModalOpen, setIsCancelSessionModalOpen] = React.useState(false)
+  const [cancelSessionReason, setCancelSessionReason] = React.useState("")
+  const [isCancellingSession, setIsCancellingSession] = React.useState(false)
+  const [isConfirmPayModalOpen, setIsConfirmPayModalOpen] = React.useState(false)
+  const [isProcessingPay, setIsProcessingPay] = React.useState(false)
   const [itemToCancel, setItemToCancel] = React.useState<{
-    id: number;
-    name: string;
-    phase: CancelPhase;
-  } | null>(null);
+    id: number
+    name: string
+    phase: CancelPhase
+  } | null>(null)
   // Chỉ dùng cho luồng AFTER_KITCHEN
-  const [cancelReason, setCancelReason] = React.useState<CancelReason | null>(null);
+  const [cancelReason, setCancelReason] = React.useState<CancelReason | null>(null)
   // Bước xác nhận thêm khi chọn "Lỗi từ nhà hàng": món không tính tiền nên cần chắc chắn
-  const [isConfirmingRestaurantError, setIsConfirmingRestaurantError] =
-    React.useState(false);
+  const [isConfirmingRestaurantError, setIsConfirmingRestaurantError] = React.useState(false)
 
   // Các dòng món còn "Chờ xác nhận" / "Chờ cân" — bếp chưa nhận, có thể huỷ tự do.
   // Nếu còn tồn tại khi bấm "Thanh Toán", phải hỏi nhân viên có muốn huỷ trước khi khoá phiên.
   const pendingItems = React.useMemo(
     () => orderDetails.filter((d) => d.status === "PENDING" || d.status === "PENDING_WEIGHT"),
-    [orderDetails]
-  );
+    [orderDetails],
+  )
 
-  const [transferType, setTransferType] = React.useState<"transfer" | "merge">("transfer");
-  const [targetTable, setTargetTable] = React.useState("B02");
+  const [transferType, setTransferType] = React.useState<"transfer" | "merge">("transfer")
+  const [targetTable, setTargetTable] = React.useState("B02")
 
   // Group order details by orderId (rounds)
   const rounds = React.useMemo(() => {
-    const grouped = new Map<number, OrderDetail[]>();
+    const grouped = new Map<number, OrderDetail[]>()
     orderDetails.forEach((detail) => {
       if (!grouped.has(detail.orderId)) {
-        grouped.set(detail.orderId, []);
+        grouped.set(detail.orderId, [])
       }
-      grouped.get(detail.orderId)!.push(detail);
-    });
+      grouped.get(detail.orderId)!.push(detail)
+    })
 
     return Array.from(grouped.entries()).map(([orderId, items], index) => {
-      const order = orders.find((o) => o.id === orderId);
+      const order = orders.find((o) => o.id === orderId)
       return {
         id: orderId,
         label: `Lượt gọi ${index + 1}`,
@@ -189,49 +197,49 @@ export default function OrderDetailPage() {
             })
           : "",
         items: items.filter((i) => i.status !== "CANCELLED"),
-      };
-    });
-  }, [orderDetails, orders]);
+      }
+    })
+  }, [orderDetails, orders])
 
-  const hasTargetRound = targetRound > 0 && rounds.some((round) => round.id === targetRound);
+  const hasTargetRound = targetRound > 0 && rounds.some((round) => round.id === targetRound)
   React.useEffect(() => {
     if (hasTargetRound) {
-      const target = document.getElementById(`order-round-${targetRound}`);
-      target?.scrollIntoView({ block: "center" });
-      target?.focus({ preventScroll: true });
+      const target = document.getElementById(`order-round-${targetRound}`)
+      target?.scrollIntoView({ block: "center" })
+      target?.focus({ preventScroll: true })
     }
-  }, [hasTargetRound, targetRound, locationKey]);
+  }, [hasTargetRound, targetRound, locationKey])
 
   const totalAmount = React.useMemo(() => {
     return orderDetails
       .filter((d) => d.status !== "CANCELLED")
       .reduce((sum, d) => {
-        return sum + (d.price ?? d.priceAtOrderTime * d.quantity);
-      }, 0);
-  }, [orderDetails]);
+        return sum + (d.price ?? d.priceAtOrderTime * d.quantity)
+      }, 0)
+  }, [orderDetails])
 
   function closeCancelDialog() {
-    setItemToCancel(null);
-    setCancelReason(null);
-    setIsConfirmingRestaurantError(false);
+    setItemToCancel(null)
+    setCancelReason(null)
+    setIsConfirmingRestaurantError(false)
   }
 
   async function handleConfirmCancel() {
-    if (!itemToCancel) return;
+    if (!itemToCancel) return
     try {
-      await cancelMutation.mutateAsync(itemToCancel.id);
+      await cancelMutation.mutateAsync(itemToCancel.id)
       toast({
         title: "Đã hủy món",
         description: `${itemToCancel.name} đã được hủy.`,
         variant: "success",
-      });
-      closeCancelDialog();
+      })
+      closeCancelDialog()
     } catch (error) {
       toast({
         title: "Lỗi hủy món",
         description: error instanceof Error ? error.message : "Không thể hủy món.",
         variant: "danger",
-      });
+      })
     }
   }
 
@@ -240,16 +248,16 @@ export default function OrderDetailPage() {
    * vì món sẽ không tính tiền cho khách.
    */
   function handleSubmitCancelAfterKitchen() {
-    if (!cancelReason) return;
+    if (!cancelReason) return
     if (cancelReason === "RESTAURANT_ERROR" && !isConfirmingRestaurantError) {
-      setIsConfirmingRestaurantError(true);
-      return;
+      setIsConfirmingRestaurantError(true)
+      return
     }
-    void handleConfirmCancelAfterKitchen();
+    void handleConfirmCancelAfterKitchen()
   }
 
   async function handleConfirmCancelAfterKitchen() {
-    if (!itemToCancel || itemToCancel.phase !== "AFTER_KITCHEN" || !cancelReason) return;
+    if (!itemToCancel || itemToCancel.phase !== "AFTER_KITCHEN" || !cancelReason) return
     try {
       // TODO(BE): `OrderDetailCancelRequest` hiện chỉ có `cancelReason` — chưa có field
       // ghi chú, nên lý do chi tiết của nhân viên không gửi được lên server.
@@ -260,7 +268,7 @@ export default function OrderDetailPage() {
       await cancelAfterKitchenMutation.mutateAsync({
         id: itemToCancel.id,
         body: { cancelReason },
-      });
+      })
       toast({
         title: "Đã hủy món",
         description:
@@ -268,66 +276,66 @@ export default function OrderDetailPage() {
             ? `${itemToCancel.name} đã hủy, không tính tiền cho khách.`
             : `${itemToCancel.name} đã hủy, vẫn tính tiền cho khách.`,
         variant: "success",
-      });
-      closeCancelDialog();
+      })
+      closeCancelDialog()
     } catch (error) {
       toast({
         title: "Lỗi hủy món",
         description: getErrorMessage(error),
         variant: "danger",
-      });
-      setIsConfirmingRestaurantError(false);
+      })
+      setIsConfirmingRestaurantError(false)
     }
   }
 
   async function handlePrintKitchenSlip() {
     // Tìm tất cả các order có món đang PREPARING
-    const orderIdsWithPreparing = new Set<number>();
+    const orderIdsWithPreparing = new Set<number>()
     orderDetails
       .filter((d) => d.status === "PREPARING")
-      .forEach((d) => orderIdsWithPreparing.add(d.orderId));
+      .forEach((d) => orderIdsWithPreparing.add(d.orderId))
 
     if (orderIdsWithPreparing.size === 0) {
       toast({
         title: "Không có món nào đang chế biến",
         description: "Chỉ có thể in phiếu cho các món đang ở trạng thái ĐANG CHẾ BIẾN.",
         variant: "warning",
-      });
-      setIsPrintModalOpen(false);
-      return;
+      })
+      setIsPrintModalOpen(false)
+      return
     }
 
     try {
       // In phiếu cho tất cả các order có món PREPARING
       await Promise.all(
         Array.from(orderIdsWithPreparing).map((orderId) =>
-          reprintKitchenTicketMutation.mutateAsync(orderId)
-        )
-      );
+          reprintKitchenTicketMutation.mutateAsync(orderId),
+        ),
+      )
 
-      setIsPrintModalOpen(false);
+      setIsPrintModalOpen(false)
       toast({
         title: "Đã gửi lệnh in phiếu bếp",
         description: `Đã in phiếu chế biến cho ${orderIdsWithPreparing.size} lượt gọi món.`,
         variant: "success",
-      });
+      })
     } catch (error) {
       toast({
         title: "Lỗi in phiếu bếp",
         description: error instanceof Error ? error.message : "Không thể in phiếu bếp.",
         variant: "danger",
-      });
+      })
     }
   }
 
   function handleTransferConfirm() {
-    setIsTransferModalOpen(false);
-    const actionLabel = transferType === "transfer" ? "Chuyển bàn" : "Gộp bàn";
+    setIsTransferModalOpen(false)
+    const actionLabel = transferType === "transfer" ? "Chuyển bàn" : "Gộp bàn"
     toast({
       title: `Đã ${actionLabel.toLowerCase()}`,
       description: `${actionLabel} sang ${targetTable} thành công.`,
       variant: "success",
-    });
+    })
   }
 
   /**
@@ -345,43 +353,40 @@ export default function OrderDetailPage() {
    */
   // Tính tạm tính: tổng tiền các món tính phí (chưa tính service fee & VAT)
   const billableTotal = React.useMemo(
-    () => orderDetails
-      .filter(isBillableDetail)
-      .reduce((sum, d) => sum + (d.price || 0), 0),
+    () => orderDetails.filter(isBillableDetail).reduce((sum, d) => sum + (d.price || 0), 0),
     [orderDetails],
-  );
-  const sessionStatus = session?.status;
-  const invoiceIssued = sessionInvoice?.status === "ISSUED" || sessionInvoice?.status === "PAID";
+  )
+  const sessionStatus = session?.status
+  const invoiceIssued = sessionInvoice?.status === "ISSUED" || sessionInvoice?.status === "PAID"
 
-  type TableActionMode = "checkout" | "cancel-session" | "close-table" | "none";
+  type TableActionMode = "checkout" | "cancel-session" | "close-table" | "none"
   const tableActionMode: TableActionMode = React.useMemo(() => {
     if (sessionStatus === "SERVING") {
-      if (billableTotal > 0) return "checkout";
-      return canCancelSession ? "cancel-session" : "none";
+      if (billableTotal > 0) return "checkout"
+      return canCancelSession ? "cancel-session" : "none"
     }
     if (sessionStatus === "WAITING_FOR_PAY") {
-      if (invoiceIssued) return "close-table";
-      if (billableTotal === 0) return canCancelSession ? "cancel-session" : "none";
-      return "checkout";
+      if (invoiceIssued) return "close-table"
+      if (billableTotal === 0) return canCancelSession ? "cancel-session" : "none"
+      return "checkout"
     }
-    return "none";
-  }, [sessionStatus, billableTotal, invoiceIssued, canCancelSession]);
+    return "none"
+  }, [sessionStatus, billableTotal, invoiceIssued, canCancelSession])
 
-  const tableActionLabel =
-    tableActionMode === "cancel-session" ? "Hủy phiên" : "Đóng bàn";
+  const tableActionLabel = tableActionMode === "cancel-session" ? "Hủy phiên" : "Đóng bàn"
 
   function handleTableAction() {
     if (tableActionMode === "checkout") {
-      handleCheckout();
-      return;
+      handleCheckout()
+      return
     }
     if (tableActionMode === "cancel-session") {
-      setCancelSessionReason("");
-      setIsCancelSessionModalOpen(true);
-      return;
+      setCancelSessionReason("")
+      setIsCancelSessionModalOpen(true)
+      return
     }
     if (tableActionMode === "close-table") {
-      setIsCloseTableModalOpen(true);
+      setIsCloseTableModalOpen(true)
     }
   }
 
@@ -400,23 +405,27 @@ export default function OrderDetailPage() {
         ? RESTAURANT_ADMIN_PATHS.TABLE_MAP
         : role === APP_ROLE.CASHIER
           ? CASHIER_PATHS.TABLE_MAP
-          : WAITER_PATHS.TABLE_MAP;
-  const listPath = session?.takeaway ? takeawayListPath(tableMapPath) : tableMapPath;
+          : WAITER_PATHS.TABLE_MAP
+  const listPath = session?.takeaway ? takeawayListPath(tableMapPath) : tableMapPath
 
   /** Đóng phiên thật (CHỜ THANH TOÁN + hoá đơn đã phát hành → ĐÃ ĐÓNG). */
   async function handleCloseTable() {
-    if (!tableSessionId) return;
+    if (!tableSessionId) return
     try {
-      await closeSessionMutation.mutateAsync(tableSessionId);
-      setIsCloseTableModalOpen(false);
-      toast({ title: "Đã đóng bàn", description: "Bàn đã về trạng thái Trống.", variant: "success" });
-      navigate(listPath);
+      await closeSessionMutation.mutateAsync(tableSessionId)
+      setIsCloseTableModalOpen(false)
+      toast({
+        title: "Đã đóng bàn",
+        description: "Bàn đã về trạng thái Trống.",
+        variant: "success",
+      })
+      navigate(listPath)
     } catch (error) {
       toast({
         title: "Không đóng được bàn",
         description: error instanceof Error ? error.message : "Vui lòng thử lại",
         variant: "danger",
-      });
+      })
     }
   }
 
@@ -433,39 +442,43 @@ export default function OrderDetailPage() {
    * tổng tiền = 0 và chưa có hoá đơn đã phát hành / đã thu — còn lại trả 409 kèm lý do rõ.
    */
   async function handleConfirmCancelSession() {
-    if (!tableSessionId || !cancelSessionReason.trim()) return;
-    setIsCancellingSession(true);
+    if (!tableSessionId || !cancelSessionReason.trim()) return
+    setIsCancellingSession(true)
     try {
       await cancelSessionMutation.mutateAsync({
         id: tableSessionId,
         reason: cancelSessionReason.trim(),
-      });
-      setIsCancelSessionModalOpen(false);
-      toast({ title: "Đã hủy phiên", description: "Bàn đã về trạng thái Trống.", variant: "success" });
-      navigate(listPath);
+      })
+      setIsCancelSessionModalOpen(false)
+      toast({
+        title: "Đã hủy phiên",
+        description: "Bàn đã về trạng thái Trống.",
+        variant: "success",
+      })
+      navigate(listPath)
     } catch (error) {
       toast({
         title: "Không hủy được phiên",
         description: error instanceof Error ? error.message : "Vui lòng thử lại",
         variant: "danger",
-      });
+      })
     } finally {
-      setIsCancellingSession(false);
+      setIsCancellingSession(false)
     }
   }
 
   function handleCheckout() {
     // Còn món đang chờ xác nhận -> hỏi nhân viên có muốn huỷ các món đó để thanh toán không
     if (pendingItems.length > 0) {
-      setIsConfirmPayModalOpen(true);
-      return;
+      setIsConfirmPayModalOpen(true)
+      return
     }
-    void proceedToCheckout();
+    void proceedToCheckout()
   }
 
   async function proceedToCheckout() {
-    if (!tableSessionId) return;
-    setIsProcessingPay(true);
+    if (!tableSessionId) return
+    setIsProcessingPay(true)
 
     // Moi vai tro co route Thanh toan rieng - dung nham la dinh trang 403.
     const checkoutPattern =
@@ -473,51 +486,55 @@ export default function OrderDetailPage() {
         ? BRANCH_MANAGER_PATHS.CHECKOUT
         : role === APP_ROLE.RESTAURANT_ADMIN
           ? RESTAURANT_ADMIN_PATHS.CHECKOUT
-          : CASHIER_PATHS.CHECKOUT;
+          : CASHIER_PATHS.CHECKOUT
 
     try {
       // Phiên đã ở WAITING_FOR_PAY: không cần requestPayment nữa, navigate thẳng
       if (sessionStatus === "WAITING_FOR_PAY") {
-        navigate(generatePath(checkoutPattern, { tableSessionId: String(tableSessionId) }));
-        return;
+        navigate(generatePath(checkoutPattern, { tableSessionId: String(tableSessionId) }))
+        return
       }
-      await requestPaymentMutation.mutateAsync(tableSessionId);
-      navigate(generatePath(checkoutPattern, { tableSessionId: String(tableSessionId) }));
+      await requestPaymentMutation.mutateAsync(tableSessionId)
+      navigate(generatePath(checkoutPattern, { tableSessionId: String(tableSessionId) }))
     } catch (error) {
       toast({
         title: "Lỗi chuyển sang thanh toán",
-        description: error instanceof Error ? error.message : "Không thể chuyển bàn sang trạng thái chờ thanh toán.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Không thể chuyển bàn sang trạng thái chờ thanh toán.",
         variant: "danger",
-      });
+      })
     } finally {
-      setIsProcessingPay(false);
+      setIsProcessingPay(false)
     }
   }
 
   async function handleConfirmCancelPendingAndCheckout() {
-    setIsProcessingPay(true);
+    setIsProcessingPay(true)
     try {
-      await Promise.all(pendingItems.map((item) => cancelMutation.mutateAsync(item.id)));
-      setIsConfirmPayModalOpen(false);
-      await proceedToCheckout();
+      await Promise.all(pendingItems.map((item) => cancelMutation.mutateAsync(item.id)))
+      setIsConfirmPayModalOpen(false)
+      await proceedToCheckout()
     } catch (error) {
       toast({
         title: "Lỗi hủy món",
-        description: error instanceof Error ? error.message : "Không thể hủy các món đang chờ xác nhận.",
+        description:
+          error instanceof Error ? error.message : "Không thể hủy các món đang chờ xác nhận.",
         variant: "danger",
-      });
-      setIsProcessingPay(false);
+      })
+      setIsProcessingPay(false)
     }
   }
 
-  const tableName = session?.tableName || `Bàn #${tableSessionId}`;
-  const guestCount = session?.guestCount || 0;
-  const sessionCode = tableSessionId?.toString() || "";
+  const tableName = session?.tableName || `Bàn #${tableSessionId}`
+  const guestCount = session?.guestCount || 0
+  const sessionCode = tableSessionId?.toString() || ""
 
   // Đưa tiêu đề lên MobileHeader (biến thể "back" — màn này là màn con).
   // Figma còn có "· Phục vụ: <tên>" nhưng TableSessionResponse của BE KHÔNG trả về
   // người mở phiên, nên không hiển thị được — xem docs/be-issues.md.
-  const headerSubtitle = `${guestCount} khách · Phiên #${sessionCode}`;
+  const headerSubtitle = `${guestCount} khách · Phiên #${sessionCode}`
 
   // <md: ba nút phụ trên thanh tiêu đề chuyển vào menu "⋯". Danh sách lọc theo quyền
   // TRƯỚC khi dựng menu, nên vai trò không đủ quyền không thấy mục đó ở bất kỳ đâu.
@@ -541,13 +558,13 @@ export default function OrderDetailPage() {
                 ? RESTAURANT_ADMIN_PATHS.TRANSFER_MERGE_TABLE
                 : role === APP_ROLE.CASHIER
                   ? CASHIER_PATHS.TRANSFER_MERGE_TABLE
-                  : WAITER_PATHS.TRANSFER_MERGE_TABLE;
+                  : WAITER_PATHS.TRANSFER_MERGE_TABLE
           navigate(transferPath, {
             state: { sourceTableId: session?.tableId, sourceSessionId: tableSessionId },
-          });
+          })
         },
       },
-    ];
+    ]
     if (!session?.takeaway && canCloseTable && tableActionMode !== "none") {
       actions.push({
         key: "close-table",
@@ -555,18 +572,16 @@ export default function OrderDetailPage() {
         icon: DoorClosed,
         tone: "warning",
         onSelect: handleTableAction,
-      });
+      })
     }
-    return session?.takeaway ? actions.filter((action) => action.key !== "transfer") : actions;
+    return session?.takeaway ? actions.filter((action) => action.key !== "transfer") : actions
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canCloseTable, tableActionMode, tableActionLabel, session?.takeaway]);
+  }, [canCloseTable, tableActionMode, tableActionLabel, session?.takeaway])
 
   const headerOverflow = React.useMemo(
     () => <HeaderOverflowMenu actions={overflowActions} />,
     [overflowActions],
-  );
-
-
+  )
 
   return (
     <div className="flex flex-1 flex-col min-h-screen bg-surface-page">
@@ -579,9 +594,7 @@ export default function OrderDetailPage() {
         subtitle={
           <span className="flex items-center gap-2">
             {headerSubtitle}
-            {isLoading && (
-              <RefreshCw className="size-3.5 animate-spin text-text-tertiary" />
-            )}
+            {isLoading && <RefreshCw className="size-3.5 animate-spin text-text-tertiary" />}
           </span>
         }
         mobileSubtitle={headerSubtitle}
@@ -593,7 +606,8 @@ export default function OrderDetailPage() {
               onClick={() => navigate(listPath)}
               className="mr-1 inline-flex items-center gap-1 text-sm font-medium text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
             >
-              <ChevronLeft className="size-4" /> {session?.takeaway ? "Về đơn mang về" : "Về sơ đồ bàn"}
+              <ChevronLeft className="size-4" />{" "}
+              {session?.takeaway ? "Về đơn mang về" : "Về sơ đồ bàn"}
             </button>
             <Button
               type="button"
@@ -603,26 +617,28 @@ export default function OrderDetailPage() {
             >
               In phiếu chế biến
             </Button>
-            {!session?.takeaway && <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                const transferPath =
-                  role === APP_ROLE.BRANCH_MANAGER
-                    ? BRANCH_MANAGER_PATHS.TRANSFER_MERGE_TABLE
-                    : role === APP_ROLE.RESTAURANT_ADMIN
-                      ? RESTAURANT_ADMIN_PATHS.TRANSFER_MERGE_TABLE
-                      : role === APP_ROLE.CASHIER
-                        ? CASHIER_PATHS.TRANSFER_MERGE_TABLE
-                        : WAITER_PATHS.TRANSFER_MERGE_TABLE;
-                navigate(transferPath, {
-                  state: { sourceTableId: session?.tableId, sourceSessionId: tableSessionId },
-                });
-              }}
-              className="h-10 border-border-default px-4 text-text-secondary hover:bg-surface-muted hover:text-text-primary"
-            >
-              Chuyển / Gộp bàn
-            </Button>}
+            {!session?.takeaway && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  const transferPath =
+                    role === APP_ROLE.BRANCH_MANAGER
+                      ? BRANCH_MANAGER_PATHS.TRANSFER_MERGE_TABLE
+                      : role === APP_ROLE.RESTAURANT_ADMIN
+                        ? RESTAURANT_ADMIN_PATHS.TRANSFER_MERGE_TABLE
+                        : role === APP_ROLE.CASHIER
+                          ? CASHIER_PATHS.TRANSFER_MERGE_TABLE
+                          : WAITER_PATHS.TRANSFER_MERGE_TABLE
+                  navigate(transferPath, {
+                    state: { sourceTableId: session?.tableId, sourceSessionId: tableSessionId },
+                  })
+                }}
+                className="h-10 border-border-default px-4 text-text-secondary hover:bg-surface-muted hover:text-text-primary"
+              >
+                Chuyển / Gộp bàn
+              </Button>
+            )}
             {/* Đóng bàn / Hủy phiên — nhãn và hành vi đổi theo trạng thái phiên.
                 Phục vụ không thấy; Hủy phiên chỉ QL chi nhánh + Quản trị NH. */}
             {!session?.takeaway && canCloseTable && tableActionMode !== "none" ? (
@@ -639,7 +655,9 @@ export default function OrderDetailPage() {
         }
       />
 
-      {staffCallId > 0 && <StaffCallNotice notificationId={staffCallId} sessionId={tableSessionId} />}
+      {staffCallId > 0 && (
+        <StaffCallNotice notificationId={staffCallId} sessionId={tableSessionId} />
+      )}
       <div className="flex flex-1 flex-col gap-6 p-6 sm:p-8 lg:flex-row items-start">
         {/* ============================================================
             2. CỘT TRÁI: CÁC LƯỢT GỌI MÓN (GOM CHUNG 1 CARD DUY NHẤT)
@@ -658,22 +676,25 @@ export default function OrderDetailPage() {
                 aria-label={round.id === targetRound ? `Lượt gọi #${round.id}` : undefined}
                 className={cn(
                   rIndex > 0 && "mt-6 pt-6 border-t border-border-default/60",
-                  round.id === targetRound && "scroll-mt-24 rounded-xl bg-brand-primary-subtle/30 p-4 outline-2 outline-brand-primary/60",
+                  round.id === targetRound &&
+                    "scroll-mt-24 rounded-xl bg-brand-primary-subtle/30 p-4 outline-2 outline-brand-primary/60",
                 )}
               >
                 <p className="text-xs font-bold tracking-wider text-text-tertiary uppercase">
                   {round.label} · {round.time}
-                  {round.id === targetRound && <span className="ml-2 text-brand-primary">#{round.id}</span>}
+                  {round.id === targetRound && (
+                    <span className="ml-2 text-brand-primary">#{round.id}</span>
+                  )}
                 </p>
 
                 <div className="mt-4 divide-y divide-border-default/40">
                   {round.items.map((item) => {
                     // BEFORE_KITCHEN (CHỜ XÁC NHẬN / CHỜ CÂN): huỷ tự do, không tính tiền.
                     // AFTER_KITCHEN (ĐANG CHẾ BIẾN / ĐÃ PHỤC VỤ): phải chọn lý do huỷ.
-                    const phase = cancelPhaseOf(item.status);
-                    const itemNetTotal = item.price ?? item.priceAtOrderTime * item.quantity;
-                    const itemDiscount = item.promotionDiscountAmount || 0;
-                    const itemGrossTotal = itemNetTotal + itemDiscount;
+                    const phase = cancelPhaseOf(item.status)
+                    const itemNetTotal = item.price ?? item.priceAtOrderTime * item.quantity
+                    const itemDiscount = item.promotionDiscountAmount || 0
+                    const itemGrossTotal = itemNetTotal + itemDiscount
 
                     return (
                       <div key={item.id} className="py-3.5 first:pt-0 last:pb-0">
@@ -708,7 +729,9 @@ export default function OrderDetailPage() {
                             </div>
                             <StatusBadge type="orderDetail" status={item.status} />
                             {item.isTakeAway && !session?.takeaway && (
-                              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-900">Mang về</span>
+                              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-900">
+                                Mang về
+                              </span>
                             )}
                           </div>
                           <div className="flex items-center gap-4 shrink-0">
@@ -726,14 +749,11 @@ export default function OrderDetailPage() {
                           </div>
                         </div>
 
-
                         {/* Dòng 2: Ghi chú bên trái & Nút Hủy món bên phải */}
                         <div className="flex items-center justify-between gap-4 mt-1.5 min-h-[26px]">
                           <div>
                             {item.note ? (
-                              <p className="text-xs text-text-tertiary">
-                                {item.note}
-                              </p>
+                              <p className="text-xs text-text-tertiary">{item.note}</p>
                             ) : null}
                           </div>
 
@@ -741,13 +761,13 @@ export default function OrderDetailPage() {
                             <button
                               type="button"
                               onClick={() => {
-                                setCancelReason(null);
-                                setIsConfirmingRestaurantError(false);
+                                setCancelReason(null)
+                                setIsConfirmingRestaurantError(false)
                                 setItemToCancel({
                                   id: item.id,
                                   name: item.dishName || "Món ăn",
                                   phase,
-                                });
+                                })
                               }}
                               className="inline-flex items-center gap-1.5 rounded-full border border-status-danger/20 bg-status-danger-subtle/50 px-2.5 py-0.5 text-xs font-medium text-status-danger hover:bg-status-danger hover:text-white transition-colors cursor-pointer"
                             >
@@ -757,7 +777,7 @@ export default function OrderDetailPage() {
                           ) : null}
                         </div>
                       </div>
-                    );
+                    )
                   })}
                 </div>
               </div>
@@ -775,7 +795,6 @@ export default function OrderDetailPage() {
               </div>
             </div>
           )}
-
         </div>
 
         {/* ============================================================
@@ -784,9 +803,7 @@ export default function OrderDetailPage() {
         {/* Ẩn ở <md: hai nút này đã nằm ở thanh thao tác cố định đáy màn hình */}
         <div className="hidden w-full shrink-0 md:block lg:w-[380px]">
           <div className="rounded-2xl border border-border-default/60 bg-surface-card p-6 shadow-xs flex flex-col">
-            <p className="text-sm font-bold text-text-primary">
-              Thao tác nhanh
-            </p>
+            <p className="text-sm font-bold text-text-primary">Thao tác nhanh</p>
 
             <div className="mt-6 space-y-3">
               <button
@@ -863,9 +880,7 @@ export default function OrderDetailPage() {
                     <div>
                       <span className="font-semibold">{item.dishName}</span>
                       {item.note ? (
-                        <div className="text-[11px] text-text-tertiary">
-                          ({item.note})
-                        </div>
+                        <div className="text-[11px] text-text-tertiary">({item.note})</div>
                       ) : null}
                     </div>
                     <span className="font-bold">x{item.quantity}</span>
@@ -921,7 +936,7 @@ export default function OrderDetailPage() {
                   "p-3 rounded-xl border text-sm font-semibold text-center transition-all cursor-pointer",
                   transferType === "transfer"
                     ? "border-brand-primary bg-brand-primary-subtle text-brand-primary"
-                    : "border-border-default bg-surface-card text-text-secondary hover:bg-surface-muted"
+                    : "border-border-default bg-surface-card text-text-secondary hover:bg-surface-muted",
                 )}
               >
                 Chuyển bàn
@@ -933,7 +948,7 @@ export default function OrderDetailPage() {
                   "p-3 rounded-xl border text-sm font-semibold text-center transition-all cursor-pointer",
                   transferType === "merge"
                     ? "border-brand-primary bg-brand-primary-subtle text-brand-primary"
-                    : "border-border-default bg-surface-card text-text-secondary hover:bg-surface-muted"
+                    : "border-border-default bg-surface-card text-text-secondary hover:bg-surface-muted",
                 )}
               >
                 Gộp bàn
@@ -958,15 +973,10 @@ export default function OrderDetailPage() {
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={() => setIsTransferModalOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setIsTransferModalOpen(false)}>
               Hủy
             </Button>
-            <Button onClick={handleTransferConfirm}>
-              Xác nhận
-            </Button>
+            <Button onClick={handleTransferConfirm}>Xác nhận</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -989,7 +999,10 @@ export default function OrderDetailPage() {
           </DialogHeader>
 
           <div className="space-y-2 py-1">
-            <label htmlFor="cancel-session-reason" className="text-sm font-medium text-text-primary">
+            <label
+              htmlFor="cancel-session-reason"
+              className="text-sm font-medium text-text-primary"
+            >
               Lý do hủy <span className="text-status-danger">*</span>
             </label>
             <Input
@@ -1034,16 +1047,13 @@ export default function OrderDetailPage() {
               Xác nhận đóng {tableName}?
             </DialogTitle>
             <DialogDescription>
-              Bạn có chắc chắn muốn đóng phiên phục vụ hiện tại của {tableName} không?
-              Bàn sẽ được giải phóng và chuyển về trạng thái sẵn sàng đón khách.
+              Bạn có chắc chắn muốn đóng phiên phục vụ hiện tại của {tableName} không? Bàn sẽ được
+              giải phóng và chuyển về trạng thái sẵn sàng đón khách.
             </DialogDescription>
           </DialogHeader>
 
           <DialogFooter className="gap-2 sm:gap-0 mt-2">
-            <Button
-              variant="outline"
-              onClick={() => setIsCloseTableModalOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setIsCloseTableModalOpen(false)}>
               Giữ lại
             </Button>
             <Button
@@ -1070,15 +1080,15 @@ export default function OrderDetailPage() {
               Còn món đang chờ xác nhận
             </DialogTitle>
             <DialogDescription>
-              {tableName} còn {pendingItems.length} món đang chờ xác nhận (chưa gửi bếp).
-              Để chuyển bàn sang trạng thái chờ thanh toán, các món này sẽ bị huỷ và không
-              tính tiền. Bạn có muốn huỷ các món này để tiếp tục thanh toán không?
+              {tableName} còn {pendingItems.length} món đang chờ xác nhận (chưa gửi bếp). Để chuyển
+              bàn sang trạng thái chờ thanh toán, các món này sẽ bị huỷ và không tính tiền. Bạn có
+              muốn huỷ các món này để tiếp tục thanh toán không?
             </DialogDescription>
           </DialogHeader>
 
           <div className="py-2 text-xs text-text-tertiary">
-            Nếu chọn "Không hủy", bàn sẽ giữ nguyên trạng thái đang phục vụ để bạn xử lý các
-            món đang chờ xác nhận trước.
+            Nếu chọn "Không hủy", bàn sẽ giữ nguyên trạng thái đang phục vụ để bạn xử lý các món
+            đang chờ xác nhận trước.
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">
@@ -1089,10 +1099,7 @@ export default function OrderDetailPage() {
             >
               Không hủy
             </Button>
-            <Button
-              onClick={handleConfirmCancelPendingAndCheckout}
-              disabled={isProcessingPay}
-            >
+            <Button onClick={handleConfirmCancelPendingAndCheckout} disabled={isProcessingPay}>
               {isProcessingPay ? "Đang xử lý..." : "Hủy món & Thanh toán"}
             </Button>
           </DialogFooter>
@@ -1114,14 +1121,13 @@ export default function OrderDetailPage() {
             </DialogTitle>
             <DialogDescription>
               Bạn có chắc chắn muốn hủy món{" "}
-              <strong className="text-text-primary font-bold">
-                "{itemToCancel?.name}"
-              </strong>?
+              <strong className="text-text-primary font-bold">"{itemToCancel?.name}"</strong>?
             </DialogDescription>
           </DialogHeader>
 
           <div className="py-2 text-xs text-text-tertiary">
-            Hành động hủy món sẽ được ghi nhận vào nhật ký hệ thống và thông báo tới Bếp nếu món đang được chế biến.
+            Hành động hủy món sẽ được ghi nhận vào nhật ký hệ thống và thông báo tới Bếp nếu món
+            đang được chế biến.
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">
@@ -1157,10 +1163,9 @@ export default function OrderDetailPage() {
                 </DialogTitle>
                 <DialogDescription>
                   Hủy{" "}
+                  <strong className="text-text-primary font-bold">"{itemToCancel?.name}"</strong>{" "}
+                  với lý do{" "}
                   <strong className="text-text-primary font-bold">
-                    "{itemToCancel?.name}"
-                  </strong>{" "}
-                  với lý do <strong className="text-text-primary font-bold">
                     {CANCEL_REASON_LABEL.RESTAURANT_ERROR}
                   </strong>{" "}
                   nghĩa là nhà hàng chịu chi phí món này.
@@ -1168,8 +1173,8 @@ export default function OrderDetailPage() {
               </DialogHeader>
 
               <div className="py-2 text-xs text-text-tertiary">
-                Bếp đã chế biến món này. Hành động hủy được ghi vào nhật ký hệ thống
-                kèm người thực hiện và lý do.
+                Bếp đã chế biến món này. Hành động hủy được ghi vào nhật ký hệ thống kèm người thực
+                hiện và lý do.
               </div>
 
               <DialogFooter className="gap-2 sm:gap-0">
@@ -1199,11 +1204,9 @@ export default function OrderDetailPage() {
                   Hủy món đã vào bếp
                 </DialogTitle>
                 <DialogDescription>
-                  <strong className="text-text-primary font-bold">
-                    "{itemToCancel?.name}"
-                  </strong>{" "}
-                  đã được gửi xuống bếp. Chọn lý do hủy — lý do quyết định món có
-                  tính tiền cho khách hay không.
+                  <strong className="text-text-primary font-bold">"{itemToCancel?.name}"</strong> đã
+                  được gửi xuống bếp. Chọn lý do hủy — lý do quyết định món có tính tiền cho khách
+                  hay không.
                 </DialogDescription>
               </DialogHeader>
 
@@ -1249,9 +1252,7 @@ export default function OrderDetailPage() {
                   onClick={handleSubmitCancelAfterKitchen}
                   disabled={!cancelReason || cancelAfterKitchenMutation.isPending}
                 >
-                  {cancelAfterKitchenMutation.isPending
-                    ? "Đang hủy..."
-                    : "Tiếp tục"}
+                  {cancelAfterKitchenMutation.isPending ? "Đang hủy..." : "Tiếp tục"}
                 </Button>
               </DialogFooter>
             </>
@@ -1259,5 +1260,5 @@ export default function OrderDetailPage() {
         </DialogContent>
       </Dialog>
     </div>
-  );
+  )
 }

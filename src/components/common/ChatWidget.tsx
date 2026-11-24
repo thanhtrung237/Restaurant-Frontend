@@ -83,24 +83,21 @@ export function ChatWidget({
   conversations = DEFAULT_CHAT_CONVERSATIONS,
   className,
 }: ChatWidgetProps) {
-  const [selectedId, setSelectedId] = React.useState<string | number>(
-    conversations[0]?.id ?? "1"
-  )
+  const [selectedId, setSelectedId] = React.useState<string | number>(conversations[0]?.id ?? "1")
   const [inputText, setInputText] = React.useState("")
   const [searchQuery, setSearchQuery] = React.useState("")
 
-  const activeConv =
-    conversations.find((c) => c.id === selectedId) ?? conversations[0]
+  const activeConv = conversations.find((c) => c.id === selectedId) ?? conversations[0]
 
   const filteredConversations = conversations.filter((c) =>
-    c.name.toLowerCase().includes(searchQuery.toLowerCase())
+    c.name.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
   return (
     <div
       className={cn(
         "flex h-[520px] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border-default bg-surface-card shadow-lg",
-        className
+        className,
       )}
     >
       {/* Header chính của Modal Chat */}
@@ -160,7 +157,7 @@ export function ChatWidget({
                     "relative flex cursor-pointer items-start gap-3 p-3 transition-colors",
                     isSelected
                       ? "bg-surface-page/70 border-l-4 border-brand-primary pl-2.5"
-                      : "hover:bg-surface-page/40"
+                      : "hover:bg-surface-page/40",
                   )}
                 >
                   {/* Avatar có chấm tròn online */}
@@ -168,7 +165,7 @@ export function ChatWidget({
                     <div
                       className={cn(
                         "flex size-full items-center justify-center rounded-full text-xs font-bold text-white shadow-2xs",
-                        conv.avatarBg ?? "bg-brand-primary"
+                        conv.avatarBg ?? "bg-brand-primary",
                       )}
                     >
                       {conv.avatarText}
@@ -181,9 +178,7 @@ export function ChatWidget({
                   {/* Tên & Nội dung */}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-1">
-                      <h5 className="truncate text-xs font-bold text-text-primary">
-                        {conv.name}
-                      </h5>
+                      <h5 className="truncate text-xs font-bold text-text-primary">{conv.name}</h5>
                       <span className="shrink-0 text-[10px] text-text-tertiary font-medium">
                         {conv.time}
                       </span>
@@ -208,7 +203,7 @@ export function ChatWidget({
                   <div
                     className={cn(
                       "flex size-full items-center justify-center rounded-full text-xs font-bold text-white shadow-2xs",
-                      activeConv.avatarBg ?? "bg-brand-primary"
+                      activeConv.avatarBg ?? "bg-brand-primary",
                     )}
                   >
                     {activeConv.avatarText}
@@ -218,9 +213,7 @@ export function ChatWidget({
                   ) : null}
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-text-primary">
-                    {activeConv.name}
-                  </h4>
+                  <h4 className="text-xs font-bold text-text-primary">{activeConv.name}</h4>
                   {activeConv.onlineStatusText ? (
                     <p className="text-[11px] font-medium text-status-success">
                       • {activeConv.onlineStatusText}
@@ -291,7 +284,7 @@ export function ChatWidget({
                   "flex h-10 shrink-0 items-center justify-center rounded-pill px-5 text-xs font-bold transition-all",
                   inputText.trim()
                     ? "bg-brand-primary text-white hover:bg-brand-primary-hover shadow-xs active:scale-95"
-                    : "bg-brand-primary-subtle text-brand-primary/80 opacity-80 cursor-not-allowed"
+                    : "bg-brand-primary-subtle text-brand-primary/80 opacity-80 cursor-not-allowed",
                 )}
               >
                 Gửi

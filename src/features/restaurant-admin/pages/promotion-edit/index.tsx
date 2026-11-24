@@ -77,7 +77,9 @@ export default function PromotionEditPage({
     return (
       <div className="flex flex-1 flex-col items-center justify-center p-8 bg-surface-page min-h-[400px]">
         <h2 className="text-lg font-bold text-text-primary">Không tìm thấy khuyến mãi</h2>
-        <p className="text-sm text-text-secondary mt-1">Chương trình không tồn tại hoặc đã bị xóa.</p>
+        <p className="text-sm text-text-secondary mt-1">
+          Chương trình không tồn tại hoặc đã bị xóa.
+        </p>
         <button
           type="button"
           onClick={handleCancel}

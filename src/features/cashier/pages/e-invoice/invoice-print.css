@@ -28,7 +28,9 @@
     margin-inline: auto;
     color: black;
     background: white;
-    font: 9pt/1.4 Arial, sans-serif;
+    font:
+      9pt/1.4 Arial,
+      sans-serif;
     overflow-wrap: anywhere;
   }
 

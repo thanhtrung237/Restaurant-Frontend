@@ -11,7 +11,9 @@ export function getOptionGroup(id: number) {
 export function getOptionGroupsByRestaurant(restaurantId: number) {
   return apiGet<OptionGroup[]>(`/option-groups/restaurant/${restaurantId}`)
 }
-export function listOptionGroups(params?: PageParams & { restaurantId?: number; keyword?: string }) {
+export function listOptionGroups(
+  params?: PageParams & { restaurantId?: number; keyword?: string },
+) {
   return apiGet<PageResponse<OptionGroup>>("/option-groups", { params })
 }
 export function createOptionGroup(body: OptionGroupAddRequest) {
@@ -41,7 +43,8 @@ export function useCreateOptionGroup() {
 export function useUpdateOptionGroup() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (vars: { id: number; body: OptionGroupUpdateRequest }) => updateOptionGroup(vars.id, vars.body),
+    mutationFn: (vars: { id: number; body: OptionGroupUpdateRequest }) =>
+      updateOptionGroup(vars.id, vars.body),
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.optionGroups.all }),
   })
 }

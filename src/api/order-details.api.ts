@@ -4,8 +4,10 @@ import { qk } from "@/lib/query-keys"
 import type { OrderDetail } from "@/types/models"
 import type { OrderDetailStatus } from "@/types/enums"
 import type {
-  OrderDetailAddRequest, OrderDetailCancelRequest,
-  OrderDetailConfirmWeightRequest, OrderDetailUpdateRequest,
+  OrderDetailAddRequest,
+  OrderDetailCancelRequest,
+  OrderDetailConfirmWeightRequest,
+  OrderDetailUpdateRequest,
   OrderDetailBatchConfirmRequest,
 } from "@/types/requests"
 
@@ -78,7 +80,8 @@ function invalidateDetailScope(qc: ReturnType<typeof useQueryClient>) {
 export function useChangeOrderDetailStatus() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (vars: { id: number; status: OrderDetailStatus }) => changeOrderDetailStatus(vars.id, vars.status),
+    mutationFn: (vars: { id: number; status: OrderDetailStatus }) =>
+      changeOrderDetailStatus(vars.id, vars.status),
     onSuccess: () => invalidateDetailScope(qc),
   })
 }
@@ -96,25 +99,31 @@ export function useMarkServed() {
 export function useConfirmWeight() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (vars: { id: number; body: OrderDetailConfirmWeightRequest }) => confirmWeight(vars.id, vars.body),
+    mutationFn: (vars: { id: number; body: OrderDetailConfirmWeightRequest }) =>
+      confirmWeight(vars.id, vars.body),
     onSuccess: () => invalidateDetailScope(qc),
   })
 }
 export function useCancelBeforeKitchen() {
   const qc = useQueryClient()
-  return useMutation({ mutationFn: cancelBeforeKitchen, onSuccess: () => invalidateDetailScope(qc) })
+  return useMutation({
+    mutationFn: cancelBeforeKitchen,
+    onSuccess: () => invalidateDetailScope(qc),
+  })
 }
 export function useCancelAfterKitchen() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (vars: { id: number; body: OrderDetailCancelRequest }) => cancelAfterKitchen(vars.id, vars.body),
+    mutationFn: (vars: { id: number; body: OrderDetailCancelRequest }) =>
+      cancelAfterKitchen(vars.id, vars.body),
     onSuccess: () => invalidateDetailScope(qc),
   })
 }
 export function useAddOrderDetail() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (vars: { orderId: number; body: OrderDetailAddRequest }) => addOrderDetail(vars.orderId, vars.body),
+    mutationFn: (vars: { orderId: number; body: OrderDetailAddRequest }) =>
+      addOrderDetail(vars.orderId, vars.body),
     onSuccess: () => invalidateDetailScope(qc),
   })
 }

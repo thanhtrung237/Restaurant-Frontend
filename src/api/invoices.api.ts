@@ -74,7 +74,12 @@ export function useInvoice(id?: number, options?: { refetchInterval?: number }) 
 /** Đọc hóa đơn theo phiên và theo dõi trạng thái định kỳ nếu màn thanh toán yêu cầu. */
 export function useInvoiceBySession(
   tableSessionId?: number,
-  options?: { refetchInterval?: number | ((query: { state: { data: Invoice | null | undefined } }) => number | false); enabled?: boolean; retry?: boolean | number }
+  options?: {
+    refetchInterval?:
+      number | ((query: { state: { data: Invoice | null | undefined } }) => number | false)
+    enabled?: boolean
+    retry?: boolean | number
+  },
 ) {
   return useQuery({
     queryKey: qk.invoices.bySession(tableSessionId as number),
@@ -126,7 +131,7 @@ export function useInvoiceQrCode(id?: number) {
 
 export function useInvoiceQrCodeBySession(
   tableSessionId?: number,
-  options?: { enabled?: boolean }
+  options?: { enabled?: boolean },
 ) {
   return useQuery({
     queryKey: ["invoices", "session", tableSessionId, "qr-code"],

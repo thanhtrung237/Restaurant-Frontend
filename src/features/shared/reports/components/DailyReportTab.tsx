@@ -30,11 +30,7 @@ interface DailyReportTabProps {
   to: string
 }
 
-export function DailyReportTab({
-  branchIds,
-  from,
-  to,
-}: DailyReportTabProps) {
+export function DailyReportTab({ branchIds, from, to }: DailyReportTabProps) {
   // Compute previous period dates for trend comparisons
   const fromDate = new Date(from)
   const toDate = new Date(to)
@@ -73,11 +69,8 @@ export function DailyReportTab({
   })
 
   // Fetch hourly data specifically when filtering a single day (e.g. Hôm nay, Hôm qua)
-  const {
-    data: hourlyData,
-    isLoading: isLoadingHourly,
-  } = useHourlyRevenue(
-    isSingleDay ? { branchIds, from, to } : undefined
+  const { data: hourlyData, isLoading: isLoadingHourly } = useHourlyRevenue(
+    isSingleDay ? { branchIds, from, to } : undefined,
   )
 
   // Fetch top & slowest dishes (FR-RPT-03, topN: 50 for full category coverage)
@@ -88,10 +81,7 @@ export function DailyReportTab({
   } = useTopDishes({ branchIds, from, to, topN: 50 })
 
   // Fetch AI Anomaly Detection report
-  const {
-    data: anomalyData,
-    isLoading: isLoadingAnomalies,
-  } = useAnomalyReport({
+  const { data: anomalyData, isLoading: isLoadingAnomalies } = useAnomalyReport({
     branchIds,
     from,
     to,
@@ -110,10 +100,7 @@ export function DailyReportTab({
       <div className="space-y-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
-            <div
-              key={i}
-              className="h-28 animate-pulse rounded-card bg-surface-muted"
-            />
+            <div key={i} className="h-28 animate-pulse rounded-card bg-surface-muted" />
           ))}
         </div>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
@@ -130,9 +117,7 @@ export function DailyReportTab({
     return (
       <div className="flex min-h-[400px] items-center justify-center rounded-card border border-border-default/80 bg-surface-card p-6 shadow-2xs">
         <div className="text-center">
-          <p className="text-sm font-semibold text-status-danger">
-            Không thể tải dữ liệu báo cáo
-          </p>
+          <p className="text-sm font-semibold text-status-danger">Không thể tải dữ liệu báo cáo</p>
           <p className="mt-2 text-xs text-text-tertiary">
             Vui lòng kiểm tra kết nối mạng và thử lại.
           </p>
@@ -153,18 +138,9 @@ export function DailyReportTab({
 
   // Compute growth trends
   const revenueTrend = computeGrowthTrend(currentRevenue, previousRevenue)
-  const invoicesTrend = computeGrowthTrend(
-    currentData.totalInvoices,
-    previousData.totalInvoices
-  )
-  const avgPerInvoiceTrend = computeGrowthTrend(
-    currentAvgPerInvoice,
-    previousAvgPerInvoice
-  )
-  const guestsTrend = computeGrowthTrend(
-    currentData.totalGuests,
-    previousData.totalGuests
-  )
+  const invoicesTrend = computeGrowthTrend(currentData.totalInvoices, previousData.totalInvoices)
+  const avgPerInvoiceTrend = computeGrowthTrend(currentAvgPerInvoice, previousAvgPerInvoice)
+  const guestsTrend = computeGrowthTrend(currentData.totalGuests, previousData.totalGuests)
 
   const keyFormat = { day: "yyyy-MM-dd", month: "yyyy-MM", year: "yyyy" }[period]
   const labelFormat = { day: "dd/MM", month: "MM/yy", year: "yyyy" }[period]
@@ -176,7 +152,11 @@ export function DailyReportTab({
   }
 
   const interval = { start: fromDate, end: toDate }
-  const eachPeriod = { day: eachDayOfInterval, month: eachMonthOfInterval, year: eachYearOfInterval }[period]
+  const eachPeriod = {
+    day: eachDayOfInterval,
+    month: eachMonthOfInterval,
+    year: eachYearOfInterval,
+  }[period]
   const revenueData: DailyRevenueItem[] = eachPeriod(interval).map((date) => {
     const key = formatDate(date, keyFormat)
     return {
@@ -212,10 +192,7 @@ export function DailyReportTab({
   return (
     <div className="space-y-6">
       {/* AI Anomaly Detection Card (FR-RPT-06 / Ops Auditor) */}
-      <AnomalyAlertCard
-        data={anomalyData}
-        isLoading={isLoadingAnomalies}
-      />
+      <AnomalyAlertCard data={anomalyData} isLoading={isLoadingAnomalies} />
 
       {/* 4 Core Stat Cards (FR-RPT-01) */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -245,22 +222,13 @@ export function DailyReportTab({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <div className="min-w-0 lg:col-span-7 xl:col-span-8">
           {isSingleDay ? (
-            <HourlyRevenueBarChart
-              data={hourlyRevenueData}
-              title={chartTitle}
-            />
+            <HourlyRevenueBarChart data={hourlyRevenueData} title={chartTitle} />
           ) : (
-            <RevenueBarChart
-              data={revenueData}
-              title={chartTitle}
-              subtitle={rangeLabel}
-            />
+            <RevenueBarChart data={revenueData} title={chartTitle} subtitle={rangeLabel} />
           )}
         </div>
         <div className="min-w-0 lg:col-span-5 xl:col-span-4">
-          <PaymentMethodBreakdownCard
-            revenueByPaymentMethod={currentData.revenueByPaymentMethod}
-          />
+          <PaymentMethodBreakdownCard revenueByPaymentMethod={currentData.revenueByPaymentMethod} />
         </div>
       </div>
 

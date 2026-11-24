@@ -16,13 +16,11 @@ export default function RequireTableSession() {
 
   // Kiểm tra xem store đã có sẵn phiên hợp lệ chưa
   const hasValidActiveServingSession =
-    Boolean(sessionToken) &&
-    activeQrCode === qrCode &&
-    tableSession?.status === "SERVING"
+    Boolean(sessionToken) && activeQrCode === qrCode && tableSession?.status === "SERVING"
 
   const [checking, setChecking] = React.useState<boolean>(!hasValidActiveServingSession)
   const [resolvedStatus, setResolvedStatus] = React.useState<string | null>(
-    hasValidActiveServingSession ? "SERVING" : null
+    hasValidActiveServingSession ? "SERVING" : null,
   )
 
   React.useEffect(() => {
@@ -89,10 +87,5 @@ export default function RequireTableSession() {
   }
 
   // 4. Bàn không có phiên đang mở: Đưa về trang Quét QR mở bàn
-  return (
-    <Navigate
-      to={CUSTOMER_PATHS.TABLE_OPEN_QR.replace(":qrCode", qrCode ?? "")}
-      replace
-    />
-  )
+  return <Navigate to={CUSTOMER_PATHS.TABLE_OPEN_QR.replace(":qrCode", qrCode ?? "")} replace />
 }

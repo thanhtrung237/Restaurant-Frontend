@@ -25,15 +25,15 @@ src/features/*/api/      re-export phần mà feature đó dùng (đọc file n�
 
 ## Những chỗ backend chưa có API
 
-| Màn hình | Tình trạng |
-|---|---|
-| Báo cáo chi nhánh / Báo cáo nhà hàng / Doanh thu theo giờ | Không có `ReportController` nào |
-| Cấu hình nền tảng | Không có controller |
-| Gói & Thanh toán (subscription) | Không có entity/controller |
-| Đánh giá của khách (`review`) | Không có controller |
-| Chuyển bàn / Gộp bàn | Chỉ có enum `TableSessionStatus.MERGED`, không có endpoint |
-| Quên mật khẩu (tự phục hồi) | Chỉ có `PUT /accounts/{id}/reset-password` do admin gọi |
-| Ma trận phân quyền theo Role | `Role` ở BE không có cột lưu permission |
+| Màn hình                                                  | Tình trạng                                                 |
+| --------------------------------------------------------- | ---------------------------------------------------------- |
+| Báo cáo chi nhánh / Báo cáo nhà hàng / Doanh thu theo giờ | Không có `ReportController` nào                            |
+| Cấu hình nền tảng                                         | Không có controller                                        |
+| Gói & Thanh toán (subscription)                           | Không có entity/controller                                 |
+| Đánh giá của khách (`review`)                             | Không có controller                                        |
+| Chuyển bàn / Gộp bàn                                      | Chỉ có enum `TableSessionStatus.MERGED`, không có endpoint |
+| Quên mật khẩu (tự phục hồi)                               | Chỉ có `PUT /accounts/{id}/reset-password` do admin gọi    |
+| Ma trận phân quyền theo Role                              | `Role` ở BE không có cột lưu permission                    |
 
 Đừng viết sẵn API client đoán đường dẫn cho các mục trên — chốt với đội backend trước.
 

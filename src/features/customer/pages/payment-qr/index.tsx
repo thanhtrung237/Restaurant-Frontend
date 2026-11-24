@@ -92,10 +92,17 @@ export default function PaymentQrPage() {
   })
 
   // Lấy dữ liệu VietQR chính thức từ backend (theo session ID hoặc invoice ID)
-  const { data: qrDataBySession, isLoading: qrSessionLoading, error: qrSessionError } =
-    useInvoiceQrCodeBySession(tableSessionId)
-  const { data: qrDataByInvoice, isLoading: qrInvoiceLoading, error: qrInvoiceError, refetch: refetchInvoiceQr } =
-    useInvoiceQrCode(invoice?.id)
+  const {
+    data: qrDataBySession,
+    isLoading: qrSessionLoading,
+    error: qrSessionError,
+  } = useInvoiceQrCodeBySession(tableSessionId)
+  const {
+    data: qrDataByInvoice,
+    isLoading: qrInvoiceLoading,
+    error: qrInvoiceError,
+    refetch: refetchInvoiceQr,
+  } = useInvoiceQrCode(invoice?.id)
   const qrData = qrDataByInvoice || qrDataBySession
   const qrLoading = (qrInvoiceLoading && !qrData) || (qrSessionLoading && !qrData)
 
@@ -106,8 +113,13 @@ export default function PaymentQrPage() {
   })
 
   const sessionNumber = tableSessionId ? String(tableSessionId).replace(/[^0-9]/g, "") || "1" : "1"
-  const transferContent = qrData?.transferContent || (invoice?.invoiceNumber ? `TT ${invoice.invoiceNumber.replace(/-/g, "")}` : `PV ${tableCode || "B01"} PHIEN${sessionNumber}`)
-  const amountToShow = invoice?.remainingAmount ?? invoice?.grandTotal ?? qrData?.remainingAmount ?? 0
+  const transferContent =
+    qrData?.transferContent ||
+    (invoice?.invoiceNumber
+      ? `TT ${invoice.invoiceNumber.replace(/-/g, "")}`
+      : `PV ${tableCode || "B01"} PHIEN${sessionNumber}`)
+  const amountToShow =
+    invoice?.remainingAmount ?? invoice?.grandTotal ?? qrData?.remainingAmount ?? 0
 
   /**
    * Chi nhánh chưa cấu hình tài khoản ngân hàng ⇒ không có QR để hiện.
@@ -155,45 +167,63 @@ export default function PaymentQrPage() {
     (invoice?.status as string) === "ISSUED" ||
     invoiceById?.status === "PAID" ||
     (invoiceById?.status as string) === "ISSUED" ||
-    (qrData && qrData.remainingAmount === 0 && (qrData.totalPaid > 0 || (invoice?.totalPaid ?? 0) > 0))
+    (qrData &&
+      qrData.remainingAmount === 0 &&
+      (qrData.totalPaid > 0 || (invoice?.totalPaid ?? 0) > 0))
 
   // Tự động chuyển trang khi hóa đơn đã được thanh toán (qua Webhook hoặc Thu ngân xác nhận)
   React.useEffect(() => {
     if (isPaid) {
       startPayment({ amount: amountToShow || invoice?.grandTotal || qrData?.grandTotal || 0 })
       markPaid("BANK_TRANSFER")
-      navigate(generatePath(CUSTOMER_PATHS.PAYMENT_SUCCESS, { qrCode: qrCode ?? "" }), { replace: true })
+      navigate(generatePath(CUSTOMER_PATHS.PAYMENT_SUCCESS, { qrCode: qrCode ?? "" }), {
+        replace: true,
+      })
     }
-  }, [isPaid, amountToShow, invoice?.grandTotal, qrData?.grandTotal, startPayment, markPaid, navigate, qrCode])
+  }, [
+    isPaid,
+    amountToShow,
+    invoice?.grandTotal,
+    qrData?.grandTotal,
+    startPayment,
+    markPaid,
+    navigate,
+    qrCode,
+  ])
 
   /**
-    * Đếm ngược chỉ bắt đầu khi ĐÃ có mã QR.
-    *
-    * Đồng hồ này là hạn của mã QR. Nếu để nó chạy trong lúc chờ Thu ngân lập hoá đơn
-    * thì sau 3:20 khách bị đẩy sang trang "thanh toán thất bại" dù chưa hề có gì để quét.
-    */
-  const qrUrl = qrData?.qrImageUrl;
-  const qrTotal = qrData?.grandTotal;
-  const currentTotal = invoice?.grandTotal;
-  const latestQrMatchesInvoice = currentTotal === undefined || qrTotal === currentTotal;
-  const [confirmedQrUrl, setConfirmedQrUrl] = React.useState("");
-  const [quoteError, setQuoteError] = React.useState(false);
-  const [quoteAttempt, setQuoteAttempt] = React.useState(0);
+   * Đếm ngược chỉ bắt đầu khi ĐÃ có mã QR.
+   *
+   * Đồng hồ này là hạn của mã QR. Nếu để nó chạy trong lúc chờ Thu ngân lập hoá đơn
+   * thì sau 3:20 khách bị đẩy sang trang "thanh toán thất bại" dù chưa hề có gì để quét.
+   */
+  const qrUrl = qrData?.qrImageUrl
+  const qrTotal = qrData?.grandTotal
+  const currentTotal = invoice?.grandTotal
+  const latestQrMatchesInvoice = currentTotal === undefined || qrTotal === currentTotal
+  const [confirmedQrUrl, setConfirmedQrUrl] = React.useState("")
+  const [quoteError, setQuoteError] = React.useState(false)
+  const [quoteAttempt, setQuoteAttempt] = React.useState(0)
   React.useEffect(() => {
-    if (!latestQrMatchesInvoice && invoice?.status === "PENDING") void refetchInvoiceQr();
-  }, [latestQrMatchesInvoice, currentTotal, invoice?.status, refetchInvoiceQr]);
+    if (!latestQrMatchesInvoice && invoice?.status === "PENDING") void refetchInvoiceQr()
+  }, [latestQrMatchesInvoice, currentTotal, invoice?.status, refetchInvoiceQr])
   React.useEffect(() => {
-    if (tableSessionId === undefined || !qrUrl || !qrTotal || !latestQrMatchesInvoice || isPaid) return;
-    let active = true;
-    setQuoteError(false);
-    void reportPaymentQrOpened(tableSessionId, qrTotal).then(() => {
-      if (active) setConfirmedQrUrl(qrUrl);
-    }).catch(() => {
-      if (active) setQuoteError(true);
-    });
-    return () => { active = false; };
-  }, [tableSessionId, qrUrl, qrTotal, latestQrMatchesInvoice, isPaid, quoteAttempt]);
-  const hasQrCode = Boolean(qrUrl && qrUrl === confirmedQrUrl && latestQrMatchesInvoice);
+    if (tableSessionId === undefined || !qrUrl || !qrTotal || !latestQrMatchesInvoice || isPaid)
+      return
+    let active = true
+    setQuoteError(false)
+    void reportPaymentQrOpened(tableSessionId, qrTotal)
+      .then(() => {
+        if (active) setConfirmedQrUrl(qrUrl)
+      })
+      .catch(() => {
+        if (active) setQuoteError(true)
+      })
+    return () => {
+      active = false
+    }
+  }, [tableSessionId, qrUrl, qrTotal, latestQrMatchesInvoice, isPaid, quoteAttempt])
+  const hasQrCode = Boolean(qrUrl && qrUrl === confirmedQrUrl && latestQrMatchesInvoice)
   React.useEffect(() => {
     if (!hasQrCode) return
     const timer = setInterval(() => {
@@ -209,7 +239,7 @@ export default function PaymentQrPage() {
     markFailed()
     navigate(
       generatePath(CUSTOMER_PATHS.PAYMENT_FAILED, { qrCode: qrCode ?? "" }) + "?reason=timeout",
-      { replace: true }
+      { replace: true },
     )
   }, [hasQrCode, secondsLeft, markFailed, navigate, qrCode])
 
@@ -236,7 +266,10 @@ export default function PaymentQrPage() {
       onError: (err) => {
         toast({
           title: "Lỗi gọi nhân viên",
-          description: err instanceof Error ? err.message : "Không thể gọi nhân viên lúc này. Vui lòng thử lại.",
+          description:
+            err instanceof Error
+              ? err.message
+              : "Không thể gọi nhân viên lúc này. Vui lòng thử lại.",
           variant: "danger",
         })
       },
@@ -252,7 +285,6 @@ export default function PaymentQrPage() {
   const seconds = secondsLeft % 60
   const countdownLabel = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
 
-
   return (
     <div className="flex min-h-dvh flex-1 flex-col justify-between bg-white w-full">
       <div className="flex-1 overflow-y-auto w-full">
@@ -263,7 +295,8 @@ export default function PaymentQrPage() {
             </h1>
             <p className="mt-1.5 max-w-xs text-xs sm:text-sm leading-relaxed text-text-secondary">
               Dùng app ngân hàng quét mã QR bên dưới.
-              {qrData?.automaticVerification ? " Hệ thống tự xác nhận khi ngân hàng báo nhận đủ tiền."
+              {qrData?.automaticVerification
+                ? " Hệ thống tự xác nhận khi ngân hàng báo nhận đủ tiền."
                 : " Nhân viên sẽ đối chiếu giao dịch sau khi bạn chuyển khoản."}
             </p>
 
@@ -287,9 +320,7 @@ export default function PaymentQrPage() {
                   <p className="text-sm font-semibold text-text-primary">
                     Hiện chưa hỗ trợ chuyển khoản tại bàn
                   </p>
-                  <p className="text-xs text-text-tertiary">
-                    Vui lòng thanh toán với thu ngân.
-                  </p>
+                  <p className="text-xs text-text-tertiary">Vui lòng thanh toán với thu ngân.</p>
                 </div>
               ) : hasQrCode && qrUrl ? (
                 <img
@@ -300,8 +331,13 @@ export default function PaymentQrPage() {
               ) : quoteError ? (
                 <div className="space-y-2 p-4 text-center" role="alert">
                   <p className="text-sm">Chưa xác nhận được mã thanh toán.</p>
-                  <button type="button" className="text-sm font-semibold text-brand-primary"
-                    onClick={() => setQuoteAttempt((attempt) => attempt + 1)}>Thử lại</button>
+                  <button
+                    type="button"
+                    className="text-sm font-semibold text-brand-primary"
+                    onClick={() => setQuoteAttempt((attempt) => attempt + 1)}
+                  >
+                    Thử lại
+                  </button>
                 </div>
               ) : qrLoading || qrUrl ? (
                 <div className="flex h-[180px] w-[180px] flex-col items-center justify-center gap-2">
@@ -319,7 +355,7 @@ export default function PaymentQrPage() {
                 <p className="mt-4 text-2xl sm:text-3xl font-extrabold tracking-tight text-brand-primary">
                   {formatVnd(amountToShow)}
                 </p>
-                
+
                 {/* ---- Breakdown nhỏ để khách thấy số tiền khớp với tạm tính ---- */}
                 {bill && (
                   <div className="mt-3 w-full max-w-[280px] rounded-lg bg-white border border-border-default/40 px-3 py-2 text-xs">
@@ -351,16 +387,26 @@ export default function PaymentQrPage() {
             >
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs sm:text-sm font-medium text-text-tertiary">Ngân hàng</span>
+                  <span className="text-xs sm:text-sm font-medium text-text-tertiary">
+                    Ngân hàng
+                  </span>
                   <span className="text-xs sm:text-sm font-bold text-text-primary">{bankName}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs sm:text-sm font-medium text-text-tertiary">Số tài khoản</span>
-                  <span className="text-xs sm:text-sm font-bold text-text-primary">{bankAccountNo}</span>
+                  <span className="text-xs sm:text-sm font-medium text-text-tertiary">
+                    Số tài khoản
+                  </span>
+                  <span className="text-xs sm:text-sm font-bold text-text-primary">
+                    {bankAccountNo}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs sm:text-sm font-medium text-text-tertiary">Chủ tài khoản</span>
-                  <span className="text-xs sm:text-sm font-bold text-text-primary">{accountName}</span>
+                  <span className="text-xs sm:text-sm font-medium text-text-tertiary">
+                    Chủ tài khoản
+                  </span>
+                  <span className="text-xs sm:text-sm font-bold text-text-primary">
+                    {accountName}
+                  </span>
                 </div>
               </div>
 
@@ -369,7 +415,9 @@ export default function PaymentQrPage() {
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs sm:text-sm font-bold text-text-primary">Nội dung CK</p>
-                  <p className="text-xs sm:text-sm font-bold text-text-primary">{transferContent}</p>
+                  <p className="text-xs sm:text-sm font-bold text-text-primary">
+                    {transferContent}
+                  </p>
                 </div>
                 <button
                   type="button"

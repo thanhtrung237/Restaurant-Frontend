@@ -114,7 +114,9 @@ const BranchFormContent: React.FC<BranchFormProps> = ({
           required={!isEdit}
           htmlFor="branch-code"
           error={errors.code?.message}
-          helperText={isEdit ? "Mã chi nhánh không thể thay đổi sau khi tạo." : "Duy nhất trong nhà hàng."}
+          helperText={
+            isEdit ? "Mã chi nhánh không thể thay đổi sau khi tạo." : "Duy nhất trong nhà hàng."
+          }
         >
           <Input
             id="branch-code"
@@ -152,7 +154,12 @@ const BranchFormContent: React.FC<BranchFormProps> = ({
       </FormField>
 
       <FormField label="Số điện thoại" htmlFor="branch-phone" error={errors.phone?.message}>
-        <Input id="branch-phone" {...register("phone")} placeholder="VD: 0281234567" autoComplete="off" />
+        <Input
+          id="branch-phone"
+          {...register("phone")}
+          placeholder="VD: 0281234567"
+          autoComplete="off"
+        />
       </FormField>
 
       {showRates ? (
@@ -163,7 +170,12 @@ const BranchFormContent: React.FC<BranchFormProps> = ({
             error={errors.vatRate?.message}
             helperText="Từ 0 đến 100. Để trống nếu chưa cấu hình."
           >
-            <Input id="branch-vat" {...register("vatRate")} inputMode="decimal" placeholder="VD: 8" />
+            <Input
+              id="branch-vat"
+              {...register("vatRate")}
+              inputMode="decimal"
+              placeholder="VD: 8"
+            />
           </FormField>
           <FormField
             label="Phí dịch vụ (%)"
@@ -205,11 +217,7 @@ const BranchFormContent: React.FC<BranchFormProps> = ({
 
           {copyEnabled ? (
             <div className="space-y-3">
-              <FormField
-                label="Chi nhánh nguồn"
-                required
-                error={errors.sourceBranchId?.message}
-              >
+              <FormField label="Chi nhánh nguồn" required error={errors.sourceBranchId?.message}>
                 <Controller
                   control={control}
                   name="sourceBranchId"
@@ -255,7 +263,8 @@ const BranchFormContent: React.FC<BranchFormProps> = ({
               </div>
 
               <p className="text-xs text-text-tertiary">
-                Không sao chép giá riêng của món (bản đè giá). Khu vực và bàn cần khai báo riêng cho chi nhánh mới.
+                Không sao chép giá riêng của món (bản đè giá). Khu vực và bàn cần khai báo riêng cho
+                chi nhánh mới.
               </p>
             </div>
           ) : null}
@@ -263,7 +272,13 @@ const BranchFormContent: React.FC<BranchFormProps> = ({
       ) : null}
 
       <DialogFooter className="pt-3">
-        <Button type="button" variant="outline" onClick={onClose} disabled={busy} className="cursor-pointer">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onClose}
+          disabled={busy}
+          className="cursor-pointer"
+        >
           Hủy
         </Button>
         <Button type="submit" disabled={busy} className="cursor-pointer">
@@ -306,7 +321,12 @@ const CopyCheckbox: React.FC<CopyCheckboxProps> = ({ control, name, label, hint,
 )
 
 /** Modal tạo mới / chỉnh sửa chi nhánh — `POST /branches` và `PUT /branches/{id}`. */
-export const BranchModal: React.FC<BranchModalProps> = ({ isOpen, onClose, initialData, ...rest }) => {
+export const BranchModal: React.FC<BranchModalProps> = ({
+  isOpen,
+  onClose,
+  initialData,
+  ...rest
+}) => {
   const isEdit = Boolean(initialData)
 
   return (

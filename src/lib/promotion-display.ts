@@ -1,6 +1,6 @@
 /**
  * promotion-display.ts
- * 
+ *
  * Helpers for displaying promotion information in customer-facing UI:
  * - Match active promotions with menu items
  * - Calculate discounted prices matching Backend PromotionEngine
@@ -97,7 +97,10 @@ export function isPromotionActiveNow(promotion: Promotion): boolean {
     } else {
       const days = raw.split(",").map((d) => d.trim().toUpperCase())
       const match = days.some(
-        (d) => d === currentDayName || currentDayName.startsWith(d) || d.startsWith(currentDayName.substring(0, 3))
+        (d) =>
+          d === currentDayName ||
+          currentDayName.startsWith(d) ||
+          d.startsWith(currentDayName.substring(0, 3)),
       )
       if (!match) return false
     }
@@ -177,7 +180,7 @@ export function doesDishMatchPromotion(dish: BranchMenuItem, promotion: Promotio
 export function calculateItemDiscount(
   price: number,
   quantity: number,
-  promotion: Promotion
+  promotion: Promotion,
 ): { discountAmount: number; discountPercent: number } {
   const action = parseAction(promotion.action)
   if (!action) return { discountAmount: 0, discountPercent: 0 }
@@ -236,7 +239,7 @@ export function calculateItemDiscount(
 export function checkItemCondition(
   promotion: Promotion,
   quantity = 1,
-  subtotal = 0
+  subtotal = 0,
 ): { satisfied: boolean; hint?: string } {
   const condition = parseCondition(promotion.condition)
   const action = parseAction(promotion.action)
@@ -288,7 +291,7 @@ export function checkItemCondition(
 export function evaluateItemPromotion(
   dish: { dishId: number | string; categoryId?: number | string; effectivePrice: number },
   quantity: number,
-  promotions: Promotion[]
+  promotions: Promotion[],
 ): {
   appliedPromotion?: Promotion
   discountAmount: number
@@ -326,7 +329,7 @@ export function evaluateItemPromotion(
       const { discountAmount, discountPercent } = calculateItemDiscount(
         dish.effectivePrice,
         quantity,
-        promo
+        promo,
       )
       if (discountAmount > 0) {
         if (
@@ -366,12 +369,12 @@ export function evaluateItemPromotion(
  */
 export function findBestPromotionForItem(
   dish: BranchMenuItem,
-  promotions: Promotion[]
+  promotions: Promotion[],
 ): ItemPromotionMatch | null {
   const result = evaluateItemPromotion(
     { dishId: dish.dishId, categoryId: dish.categoryId, effectivePrice: dish.effectivePrice },
     1,
-    promotions
+    promotions,
   )
 
   if (!result.appliedPromotion || result.discountAmount <= 0) {
@@ -386,7 +389,6 @@ export function findBestPromotionForItem(
     finalPrice: Math.max(0, dish.effectivePrice - result.discountAmount),
   }
 }
-
 
 /**
  * Format promotion badge text for customer menu

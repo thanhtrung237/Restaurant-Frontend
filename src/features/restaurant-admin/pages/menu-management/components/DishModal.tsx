@@ -43,7 +43,7 @@ const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gi
  * `kitchenStationType` BẮT BUỘC chọn: backend gom phiếu bếp theo đúng chuỗi này và dồn
  * `null` vào nhóm `"DEFAULT"`, nên để trống sẽ khiến đồ uống bị in chung phiếu với bếp
  * (FR-SRV-07). Không đặt giá trị mặc định vì không có khu nào đúng cho mọi món.
- * 
+ *
  * BRANCH_MANAGER tạo món luôn bắt buộc có branchId (FE enforce - BE có lỗ hổng theo QĐ-27).
  */
 const dishSchema = z.object({
@@ -109,7 +109,7 @@ export function DishModal({
 }: DishModalProps) {
   const isEdit = Boolean(initialData)
 
-  const branchId = initialData ? initialData.branchId ?? undefined : currentBranchId
+  const branchId = initialData ? (initialData.branchId ?? undefined) : currentBranchId
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && !isSaving && onClose()}>
@@ -186,8 +186,7 @@ function DishForm({
    */
   const loadedStation = initialData?.kitchenStationType ?? ""
   const legacyStation =
-    loadedStation &&
-    !KITCHEN_STATION_OPTIONS.some((s) => s.code === loadedStation)
+    loadedStation && !KITCHEN_STATION_OPTIONS.some((s) => s.code === loadedStation)
       ? loadedStation
       : ""
 
@@ -199,13 +198,16 @@ function DishForm({
   const linkedGroupIds = linkedGroupsQuery.data?.map((link) => link.optionGroupId) ?? []
   const selectedOptionGroupIds = draftGroupIds ?? linkedGroupIds
   const availableOptionGroups = availableGroupsQuery.data ?? []
-  const optionGroupsLoading = availableGroupsQuery.isPending || (Boolean(initialData) && linkedGroupsQuery.isPending)
+  const optionGroupsLoading =
+    availableGroupsQuery.isPending || (Boolean(initialData) && linkedGroupsQuery.isPending)
   const optionGroupsError = availableGroupsQuery.isError || linkedGroupsQuery.isError
 
   function toggleOptionGroup(groupId: number) {
     setDraftGroupIds((previous) => {
       const selected = previous ?? linkedGroupIds
-      return selected.includes(groupId) ? selected.filter((id) => id !== groupId) : [...selected, groupId]
+      return selected.includes(groupId)
+        ? selected.filter((id) => id !== groupId)
+        : [...selected, groupId]
     })
   }
 
@@ -271,17 +273,30 @@ function DishForm({
       {saleStatus ? (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-muted px-3 py-2">
           <div>
-            <p className="text-xs text-text-tertiary">{currentBranchId ? "Trạng thái tại chi nhánh" : "Trạng thái toàn nhà hàng"}</p>
+            <p className="text-xs text-text-tertiary">
+              {currentBranchId ? "Trạng thái tại chi nhánh" : "Trạng thái toàn nhà hàng"}
+            </p>
             <p className="text-sm font-medium">{saleStatus.isSelling ? "Đang bán" : "Ngừng bán"}</p>
           </div>
-          <Button type="button" size="sm" variant="ghost" onClick={saleStatus.onChange} disabled={busy || saleStatus.isUpdating}>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={saleStatus.onChange}
+            disabled={busy || saleStatus.isUpdating}
+          >
             {saleStatus.isSelling ? "Ngừng bán món" : "Bán lại món"}
           </Button>
         </div>
       ) : null}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <FormField label="Danh mục" htmlFor="dish-category" required error={errors.categoryId?.message}>
+        <FormField
+          label="Danh mục"
+          htmlFor="dish-category"
+          required
+          error={errors.categoryId?.message}
+        >
           <Controller
             control={control}
             name="categoryId"
@@ -334,8 +349,7 @@ function DishForm({
           />
           {legacyStation && stationValue === legacyStation ? (
             <p className="mt-1.5 text-xs text-status-warning">
-              Giá trị này chưa theo danh sách chuẩn. Nên chọn lại khu chế biến tương ứng
-              rồi Lưu.
+              Giá trị này chưa theo danh sách chuẩn. Nên chọn lại khu chế biến tương ứng rồi Lưu.
             </p>
           ) : null}
         </FormField>
@@ -355,8 +369,8 @@ function DishForm({
         />
         {soldByWeight ? (
           <p className="mt-1.5 text-xs text-text-tertiary">
-            Đơn giá/kg được chốt ngay khi gửi order; thành tiền chỉ tính sau khi có số cân
-            thật (BR-07).
+            Đơn giá/kg được chốt ngay khi gửi order; thành tiền chỉ tính sau khi có số cân thật
+            (BR-07).
           </p>
         ) : null}
       </FormField>
@@ -386,22 +400,35 @@ function DishForm({
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold uppercase tracking-wider text-text-secondary flex items-center gap-1.5">
             <Layers className="size-4 text-brand-primary" />
-            <span>{isBranchManager ? "Topping dùng chung" : "Nhóm tùy chọn / Topping áp dụng"} ({selectedOptionGroupIds.length})</span>
+            <span>
+              {isBranchManager ? "Topping dùng chung" : "Nhóm tùy chọn / Topping áp dụng"} (
+              {selectedOptionGroupIds.length})
+            </span>
           </label>
         </div>
 
         {optionGroupsError ? (
-          <div role="alert" className="flex flex-wrap items-center justify-between gap-2 text-sm text-text-secondary">
+          <div
+            role="alert"
+            className="flex flex-wrap items-center justify-between gap-2 text-sm text-text-secondary"
+          >
             <span>Không tải được nhóm tùy chọn của món.</span>
-            <Button type="button" variant="outline" size="sm" onClick={() => {
-              if (availableGroupsQuery.isError) void availableGroupsQuery.refetch()
-              if (linkedGroupsQuery.isError) void linkedGroupsQuery.refetch()
-            }}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (availableGroupsQuery.isError) void availableGroupsQuery.refetch()
+                if (linkedGroupsQuery.isError) void linkedGroupsQuery.refetch()
+              }}
+            >
               Thử lại
             </Button>
           </div>
         ) : optionGroupsLoading ? (
-          <p role="status" className="text-sm text-text-secondary">Đang tải nhóm tùy chọn…</p>
+          <p role="status" className="text-sm text-text-secondary">
+            Đang tải nhóm tùy chọn…
+          </p>
         ) : availableOptionGroups.length === 0 ? (
           <p className="text-xs text-text-tertiary italic">
             {isBranchManager
@@ -431,7 +458,8 @@ function DishForm({
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold text-text-primary truncate">{group.name}</p>
                     <p className="text-[10px] text-text-tertiary">
-                      {group.selectionType === "REQUIRED" ? "Bắt buộc" : "Tùy chọn"} · Tối đa {group.maxSelect}
+                      {group.selectionType === "REQUIRED" ? "Bắt buộc" : "Tùy chọn"} · Tối đa{" "}
+                      {group.maxSelect}
                     </p>
                   </div>
                 </label>
@@ -453,11 +481,7 @@ function DishForm({
         <div className="flex items-center gap-3">
           <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-card border border-border-default bg-surface-muted">
             {imageUrl ? (
-              <img
-                src={imageUrl}
-                alt="Ảnh món"
-                className="size-full object-cover"
-              />
+              <img src={imageUrl} alt="Ảnh món" className="size-full object-cover" />
             ) : (
               <ImagePlus className="size-6 text-text-tertiary" />
             )}
@@ -508,7 +532,13 @@ function DishForm({
           Huỷ
         </Button>
         <Button type="submit" disabled={busy || optionGroupsLoading || optionGroupsError}>
-          {busy ? "Đang lưu..." : initialData ? "Lưu thay đổi" : currentBranchId ? "Thêm món riêng" : "Thêm món"}
+          {busy
+            ? "Đang lưu..."
+            : initialData
+              ? "Lưu thay đổi"
+              : currentBranchId
+                ? "Thêm món riêng"
+                : "Thêm món"}
         </Button>
       </DialogFooter>
     </form>

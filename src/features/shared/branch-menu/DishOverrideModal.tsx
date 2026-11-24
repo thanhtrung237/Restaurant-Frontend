@@ -1,9 +1,9 @@
-import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { toast } from 'sonner';
-import { useCreateDishOverride, useUpdateDishOverride } from '@/api/dish-overrides.api';
+import { useEffect } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+import { toast } from "sonner"
+import { useCreateDishOverride, useUpdateDishOverride } from "@/api/dish-overrides.api"
 import {
   Dialog,
   DialogContent,
@@ -11,8 +11,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 import {
   Form,
   FormControl,
@@ -21,27 +21,27 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
-import type { BranchMenuItem } from '@/types/models';
+} from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
+import type { BranchMenuItem } from "@/types/models"
 
 // ============================================================================
 // Types
 // ============================================================================
 
 interface DishOverrideModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  branchId: number;
-  dish: BranchMenuItem | null;
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  branchId: number
+  dish: BranchMenuItem | null
   /** Override ID if editing existing override, undefined if creating new */
-  overrideId?: number;
+  overrideId?: number
 }
 
 // Định dạng tiền VND — khai báo tại chỗ để file không phụ thuộc `@/lib/format`.
 function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
+  return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(value)
 }
 
 // ============================================================================
@@ -52,20 +52,14 @@ const overrideSchema = z.object({
   overridePrice: z
     .string()
     .optional()
-    .refine(
-      (val) => !val || !isNaN(Number(val)),
-      'Giá phải là số hợp lệ'
-    )
-    .refine(
-      (val) => !val || Number(val) >= 0,
-      'Giá không được âm'
-    ),
+    .refine((val) => !val || !isNaN(Number(val)), "Giá phải là số hợp lệ")
+    .refine((val) => !val || Number(val) >= 0, "Giá không được âm"),
   // Không dùng .default(): defaultValues của useForm đã lo, và .default() làm
   // kiểu input (optional) lệch kiểu output (required) → lỗi Resolver.
   isHidden: z.boolean(),
-});
+})
 
-type OverrideFormValues = z.infer<typeof overrideSchema>;
+type OverrideFormValues = z.infer<typeof overrideSchema>
 
 // ============================================================================
 // Component
@@ -78,76 +72,78 @@ export function DishOverrideModal({
   dish,
   overrideId,
 }: DishOverrideModalProps) {
-  const createMutation = useCreateDishOverride();
-  const updateMutation = useUpdateDishOverride();
+  const createMutation = useCreateDishOverride()
+  const updateMutation = useUpdateDishOverride()
 
   const form = useForm<OverrideFormValues>({
     resolver: zodResolver(overrideSchema),
     defaultValues: {
-      overridePrice: '',
+      overridePrice: "",
       isHidden: false,
     },
-  });
+  })
 
   // Pre-fill form when editing existing override
   useEffect(() => {
     if (open && dish) {
       form.reset({
-        overridePrice: overrideId ? (dish.overridePrice?.toString() ?? '') : '',
+        overridePrice: overrideId ? (dish.overridePrice?.toString() ?? "") : "",
         isHidden: Boolean(overrideId && dish.isHidden),
-      });
+      })
     }
-  }, [open, dish, overrideId, form]);
+  }, [open, dish, overrideId, form])
 
   const onSubmit = async (values: OverrideFormValues) => {
-    if (!dish) return;
+    if (!dish) return
 
     try {
       const payload = {
         overridePrice: values.overridePrice ? Number(values.overridePrice) : undefined,
         isHidden: values.isHidden,
-      };
+      }
 
       if (overrideId) {
         // Update existing override
         await updateMutation.mutateAsync({
           id: overrideId,
-          body: { ...payload, clearOverridePrice: dish.hasOverride && payload.overridePrice === undefined ? true : undefined },
-        });
-        toast.success('Cập nhật ghi đè thành công');
+          body: {
+            ...payload,
+            clearOverridePrice:
+              dish.hasOverride && payload.overridePrice === undefined ? true : undefined,
+          },
+        })
+        toast.success("Cập nhật ghi đè thành công")
       } else {
         // Create new override
         await createMutation.mutateAsync({
           branchId,
           dishId: dish.dishId,
           ...payload,
-        });
-        toast.success('Tạo ghi đè thành công');
+        })
+        toast.success("Tạo ghi đè thành công")
       }
 
-      onOpenChange(false);
+      onOpenChange(false)
     } catch (error) {
-      toast.error(overrideId ? 'Không thể cập nhật ghi đè' : 'Không thể tạo ghi đè');
-      console.error('Override mutation error:', error);
+      toast.error(overrideId ? "Không thể cập nhật ghi đè" : "Không thể tạo ghi đè")
+      console.error("Override mutation error:", error)
     }
-  };
+  }
 
-  if (!dish) return null;
+  if (!dish) return null
 
-  const isLoading = createMutation.isPending || updateMutation.isPending;
-  const isEditing = !!overrideId;
+  const isLoading = createMutation.isPending || updateMutation.isPending
+  const isEditing = !!overrideId
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>
-            Giá và hiển thị · {dish.dishName}
-          </DialogTitle>
+          <DialogTitle>Giá và hiển thị · {dish.dishName}</DialogTitle>
           <DialogDescription>
             {isEditing
-              ? 'Cập nhật giá hoặc trạng thái ẩn cho món tại chi nhánh này.'
-              : 'Đặt giá riêng hoặc ẩn món tại chi nhánh này mà không ảnh hưởng chi nhánh khác.'}
+              ? "Cập nhật giá hoặc trạng thái ẩn cho món tại chi nhánh này."
+              : "Đặt giá riêng hoặc ẩn món tại chi nhánh này mà không ảnh hưởng chi nhánh khác."}
           </DialogDescription>
         </DialogHeader>
 
@@ -156,8 +152,7 @@ export function DishOverrideModal({
             {/* Price Override */}
             <div className="space-y-2">
               <div className="text-sm text-muted-foreground">
-                <span className="font-medium">Giá gốc:</span>{' '}
-                {formatCurrency(dish.basePrice)}
+                <span className="font-medium">Giá gốc:</span> {formatCurrency(dish.basePrice)}
               </div>
 
               <FormField
@@ -216,12 +211,12 @@ export function DishOverrideModal({
                 Hủy
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? 'Đang lưu...' : isEditing ? 'Cập nhật' : 'Tạo ghi đè'}
+                {isLoading ? "Đang lưu..." : isEditing ? "Cập nhật" : "Tạo ghi đè"}
               </Button>
             </DialogFooter>
           </form>
         </Form>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

@@ -150,7 +150,7 @@ function OptionGroupForm({
 
   // Fetch option items nếu là sửa
   const { data: existingItems = [], isLoading: itemsLoading } = useOptionItemsByGroup(
-    initialData?.id
+    initialData?.id,
   )
 
   const [items, setItems] = React.useState<EditableOptionItem[]>([])
@@ -166,7 +166,7 @@ function OptionGroupForm({
           id: item.id,
           name: item.name,
           extraPrice: Number(item.extraPrice ?? 0),
-        }))
+        })),
       )
     }
   }, [existingItems])
@@ -288,11 +288,7 @@ function OptionGroupForm({
           />
         </FormField>
 
-        <FormField
-          label="Chọn tối thiểu"
-          required
-          error={errors.minSelect?.message}
-        >
+        <FormField label="Chọn tối thiểu" required error={errors.minSelect?.message}>
           <Input
             {...register("minSelect")}
             type="number"
@@ -304,20 +300,9 @@ function OptionGroupForm({
           </p>
         </FormField>
 
-        <FormField
-          label="Chọn tối đa"
-          required
-          error={errors.maxSelect?.message}
-        >
-          <Input
-            {...register("maxSelect")}
-            type="number"
-            min={1}
-            className="h-10 rounded-xl"
-          />
-          <p className="mt-1 text-[11px] text-text-tertiary">
-            Số lượng tối đa ≥ 1
-          </p>
+        <FormField label="Chọn tối đa" required error={errors.maxSelect?.message}>
+          <Input {...register("maxSelect")} type="number" min={1} className="h-10 rounded-xl" />
+          <p className="mt-1 text-[11px] text-text-tertiary">Số lượng tối đa ≥ 1</p>
         </FormField>
       </div>
 

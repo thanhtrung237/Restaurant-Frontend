@@ -13,7 +13,9 @@ export function getRestaurant(id: number) {
 export function getRestaurantByCode(code: string) {
   return apiGet<Restaurant>(`/restaurants/code/${code}`)
 }
-export function listRestaurants(params?: PageParams & { keyword?: string; status?: RestaurantStatus }) {
+export function listRestaurants(
+  params?: PageParams & { keyword?: string; status?: RestaurantStatus },
+) {
   return apiGet<PageResponse<RestaurantListItem>>("/restaurants", { params })
 }
 export function createRestaurant(body: RestaurantAddRequest) {
@@ -36,7 +38,9 @@ export function useRestaurant(id?: number) {
     enabled: typeof id === "number",
   })
 }
-export function useRestaurantsPage(params?: PageParams & { keyword?: string; status?: RestaurantStatus }) {
+export function useRestaurantsPage(
+  params?: PageParams & { keyword?: string; status?: RestaurantStatus },
+) {
   return useQuery({ queryKey: qk.restaurants.list(params), queryFn: () => listRestaurants(params) })
 }
 export function useCreateRestaurant() {
@@ -49,14 +53,16 @@ export function useCreateRestaurant() {
 export function useUpdateRestaurant() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (vars: { id: number; body: RestaurantUpdateRequest }) => updateRestaurant(vars.id, vars.body),
+    mutationFn: (vars: { id: number; body: RestaurantUpdateRequest }) =>
+      updateRestaurant(vars.id, vars.body),
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.restaurants.all }),
   })
 }
 export function useChangeRestaurantStatus() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (vars: { id: number; status: RestaurantStatus }) => changeRestaurantStatus(vars.id, vars.status),
+    mutationFn: (vars: { id: number; status: RestaurantStatus }) =>
+      changeRestaurantStatus(vars.id, vars.status),
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.restaurants.all }),
   })
 }
@@ -67,4 +73,3 @@ export function useDeleteRestaurant() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.restaurants.all }),
   })
 }
-

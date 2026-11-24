@@ -50,9 +50,7 @@ export function NavDrawer({ open, onOpenChange }: NavDrawerProps) {
           aria-label="Menu điều hướng"
           className="fixed inset-y-0 left-0 z-50 flex w-[80%] max-w-[320px] flex-col bg-surface-card shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left"
         >
-          <DialogPrimitive.Title className="sr-only">
-            Menu điều hướng
-          </DialogPrimitive.Title>
+          <DialogPrimitive.Title className="sr-only">Menu điều hướng</DialogPrimitive.Title>
           <DialogPrimitive.Description className="sr-only">
             Danh sách các phân hệ bạn có quyền truy cập
           </DialogPrimitive.Description>
@@ -64,9 +62,7 @@ export function NavDrawer({ open, onOpenChange }: NavDrawerProps) {
               <p className="truncate text-base font-bold text-text-primary">
                 {restaurantName || "Nhà hàng"}
               </p>
-              <p className="truncate text-xs text-text-tertiary">
-                {activeChoice?.name ?? ""}
-              </p>
+              <p className="truncate text-xs text-text-tertiary">{activeChoice?.name ?? ""}</p>
             </div>
             <DialogPrimitive.Close
               aria-label="Đóng menu"

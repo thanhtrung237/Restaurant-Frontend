@@ -8,11 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { AUDIT_ACTION_TYPE, AUDIT_ACTION_TYPE_LABEL } from "@/types/models"
 import { AUDIT_DATE_RANGES } from "../lib"
-import type {
-  AuditActionFilter,
-  AuditDateRangeId,
-  AuditPerformerFilter,
-} from "../types"
+import type { AuditActionFilter, AuditDateRangeId, AuditPerformerFilter } from "../types"
 
 export interface AuditPerformerOption {
   value: AuditPerformerFilter

@@ -3,7 +3,10 @@ import { BRANCH_MANAGER_PATHS } from "./branch-manager.paths"
 import { CASHIER_PATHS } from "./cashier.paths"
 import { RESTAURANT_ADMIN_PATHS } from "./restaurant-admin.paths"
 
-type StaffPaymentPaths = Record<"CHECKOUT" | "QR_TRANSFER_PAYMENT" | "E_INVOICE" | "TABLE_MAP", string>
+type StaffPaymentPaths = Record<
+  "CHECKOUT" | "QR_TRANSFER_PAYMENT" | "E_INVOICE" | "TABLE_MAP",
+  string
+>
 
 const paymentPathsByRole: Partial<Record<AppRole, StaffPaymentPaths>> = {
   [APP_ROLE.CASHIER]: CASHIER_PATHS,

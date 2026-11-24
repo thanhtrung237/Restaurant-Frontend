@@ -58,4 +58,3 @@ export interface OptionGroupItem {
   dishCount: number
   dishNames: string[]
 }
-

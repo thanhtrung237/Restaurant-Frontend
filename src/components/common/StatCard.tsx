@@ -47,7 +47,12 @@ export function StatCard({ label, value, icon: Icon, trend, className }: StatCar
       </div>
       <p className="mt-2 text-2xl font-bold text-text-primary">{value}</p>
       {trend ? (
-        <p className={cn("mt-2 flex items-center gap-1 text-xs font-medium", TREND_CLASS[trend.direction])}>
+        <p
+          className={cn(
+            "mt-2 flex items-center gap-1 text-xs font-medium",
+            TREND_CLASS[trend.direction],
+          )}
+        >
           {trend.direction !== "neutral" ? <span>{TREND_ARROW[trend.direction]}</span> : null}
           {trend.value}
         </p>

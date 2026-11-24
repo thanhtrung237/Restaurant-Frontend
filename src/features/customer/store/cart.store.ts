@@ -65,17 +65,23 @@ export const useCustomerCartStore = create<CustomerCartState>((set) => ({
       items: [...state.items, { ...line, cartItemId: genCartItemId() }],
     })),
 
-  quickAdd: ({ dishId, name, imageUrl, unitPrice, promotionId, promotionName, promotionDiscountAmount }) =>
+  quickAdd: ({
+    dishId,
+    name,
+    imageUrl,
+    unitPrice,
+    promotionId,
+    promotionName,
+    promotionDiscountAmount,
+  }) =>
     set((state) => {
       // Chỉ gộp vào dòng mặc định (không có optionsSummary/note) của đúng món này
-      const existing = state.items.find(
-        (i) => i.dishId === dishId && !i.optionsSummary && !i.note
-      )
+      const existing = state.items.find((i) => i.dishId === dishId && !i.optionsSummary && !i.note)
 
       if (existing) {
         return {
           items: state.items.map((i) =>
-            i.cartItemId === existing.cartItemId ? { ...i, quantity: i.quantity + 1 } : i
+            i.cartItemId === existing.cartItemId ? { ...i, quantity: i.quantity + 1 } : i,
           ),
         }
       }
@@ -123,18 +129,12 @@ export function selectCartTotalQuantity(items: CartLine[]): number {
 
 /** Tổng tiền hàng (chưa gồm khuyến mãi/phí DV/VAT) — bao gồm cả giá topping/option */
 export function selectCartSubtotal(items: CartLine[]): number {
-  return items.reduce(
-    (sum, i) => sum + (i.unitPrice + (i.optionsTotalPrice ?? 0)) * i.quantity,
-    0,
-  )
+  return items.reduce((sum, i) => sum + (i.unitPrice + (i.optionsTotalPrice ?? 0)) * i.quantity, 0)
 }
 
 /** Tổng giảm giá từ khuyến mãi món ăn */
 export function selectCartItemPromotionDiscount(items: CartLine[]): number {
-  return items.reduce(
-    (sum, i) => sum + (i.promotionDiscountAmount || 0) * i.quantity,
-    0
-  )
+  return items.reduce((sum, i) => sum + (i.promotionDiscountAmount || 0) * i.quantity, 0)
 }
 
 /** Subtotal sau khi trừ khuyến mãi món */

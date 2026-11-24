@@ -22,7 +22,7 @@ export function PseudoQrCode({ seed, size = 220 }: { seed: string; size?: number
       return h / 0xffffffff
     }
     const grid: boolean[][] = Array.from({ length: GRID }, () =>
-      Array.from({ length: GRID }, () => rand() > 0.55)
+      Array.from({ length: GRID }, () => rand() > 0.55),
     )
     // Khoét 3 góc để chừa chỗ vẽ finder pattern
     const clearCorner = (r0: number, c0: number) => {
@@ -43,12 +43,27 @@ export function PseudoQrCode({ seed, size = 220 }: { seed: string; size?: number
   )
 
   return (
-    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} role="img" aria-label="Mã QR chuyển khoản">
+    <svg
+      viewBox={`0 0 ${size} ${size}`}
+      width={size}
+      height={size}
+      role="img"
+      aria-label="Mã QR chuyển khoản"
+    >
       <rect width={size} height={size} fill="#ffffff" />
       {modules.map((row, r) =>
         row.map((on, c) =>
-          on ? <rect key={`${r}-${c}`} x={c * cell} y={r * cell} width={cell} height={cell} fill="#111111" /> : null
-        )
+          on ? (
+            <rect
+              key={`${r}-${c}`}
+              x={c * cell}
+              y={r * cell}
+              width={cell}
+              height={cell}
+              fill="#111111"
+            />
+          ) : null,
+        ),
       )}
       <Finder x={0} y={0} />
       <Finder x={GRID - 7} y={0} />

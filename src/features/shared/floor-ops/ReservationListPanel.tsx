@@ -14,10 +14,7 @@ import { Input } from "@/components/ui/input"
 import { EmptyState } from "@/components/common/EmptyState"
 import { useToast } from "@/hooks/use-toast"
 import { getErrorMessage } from "@/lib/http"
-import {
-  useCancelReservation,
-  useConfirmOpenSession,
-} from "@/features/shared/floor-ops/api"
+import { useCancelReservation, useConfirmOpenSession } from "@/features/shared/floor-ops/api"
 import type { TableSession } from "@/types/models"
 
 interface ReservationListPanelProps {
@@ -88,9 +85,7 @@ export function ReservationListPanel({
     () =>
       sessions
         .filter((s) => s.status === "RESERVED")
-        .sort((a, b) =>
-          (a.reservationTime ?? "").localeCompare(b.reservationTime ?? ""),
-        ),
+        .sort((a, b) => (a.reservationTime ?? "").localeCompare(b.reservationTime ?? "")),
     [sessions],
   )
 
@@ -110,9 +105,8 @@ export function ReservationListPanel({
   // cần xử lý gấp: quá giờ hẹn + thời gian giữ chỗ là job nền tự huỷ (BR-29).
   const awaitingPickupCount = React.useMemo(
     () =>
-      reservations.filter(
-        (s) => s.reservationTime && new Date(s.reservationTime).getTime() <= now,
-      ).length,
+      reservations.filter((s) => s.reservationTime && new Date(s.reservationTime).getTime() <= now)
+        .length,
     [reservations, now],
   )
 
@@ -128,9 +122,7 @@ export function ReservationListPanel({
             aria-label="Bàn đặt trước"
             className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col bg-surface-card shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right"
           >
-            <DialogPrimitive.Title className="sr-only">
-              Bàn đặt trước
-            </DialogPrimitive.Title>
+            <DialogPrimitive.Title className="sr-only">Bàn đặt trước</DialogPrimitive.Title>
             <DialogPrimitive.Description className="sr-only">
               Các bàn đang được giữ chỗ theo giờ hẹn
             </DialogPrimitive.Description>
@@ -141,14 +133,10 @@ export function ReservationListPanel({
                   <CalendarCheck className="size-4.5" />
                 </span>
                 <div>
-                  <h2 className="text-base font-bold text-text-primary">
-                    Bàn đặt trước
-                  </h2>
+                  <h2 className="text-base font-bold text-text-primary">Bàn đặt trước</h2>
                   <p className="text-xs text-text-tertiary">
                     {reservations.length} lượt đặt
-                    {awaitingPickupCount > 0
-                      ? ` · ${awaitingPickupCount} chờ nhận bàn`
-                      : ""}
+                    {awaitingPickupCount > 0 ? ` · ${awaitingPickupCount} chờ nhận bàn` : ""}
                   </p>
                 </div>
               </div>
@@ -197,10 +185,7 @@ export function ReservationListPanel({
         </DialogPrimitive.Portal>
       </DialogPrimitive.Root>
 
-      <ReceiveGuestDialog
-        session={sessionToOpen}
-        onClose={() => setSessionToOpen(null)}
-      />
+      <ReceiveGuestDialog session={sessionToOpen} onClose={() => setSessionToOpen(null)} />
       <CancelReservationDialog
         session={canCancel ? sessionToCancel : null}
         onClose={() => setSessionToCancel(null)}
@@ -287,17 +272,13 @@ function ReservationRow({
             ) : null}
           </div>
           {session.reservationNote ? (
-            <p className="mt-1 truncate text-xs text-brand-primary">
-              {session.reservationNote}
-            </p>
+            <p className="mt-1 truncate text-xs text-brand-primary">{session.reservationNote}</p>
           ) : null}
         </div>
 
         {isExpiringSoon ? (
           <span className="shrink-0 rounded-pill bg-status-warning-subtle px-2 py-0.5 text-[11px] font-bold text-status-warning">
-            {minutesLeft !== null && minutesLeft > 0
-              ? `Còn ${minutesLeft} phút`
-              : "Quá giờ giữ"}
+            {minutesLeft !== null && minutesLeft > 0 ? `Còn ${minutesLeft} phút` : "Quá giờ giữ"}
           </span>
         ) : null}
       </div>
@@ -306,7 +287,11 @@ function ReservationRow({
         <Button size="sm" className="flex-1" onClick={onReceive}>
           Nhận bàn
         </Button>
-        {onCancel && <Button size="sm" variant="outline" className="flex-1" onClick={onCancel}>Huỷ đặt</Button>}
+        {onCancel && (
+          <Button size="sm" variant="outline" className="flex-1" onClick={onCancel}>
+            Huỷ đặt
+          </Button>
+        )}
       </div>
     </li>
   )
@@ -332,13 +317,7 @@ function ReceiveGuestDialog({
   )
 }
 
-function ReceiveGuestForm({
-  session,
-  onClose,
-}: {
-  session: TableSession
-  onClose: () => void
-}) {
+function ReceiveGuestForm({ session, onClose }: { session: TableSession; onClose: () => void }) {
   const { toast } = useToast()
   const confirmOpenMutation = useConfirmOpenSession()
   const [guestCount, setGuestCount] = React.useState(() => session.guestCount ?? 2)
@@ -370,15 +349,13 @@ function ReceiveGuestForm({
       <DialogHeader>
         <DialogTitle>Nhận bàn {session.tableName ?? ""}</DialogTitle>
         <DialogDescription>
-          Khách đặt {session.guestCount ?? "—"} chỗ. Nhập số khách THỰC TẾ đã tới để chốt
-          phiên phục vụ.
+          Khách đặt {session.guestCount ?? "—"} chỗ. Nhập số khách THỰC TẾ đã tới để chốt phiên phục
+          vụ.
         </DialogDescription>
       </DialogHeader>
 
       <div className="space-y-2 py-1">
-        <span className="block text-sm font-semibold text-text-primary">
-          Số khách thực tế
-        </span>
+        <span className="block text-sm font-semibold text-text-primary">Số khách thực tế</span>
         <div className="inline-flex items-center gap-3">
           <button
             type="button"
@@ -401,19 +378,14 @@ function ReceiveGuestForm({
             <Plus className="size-4" strokeWidth={3} />
           </button>
         </div>
-        {error ? (
-          <p className="text-sm font-medium text-status-danger">{error}</p>
-        ) : null}
+        {error ? <p className="text-sm font-medium text-status-danger">{error}</p> : null}
       </div>
 
       <DialogFooter className="gap-2 sm:gap-0">
         <Button variant="outline" onClick={onClose}>
           Huỷ
         </Button>
-        <Button
-          onClick={() => void handleConfirm()}
-          disabled={confirmOpenMutation.isPending}
-        >
+        <Button onClick={() => void handleConfirm()} disabled={confirmOpenMutation.isPending}>
           {confirmOpenMutation.isPending ? "Đang mở bàn..." : "Xác nhận nhận bàn"}
         </Button>
       </DialogFooter>
@@ -432,9 +404,7 @@ function CancelReservationDialog({
   return (
     <Dialog open={Boolean(session)} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
-        {session ? (
-          <CancelReservationForm session={session} onClose={onClose} />
-        ) : null}
+        {session ? <CancelReservationForm session={session} onClose={onClose} /> : null}
       </DialogContent>
     </Dialog>
   )
@@ -499,9 +469,7 @@ function CancelReservationForm({
           placeholder="VD: Khách báo không tới"
           className="h-11 rounded-lg border-border-strong/80 text-sm"
         />
-        {error ? (
-          <p className="text-sm font-medium text-status-danger">{error}</p>
-        ) : null}
+        {error ? <p className="text-sm font-medium text-status-danger">{error}</p> : null}
       </div>
 
       <DialogFooter className="gap-2 sm:gap-0">

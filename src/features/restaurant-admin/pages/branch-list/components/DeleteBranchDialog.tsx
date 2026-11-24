@@ -35,20 +35,14 @@ export const DeleteBranchDialog: React.FC<DeleteBranchDialogProps> = ({
           <DialogTitle>Xóa chi nhánh</DialogTitle>
           <DialogDescription>
             Bạn có chắc chắn muốn xóa chi nhánh{" "}
-            <span className="font-semibold text-text-primary">
-              &quot;{branch.name}&quot;
-            </span>
-            ? Dữ liệu bàn, cấu hình và báo cáo liên quan sẽ bị ảnh hưởng. Thao tác này không thể hoàn tác.
+            <span className="font-semibold text-text-primary">&quot;{branch.name}&quot;</span>? Dữ
+            liệu bàn, cấu hình và báo cáo liên quan sẽ bị ảnh hưởng. Thao tác này không thể hoàn
+            tác.
           </DialogDescription>
         </DialogHeader>
 
         <DialogFooter className="pt-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            className="cursor-pointer"
-          >
+          <Button type="button" variant="outline" onClick={onClose} className="cursor-pointer">
             Hủy
           </Button>
           <Button

@@ -32,8 +32,14 @@ export function useTakeawayOrders(branchId?: number) {
 export function useCreateTakeaway() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: ({ branchId, ...order }: { branchId: number; customerName?: string; items: OrderDetailAddRequest[] }) =>
-      apiPost<TakeawayOrder>(path(branchId), order),
+    mutationFn: ({
+      branchId,
+      ...order
+    }: {
+      branchId: number
+      customerName?: string
+      items: OrderDetailAddRequest[]
+    }) => apiPost<TakeawayOrder>(path(branchId), order),
     onSuccess: (_, { branchId }) => {
       void client.invalidateQueries({ queryKey: takeawayOrdersKey(branchId) })
       void client.invalidateQueries({ queryKey: qk.tableSessions.all })

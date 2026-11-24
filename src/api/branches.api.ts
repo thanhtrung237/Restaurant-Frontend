@@ -5,8 +5,11 @@ import type { PageParams, PageResponse } from "@/types/api"
 import type { Branch, BranchListItem } from "@/types/models"
 import type { BranchStatus } from "@/types/enums"
 import type {
-  BranchAddRequest, BranchAdminConfigRequest, BranchCopyConfigRequest,
-  BranchManagerConfigRequest, BranchUpdateRequest,
+  BranchAddRequest,
+  BranchAdminConfigRequest,
+  BranchCopyConfigRequest,
+  BranchManagerConfigRequest,
+  BranchUpdateRequest,
 } from "@/types/requests"
 
 export function getBranch(id: number) {
@@ -15,7 +18,9 @@ export function getBranch(id: number) {
 export function getBranchByCode(restaurantId: number, code: string) {
   return apiGet<Branch>(`/branches/restaurant/${restaurantId}/code/${code}`)
 }
-export function listBranches(params?: PageParams & { restaurantId?: number; status?: BranchStatus }) {
+export function listBranches(
+  params?: PageParams & { restaurantId?: number; status?: BranchStatus },
+) {
   return apiGet<PageResponse<BranchListItem>>("/branches", { params })
 }
 export function getBranchesByRestaurant(restaurantId: number) {
@@ -60,7 +65,9 @@ export function useBranchesByRestaurant(restaurantId?: number) {
     enabled: typeof restaurantId === "number",
   })
 }
-export function useBranchesPage(params?: PageParams & { restaurantId?: number; status?: BranchStatus }) {
+export function useBranchesPage(
+  params?: PageParams & { restaurantId?: number; status?: BranchStatus },
+) {
   return useQuery({
     queryKey: qk.branches.list(params),
     queryFn: () => listBranches(params),
@@ -76,7 +83,8 @@ export function useCreateBranch() {
 export function useUpdateBranch() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (vars: { id: number; body: BranchUpdateRequest }) => updateBranch(vars.id, vars.body),
+    mutationFn: (vars: { id: number; body: BranchUpdateRequest }) =>
+      updateBranch(vars.id, vars.body),
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.branches.all }),
   })
 }
@@ -91,14 +99,16 @@ export function useUpdateBranchManagerConfig() {
 export function useUpdateBranchAdminConfig() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (vars: { id: number; body: BranchAdminConfigRequest }) => updateBranchAdminConfig(vars.id, vars.body),
+    mutationFn: (vars: { id: number; body: BranchAdminConfigRequest }) =>
+      updateBranchAdminConfig(vars.id, vars.body),
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.branches.all }),
   })
 }
 export function useCopyBranchConfig() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (vars: { id: number; body: BranchCopyConfigRequest }) => copyBranchConfig(vars.id, vars.body),
+    mutationFn: (vars: { id: number; body: BranchCopyConfigRequest }) =>
+      copyBranchConfig(vars.id, vars.body),
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.branches.all }),
   })
 }
