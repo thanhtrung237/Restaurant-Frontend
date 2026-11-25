@@ -1,6 +1,6 @@
-import { toast } from 'sonner';
-import type { MouseEvent } from 'react';
-import { useDeleteDishOverride } from '@/api/dish-overrides.api';
+import { toast } from "sonner"
+import type { MouseEvent } from "react"
+import { useDeleteDishOverride } from "@/api/dish-overrides.api"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,18 +10,18 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import type { BranchMenuItem } from '@/types/models';
+} from "@/components/ui/alert-dialog"
+import type { BranchMenuItem } from "@/types/models"
 
 // ============================================================================
 // Types
 // ============================================================================
 
 interface DeleteOverrideDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  dish: BranchMenuItem | null;
-  overrideId: number | null;
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  dish: BranchMenuItem | null
+  overrideId: number | null
 }
 
 // ============================================================================
@@ -34,28 +34,31 @@ export function DeleteOverrideDialog({
   dish,
   overrideId,
 }: DeleteOverrideDialogProps) {
-  const deleteMutation = useDeleteDishOverride();
+  const deleteMutation = useDeleteDishOverride()
 
   const handleDelete = async (event: MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    if (!overrideId || deleteMutation.isPending) return;
+    event.preventDefault()
+    if (!overrideId || deleteMutation.isPending) return
 
     try {
-      await deleteMutation.mutateAsync(overrideId);
-      toast.success('Đã xóa ghi đè');
-      onOpenChange(false);
+      await deleteMutation.mutateAsync(overrideId)
+      toast.success("Đã xóa ghi đè")
+      onOpenChange(false)
     } catch (error) {
-      toast.error('Không thể xóa ghi đè');
-      console.error('Delete override error:', error);
+      toast.error("Không thể xóa ghi đè")
+      console.error("Delete override error:", error)
     }
-  };
+  }
 
-  if (!dish) return null;
+  if (!dish) return null
 
   return (
-    <AlertDialog open={open} onOpenChange={(nextOpen) => {
-      if (!deleteMutation.isPending) onOpenChange(nextOpen);
-    }}>
+    <AlertDialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!deleteMutation.isPending) onOpenChange(nextOpen)
+      }}
+    >
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Xóa ghi đè</AlertDialogTitle>
@@ -85,10 +88,10 @@ export function DeleteOverrideDialog({
             disabled={deleteMutation.isPending}
             className="bg-red-600 text-white hover:bg-red-700"
           >
-            {deleteMutation.isPending ? 'Đang xóa...' : 'Xóa ghi đè'}
+            {deleteMutation.isPending ? "Đang xóa..." : "Xóa ghi đè"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  );
+  )
 }

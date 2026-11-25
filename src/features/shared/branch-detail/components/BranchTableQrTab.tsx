@@ -1,7 +1,13 @@
 import { useState, type ReactNode } from "react"
 import { TableCard } from "@/components/common/TableCard"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import type { DiningTable, Area } from "@/types/models"
 import { Loader2, Printer } from "lucide-react"
 import { groupBranchTables } from "../table-areas"
@@ -63,11 +69,15 @@ export function BranchTableQrTab({
   const selectedGroup = tableGroups.get(areaFilter)
   const selectedArea = selectedGroup ? areaFilter : "all"
   const areaTables = selectedGroup?.tables ?? tables
-  const filteredTables = areaTables.filter((table) => usageFilter === "all" ||
-    (table.status === "INACTIVE") === (usageFilter === "inactive"))
+  const filteredTables = areaTables.filter(
+    (table) =>
+      usageFilter === "all" || (table.status === "INACTIVE") === (usageFilter === "inactive"),
+  )
   const scopeLabel = selectedArea === "all" ? "Chi nhánh này" : "Khu vực này"
-  const emptyMessage = areaTables.length === 0 ? `${scopeLabel} chưa có bàn.`
-    : `${scopeLabel} không có bàn ${usageFilter === "inactive" ? "ngừng sử dụng" : "đang sử dụng"}.`
+  const emptyMessage =
+    areaTables.length === 0
+      ? `${scopeLabel} chưa có bàn.`
+      : `${scopeLabel} không có bàn ${usageFilter === "inactive" ? "ngừng sử dụng" : "đang sử dụng"}.`
 
   return (
     <div className="space-y-5 pt-1">
@@ -86,58 +96,83 @@ export function BranchTableQrTab({
 
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         <Select value={selectedArea} onValueChange={onAreaFilterChange}>
-          <SelectTrigger aria-label="Lọc theo khu vực" className="h-10 min-w-0 flex-1 basis-32 bg-surface-card sm:max-w-72 [&>span]:truncate">
+          <SelectTrigger
+            aria-label="Lọc theo khu vực"
+            className="h-10 min-w-0 flex-1 basis-32 bg-surface-card sm:max-w-72 [&>span]:truncate"
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tất cả khu vực{!loading && !tablesUnavailable ? ` (${tables.length})` : ""}</SelectItem>
+            <SelectItem value="all">
+              Tất cả khu vực{!loading && !tablesUnavailable ? ` (${tables.length})` : ""}
+            </SelectItem>
             {Array.from(tableGroups, ([id, group]) => (
               <SelectItem key={id} value={id} className="whitespace-normal break-words">
-                {group.name}{!loading && !tablesUnavailable ? ` (${group.tables.length})` : ""}
+                {group.name}
+                {!loading && !tablesUnavailable ? ` (${group.tables.length})` : ""}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
         <Select value={usageFilter} onValueChange={(value: UsageFilter) => setUsageFilter(value)}>
-          <SelectTrigger aria-label="Lọc theo trạng thái sử dụng" className="h-10 min-w-0 flex-1 basis-32 bg-surface-card sm:max-w-48 [&>span]:truncate">
+          <SelectTrigger
+            aria-label="Lọc theo trạng thái sử dụng"
+            className="h-10 min-w-0 flex-1 basis-32 bg-surface-card sm:max-w-48 [&>span]:truncate"
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             {usageOptions.map(({ value, label }) => (
-              <SelectItem key={value} value={value}>{label}</SelectItem>
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
         {areaAction ? (
-          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">{areaAction}</div>
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
+            {areaAction}
+          </div>
         ) : null}
       </div>
       {areasUnavailable ? (
         <div className="flex flex-wrap items-center gap-2 text-sm text-text-secondary">
           <p role="status">Không tải được danh sách khu vực.</p>
-          <Button type="button" variant="link" onClick={onRetryAreas}>Thử lại</Button>
+          <Button type="button" variant="link" onClick={onRetryAreas}>
+            Thử lại
+          </Button>
         </div>
       ) : null}
 
       {loading ? (
-        <div role="status" className="flex items-center justify-center gap-2 py-16 text-sm text-text-secondary">
+        <div
+          role="status"
+          className="flex items-center justify-center gap-2 py-16 text-sm text-text-secondary"
+        >
           <Loader2 aria-hidden="true" className="size-5 animate-spin text-brand-primary" />
           Đang tải danh sách bàn…
         </div>
       ) : tablesUnavailable ? (
         <div className="space-y-3 rounded-card border border-border-default bg-surface-card px-4 py-10 text-center">
-          <p role="alert" className="text-sm text-text-secondary">Không tải được danh sách bàn.</p>
-          <Button type="button" variant="outline" onClick={onRetryTables}>Thử lại tải bàn</Button>
+          <p role="alert" className="text-sm text-text-secondary">
+            Không tải được danh sách bàn.
+          </p>
+          <Button type="button" variant="outline" onClick={onRetryTables}>
+            Thử lại tải bàn
+          </Button>
         </div>
       ) : filteredTables.length === 0 ? (
         <div className="space-y-3 rounded-card border border-border-default bg-surface-card px-4 py-10 text-center">
-          <p className="text-sm text-text-secondary">
-            {emptyMessage}
-          </p>
+          <p className="text-sm text-text-secondary">{emptyMessage}</p>
           {areaTables.length > 0 ? (
-            <Button type="button" variant="outline" onClick={() => setUsageFilter("all")}>Xem tất cả trạng thái</Button>
-          ) : usageFilter !== "inactive" && areas.some((area) => String(area.id) === selectedArea) ? (
-            <Button type="button" variant="outline" onClick={onAddTable}>Thêm bàn vào khu vực</Button>
+            <Button type="button" variant="outline" onClick={() => setUsageFilter("all")}>
+              Xem tất cả trạng thái
+            </Button>
+          ) : usageFilter !== "inactive" &&
+            areas.some((area) => String(area.id) === selectedArea) ? (
+            <Button type="button" variant="outline" onClick={onAddTable}>
+              Thêm bàn vào khu vực
+            </Button>
           ) : null}
         </div>
       ) : (

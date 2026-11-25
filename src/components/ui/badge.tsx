@@ -34,8 +34,7 @@ const badgeVariants = cva(
 )
 
 export interface BadgeProps
-  extends React.HTMLAttributes<HTMLSpanElement>,
-    VariantProps<typeof badgeVariants> {
+  extends React.HTMLAttributes<HTMLSpanElement>, VariantProps<typeof badgeVariants> {
   /** Chấm tròn nhỏ trước label — đúng như Status Badge trong Design System */
   dot?: boolean
 }

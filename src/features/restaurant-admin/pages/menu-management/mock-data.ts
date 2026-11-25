@@ -65,8 +65,4 @@ export const MOCK_BRANCH_DISHES: BranchDishItem[] = [
 /**
  * Danh sách chi nhánh phục vụ chọn ở dropdown
  */
-export const MOCK_BRANCH_OPTIONS = [
-  "Chi nhánh Quận 1",
-  "Chi nhánh Quận 3",
-  "Chi nhánh Thủ Đức",
-]
+export const MOCK_BRANCH_OPTIONS = ["Chi nhánh Quận 1", "Chi nhánh Quận 3", "Chi nhánh Thủ Đức"]

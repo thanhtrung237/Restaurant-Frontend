@@ -25,5 +25,9 @@ export {
   useInvoiceQrCodeBySession,
 } from "@/api/invoices.api"
 export { useCreatePayment, usePaymentsByInvoice } from "@/api/payments.api"
-export { useCreateManualDiscount, useDeleteManualDiscount, useManualDiscountsByInvoice } from "@/api/manual-discounts.api"
+export {
+  useCreateManualDiscount,
+  useDeleteManualDiscount,
+  useManualDiscountsByInvoice,
+} from "@/api/manual-discounts.api"
 export { useBranch } from "@/api/branches.api"

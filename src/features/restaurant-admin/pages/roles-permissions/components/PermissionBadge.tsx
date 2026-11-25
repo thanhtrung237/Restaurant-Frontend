@@ -28,7 +28,10 @@ export const PermissionBadge: React.FC<PermissionBadgeProps> = ({
       case "allow":
         return (
           <span
-            className={cn(box, "inline-flex items-center justify-center rounded-full bg-[#E6F9EE] text-[#12B76A]")}
+            className={cn(
+              box,
+              "inline-flex items-center justify-center rounded-full bg-[#E6F9EE] text-[#12B76A]",
+            )}
             title="Được phép (X)"
           >
             <Check className="size-3.5 stroke-[2.5]" />
@@ -37,7 +40,10 @@ export const PermissionBadge: React.FC<PermissionBadgeProps> = ({
       case "approval":
         return (
           <span
-            className={cn(box, "inline-flex items-center justify-center rounded-md bg-[#FFF4ED] text-xs font-bold text-[#EA4A2A]")}
+            className={cn(
+              box,
+              "inline-flex items-center justify-center rounded-md bg-[#FFF4ED] text-xs font-bold text-[#EA4A2A]",
+            )}
             title="Được phép nhưng cần duyệt (A)"
           >
             A
@@ -46,7 +52,10 @@ export const PermissionBadge: React.FC<PermissionBadgeProps> = ({
       case "readonly":
         return (
           <span
-            className={cn(box, "inline-flex items-center justify-center rounded-md bg-[#F2F4F7] text-xs font-bold text-[#667085]")}
+            className={cn(
+              box,
+              "inline-flex items-center justify-center rounded-md bg-[#F2F4F7] text-xs font-bold text-[#667085]",
+            )}
             title="Chỉ đọc (R)"
           >
             R
@@ -65,7 +74,10 @@ export const PermissionBadge: React.FC<PermissionBadgeProps> = ({
       default:
         return (
           <span
-            className={cn(box, "inline-flex items-center justify-center text-sm font-light text-gray-300 select-none")}
+            className={cn(
+              box,
+              "inline-flex items-center justify-center text-sm font-light text-gray-300 select-none",
+            )}
             title="Không được phép"
           >
             —

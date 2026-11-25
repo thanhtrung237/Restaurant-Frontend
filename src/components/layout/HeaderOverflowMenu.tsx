@@ -76,10 +76,7 @@ export function HeaderOverflowMenu({
               key={action.key}
               disabled={action.disabled}
               onClick={action.onSelect}
-              className={cn(
-                "cursor-pointer gap-2.5",
-                TONE_CLASS[action.tone ?? "default"],
-              )}
+              className={cn("cursor-pointer gap-2.5", TONE_CLASS[action.tone ?? "default"])}
             >
               {Icon ? <Icon className="size-4" /> : null}
               <span>{action.label}</span>

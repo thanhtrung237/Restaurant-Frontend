@@ -9,7 +9,8 @@ import type { BranchStatus } from "@/types/enums"
 export function useChangeBranchStatus() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (vars: { id: number; status: BranchStatus }) => changeBranchStatus(vars.id, vars.status),
+    mutationFn: (vars: { id: number; status: BranchStatus }) =>
+      changeBranchStatus(vars.id, vars.status),
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.branches.all }),
   })
 }

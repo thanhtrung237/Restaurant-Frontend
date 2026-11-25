@@ -123,7 +123,7 @@ export const MOCK_BRANCH_TABLES: BranchTableItem[] = [
 
 /**
  * Cấu hình vận hành mặc định theo chi nhánh (trang Cấu hình — FR-BRN-02)
- * 
+ *
  * LƯU Ý: Mock data này KHÔNG CÒN DÙNG sau khi nối API thật.
  * Chỉ giữ lại để tránh lỗi compile nếu có code cũ còn import.
  */

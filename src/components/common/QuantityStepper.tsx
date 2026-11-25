@@ -75,20 +75,34 @@ export function QuantityStepper({
       )}
     />
   ) : (
-    <span className={cn("text-center text-sm font-bold text-text-primary", variant === "simple" ? "min-w-5" : "min-w-4")}>
+    <span
+      className={cn(
+        "text-center text-sm font-bold text-text-primary",
+        variant === "simple" ? "min-w-5" : "min-w-4",
+      )}
+    >
       {value}
     </span>
   )
 
   if (variant === "simple") {
     return (
-      <div className={cn("inline-flex items-center select-none", editable ? "shrink-0 gap-1.5" : "gap-3", className)}>
+      <div
+        className={cn(
+          "inline-flex items-center select-none",
+          editable ? "shrink-0 gap-1.5" : "gap-3",
+          className,
+        )}
+      >
         <button
           type="button"
           onClick={handleDecrement}
           disabled={disabled || isMin}
           aria-label="Giảm số lượng"
-          className={cn("flex items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-surface-muted disabled:cursor-not-allowed disabled:text-text-tertiary", editable ? "size-9" : "size-7")}
+          className={cn(
+            "flex items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-surface-muted disabled:cursor-not-allowed disabled:text-text-tertiary",
+            editable ? "size-9" : "size-7",
+          )}
         >
           <Minus className="size-3.5" />
         </button>
@@ -98,7 +112,10 @@ export function QuantityStepper({
           onClick={handleIncrement}
           disabled={disabled || isMax}
           aria-label="Tăng số lượng"
-          className={cn("flex items-center justify-center rounded-full font-bold text-brand-primary transition-colors hover:bg-brand-primary-subtle disabled:cursor-not-allowed disabled:text-text-tertiary", editable ? "size-9" : "size-7")}
+          className={cn(
+            "flex items-center justify-center rounded-full font-bold text-brand-primary transition-colors hover:bg-brand-primary-subtle disabled:cursor-not-allowed disabled:text-text-tertiary",
+            editable ? "size-9" : "size-7",
+          )}
         >
           <Plus className="size-3.5" />
         </button>
@@ -112,7 +129,7 @@ export function QuantityStepper({
         "inline-flex h-8 items-center gap-2.5 rounded-pill border border-border-default bg-surface-card px-2.5 py-1 select-none shadow-2xs",
         disabled && "opacity-50 cursor-not-allowed",
         readOnly && "cursor-default",
-        className
+        className,
       )}
     >
       <button
@@ -122,7 +139,9 @@ export function QuantityStepper({
         aria-label="Giảm số lượng"
         className={cn(
           "flex size-5 items-center justify-center text-text-secondary transition-colors",
-          readOnly ? "cursor-default text-text-tertiary" : "hover:text-text-primary disabled:cursor-not-allowed disabled:text-text-tertiary"
+          readOnly
+            ? "cursor-default text-text-tertiary"
+            : "hover:text-text-primary disabled:cursor-not-allowed disabled:text-text-tertiary",
         )}
       >
         <Minus className="size-3" strokeWidth={2.5} />
@@ -135,7 +154,9 @@ export function QuantityStepper({
         aria-label="Tăng số lượng"
         className={cn(
           "flex size-5 items-center justify-center font-bold text-brand-primary transition-colors",
-          readOnly ? "cursor-default text-brand-primary/60" : "hover:text-brand-primary-hover disabled:cursor-not-allowed disabled:text-text-tertiary"
+          readOnly
+            ? "cursor-default text-brand-primary/60"
+            : "hover:text-brand-primary-hover disabled:cursor-not-allowed disabled:text-text-tertiary",
         )}
       >
         <Plus className="size-3" strokeWidth={3} />

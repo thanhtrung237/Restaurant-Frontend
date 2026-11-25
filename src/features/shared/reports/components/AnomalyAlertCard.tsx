@@ -19,11 +19,7 @@ interface AnomalyAlertCardProps {
   onActionClick?: (alert: AnomalyAlert) => void
 }
 
-export function AnomalyAlertCard({
-  data,
-  isLoading,
-  onActionClick,
-}: AnomalyAlertCardProps) {
+export function AnomalyAlertCard({ data, isLoading, onActionClick }: AnomalyAlertCardProps) {
   const [currentIndex, setCurrentIndex] = React.useState(0)
   const [showAiDetails, setShowAiDetails] = React.useState(true)
 
@@ -72,7 +68,8 @@ export function AnomalyAlertCard({
               </span>
             </div>
             <p className="text-xs text-text-secondary mt-0.5">
-              Không ghi nhận dấu hiệu gian lận hoặc đột biến hủy món bất thường trong khoảng thời gian đã chọn.
+              Không ghi nhận dấu hiệu gian lận hoặc đột biến hủy món bất thường trong khoảng thời
+              gian đã chọn.
             </p>
           </div>
         </div>
@@ -91,7 +88,7 @@ export function AnomalyAlertCard({
         "relative overflow-hidden rounded-card border shadow-xs transition-all",
         isCritical
           ? "border-rose-500/30 bg-gradient-to-r from-rose-500/[0.04] via-surface-card to-surface-card"
-          : "border-amber-500/30 bg-gradient-to-r from-amber-500/[0.04] via-surface-card to-surface-card"
+          : "border-amber-500/30 bg-gradient-to-r from-amber-500/[0.04] via-surface-card to-surface-card",
       )}
     >
       {/* Top Header bar */}
@@ -113,7 +110,7 @@ export function AnomalyAlertCard({
               "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold",
               isCritical
                 ? "bg-rose-500/10 text-rose-700 border border-rose-500/20"
-                : "bg-amber-500/10 text-amber-700 border border-amber-500/20"
+                : "bg-amber-500/10 text-amber-700 border border-amber-500/20",
             )}
           >
             {isCritical ? "Cần xử lý gấp" : "Cần kiểm tra"}
@@ -127,9 +124,7 @@ export function AnomalyAlertCard({
               </span>
               <button
                 type="button"
-                onClick={() =>
-                  setCurrentIndex((prev) => (prev > 0 ? prev - 1 : alerts.length - 1))
-                }
+                onClick={() => setCurrentIndex((prev) => (prev > 0 ? prev - 1 : alerts.length - 1))}
                 className="flex size-6 items-center justify-center rounded border border-border-default bg-surface hover:bg-surface-muted transition-colors"
                 title="Cảnh báo trước"
               >
@@ -137,9 +132,7 @@ export function AnomalyAlertCard({
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  setCurrentIndex((prev) => (prev < alerts.length - 1 ? prev + 1 : 0))
-                }
+                onClick={() => setCurrentIndex((prev) => (prev < alerts.length - 1 ? prev + 1 : 0))}
                 className="flex size-6 items-center justify-center rounded border border-border-default bg-surface hover:bg-surface-muted transition-colors"
                 title="Cảnh báo kế tiếp"
               >
@@ -159,7 +152,7 @@ export function AnomalyAlertCard({
                 "flex size-10 shrink-0 items-center justify-center rounded-xl",
                 isCritical
                   ? "bg-rose-500/10 text-rose-600 ring-1 ring-rose-500/20"
-                  : "bg-amber-500/10 text-amber-600 ring-1 ring-amber-500/20"
+                  : "bg-amber-500/10 text-amber-600 ring-1 ring-amber-500/20",
               )}
             >
               {isCritical ? (
@@ -171,18 +164,14 @@ export function AnomalyAlertCard({
 
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <h4 className="text-base font-bold text-text-primary">
-                  {currentAlert?.title}
-                </h4>
+                <h4 className="text-base font-bold text-text-primary">{currentAlert?.title}</h4>
                 {currentAlert?.location && (
                   <span className="rounded bg-surface-muted px-2 py-0.5 text-xs font-medium text-text-secondary">
                     {currentAlert.location}
                   </span>
                 )}
               </div>
-              <p className="text-xs sm:text-sm text-text-secondary">
-                {currentAlert?.description}
-              </p>
+              <p className="text-xs sm:text-sm text-text-secondary">{currentAlert?.description}</p>
             </div>
           </div>
 

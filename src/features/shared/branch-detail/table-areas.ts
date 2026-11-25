@@ -7,14 +7,19 @@ export function groupBranchTables(areas: Area[], tables: DiningTable[]) {
     groups.set(String(area.id), { name: area.name, tables: [] })
   }
   for (const table of tables) {
-    const id = table.areaId != null ? String(table.areaId)
-      : table.areaName ? areaIdByName.get(table.areaName) ?? `name:${table.areaName}` : "unassigned"
+    const id =
+      table.areaId != null
+        ? String(table.areaId)
+        : table.areaName
+          ? (areaIdByName.get(table.areaName) ?? `name:${table.areaName}`)
+          : "unassigned"
     const group = groups.get(id)
     if (group) group.tables.push(table)
-    else groups.set(id, {
-      name: table.areaName || (id === "unassigned" ? "Chưa phân khu" : `Khu vực #${id}`),
-      tables: [table],
-    })
+    else
+      groups.set(id, {
+        name: table.areaName || (id === "unassigned" ? "Chưa phân khu" : `Khu vực #${id}`),
+        tables: [table],
+      })
   }
   return groups
 }

@@ -69,7 +69,7 @@ export const PromotionConditionCard: React.FC<PromotionConditionCardProps> = ({
     if (!dishSearch.trim()) return dishes
     const q = dishSearch.toLowerCase()
     return dishes.filter(
-      (d) => d.name.toLowerCase().includes(q) || d.categoryName?.toLowerCase().includes(q)
+      (d) => d.name.toLowerCase().includes(q) || d.categoryName?.toLowerCase().includes(q),
     )
   }, [dishes, dishSearch])
 
@@ -110,9 +110,7 @@ export const PromotionConditionCard: React.FC<PromotionConditionCardProps> = ({
   return (
     <div className="rounded-card border border-border-default bg-surface-card p-6 shadow-2xs space-y-5">
       <div className="space-y-1">
-        <h2 className="text-base font-bold text-text-primary tracking-tight">
-          Điều kiện áp dụng
-        </h2>
+        <h2 className="text-base font-bold text-text-primary tracking-tight">Điều kiện áp dụng</h2>
         <p className="text-xs text-text-tertiary">
           {isDishLevel
             ? "Xác định món ăn hoặc danh mục đủ điều kiện nhận khuyến mãi"
@@ -150,9 +148,7 @@ export const PromotionConditionCard: React.FC<PromotionConditionCardProps> = ({
             <div className="rounded-xl border border-border-default p-4 bg-surface-muted/20 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-text-primary">
-                    Danh mục áp dụng
-                  </span>
+                  <span className="text-sm font-semibold text-text-primary">Danh mục áp dụng</span>
                   <Badge variant="secondary" className="text-xs">
                     {selectedCategories.length} đã chọn
                   </Badge>
@@ -162,7 +158,9 @@ export const PromotionConditionCard: React.FC<PromotionConditionCardProps> = ({
                   onClick={handleSelectAllCategories}
                   className="text-xs font-semibold text-brand-primary hover:underline cursor-pointer"
                 >
-                  {selectedCategories.length === categories.length ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+                  {selectedCategories.length === categories.length
+                    ? "Bỏ chọn tất cả"
+                    : "Chọn tất cả"}
                 </button>
               </div>
 
@@ -179,9 +177,13 @@ export const PromotionConditionCard: React.FC<PromotionConditionCardProps> = ({
 
               {/* Danh sách danh mục */}
               {isLoadingCategories ? (
-                <div className="py-4 text-center text-xs text-text-tertiary">Đang tải danh mục...</div>
+                <div className="py-4 text-center text-xs text-text-tertiary">
+                  Đang tải danh mục...
+                </div>
               ) : categories.length === 0 ? (
-                <div className="py-4 text-center text-xs text-text-tertiary">Chưa có danh mục nào</div>
+                <div className="py-4 text-center text-xs text-text-tertiary">
+                  Chưa có danh mục nào
+                </div>
               ) : (
                 <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
                   {filteredCategories.map((cat) => {
@@ -211,9 +213,7 @@ export const PromotionConditionCard: React.FC<PromotionConditionCardProps> = ({
             <div className="rounded-xl border border-border-default p-4 bg-surface-muted/20 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-text-primary">
-                    Món ăn áp dụng
-                  </span>
+                  <span className="text-sm font-semibold text-text-primary">Món ăn áp dụng</span>
                   <Badge variant="secondary" className="text-xs">
                     {selectedDishes.length} đã chọn
                   </Badge>
@@ -242,7 +242,9 @@ export const PromotionConditionCard: React.FC<PromotionConditionCardProps> = ({
               {isLoadingDishes ? (
                 <div className="py-4 text-center text-xs text-text-tertiary">Đang tải món...</div>
               ) : dishes.length === 0 ? (
-                <div className="py-4 text-center text-xs text-text-tertiary">Chưa có món ăn nào</div>
+                <div className="py-4 text-center text-xs text-text-tertiary">
+                  Chưa có món ăn nào
+                </div>
               ) : (
                 <div className="max-h-52 overflow-y-auto space-y-1 pr-1">
                   {filteredDishes.map((dish) => {
@@ -257,7 +259,9 @@ export const PromotionConditionCard: React.FC<PromotionConditionCardProps> = ({
                             checked={isChecked}
                             onCheckedChange={() => handleToggleDish(dish.id)}
                           />
-                          <span className="font-medium text-text-primary truncate">{dish.name}</span>
+                          <span className="font-medium text-text-primary truncate">
+                            {dish.name}
+                          </span>
                           {dish.categoryName && (
                             <span className="text-[11px] text-text-tertiary bg-surface-muted px-1.5 py-0.5 rounded">
                               {dish.categoryName}
@@ -297,7 +301,9 @@ export const PromotionConditionCard: React.FC<PromotionConditionCardProps> = ({
           <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-surface-muted/40 border border-border-default text-xs text-text-secondary">
             <Info className="size-4 text-brand-primary shrink-0 mt-0.5" />
             <p>
-              Khuyến mãi cấp Hóa đơn được áp dụng cho <strong className="text-text-primary">toàn bộ hóa đơn</strong> sau khi đã tính các khuyến mãi cấp món (nếu có).
+              Khuyến mãi cấp Hóa đơn được áp dụng cho{" "}
+              <strong className="text-text-primary">toàn bộ hóa đơn</strong> sau khi đã tính các
+              khuyến mãi cấp món (nếu có).
             </p>
           </div>
 

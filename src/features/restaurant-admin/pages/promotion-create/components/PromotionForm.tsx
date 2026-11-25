@@ -76,10 +76,13 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
   const { data: branchesData, isLoading: isLoadingBranches } = useBranchesByRestaurant(restaurantId)
   const branches: BranchListItem[] = useMemo(() => branchesData ?? [], [branchesData])
 
-  const { data: categoriesData, isLoading: isLoadingCategories } = useCategoriesByRestaurant(restaurantId)
+  const { data: categoriesData, isLoading: isLoadingCategories } =
+    useCategoriesByRestaurant(restaurantId)
   const categories = useMemo(() => categoriesData ?? [], [categoriesData])
 
-  const { data: dishesData, isLoading: isLoadingDishes } = useDishesByRestaurant(restaurantId, { size: 500 })
+  const { data: dishesData, isLoading: isLoadingDishes } = useDishesByRestaurant(restaurantId, {
+    size: 500,
+  })
   const dishes = useMemo(() => dishesData?.content ?? [], [dishesData])
 
   const [formData, setFormData] = useState<PromotionFormData>(initialData ?? DEFAULT_FORM_DATA)
@@ -97,7 +100,13 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
 
   // Auto-select tất cả chi nhánh nếu tạo mới (không có initialData) và chưa chọn chi nhánh nào
   useEffect(() => {
-    if (!initialData && !initializedRef.current && branches.length > 0 && formData.selectedBranchIds.length === 0 && formData.isAllBranches) {
+    if (
+      !initialData &&
+      !initializedRef.current &&
+      branches.length > 0 &&
+      formData.selectedBranchIds.length === 0 &&
+      formData.isAllBranches
+    ) {
       setFormData((prev) => ({
         ...prev,
         selectedBranchIds: branches.map((b) => b.id),
@@ -106,10 +115,7 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
   }, [branches, initialData, formData.isAllBranches, formData.selectedBranchIds.length])
 
   // Cập nhật từng trường
-  const updateField = <K extends keyof PromotionFormData>(
-    field: K,
-    val: PromotionFormData[K]
-  ) => {
+  const updateField = <K extends keyof PromotionFormData>(field: K, val: PromotionFormData[K]) => {
     setFormData((prev) => ({ ...prev, [field]: val }))
   }
 
@@ -117,9 +123,7 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
   const handleToggleDay = (day: string) => {
     setFormData((prev) => {
       const exists = prev.daysOfWeek.includes(day)
-      const nextDays = exists
-        ? prev.daysOfWeek.filter((d) => d !== day)
-        : [...prev.daysOfWeek, day]
+      const nextDays = exists ? prev.daysOfWeek.filter((d) => d !== day) : [...prev.daysOfWeek, day]
       return { ...prev, daysOfWeek: nextDays }
     })
   }
@@ -403,11 +407,7 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
         >
           Huỷ
         </Button>
-        <Button
-          type="submit"
-          className="h-11 flex-1 font-semibold"
-          disabled={isSubmitting}
-        >
+        <Button type="submit" className="h-11 flex-1 font-semibold" disabled={isSubmitting}>
           {isSubmitting ? "Đang lưu..." : submitText}
         </Button>
       </StickyActionBar>

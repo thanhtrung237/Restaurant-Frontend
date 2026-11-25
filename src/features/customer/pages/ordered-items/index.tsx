@@ -15,7 +15,11 @@ import {
 import { Button } from "@/components/ui/button"
 import { CUSTOMER_PATHS } from "@/app/router/paths"
 import { useGoBack } from "@/hooks/use-go-back"
-import { useOrderDetailsBySession, useCancelBeforeKitchen, useCallStaff } from "@/features/customer/api"
+import {
+  useOrderDetailsBySession,
+  useCancelBeforeKitchen,
+  useCallStaff,
+} from "@/features/customer/api"
 import { useStaffCall } from "@/api/order-details.api"
 import { useCustomerWebSocket } from "@/hooks/use-customer-websocket"
 import { useCustomerSessionStore } from "@/features/customer/store/session.store"
@@ -48,11 +52,11 @@ export default function OrderedItemsPage() {
   useCustomerWebSocket(tableSessionId)
 
   // Fetch order details — giữ refetchInterval làm fallback
-  const { data: orderDetails = [], isLoading, error } = useOrderDetailsBySession(
-    tableSessionId,
-    undefined,
-    { refetchInterval: 5000 }
-  )
+  const {
+    data: orderDetails = [],
+    isLoading,
+    error,
+  } = useOrderDetailsBySession(tableSessionId, undefined, { refetchInterval: 5000 })
 
   const billLocked = useBillLocked()
   const cancelBeforeKitchenMutation = useCancelBeforeKitchen()
@@ -92,27 +96,22 @@ export default function OrderedItemsPage() {
   // Nếu còn tồn tại khi khách bấm "Yêu cầu tính tiền", phải hỏi xác nhận huỷ trước khi khoá phiên.
   const pendingItems = React.useMemo(
     () => orderDetails.filter((d) => d.status === "PENDING" || d.status === "PENDING_WEIGHT"),
-    [orderDetails]
+    [orderDetails],
   )
 
   // Con dong mon nao TINH TIEN khong - cung tieu chi voi BE (shouldChargeDetail):
   // dong chua huy thi tinh; dong da huy chi tinh khi isBillable bat (BR-24).
-  const hasBillableItem = React.useMemo(
-    () => orderDetails.some(isBillableDetail),
-    [orderDetails]
-  )
+  const hasBillableItem = React.useMemo(() => orderDetails.some(isBillableDetail), [orderDetails])
   // Huy het cac mon dang cho xac nhan xong thi con lai gi khong?
   const billableAfterCancelPending = React.useMemo(
     () => orderDetails.some((d) => isBillableDetail(d) && !pendingItems.includes(d)),
-    [orderDetails, pendingItems]
+    [orderDetails, pendingItems],
   )
 
   // Tính tạm tính: tổng tiền các món tính phí (chưa tính service fee & VAT)
   const subtotal = React.useMemo(
-    () => orderDetails
-      .filter(isBillableDetail)
-      .reduce((sum, d) => sum + (d.price || 0), 0),
-    [orderDetails]
+    () => orderDetails.filter(isBillableDetail).reduce((sum, d) => sum + (d.price || 0), 0),
+    [orderDetails],
   )
 
   const [isConfirmPayOpen, setIsConfirmPayOpen] = React.useState(false)
@@ -149,7 +148,7 @@ export default function OrderedItemsPage() {
       setIsCancellingPending(true)
       try {
         await Promise.all(
-          pendingItems.map((item) => cancelBeforeKitchenMutation.mutateAsync(item.id))
+          pendingItems.map((item) => cancelBeforeKitchenMutation.mutateAsync(item.id)),
         )
         setIsConfirmPayOpen(false)
         // Huy xong ma khong con mon nao tinh tien -> KHONG gui yeu cau tinh tien.
@@ -167,7 +166,10 @@ export default function OrderedItemsPage() {
       } catch (error) {
         toast({
           title: "Lỗi hủy món",
-          description: error instanceof Error ? error.message : "Không thể hủy các món đang chờ xác nhận. Vui lòng thử lại.",
+          description:
+            error instanceof Error
+              ? error.message
+              : "Không thể hủy các món đang chờ xác nhận. Vui lòng thử lại.",
           variant: "danger",
         })
       } finally {
@@ -207,7 +209,10 @@ export default function OrderedItemsPage() {
       onError: (err) => {
         toast({
           title: "Lỗi gọi nhân viên",
-          description: err instanceof Error ? err.message : "Không thể gọi nhân viên lúc này. Vui lòng thử lại.",
+          description:
+            err instanceof Error
+              ? err.message
+              : "Không thể gọi nhân viên lúc này. Vui lòng thử lại.",
           variant: "danger",
         })
       },
@@ -234,9 +239,7 @@ export default function OrderedItemsPage() {
           <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-status-danger-subtle">
             <span className="text-2xl">⚠️</span>
           </div>
-          <h2 className="text-lg font-bold text-text-primary">
-            Không thể tải món đã gọi
-          </h2>
+          <h2 className="text-lg font-bold text-text-primary">Không thể tải món đã gọi</h2>
           <p className="mt-2 text-sm text-text-secondary">
             Vui lòng thử lại hoặc liên hệ nhân viên.
           </p>
@@ -312,10 +315,14 @@ export default function OrderedItemsPage() {
                             ) : null}
                           </div>
                           <div className="flex flex-col items-end shrink-0 ml-4">
-                            {detail.promotionDiscountAmount && detail.promotionDiscountAmount > 0 ? (
+                            {detail.promotionDiscountAmount &&
+                            detail.promotionDiscountAmount > 0 ? (
                               <>
                                 <span className="text-xs text-text-tertiary line-through">
-                                  {((detail.price || 0) + detail.promotionDiscountAmount).toLocaleString("vi-VN")}đ
+                                  {(
+                                    (detail.price || 0) + detail.promotionDiscountAmount
+                                  ).toLocaleString("vi-VN")}
+                                  đ
                                 </span>
                                 <span className="text-sm sm:text-base font-bold text-brand-primary">
                                   {(detail.price || 0).toLocaleString("vi-VN")}đ
@@ -343,7 +350,12 @@ export default function OrderedItemsPage() {
                           {detail.status === "PENDING" && !billLocked ? (
                             <button
                               type="button"
-                              onClick={() => toast({ title: "Chức năng hủy món đang phát triển", variant: "info" })}
+                              onClick={() =>
+                                toast({
+                                  title: "Chức năng hủy món đang phát triển",
+                                  variant: "info",
+                                })
+                              }
                               className="inline-flex items-center justify-center rounded-full border border-border-default bg-white px-3.5 py-1.5 text-xs font-semibold text-status-danger transition-colors hover:bg-status-danger-subtle active:scale-95"
                             >
                               Hủy món
@@ -352,16 +364,21 @@ export default function OrderedItemsPage() {
                             <button
                               type="button"
                               onClick={() => handleStaffCall(detail)}
-                              disabled={staffCallMutation.isPending && staffCallMutation.variables === detail.id}
+                              disabled={
+                                staffCallMutation.isPending &&
+                                staffCallMutation.variables === detail.id
+                              }
                               className={cn(
                                 "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors active:scale-95 cursor-pointer",
                                 reportedItemIds.has(detail.id)
                                   ? "bg-surface-muted text-text-tertiary"
-                                  : "bg-[#FEEBE4] text-brand-primary hover:bg-[#FEDBD0]"
+                                  : "bg-[#FEEBE4] text-brand-primary hover:bg-[#FEDBD0]",
                               )}
                             >
                               <Bell className="size-3.5 text-brand-primary" />
-                              <span>{reportedItemIds.has(detail.id) ? "Đã báo NV" : "Báo nhân viên"}</span>
+                              <span>
+                                {reportedItemIds.has(detail.id) ? "Đã báo NV" : "Báo nhân viên"}
+                              </span>
                             </button>
                           ) : null}
                         </div>
@@ -458,7 +475,8 @@ export default function OrderedItemsPage() {
               </div>
             ) : (
               <p className="text-xs text-text-secondary leading-relaxed px-0.5">
-                Sau khi xác nhận, phiên gọi món của bàn sẽ được khóa lại và nhân viên thu ngân sẽ đến bàn để hỗ trợ bạn thanh toán.
+                Sau khi xác nhận, phiên gọi món của bàn sẽ được khóa lại và nhân viên thu ngân sẽ
+                đến bàn để hỗ trợ bạn thanh toán.
               </p>
             )}
           </div>

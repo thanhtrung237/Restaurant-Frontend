@@ -1,7 +1,7 @@
-import * as React from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { takeawayListPath } from "@/app/router/paths/takeaway.paths";
-import { Check, ChevronDown, Printer, ReceiptText, X, Loader2 } from "lucide-react";
+import * as React from "react"
+import { useLocation, useNavigate, useParams } from "react-router-dom"
+import { takeawayListPath } from "@/app/router/paths/takeaway.paths"
+import { Check, ChevronDown, Printer, ReceiptText, X, Loader2 } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -9,32 +9,25 @@ import {
   DialogTitle,
   DialogDescription,
   DialogClose,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import {
-  HeaderOverflowMenu,
-  type OverflowMenuAction,
-} from "@/components/layout/HeaderOverflowMenu";
-import { StickyActionBar } from "@/components/layout/StickyActionBar";
-import { useToast } from "@/hooks/use-toast";
-import { PageHeader } from "@/components/layout/PageHeader";
-import { getStaffPaymentPaths } from "@/app/router/paths/staff-payment.paths";
-import { CASHIER_PATHS } from "@/app/router/paths/cashier.paths";
-import { BRANCH_MANAGER_PATHS } from "@/app/router/paths/branch-manager.paths";
-import { APP_ROLE } from "@/config/roles";
-import { useGoBack } from "@/hooks/use-go-back";
-import { PAYMENT_METHOD_LABEL, type PaymentMethod } from "@/types/enums";
-import {
-  useInvoice,
-  useOrderDetailsBySession,
-  useIssueEInvoice,
-} from "@/features/cashier/api";
-import { useAuthStore } from "@/stores/auth.store";
-import { isBillableDetail } from "@/lib/order-detail-billing";
-import { InvoicePrint, type InvoiceAmountRow } from "./InvoicePrint";
-import { groupInvoiceLines } from "./invoice-lines";
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { HeaderOverflowMenu, type OverflowMenuAction } from "@/components/layout/HeaderOverflowMenu"
+import { StickyActionBar } from "@/components/layout/StickyActionBar"
+import { useToast } from "@/hooks/use-toast"
+import { PageHeader } from "@/components/layout/PageHeader"
+import { getStaffPaymentPaths } from "@/app/router/paths/staff-payment.paths"
+import { CASHIER_PATHS } from "@/app/router/paths/cashier.paths"
+import { BRANCH_MANAGER_PATHS } from "@/app/router/paths/branch-manager.paths"
+import { APP_ROLE } from "@/config/roles"
+import { useGoBack } from "@/hooks/use-go-back"
+import { PAYMENT_METHOD_LABEL, type PaymentMethod } from "@/types/enums"
+import { useInvoice, useOrderDetailsBySession, useIssueEInvoice } from "@/features/cashier/api"
+import { useAuthStore } from "@/stores/auth.store"
+import { isBillableDetail } from "@/lib/order-detail-billing"
+import { InvoicePrint, type InvoiceAmountRow } from "./InvoicePrint"
+import { groupInvoiceLines } from "./invoice-lines"
 
-const formatVnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`;
+const formatVnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`
 
 const REFUND_REASONS = [
   "Tính nhầm giá món",
@@ -43,7 +36,7 @@ const REFUND_REASONS = [
   "Sai sót số lượng món",
   "Khách đổi ý trước khi chế biến",
   "Khác",
-];
+]
 
 /**
  * Hoá đơn điện tử — kết nối thực với backend.
@@ -54,49 +47,49 @@ const REFUND_REASONS = [
  * - Mở trực tiếp URL → về fallback theo role
  */
 export default function EInvoicePage() {
-  const { invoiceId: invoiceIdParam } = useParams<{ invoiceId: string }>();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { toast } = useToast();
-  const currentUser = useAuthStore((s) => s.account);
-  const role = useAuthStore((s) => s.role);
+  const { invoiceId: invoiceIdParam } = useParams<{ invoiceId: string }>()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { toast } = useToast()
+  const currentUser = useAuthStore((s) => s.account)
+  const role = useAuthStore((s) => s.role)
 
   // Fallback khi mở trực tiếp URL (không có trang trước trong app)
   const fallbackPath =
     role === APP_ROLE.BRANCH_MANAGER
       ? BRANCH_MANAGER_PATHS.INVOICES
-      : getStaffPaymentPaths(role)?.TABLE_MAP ?? CASHIER_PATHS.TABLE_MAP;
-  const goBack = useGoBack(fallbackPath);
+      : (getStaffPaymentPaths(role)?.TABLE_MAP ?? CASHIER_PATHS.TABLE_MAP)
+  const goBack = useGoBack(fallbackPath)
 
   // Nhãn nút: dựa vào trang trước thực tế (history.state.idx)
   // idx = 0 → đây là trang đầu tiên (mở trực tiếp URL hoặc redirect sau checkout)
   // idx > 0 → đã có trang trước → dùng navigate(-1), nhãn theo trang đó
   const hasPreviousPage =
     typeof (window.history.state as { idx?: unknown } | null)?.idx === "number"
-      ? ((window.history.state as { idx: number }).idx > 0)
+      ? (window.history.state as { idx: number }).idx > 0
       : true
 
-  const invoiceId = invoiceIdParam ? parseInt(invoiceIdParam, 10) : undefined;
+  const invoiceId = invoiceIdParam ? parseInt(invoiceIdParam, 10) : undefined
 
   // --- Fetch dữ liệu từ BE ---
-  const {
-    data: invoice,
-    isLoading: invoiceLoading,
-    isError: invoiceError,
-  } = useInvoice(invoiceId);
-  const backLabel = invoice?.takeaway ? "Về đơn mang về" : hasPreviousPage ? "Quay lại" : "Về sơ đồ bàn";
+  const { data: invoice, isLoading: invoiceLoading, isError: invoiceError } = useInvoice(invoiceId)
+  const backLabel = invoice?.takeaway
+    ? "Về đơn mang về"
+    : hasPreviousPage
+      ? "Quay lại"
+      : "Về sơ đồ bàn"
 
   const {
     data: orderDetails = [],
     isLoading: detailsLoading,
     isError: detailsError,
     refetch: refetchDetails,
-  } = useOrderDetailsBySession(invoice?.tableSessionId);
+  } = useOrderDetailsBySession(invoice?.tableSessionId)
 
-  const issueEInvoiceMutation = useIssueEInvoice();
+  const issueEInvoiceMutation = useIssueEInvoice()
 
   // --- Tự động phát hành HĐĐT khi invoice đã PAID nhưng chưa ISSUED ---
-  const hasTriedIssue = React.useRef(false);
+  const hasTriedIssue = React.useRef(false)
   React.useEffect(() => {
     if (
       invoice &&
@@ -104,53 +97,51 @@ export default function EInvoicePage() {
       !hasTriedIssue.current &&
       !issueEInvoiceMutation.isPending
     ) {
-      hasTriedIssue.current = true;
+      hasTriedIssue.current = true
       issueEInvoiceMutation.mutate(invoice.id, {
         onError: (err) => {
           toast({
             title: "Phát hành hóa đơn điện tử thất bại",
-            description:
-              err instanceof Error ? err.message : "Vui lòng thử lại.",
+            description: err instanceof Error ? err.message : "Vui lòng thử lại.",
             variant: "danger",
-          });
+          })
         },
-      });
+      })
     }
-  }, [invoice, issueEInvoiceMutation, toast]);
+  }, [invoice, issueEInvoiceMutation, toast])
 
   // --- Modal Hoàn tiền / Điều chỉnh ---
-  const [isRefundModalOpen, setRefundModalOpen] = React.useState(false);
-  const [refundReason, setRefundReason] = React.useState(REFUND_REASONS[0]);
-  const [refundAmount, setRefundAmount] = React.useState("0");
-  const [refundMethod, setRefundMethod] = React.useState("Tiền mặt");
+  const [isRefundModalOpen, setRefundModalOpen] = React.useState(false)
+  const [refundReason, setRefundReason] = React.useState(REFUND_REASONS[0])
+  const [refundAmount, setRefundAmount] = React.useState("0")
+  const [refundMethod, setRefundMethod] = React.useState("Tiền mặt")
 
   const handleOpenRefundModal = React.useCallback(() => {
     // Điền sẵn số tiền đã thu thực tế
-    const paid = invoice?.totalPaid ?? invoice?.grandTotal ?? 0;
-    setRefundAmount(Math.round(paid).toLocaleString("vi-VN"));
-    setRefundReason(REFUND_REASONS[0]);
-    setRefundMethod("Tiền mặt");
-    setRefundModalOpen(true);
-  }, [invoice?.totalPaid, invoice?.grandTotal]);
+    const paid = invoice?.totalPaid ?? invoice?.grandTotal ?? 0
+    setRefundAmount(Math.round(paid).toLocaleString("vi-VN"))
+    setRefundReason(REFUND_REASONS[0])
+    setRefundMethod("Tiền mặt")
+    setRefundModalOpen(true)
+  }, [invoice?.totalPaid, invoice?.grandTotal])
 
   function handleConfirmRefund() {
-    if (!refundReason || !refundAmount.trim()) return;
+    if (!refundReason || !refundAmount.trim()) return
     toast({
       title: "Đã gửi yêu cầu hoàn tiền",
       description: `Yêu cầu hoàn ${refundAmount}đ cho hoá đơn ${invoice?.invoiceNumber ?? ""} đã được gửi tới Quản lý chi nhánh duyệt.`,
       variant: "success",
-    });
-    setRefundModalOpen(false);
+    })
+    setRefundModalOpen(false)
   }
 
   function handleBackToTableMap() {
     if (invoice?.takeaway) {
-      navigate(takeawayListPath(getStaffPaymentPaths(role)?.TABLE_MAP ?? CASHIER_PATHS.TABLE_MAP));
+      navigate(takeawayListPath(getStaffPaymentPaths(role)?.TABLE_MAP ?? CASHIER_PATHS.TABLE_MAP))
     } else {
-      goBack();
+      goBack()
     }
   }
-
 
   // Header mobile — gọi TRƯỚC các nhánh return sớm (quy tắc hook).
   // "Hoàn tiền / Điều chỉnh" (BR-30, FR-PAY-06) là thao tác phụ nhưng đặc tả yêu cầu,
@@ -165,12 +156,11 @@ export default function EInvoicePage() {
       },
     ],
     [handleOpenRefundModal],
-  );
+  )
   const eInvoiceHeaderOverflow = React.useMemo(
     () => <HeaderOverflowMenu actions={eInvoiceOverflowActions} />,
     [eInvoiceOverflowActions],
-  );
-
+  )
 
   // Tách KM món — PHẢI đặt TRƯỚC mọi early return (Rules of Hooks)
   const itemPromoAmount = React.useMemo(
@@ -178,8 +168,8 @@ export default function EInvoicePage() {
       orderDetails
         .filter(isBillableDetail)
         .reduce((s, d) => s + (d.promotionDiscountAmount || 0), 0),
-    [orderDetails]
-  );
+    [orderDetails],
+  )
 
   // --- Loading ---
   if (invoiceLoading || detailsLoading || issueEInvoiceMutation.isPending) {
@@ -194,7 +184,7 @@ export default function EInvoicePage() {
           </p>
         </div>
       </div>
-    );
+    )
   }
 
   // --- Lỗi không tải được hóa đơn ---
@@ -205,12 +195,8 @@ export default function EInvoicePage() {
           <div className="flex size-16 items-center justify-center rounded-full bg-status-danger-subtle">
             <span className="text-2xl">⚠️</span>
           </div>
-          <h2 className="text-lg font-bold text-text-primary">
-            Không tìm thấy hoá đơn
-          </h2>
-          <p className="text-sm text-text-tertiary">
-            Hoá đơn không tồn tại hoặc đã bị xóa.
-          </p>
+          <h2 className="text-lg font-bold text-text-primary">Không tìm thấy hoá đơn</h2>
+          <p className="text-sm text-text-tertiary">Hoá đơn không tồn tại hoặc đã bị xóa.</p>
           <button
             type="button"
             onClick={goBack}
@@ -220,78 +206,86 @@ export default function EInvoicePage() {
           </button>
         </div>
       </div>
-    );
+    )
   }
 
   // --- Dữ liệu hiển thị từ BE ---
-  const invoiceNumber = invoice.invoiceNumber ?? "—";
+  const invoiceNumber = invoice.invoiceNumber ?? "—"
 
   // Định dạng ngày giờ từ ISO string của BE
   const formatDateTime = (iso?: string) => {
-    if (!iso) return "—";
-    const d = new Date(iso);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} · ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  };
-  const issuedAt = formatDateTime(invoice.eInvoiceIssuedAt ?? invoice.createdAt);
+    if (!iso) return "—"
+    const d = new Date(iso)
+    const pad = (n: number) => String(n).padStart(2, "0")
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} · ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+  const issuedAt = formatDateTime(invoice.eInvoiceIssuedAt ?? invoice.createdAt)
 
   // Tiền
-  const subTotal = invoice.subTotalBeforeDiscount ?? 0;
-  const totalPromotionDiscount = invoice.totalPromotionDiscount ?? 0;
-  const totalManualDiscount = invoice.totalManualDiscount ?? 0;
-  const serviceFee = invoice.serviceFee ?? 0;
-  const vatAmount = invoice.vatAmount ?? 0;
-  const grandTotal = invoice.grandTotal ?? 0;
+  const subTotal = invoice.subTotalBeforeDiscount ?? 0
+  const totalPromotionDiscount = invoice.totalPromotionDiscount ?? 0
+  const totalManualDiscount = invoice.totalManualDiscount ?? 0
+  const serviceFee = invoice.serviceFee ?? 0
+  const vatAmount = invoice.vatAmount ?? 0
+  const grandTotal = invoice.grandTotal ?? 0
 
-  const itemDiscount = invoice.itemPromotionDiscount ?? itemPromoAmount;
-  const orderPromoDiscount = invoice.orderPromotionDiscount ?? Math.max(0, totalPromotionDiscount - itemDiscount);
-  const promotionName = invoice.orderPromotionName ?? invoice.promotionName;
-  const amounts: InvoiceAmountRow[] = [{ label: "Tiền hàng", amount: subTotal - itemDiscount }];
+  const itemDiscount = invoice.itemPromotionDiscount ?? itemPromoAmount
+  const orderPromoDiscount =
+    invoice.orderPromotionDiscount ?? Math.max(0, totalPromotionDiscount - itemDiscount)
+  const promotionName = invoice.orderPromotionName ?? invoice.promotionName
+  const amounts: InvoiceAmountRow[] = [{ label: "Tiền hàng", amount: subTotal - itemDiscount }]
   if (orderPromoDiscount > 0) {
     amounts.push({
       label: promotionName ? `Khuyến mãi đơn (${promotionName})` : "Khuyến mãi đơn",
       amount: -orderPromoDiscount,
-    });
+    })
   }
   if (totalManualDiscount > 0) {
-    amounts.push({ label: "Chiết khấu thủ công", amount: -totalManualDiscount });
+    amounts.push({ label: "Chiết khấu thủ công", amount: -totalManualDiscount })
   }
-  amounts.push({ label: "Phí dịch vụ", amount: serviceFee }, { label: "VAT", amount: vatAmount });
+  amounts.push({ label: "Phí dịch vụ", amount: serviceFee }, { label: "VAT", amount: vatAmount })
 
   // Thông tin payment (lấy payment đầu tiên — luồng tiền mặt chỉ có 1)
-  const firstPayment = invoice.payments?.[0];
-  const paymentMethod: PaymentMethod =
-    (firstPayment?.method as PaymentMethod) ?? "CASH";
-  const amountTendered = firstPayment?.amountTendered ?? grandTotal;
-  const changeAmount =
-    firstPayment?.changeAmount ?? Math.max(0, amountTendered - grandTotal);
+  const firstPayment = invoice.payments?.[0]
+  const paymentMethod: PaymentMethod = (firstPayment?.method as PaymentMethod) ?? "CASH"
+  const amountTendered = firstPayment?.amountTendered ?? grandTotal
+  const changeAmount = firstPayment?.changeAmount ?? Math.max(0, amountTendered - grandTotal)
 
   // Thu ngân
-  const cashierNameDisplay = currentUser?.fullName ?? "Thu ngân";
+  const cashierNameDisplay = currentUser?.fullName ?? "Thu ngân"
 
   // Thông tin bàn / phiên
-  const tableName = invoice.tableName ?? `Bàn #${invoice.tableSessionId}`;
-  const sessionCode = `#${invoice.tableSessionId}`;
+  const tableName = invoice.tableName ?? `Bàn #${invoice.tableSessionId}`
+  const sessionCode = `#${invoice.tableSessionId}`
 
   // Tên nhà hàng / địa chỉ (lấy từ branchName, không có thì để trống)
-  const restaurantName = invoice.branchName ?? "Nhà hàng";
-  const restaurantAddress = ""; // BE InvoiceResponse không trả address; để trống hoặc lấy từ branch riêng
+  const restaurantName = invoice.branchName ?? "Nhà hàng"
+  const restaurantAddress = "" // BE InvoiceResponse không trả address; để trống hoặc lấy từ branch riêng
 
-  const items = groupInvoiceLines(orderDetails);
+  const items = groupInvoiceLines(orderDetails)
 
   // Đã phát hành HĐĐT thành công?
-  const isIssued =
-    (invoice.status as string) === "ISSUED" || issueEInvoiceMutation.isSuccess;
-  const canPrint = isIssued && !detailsError && items.length > 0;
+  const isIssued = (invoice.status as string) === "ISSUED" || issueEInvoiceMutation.isSuccess
+  const canPrint = isIssued && !detailsError && items.length > 0
 
   // Số tiền đã thu hiển thị trong modal (tổng paid)
-  const amountPaidDisplay = formatVnd(invoice.totalPaid ?? grandTotal);
+  const amountPaidDisplay = formatVnd(invoice.totalPaid ?? grandTotal)
 
   return (
     <div className="flex flex-1 flex-col min-h-screen bg-surface-page">
-      {canPrint && <InvoicePrint invoice={invoice} issuedAt={issuedAt} tableName={tableName} items={items} amounts={amounts}
-        autoPrint={location.state?.autoPrint === true && invoice.payments?.some((payment) => payment.bankVerified)}
-      />}
+      {canPrint && (
+        <InvoicePrint
+          invoice={invoice}
+          issuedAt={issuedAt}
+          tableName={tableName}
+          items={items}
+          amounts={amounts}
+          autoPrint={
+            location.state?.autoPrint === true &&
+            invoice.payments?.some((payment) => payment.bankVerified)
+          }
+        />
+      )}
       {/* ============================================================
           HEADER: Tiêu đề + Cụm nút hành động
           ============================================================ */}
@@ -328,13 +322,9 @@ export default function EInvoicePage() {
             {/* Header nhà hàng & số hóa đơn */}
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="text-base font-bold text-text-primary">
-                  {restaurantName}
-                </p>
+                <p className="text-base font-bold text-text-primary">{restaurantName}</p>
                 {restaurantAddress && (
-                  <p className="mt-1 text-xs text-text-tertiary">
-                    {restaurantAddress}
-                  </p>
+                  <p className="mt-1 text-xs text-text-tertiary">{restaurantAddress}</p>
                 )}
               </div>
               <div className="text-right">
@@ -354,18 +344,13 @@ export default function EInvoicePage() {
                     <th className="py-2.5 pl-4 text-left font-semibold">MÓN</th>
                     <th className="py-2.5 text-center font-semibold">SL</th>
                     <th className="py-2.5 text-right font-semibold">GIÁ</th>
-                    <th className="py-2.5 pr-4 text-right font-semibold">
-                      THÀNH TIỀN
-                    </th>
+                    <th className="py-2.5 pr-4 text-right font-semibold">THÀNH TIỀN</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-default/40">
                   {items.length === 0 ? (
                     <tr>
-                      <td
-                        colSpan={4}
-                        className="py-6 text-center text-sm text-text-tertiary"
-                      >
+                      <td colSpan={4} className="py-6 text-center text-sm text-text-tertiary">
                         Không có dữ liệu món
                       </td>
                     </tr>
@@ -373,9 +358,7 @@ export default function EInvoicePage() {
                     items.map((item) => (
                       <tr key={item.id}>
                         <td className="py-3.5 pl-4">
-                          <p className="font-bold text-text-primary">
-                            {item.name}
-                          </p>
+                          <p className="font-bold text-text-primary">{item.name}</p>
                           {item.options && item.options.length > 0 ? (
                             <div className="mt-0.5 space-y-0.5">
                               {item.options.map((opt) => (
@@ -390,10 +373,13 @@ export default function EInvoicePage() {
                           ) : null}
                         </td>
                         <td className="py-3.5 text-center font-medium text-text-secondary">
-                          {item.weightKg != null ? `${item.weightKg.toLocaleString("vi-VN")} kg` : item.quantity}
+                          {item.weightKg != null
+                            ? `${item.weightKg.toLocaleString("vi-VN")} kg`
+                            : item.quantity}
                         </td>
                         <td className="py-3.5 text-right font-bold text-text-primary">
-                          {formatVnd(item.price)}{item.weightKg != null ? " / kg" : ""}
+                          {formatVnd(item.price)}
+                          {item.weightKg != null ? " / kg" : ""}
                         </td>
                         <td className="py-3.5 pr-4 text-right font-bold text-text-primary">
                           {formatVnd(item.lineTotal)}
@@ -410,19 +396,27 @@ export default function EInvoicePage() {
           <div className="mt-8 ml-auto max-w-xs w-full space-y-2.5">
             {amounts.map(({ label, amount }) => (
               <div key={label} className="flex items-center justify-between gap-3 text-sm">
-                <span className={amount < 0 ? "font-semibold text-status-success" : "text-text-secondary"}>{label}</span>
-                <span className={amount < 0 ? "shrink-0 font-bold text-status-success" : "shrink-0 font-bold text-text-primary"}>
+                <span
+                  className={
+                    amount < 0 ? "font-semibold text-status-success" : "text-text-secondary"
+                  }
+                >
+                  {label}
+                </span>
+                <span
+                  className={
+                    amount < 0
+                      ? "shrink-0 font-bold text-status-success"
+                      : "shrink-0 font-bold text-text-primary"
+                  }
+                >
                   {formatVnd(amount)}
                 </span>
               </div>
             ))}
             <div className="flex items-center justify-between pt-2">
-              <span className="text-base font-bold text-text-primary">
-                Tổng cộng
-              </span>
-              <span className="text-2xl font-bold text-brand-primary">
-                {formatVnd(grandTotal)}
-              </span>
+              <span className="text-base font-bold text-text-primary">Tổng cộng</span>
+              <span className="text-2xl font-bold text-brand-primary">{formatVnd(grandTotal)}</span>
             </div>
           </div>
         </div>
@@ -439,18 +433,14 @@ export default function EInvoicePage() {
                 <p className="text-base font-bold text-text-primary mt-1">
                   Phát hành hoá đơn thành công
                 </p>
-                <p className="text-xs text-text-tertiary">
-                  Đã gửi dữ liệu tới cơ quan thuế
-                </p>
+                <p className="text-xs text-text-tertiary">Đã gửi dữ liệu tới cơ quan thuế</p>
               </>
             ) : (
               <>
                 <span className="flex size-12 items-center justify-center rounded-full bg-[#fef3c7] text-[#D97706]">
                   <ReceiptText className="size-6" />
                 </span>
-                <p className="text-base font-bold text-text-primary mt-1">
-                  Hoá đơn đã thanh toán
-                </p>
+                <p className="text-base font-bold text-text-primary mt-1">Hoá đơn đã thanh toán</p>
                 <p className="text-xs text-text-tertiary">
                   {invoice.status === "PENDING"
                     ? "Đang chờ thanh toán"
@@ -472,23 +462,17 @@ export default function EInvoicePage() {
               <>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-text-tertiary">Khách đưa</span>
-                  <span className="font-bold text-text-primary">
-                    {formatVnd(amountTendered)}
-                  </span>
+                  <span className="font-bold text-text-primary">{formatVnd(amountTendered)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-text-tertiary">Tiền thối</span>
-                  <span className="font-bold text-text-primary">
-                    {formatVnd(changeAmount)}
-                  </span>
+                  <span className="font-bold text-text-primary">{formatVnd(changeAmount)}</span>
                 </div>
               </>
             )}
             <div className="flex items-center justify-between text-sm">
               <span className="text-text-tertiary">Thu ngân</span>
-              <span className="font-bold text-text-primary">
-                {cashierNameDisplay}
-              </span>
+              <span className="font-bold text-text-primary">{cashierNameDisplay}</span>
             </div>
           </div>
 
@@ -505,7 +489,9 @@ export default function EInvoicePage() {
           {detailsError && (
             <div role="alert" className="text-sm text-text-secondary">
               Chưa tải được các món trên hóa đơn.
-              <Button type="button" variant="link" size="sm" onClick={() => void refetchDetails()}>Tải lại món</Button>
+              <Button type="button" variant="link" size="sm" onClick={() => void refetchDetails()}>
+                Tải lại món
+              </Button>
             </div>
           )}
         </div>
@@ -545,9 +531,7 @@ export default function EInvoicePage() {
             <div className="space-y-2 rounded-xl bg-[#f8fafc] p-4 border border-border-default/40">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-text-tertiary">Hóa đơn</span>
-                <span className="font-bold text-text-primary">
-                  {invoiceNumber}
-                </span>
+                <span className="font-bold text-text-primary">{invoiceNumber}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-text-tertiary">Bàn / Phiên</span>
@@ -557,9 +541,7 @@ export default function EInvoicePage() {
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-text-tertiary">Đã thu</span>
-                <span className="font-bold text-text-primary">
-                  {amountPaidDisplay}
-                </span>
+                <span className="font-bold text-text-primary">{amountPaidDisplay}</span>
               </div>
             </div>
 
@@ -595,10 +577,8 @@ export default function EInvoicePage() {
                     type="text"
                     value={refundAmount}
                     onChange={(e) => {
-                      const val = e.target.value.replace(/[^0-9]/g, "");
-                      setRefundAmount(
-                        val ? Number(val).toLocaleString("vi-VN") : ""
-                      );
+                      const val = e.target.value.replace(/[^0-9]/g, "")
+                      setRefundAmount(val ? Number(val).toLocaleString("vi-VN") : "")
                     }}
                     placeholder="0"
                     className="w-full h-11 rounded-xl border border-border-strong/70 bg-surface-card pl-3.5 pr-8 text-sm font-medium text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all"
@@ -633,8 +613,8 @@ export default function EInvoicePage() {
             {/* Thông báo BR-12 */}
             <div className="rounded-xl bg-[#fffaf0] border border-[#fde68a]/60 p-3.5 text-center">
               <p className="text-xs font-medium text-[#b45309] leading-relaxed">
-                Cần Quản lý chi nhánh duyệt. Hệ thống ghi nhật ký (BR-12) và gửi
-                thông báo điều chỉnh thuế theo mẫu 04/SS-HĐĐT.
+                Cần Quản lý chi nhánh duyệt. Hệ thống ghi nhật ký (BR-12) và gửi thông báo điều
+                chỉnh thuế theo mẫu 04/SS-HĐĐT.
               </p>
             </div>
 
@@ -667,5 +647,5 @@ export default function EInvoicePage() {
         </Button>
       </StickyActionBar>
     </div>
-  );
+  )
 }

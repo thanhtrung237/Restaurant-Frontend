@@ -314,7 +314,12 @@ function StaffForm({
 
   return (
     <form onSubmit={submit} className="space-y-4 py-2">
-      <FormField label="Họ và tên" htmlFor="staff-full-name" required error={errors.fullName?.message}>
+      <FormField
+        label="Họ và tên"
+        htmlFor="staff-full-name"
+        required
+        error={errors.fullName?.message}
+      >
         <Input id="staff-full-name" {...register("fullName")} placeholder="Nhập..." autoFocus />
       </FormField>
 
@@ -391,8 +396,8 @@ function StaffForm({
             KHÔNG có cờ đó, nên không hứa. Nói đúng việc hệ thống làm được.
           */}
           <p className="mt-1.5 text-xs text-text-tertiary">
-            Đưa mật khẩu này cho nhân viên để đăng nhập lần đầu. Hệ thống chưa tự bắt đổi mật
-            khẩu, nên hãy nhắc nhân viên tự đổi.
+            Đưa mật khẩu này cho nhân viên để đăng nhập lần đầu. Hệ thống chưa tự bắt đổi mật khẩu,
+            nên hãy nhắc nhân viên tự đổi.
           </p>
         </FormField>
       )}
@@ -435,10 +440,7 @@ function StaffForm({
             }}
             onRemove={() => remove(index)}
             onRemoveExisting={(assignmentId) =>
-              setValue("removedAssignmentIds", [
-                ...getValues("removedAssignmentIds"),
-                assignmentId,
-              ])
+              setValue("removedAssignmentIds", [...getValues("removedAssignmentIds"), assignmentId])
             }
           />
         ))}
@@ -520,7 +522,9 @@ function AssignmentRow({
                 </Select>
               )}
             />
-            {error.roleId ? <p className="mt-1 text-xs text-status-danger">{error.roleId}</p> : null}
+            {error.roleId ? (
+              <p className="mt-1 text-xs text-status-danger">{error.roleId}</p>
+            ) : null}
           </div>
 
           <div>

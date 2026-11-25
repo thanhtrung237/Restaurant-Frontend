@@ -4,7 +4,12 @@ import { Search, Bell, ClipboardList, Lock, Gift, X, Clock, Tag, TrendingUp } fr
 import { MenuItemCard } from "@/components/common/MenuItemCard"
 import { useToast } from "@/hooks/use-toast"
 import { CUSTOMER_PATHS } from "@/app/router/paths"
-import { useBranchMenu, useTableSession, useOrderDetailsBySession, useCallStaff } from "@/features/customer/api"
+import {
+  useBranchMenu,
+  useTableSession,
+  useOrderDetailsBySession,
+  useCallStaff,
+} from "@/features/customer/api"
 import { useBillLocked } from "@/features/customer/hooks/use-bill-locked"
 import { TABLE_SESSION_STATUS_LABEL } from "@/types/enums"
 import {
@@ -17,7 +22,11 @@ import {
   selectCartSubtotalAfterPromotion,
 } from "@/features/customer/store/cart.store"
 import { useActivePromotionsByBranch } from "@/api/promotions.api"
-import { findBestPromotionForItem, formatPromotionBadge, parseCondition } from "@/lib/promotion-display"
+import {
+  findBestPromotionForItem,
+  formatPromotionBadge,
+  parseCondition,
+} from "@/lib/promotion-display"
 import { calculatePromoDiscount } from "@/features/cashier/components/PromotionSelectModal"
 import type { BranchMenuItem, Promotion } from "@/types/models"
 import { cn } from "@/lib/utils"
@@ -126,15 +135,14 @@ export default function MenuPage() {
   // KM cấp HÓA ĐƠN: hiển thị dải thông báo ở đầu menu thay vì gạch giá từng món
   const invoicePromos = React.useMemo(
     () => activePromotions.filter((p) => p.applyLevel === "INVOICE"),
-    [activePromotions]
+    [activePromotions],
   )
 
   // Fetch món đã gọi để hiển thị số lượng trên nút "Món đã gọi"
-  const { data: orderDetails = [] } = useOrderDetailsBySession(
-    tableSession?.id,
-    undefined,
-    { enabled: Boolean(tableSession?.id), refetchInterval: 3000 }
-  )
+  const { data: orderDetails = [] } = useOrderDetailsBySession(tableSession?.id, undefined, {
+    enabled: Boolean(tableSession?.id),
+    refetchInterval: 3000,
+  })
 
   const [activeCategoryId, setActiveCategoryId] = React.useState<string>(POPULAR_CATEGORY_ID)
   const [searchInput, setSearchInput] = React.useState("") // User đang gõ
@@ -149,10 +157,7 @@ export default function MenuPage() {
   }
 
   // Chỉ hiển thị món chưa bị ẩn ở chi nhánh này
-  const visibleItems = React.useMemo(
-    () => menuItems.filter((item) => !item.isHidden),
-    [menuItems]
-  )
+  const visibleItems = React.useMemo(() => menuItems.filter((item) => !item.isHidden), [menuItems])
 
   // Tab danh mục suy ra từ chính dữ liệu món ăn thật (categoryId/categoryName), không mock
   const categoryTabs = React.useMemo<CategoryTab[]>(() => {
@@ -170,7 +175,7 @@ export default function MenuPage() {
 
   const activeCategory = React.useMemo(
     () => categoryTabs.find((c) => c.id === activeCategoryId) ?? categoryTabs[0],
-    [categoryTabs, activeCategoryId]
+    [categoryTabs, activeCategoryId],
   )
 
   // Lọc dishes theo category và search text
@@ -183,7 +188,7 @@ export default function MenuPage() {
       filtered = filtered.filter(
         (d) =>
           d.dishName.toLowerCase().includes(search) ||
-          d.description?.toLowerCase().includes(search)
+          d.description?.toLowerCase().includes(search),
       )
       // Khi đang search, bỏ qua filter category để hiển thị tất cả kết quả
       return filtered
@@ -274,7 +279,10 @@ export default function MenuPage() {
       onError: (err) => {
         toast({
           title: "Lỗi gọi nhân viên",
-          description: err instanceof Error ? err.message : "Không thể gọi nhân viên lúc này. Vui lòng thử lại.",
+          description:
+            err instanceof Error
+              ? err.message
+              : "Không thể gọi nhân viên lúc này. Vui lòng thử lại.",
           variant: "danger",
         })
       },
@@ -301,9 +309,7 @@ export default function MenuPage() {
           <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-status-danger-subtle">
             <span className="text-2xl">⚠️</span>
           </div>
-          <h2 className="text-lg font-bold text-text-primary">
-            Không thể tải thực đơn
-          </h2>
+          <h2 className="text-lg font-bold text-text-primary">Không thể tải thực đơn</h2>
           <p className="mt-2 text-sm text-text-secondary">
             Vui lòng thử lại hoặc liên hệ nhân viên.
           </p>
@@ -395,8 +401,8 @@ export default function MenuPage() {
             <div className="mx-4 mb-3 flex items-start gap-2 rounded-md bg-[#FEF6EE] px-3.5 py-2.5">
               <span className="mt-0.5 text-sm">ℹ️</span>
               <p className="text-xs leading-relaxed text-[#B54708]">
-                Bạn đang xem trước thực đơn. Nhân viên chưa xác nhận mở bàn nên
-                chưa thể thêm món vào giỏ hàng.
+                Bạn đang xem trước thực đơn. Nhân viên chưa xác nhận mở bàn nên chưa thể thêm món
+                vào giỏ hàng.
               </p>
             </div>
           ) : null}
@@ -451,7 +457,7 @@ export default function MenuPage() {
                       "h-[38px] shrink-0 rounded-[20px] px-5 text-sm transition-all whitespace-nowrap",
                       isSelected
                         ? "bg-brand-primary font-bold text-white shadow-xs"
-                        : "border border-border-default bg-white font-medium text-text-secondary hover:border-border-strong hover:text-text-primary"
+                        : "border border-border-default bg-white font-medium text-text-secondary hover:border-border-strong hover:text-text-primary",
                     )}
                   >
                     {category.label}
@@ -475,8 +481,8 @@ export default function MenuPage() {
             <div className="mb-3 flex items-start gap-2.5 rounded-xl border border-[#FEDF89] bg-[#FFFCF5] px-4 py-3">
               <Lock className="mt-0.5 size-4 shrink-0 text-[#B54708]" />
               <p className="text-sm text-[#B54708]">
-                <strong>Đã yêu cầu tính tiền</strong> — không thể gọi thêm món. Cần gọi thêm,
-                vui lòng báo nhân viên.
+                <strong>Đã yêu cầu tính tiền</strong> — không thể gọi thêm món. Cần gọi thêm, vui
+                lòng báo nhân viên.
               </p>
             </div>
           ) : null}
@@ -517,7 +523,7 @@ export default function MenuPage() {
           ) : null}
 
           <p className="mb-3 text-xs font-bold tracking-wider text-text-tertiary">
-            {searchText.trim() 
+            {searchText.trim()
               ? `Kết quả tìm kiếm "${searchText}" (${dishes.length})`
               : `Món ${activeCategory?.label ?? ""}`}
           </p>
@@ -546,9 +552,7 @@ export default function MenuPage() {
                     </button>
                   </>
                 ) : (
-                  <p className="text-sm text-text-tertiary">
-                    Không có món nào trong danh mục này
-                  </p>
+                  <p className="text-sm text-text-tertiary">Không có món nào trong danh mục này</p>
                 )}
               </div>
             ) : (
@@ -560,7 +564,8 @@ export default function MenuPage() {
                 // Giỏ hàng bằng `useOutOfStock(branchId)` — bottom sheet "Một số món đã hết".
 
                 // Check for price override discount (chi nhánh ghi đè giá)
-                const showOverrideDiscount = dish.hasOverride && dish.effectivePrice < dish.basePrice
+                const showOverrideDiscount =
+                  dish.hasOverride && dish.effectivePrice < dish.basePrice
                 const overrideDiscountPercent = showOverrideDiscount
                   ? Math.round(((dish.basePrice - dish.effectivePrice) / dish.basePrice) * 100)
                   : undefined
@@ -607,8 +612,6 @@ export default function MenuPage() {
               })
             )}
           </div>
-
-
         </div>
       </div>
 
@@ -677,10 +680,7 @@ function PromotionsModal({ promotions, cartSubtotal, onClose }: PromotionsModalP
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal content */}
       <div className="relative w-full max-w-2xl bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[85vh] flex flex-col animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 duration-300">
@@ -691,12 +691,8 @@ function PromotionsModal({ promotions, cartSubtotal, onClose }: PromotionsModalP
               <Gift className="size-5 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-text-primary">
-                Khuyến mãi đang có
-              </h2>
-              <p className="text-xs text-text-tertiary">
-                {promotions.length} chương trình
-              </p>
+              <h2 className="text-lg font-bold text-text-primary">Khuyến mãi đang có</h2>
+              <p className="text-xs text-text-tertiary">{promotions.length} chương trình</p>
             </div>
           </div>
           <button
@@ -758,12 +754,8 @@ function PromotionsModal({ promotions, cartSubtotal, onClose }: PromotionsModalP
               <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-surface-muted">
                 <Gift className="size-8 text-text-tertiary" />
               </div>
-              <p className="text-sm font-medium text-text-secondary">
-                Hiện chưa có khuyến mãi nào
-              </p>
-              <p className="text-xs text-text-tertiary mt-1">
-                Vui lòng quay lại sau
-              </p>
+              <p className="text-sm font-medium text-text-secondary">Hiện chưa có khuyến mãi nào</p>
+              <p className="text-xs text-text-tertiary mt-1">Vui lòng quay lại sau</p>
             </div>
           )}
         </div>
@@ -797,7 +789,10 @@ function PromotionCard({ promotion, type, currentDiscount, cartSubtotal }: Promo
   const isInvoicePromo = type === "invoice"
   const condition = parseCondition(promotion.condition)
   const minimumAmount = condition?.minOrderValue ?? condition?.minTotal ?? 0
-  const remainingUsageLimit = promotion.usageLimit == null ? null : Math.max(0, promotion.usageLimit - (promotion.usageCount ?? 0))
+  const remainingUsageLimit =
+    promotion.usageLimit == null
+      ? null
+      : Math.max(0, promotion.usageLimit - (promotion.usageCount ?? 0))
   const hasCondition = minimumAmount > 0
   const meetsCondition = cartSubtotal ? cartSubtotal >= (minimumAmount || 0) : false
 
@@ -821,14 +816,16 @@ function PromotionCard({ promotion, type, currentDiscount, cartSubtotal }: Promo
   }
 
   return (
-    <div className={cn(
-      "rounded-2xl border-2 p-4 transition-all relative",
-      isApplied
-        ? "border-status-success bg-status-success-subtle/50 shadow-sm"
-        : isInvoicePromo
-          ? "border-status-success/30 bg-status-success-subtle/30"
-          : "border-brand-primary/30 bg-brand-primary-subtle/30"
-    )}>
+    <div
+      className={cn(
+        "rounded-2xl border-2 p-4 transition-all relative",
+        isApplied
+          ? "border-status-success bg-status-success-subtle/50 shadow-sm"
+          : isInvoicePromo
+            ? "border-status-success/30 bg-status-success-subtle/30"
+            : "border-brand-primary/30 bg-brand-primary-subtle/30",
+      )}
+    >
       {/* Badge "Đang áp dụng" */}
       {isApplied && (
         <div className="absolute top-3 right-3 flex items-center gap-1 px-2.5 py-1 rounded-full bg-status-success text-white text-xs font-bold shadow-sm">
@@ -840,17 +837,17 @@ function PromotionCard({ promotion, type, currentDiscount, cartSubtotal }: Promo
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-2.5">
         <div className="flex-1 min-w-0 pr-20">
-          <h4 className="text-base font-bold text-text-primary line-clamp-2">
-            {promotion.name}
-          </h4>
-          <p className={cn(
-            "text-sm font-semibold mt-1",
-            isApplied 
-              ? "text-status-success"
-              : isInvoicePromo 
-                ? "text-status-success" 
-                : "text-brand-primary"
-          )}>
+          <h4 className="text-base font-bold text-text-primary line-clamp-2">{promotion.name}</h4>
+          <p
+            className={cn(
+              "text-sm font-semibold mt-1",
+              isApplied
+                ? "text-status-success"
+                : isInvoicePromo
+                  ? "text-status-success"
+                  : "text-brand-primary",
+            )}
+          >
             {discountText}
           </p>
         </div>
@@ -866,39 +863,38 @@ function PromotionCard({ promotion, type, currentDiscount, cartSubtotal }: Promo
 
       {/* Description */}
       {promotion.description && (
-        <p className="text-xs text-text-secondary leading-relaxed mb-3">
-          {promotion.description}
-        </p>
+        <p className="text-xs text-text-secondary leading-relaxed mb-3">{promotion.description}</p>
       )}
 
       {/* Conditions */}
       {hasCondition && (
-        <div className={cn(
-          "flex items-start gap-2 px-3 py-2 rounded-xl border mb-2",
-          isApplied
-            ? "bg-status-success-subtle/70 border-status-success/30"
-            : meetsCondition
-              ? "bg-status-success-subtle/50 border-status-success/20"
-              : "bg-white border-border-default"
-        )}>
-          <span className="text-sm shrink-0">
-            {isApplied || meetsCondition ? "✅" : "ℹ️"}
-          </span>
+        <div
+          className={cn(
+            "flex items-start gap-2 px-3 py-2 rounded-xl border mb-2",
+            isApplied
+              ? "bg-status-success-subtle/70 border-status-success/30"
+              : meetsCondition
+                ? "bg-status-success-subtle/50 border-status-success/20"
+                : "bg-white border-border-default",
+          )}
+        >
+          <span className="text-sm shrink-0">{isApplied || meetsCondition ? "✅" : "ℹ️"}</span>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-text-secondary">
               Điều kiện: Hóa đơn từ {minimumAmount?.toLocaleString("vi-VN")}đ
             </p>
             {isInvoicePromo && cartSubtotal && (
-              <p className={cn(
-                "text-xs font-semibold mt-1",
-                isApplied || meetsCondition ? "text-status-success" : "text-text-tertiary"
-              )}>
+              <p
+                className={cn(
+                  "text-xs font-semibold mt-1",
+                  isApplied || meetsCondition ? "text-status-success" : "text-text-tertiary",
+                )}
+              >
                 {isApplied
                   ? `✨ Đang giảm ${currentDiscount?.toLocaleString("vi-VN")}đ`
                   : meetsCondition
                     ? `Đạt điều kiện · Giảm ${currentDiscount?.toLocaleString("vi-VN")}đ`
-                    : `Hiện tại: ${cartSubtotal.toLocaleString("vi-VN")}đ · Còn thiếu ${((minimumAmount || 0) - cartSubtotal).toLocaleString("vi-VN")}đ`
-                }
+                    : `Hiện tại: ${cartSubtotal.toLocaleString("vi-VN")}đ · Còn thiếu ${((minimumAmount || 0) - cartSubtotal).toLocaleString("vi-VN")}đ`}
               </p>
             )}
           </div>
@@ -906,20 +902,28 @@ function PromotionCard({ promotion, type, currentDiscount, cartSubtotal }: Promo
       )}
 
       {/* How to use */}
-      <div className={cn(
-        "flex items-start gap-2 px-3 py-2 rounded-xl",
-        isApplied ? "bg-white/60" : "bg-white/80"
-      )}>
+      <div
+        className={cn(
+          "flex items-start gap-2 px-3 py-2 rounded-xl",
+          isApplied ? "bg-white/60" : "bg-white/80",
+        )}
+      >
         <span className="text-sm shrink-0">💡</span>
         <p className="text-xs text-text-secondary leading-relaxed">
           {isInvoicePromo ? (
             <>
-              <strong>Tự động áp dụng</strong> khi thanh toán nếu đạt điều kiện. 
-              {isApplied && <span className="text-status-success font-semibold"> Đang được áp dụng cho đơn hàng này!</span>}
+              <strong>Tự động áp dụng</strong> khi thanh toán nếu đạt điều kiện.
+              {isApplied && (
+                <span className="text-status-success font-semibold">
+                  {" "}
+                  Đang được áp dụng cho đơn hàng này!
+                </span>
+              )}
             </>
           ) : (
             <>
-              <strong>Tự động giảm giá</strong> khi thêm món có khuyến mãi vào giỏ. Giá đã bao gồm giảm giá.
+              <strong>Tự động giảm giá</strong> khi thêm món có khuyến mãi vào giỏ. Giá đã bao gồm
+              giảm giá.
             </>
           )}
         </p>

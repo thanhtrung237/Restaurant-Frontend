@@ -1,9 +1,18 @@
-import axios, { AxiosError, type AxiosInstance, type AxiosRequestConfig, type InternalAxiosRequestConfig } from "axios"
+import axios, {
+  AxiosError,
+  type AxiosInstance,
+  type AxiosRequestConfig,
+  type InternalAxiosRequestConfig,
+} from "axios"
 import { getGuestCredential, isCustomerPage } from "./guest-credential"
 import type { ResponseError, ResponseSuccess } from "@/types/api"
 import type { RefreshTokenResponse } from "@/types/models"
 import {
-  clearTokens, getAccessToken, getRefreshToken, notifyUnauthorized, setTokens,
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+  notifyUnauthorized,
+  setTokens,
 } from "./auth-token"
 
 /**
@@ -11,7 +20,8 @@ import {
  * Bản triển khai có thể đặt VITE_API_BASE_URL để dùng API riêng.
  */
 export const API_BASE_URL: string =
-  import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? "/api/v1" : "http://localhost:8080/api/v1")
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV ? "/api/v1" : "http://localhost:8080/api/v1")
 
 /** Đường dẫn công khai (BE `SecurityConfig.PUBLIC_ENDPOINTS`) — không gắn Bearer, không refresh. */
 const PUBLIC_PATHS = ["/auth/login", "/auth/refresh-token"]
@@ -117,7 +127,13 @@ http.interceptors.response.use(
     const config = error.config as (InternalAxiosRequestConfig & { _retried?: boolean }) | undefined
     const status = error.response?.status
 
-    if (status === 401 && config && !config._retried && !isPublicPath(config.url) && !isCustomerPage()) {
+    if (
+      status === 401 &&
+      config &&
+      !config._retried &&
+      !isPublicPath(config.url) &&
+      !isCustomerPage()
+    ) {
       config._retried = true
       try {
         if (!refreshPromise) {
@@ -156,12 +172,20 @@ export async function apiGet<T>(url: string, config?: AxiosRequestConfig): Promi
   return unwrap(res.data)
 }
 
-export async function apiPost<T>(url: string, body?: unknown, config?: AxiosRequestConfig): Promise<T> {
+export async function apiPost<T>(
+  url: string,
+  body?: unknown,
+  config?: AxiosRequestConfig,
+): Promise<T> {
   const res = await http.post<ResponseSuccess<T>>(url, body ?? null, config)
   return unwrap(res.data)
 }
 
-export async function apiPut<T>(url: string, body?: unknown, config?: AxiosRequestConfig): Promise<T> {
+export async function apiPut<T>(
+  url: string,
+  body?: unknown,
+  config?: AxiosRequestConfig,
+): Promise<T> {
   const res = await http.put<ResponseSuccess<T>>(url, body ?? null, config)
   return unwrap(res.data)
 }

@@ -22,14 +22,13 @@ export function CartItemRow({
   onQuantityChange,
   className,
 }: CartItemRowProps) {
-  const formattedPrice =
-    typeof price === "number" ? `${price.toLocaleString("vi-VN")}VND` : price
+  const formattedPrice = typeof price === "number" ? `${price.toLocaleString("vi-VN")}VND` : price
 
   return (
     <div
       className={cn(
         "flex items-center justify-between gap-3.5 rounded-card border border-border-default bg-surface-card p-3.5 transition-colors",
-        className
+        className,
       )}
     >
       {/* Cột trái: Thumbnail & Thông tin */}
@@ -45,17 +44,11 @@ export function CartItemRow({
         </div>
 
         <div className="min-w-0 flex-1 space-y-0.5">
-          <h4 className="truncate text-sm font-bold text-text-primary">
-            {name}
-          </h4>
+          <h4 className="truncate text-sm font-bold text-text-primary">{name}</h4>
           {optionsText ? (
-            <p className="truncate text-xs text-text-tertiary">
-              {optionsText}
-            </p>
+            <p className="truncate text-xs text-text-tertiary">{optionsText}</p>
           ) : null}
-          <p className="text-sm font-bold text-brand-primary">
-            {formattedPrice}
-          </p>
+          <p className="text-sm font-bold text-brand-primary">{formattedPrice}</p>
         </div>
       </div>
 

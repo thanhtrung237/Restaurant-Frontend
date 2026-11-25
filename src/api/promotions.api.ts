@@ -4,7 +4,11 @@ import { qk } from "@/lib/query-keys"
 import type { PageParams, PageResponse } from "@/types/api"
 import type { Promotion, PromotionBranch } from "@/types/models"
 import type { PromotionStatus } from "@/types/enums"
-import type { PromotionAddRequest, PromotionBranchAddRequest, PromotionUpdateRequest } from "@/types/requests"
+import type {
+  PromotionAddRequest,
+  PromotionBranchAddRequest,
+  PromotionUpdateRequest,
+} from "@/types/requests"
 
 export function getPromotion(id: number) {
   return apiGet<Promotion>(`/promotions/${id}`)
@@ -79,14 +83,16 @@ export function useCreatePromotion() {
 export function useUpdatePromotion() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (vars: { id: number; body: PromotionUpdateRequest }) => updatePromotion(vars.id, vars.body),
+    mutationFn: (vars: { id: number; body: PromotionUpdateRequest }) =>
+      updatePromotion(vars.id, vars.body),
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.promotions.all }),
   })
 }
 export function useChangePromotionStatus() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (vars: { id: number; status: PromotionStatus }) => changePromotionStatus(vars.id, vars.status),
+    mutationFn: (vars: { id: number; status: PromotionStatus }) =>
+      changePromotionStatus(vars.id, vars.status),
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.promotions.all }),
   })
 }
@@ -127,4 +133,4 @@ export function useActivePromotionsByBranch(branchId?: number) {
     queryFn: () => getActivePromotionsByBranch(branchId as number),
     enabled: typeof branchId === "number",
   })
-}
+}

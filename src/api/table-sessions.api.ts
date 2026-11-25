@@ -3,9 +3,14 @@ import { apiDelete, apiGet, apiPost, apiPut, retryUnlessStatus } from "@/lib/htt
 import { qk } from "@/lib/query-keys"
 import type { TableSession, BillPreviewResponse } from "@/types/models"
 import type {
-  TableSessionCancelReservationRequest, TableSessionConfirmOpenRequest,
-  TableSessionCreateRequest, TableSessionOpenRequest, TableSessionUpdateRequest,
-  TableSessionReservationRequest, TableSessionTransferRequest, TableSessionMergeRequest,
+  TableSessionCancelReservationRequest,
+  TableSessionConfirmOpenRequest,
+  TableSessionCreateRequest,
+  TableSessionOpenRequest,
+  TableSessionUpdateRequest,
+  TableSessionReservationRequest,
+  TableSessionTransferRequest,
+  TableSessionMergeRequest,
 } from "@/types/requests"
 
 /**
@@ -99,7 +104,10 @@ export function useOpenSessionsByBranch(branchId?: number, options?: { refetchIn
   })
 }
 
-export function useBillPreview(id?: number, options?: { refetchInterval?: number; enabled?: boolean }) {
+export function useBillPreview(
+  id?: number,
+  options?: { refetchInterval?: number; enabled?: boolean },
+) {
   return useQuery({
     queryKey: qk.tableSessions.billPreview(id as number),
     queryFn: () => getBillPreview(id as number),
@@ -116,11 +124,17 @@ function invalidateSessionScope(qc: ReturnType<typeof useQueryClient>) {
 
 export function useCreateTableSession() {
   const qc = useQueryClient()
-  return useMutation({ mutationFn: createTableSession, onSuccess: () => invalidateSessionScope(qc) })
+  return useMutation({
+    mutationFn: createTableSession,
+    onSuccess: () => invalidateSessionScope(qc),
+  })
 }
 export function useReserveTableSession() {
   const qc = useQueryClient()
-  return useMutation({ mutationFn: reserveTableSession, onSuccess: () => invalidateSessionScope(qc) })
+  return useMutation({
+    mutationFn: reserveTableSession,
+    onSuccess: () => invalidateSessionScope(qc),
+  })
 }
 export function useConfirmOpenSession() {
   const qc = useQueryClient()
@@ -200,4 +214,3 @@ export function useMergeTable() {
     onSuccess: () => invalidateSessionScope(qc),
   })
 }
-

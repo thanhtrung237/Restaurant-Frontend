@@ -9,7 +9,9 @@ export default function OrderConfirmSentPage() {
   return (
     <div className="p-6">
       <h1 className="text-xl font-semibold">Xác nhận gửi order</h1>
-      <p className="text-muted-foreground text-sm">Trang này sẽ được triển khai ở các phase tiếp theo.</p>
+      <p className="text-muted-foreground text-sm">
+        Trang này sẽ được triển khai ở các phase tiếp theo.
+      </p>
     </div>
   )
 }

@@ -1,18 +1,40 @@
 import { expect, test } from "@playwright/test"
 
-test("creates areas, moves tables and safely removes them from branch operations", async ({ page }) => {
+test("creates areas, moves tables and safely removes them from branch operations", async ({
+  page,
+}) => {
   test.setTimeout(60000)
   const branch = { id: 10, restaurantId: 1, name: "Chi nhánh Quận 1", status: "ACTIVE" }
   const areas = [{ id: 1, branchId: branch.id, name: "Tầng 1", status: "ACTIVE" }]
-  const tables = [{ id: 30, branchId: branch.id, name: "Bàn 01", capacity: 4, areaId: 1, areaName: "Tầng 1", status: "AVAILABLE", qrCode: "QR-B10-01" }]
+  const tables = [
+    {
+      id: 30,
+      branchId: branch.id,
+      name: "Bàn 01",
+      capacity: 4,
+      areaId: 1,
+      areaName: "Tầng 1",
+      status: "AVAILABLE",
+      qrCode: "QR-B10-01",
+    },
+  ]
 
   await page.addInitScript(() => {
     localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
-    localStorage.setItem("pho-viet-auth", JSON.stringify({ version: 0, state: {
-      role: "BRANCH_MANAGER", branchId: 10, assignmentId: 7,
-      accessToken: "test-token", isAuthenticated: true,
-      account: { id: 1, restaurantId: 1, fullName: "Quản lý test" },
-    } }))
+    localStorage.setItem(
+      "pho-viet-auth",
+      JSON.stringify({
+        version: 0,
+        state: {
+          role: "BRANCH_MANAGER",
+          branchId: 10,
+          assignmentId: 7,
+          accessToken: "test-token",
+          isAuthenticated: true,
+          account: { id: 1, restaurantId: 1, fullName: "Quản lý test" },
+        },
+      }),
+    )
   })
   await page.route("**/ws/**", (route) => route.abort())
   await page.route("**/api/v1/**", async (route) => {
@@ -20,13 +42,15 @@ test("creates areas, moves tables and safely removes them from branch operations
     const path = new URL(request.url()).pathname.replace("/api/v1", "")
     const method = request.method()
     const headers = {
-      "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Headers": "*",
       "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
     }
     if (method === "OPTIONS") return route.fulfill({ status: 204, headers })
     let data: unknown = []
     if (path === "/branches/10") data = branch
-    if (path === "/assignments/account/1") data = [{ id: 7, roleCode: "BRANCH_MANAGER", branchId: 10 }]
+    if (path === "/assignments/account/1")
+      data = [{ id: 7, roleCode: "BRANCH_MANAGER", branchId: 10 }]
     if (path === "/areas/branch/10") data = areas
     if (path === "/tables/branch/10") data = tables
     if (path === "/areas" && method === "POST") {
@@ -41,8 +65,22 @@ test("creates areas, moves tables and safely removes them from branch operations
       data = area
     }
     if (path === "/tables" && method === "POST") {
-      expect(request.postDataJSON()).toEqual({ branchId: 10, name: "Bàn 02", capacity: 4, areaId: 2 })
-      const table = { id: 31, branchId: 10, name: "Bàn 02", capacity: 4, areaId: 2, areaName: "Sân thượng", status: "AVAILABLE", qrCode: "QR-B10-02" }
+      expect(request.postDataJSON()).toEqual({
+        branchId: 10,
+        name: "Bàn 02",
+        capacity: 4,
+        areaId: 2,
+      })
+      const table = {
+        id: 31,
+        branchId: 10,
+        name: "Bàn 02",
+        capacity: 4,
+        areaId: 2,
+        areaName: "Sân thượng",
+        status: "AVAILABLE",
+        qrCode: "QR-B10-02",
+      }
       tables.push(table)
       data = table
     }
@@ -53,7 +91,11 @@ test("creates areas, moves tables and safely removes them from branch operations
       data = tables[0]
     }
     if (path === "/tables/30" && method === "DELETE") {
-      return route.fulfill({ status: 409, headers, json: { message: "Bàn đã có lịch sử. Hãy chọn Ngừng sử dụng để giữ dữ liệu." } })
+      return route.fulfill({
+        status: 409,
+        headers,
+        json: { message: "Bàn đã có lịch sử. Hãy chọn Ngừng sử dụng để giữ dữ liệu." },
+      })
     }
     if (path === "/tables/30/status" && method === "PUT") {
       tables[0] = { ...tables[0], status: new URL(request.url()).searchParams.get("status")! }
@@ -147,7 +189,10 @@ test("creates areas, moves tables and safely removes them from branch operations
   await removeUsed.getByRole("button", { name: "Hủy" }).click()
   await expect(editTable.getByRole("button", { name: "Xóa bàn", exact: true })).toBeFocused()
   await editTable.getByRole("button", { name: "Ngừng sử dụng", exact: true }).click()
-  await page.getByRole("alertdialog", { name: "Ngừng sử dụng · Bàn 01" }).getByRole("button", { name: "Ngừng sử dụng" }).click()
+  await page
+    .getByRole("alertdialog", { name: "Ngừng sử dụng · Bàn 01" })
+    .getByRole("button", { name: "Ngừng sử dụng" })
+    .click()
   await expect(editTable).toBeHidden()
   await expect(page.getByText("Bàn 01", { exact: true })).toHaveCount(0)
   await expect(page.getByText("Bàn 02", { exact: true })).toBeVisible()
@@ -173,22 +218,48 @@ test("creates areas, moves tables and safely removes them from branch operations
   await page.setViewportSize({ width: 1231, height: 905 })
 
   await page.getByRole("button", { name: "Chỉnh sửa bàn" }).last().click()
-  await page.getByRole("dialog", { name: "Chỉnh sửa Bàn 02" }).getByRole("button", { name: "Xóa bàn" }).click()
-  await page.getByRole("alertdialog", { name: "Xóa bàn · Bàn 02" }).getByRole("button", { name: "Xóa bàn" }).click()
+  await page
+    .getByRole("dialog", { name: "Chỉnh sửa Bàn 02" })
+    .getByRole("button", { name: "Xóa bàn" })
+    .click()
+  await page
+    .getByRole("alertdialog", { name: "Xóa bàn · Bàn 02" })
+    .getByRole("button", { name: "Xóa bàn" })
+    .click()
   await expect(page.getByText("Bàn 02", { exact: true })).toHaveCount(0)
   await filter.click()
   await page.getByRole("option", { name: "Tầng 1 (0)" }).click()
   await page.getByRole("button", { name: "Xóa khu vực", exact: true }).click()
-  await page.getByRole("alertdialog", { name: "Xóa khu vực · Tầng 1" }).getByRole("button", { name: "Xóa khu vực" }).click()
+  await page
+    .getByRole("alertdialog", { name: "Xóa khu vực · Tầng 1" })
+    .getByRole("button", { name: "Xóa khu vực" })
+    .click()
   await expect(filter).toHaveText("Tất cả khu vực (1)")
   await page.getByRole("link", { name: "Sơ đồ bàn", exact: true }).click()
   await expect(page.getByText("Chi nhánh chưa có bàn")).toBeVisible()
 
-  tables.push(...Array.from({ length: 10 }, (_, index) => ({
-    id: 40 + index, branchId: 10, name: `Bàn in ${index + 1}`, capacity: 4,
-    areaId: 2, areaName: "Sân thượng", status: "AVAILABLE", qrCode: `QR-B10-PRINT-${index + 1}`,
-  })))
-  tables.push({ id: 50, branchId: 10, name: "Bàn thiếu QR", capacity: 4, areaId: 2, areaName: "Sân thượng", status: "AVAILABLE", qrCode: "" })
+  tables.push(
+    ...Array.from({ length: 10 }, (_, index) => ({
+      id: 40 + index,
+      branchId: 10,
+      name: `Bàn in ${index + 1}`,
+      capacity: 4,
+      areaId: 2,
+      areaName: "Sân thượng",
+      status: "AVAILABLE",
+      qrCode: `QR-B10-PRINT-${index + 1}`,
+    })),
+  )
+  tables.push({
+    id: 50,
+    branchId: 10,
+    name: "Bàn thiếu QR",
+    capacity: 4,
+    areaId: 2,
+    areaName: "Sân thượng",
+    status: "AVAILABLE",
+    qrCode: "",
+  })
   await page.goto("/quan-ly-chi-nhanh/chi-nhanh")
   await page.getByRole("button", { name: "In QR hàng loạt", exact: true }).click()
   await expect(printDialog.getByRole("button", { name: "In 10 mã QR" })).toBeEnabled()

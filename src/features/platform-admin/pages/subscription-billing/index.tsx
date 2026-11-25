@@ -1,13 +1,5 @@
 import { useState, useMemo } from "react"
-import {
-  Download,
-  Plus,
-  Check,
-  TrendingUp,
-  AlertCircle,
-  Clock,
-  CheckCircle2,
-} from "lucide-react"
+import { Download, Plus, Check, TrendingUp, AlertCircle, Clock, CheckCircle2 } from "lucide-react"
 
 import {
   Dialog,
@@ -179,7 +171,7 @@ export default function SubscriptionBillingPage() {
       billings
         .map(
           (b) =>
-            `${b.id},"${b.restaurantName}",${b.code},${b.plan},${b.cycle},${b.renewalDate},"${b.amount}",${b.status}`
+            `${b.id},"${b.restaurantName}",${b.code},${b.plan},${b.cycle},${b.renewalDate},"${b.amount}",${b.status}`,
         )
         .join("\n")
     const encodedUri = encodeURI(csvContent)
@@ -451,7 +443,9 @@ export default function SubscriptionBillingPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Giá hiển thị</label>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Giá hiển thị
+                </label>
                 <input
                   type="text"
                   required

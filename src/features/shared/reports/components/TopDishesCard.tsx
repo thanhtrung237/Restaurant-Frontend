@@ -36,7 +36,8 @@ export function TopDishesCard({
   }, [dishes])
 
   const revenueItems = topByRevenue && topByRevenue.length > 0 ? topByRevenue : legacyItemsAsRank
-  const quantityItems = topByQuantity && topByQuantity.length > 0 ? topByQuantity : legacyItemsAsRank
+  const quantityItems =
+    topByQuantity && topByQuantity.length > 0 ? topByQuantity : legacyItemsAsRank
   const slowItems = slowestDishes || []
 
   const currentList = React.useMemo(() => {
@@ -57,9 +58,7 @@ export function TopDishesCard({
       {/* Header with Title and Tabs */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border-default/60 pb-4">
         <div>
-          <h3 className="text-base font-bold text-text-primary tracking-tight">
-            {title}
-          </h3>
+          <h3 className="text-base font-bold text-text-primary tracking-tight">{title}</h3>
           <p className="text-xs text-text-tertiary mt-0.5">
             Xếp hạng món bán chạy & cảnh báo món bán chậm (FR-RPT-03)
           </p>
@@ -74,7 +73,7 @@ export function TopDishesCard({
               "flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer",
               activeTab === "revenue"
                 ? "bg-surface-card text-brand-primary shadow-xs"
-                : "text-text-secondary hover:text-text-primary"
+                : "text-text-secondary hover:text-text-primary",
             )}
           >
             <TrendingUp className="size-3.5" />
@@ -88,7 +87,7 @@ export function TopDishesCard({
               "flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer",
               activeTab === "quantity"
                 ? "bg-surface-card text-brand-primary shadow-xs"
-                : "text-text-secondary hover:text-text-primary"
+                : "text-text-secondary hover:text-text-primary",
             )}
           >
             <Package className="size-3.5" />
@@ -102,7 +101,7 @@ export function TopDishesCard({
               "flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer",
               activeTab === "slowest"
                 ? "bg-amber-100/90 text-amber-800 shadow-xs"
-                : "text-text-secondary hover:text-text-primary"
+                : "text-text-secondary hover:text-text-primary",
             )}
           >
             <AlertTriangle className="size-3.5 text-amber-600" />
@@ -120,8 +119,9 @@ export function TopDishesCard({
               💡 Gợi ý tối ưu thực đơn (Menu Engineering - FR-RPT-03):
             </p>
             <p className="text-amber-800 leading-relaxed">
-              Các món trong danh sách này có sản lượng bán và doanh số thấp nhất trong khoảng thời gian đã chọn.
-              Quản lý nhà hàng có thể cân nhắc gỡ bỏ khỏi thực đơn để giảm tải chi phí lưu kho nguyên liệu, hoặc kết hợp vào combo giờ vàng/khuyến mãi để kích cầu.
+              Các món trong danh sách này có sản lượng bán và doanh số thấp nhất trong khoảng thời
+              gian đã chọn. Quản lý nhà hàng có thể cân nhắc gỡ bỏ khỏi thực đơn để giảm tải chi phí
+              lưu kho nguyên liệu, hoặc kết hợp vào combo giờ vàng/khuyến mãi để kích cầu.
             </p>
           </div>
         </div>
@@ -137,7 +137,8 @@ export function TopDishesCard({
             Chưa có dữ liệu món bán trong khoảng thời gian này
           </p>
           <p className="mt-1 text-xs text-text-tertiary max-w-md">
-            Thử chọn mốc thời gian khác (Ví dụ: bấm vào nút <strong>"Hôm qua"</strong> hoặc <strong>"7 ngày qua"</strong> ở trên) để xem dữ liệu đơn hàng thực tế.
+            Thử chọn mốc thời gian khác (Ví dụ: bấm vào nút <strong>"Hôm qua"</strong> hoặc{" "}
+            <strong>"7 ngày qua"</strong> ở trên) để xem dữ liệu đơn hàng thực tế.
           </p>
         </div>
       ) : (
@@ -159,12 +160,12 @@ export function TopDishesCard({
                       rank === 1 && activeTab !== "slowest"
                         ? "bg-amber-100 text-amber-800 ring-2 ring-amber-300"
                         : rank === 2 && activeTab !== "slowest"
-                        ? "bg-slate-200 text-slate-800 ring-2 ring-slate-300"
-                        : rank === 3 && activeTab !== "slowest"
-                        ? "bg-orange-100 text-orange-800 ring-2 ring-orange-300"
-                        : activeTab === "slowest"
-                        ? "bg-amber-50 text-amber-700 border border-amber-200"
-                        : "bg-surface-muted text-text-secondary"
+                          ? "bg-slate-200 text-slate-800 ring-2 ring-slate-300"
+                          : rank === 3 && activeTab !== "slowest"
+                            ? "bg-orange-100 text-orange-800 ring-2 ring-orange-300"
+                            : activeTab === "slowest"
+                              ? "bg-amber-50 text-amber-700 border border-amber-200"
+                              : "bg-surface-muted text-text-secondary",
                     )}
                   >
                     {rank}

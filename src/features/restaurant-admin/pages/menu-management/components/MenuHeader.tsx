@@ -19,15 +19,30 @@ export function MenuHeaderActions({ activeTab, onTabChange, onAdd }: MenuHeaderP
     <div className="flex flex-wrap items-center gap-1 sm:gap-2">
       {activeTab === "mon" ? (
         <>
-          <Button type="button" variant="ghost" className="h-10 px-2 sm:px-3" onClick={() => onTabChange("danh-muc")}>
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-10 px-2 sm:px-3"
+            onClick={() => onTabChange("danh-muc")}
+          >
             Danh mục
           </Button>
-          <Button type="button" variant="ghost" className="h-10 px-2 sm:px-3" onClick={() => onTabChange("tuy-chon")}>
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-10 px-2 sm:px-3"
+            onClick={() => onTabChange("tuy-chon")}
+          >
             Tùy chọn món
           </Button>
         </>
       ) : (
-        <Button type="button" variant="ghost" className="h-10 px-3" onClick={() => onTabChange("mon")}>
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-10 px-3"
+          onClick={() => onTabChange("mon")}
+        >
           <ArrowLeft aria-hidden="true" />
           Về danh sách món
         </Button>

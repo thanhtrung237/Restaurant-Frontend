@@ -30,7 +30,9 @@ export function AuthCard({
           {children}
         </div>
 
-        {footer ? <div className="mt-5 text-center text-sm text-text-tertiary">{footer}</div> : null}
+        {footer ? (
+          <div className="mt-5 text-center text-sm text-text-tertiary">{footer}</div>
+        ) : null}
       </div>
     </div>
   )

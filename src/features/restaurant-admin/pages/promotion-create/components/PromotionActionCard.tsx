@@ -50,9 +50,7 @@ export const PromotionActionCard: React.FC<PromotionActionCardProps> = ({
   return (
     <div className="rounded-card border border-border-default bg-surface-card p-6 shadow-2xs space-y-5">
       <div className="space-y-1">
-        <h2 className="text-base font-bold text-text-primary tracking-tight">
-          Hành động giảm giá
-        </h2>
+        <h2 className="text-base font-bold text-text-primary tracking-tight">Hành động giảm giá</h2>
         <p className="text-xs text-text-tertiary">
           {isDishLevel
             ? "Mức ưu đãi áp dụng trên đơn giá của món ăn đủ điều kiện"
@@ -127,7 +125,8 @@ export const PromotionActionCard: React.FC<PromotionActionCardProps> = ({
               </FormField>
             </div>
             <p className="text-xs text-text-tertiary">
-              Khách gọi đủ {Number(buyQty) || 2} + {Number(getQty) || 1} món thì {Number(getQty) || 1} món sẽ được miễn phí (giảm 100% giá {Number(getQty) || 1} món).
+              Khách gọi đủ {Number(buyQty) || 2} + {Number(getQty) || 1} món thì{" "}
+              {Number(getQty) || 1} món sẽ được miễn phí (giảm 100% giá {Number(getQty) || 1} món).
             </p>
           </div>
         ) : actionType === "percentage" ? (

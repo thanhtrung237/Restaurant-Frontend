@@ -23,7 +23,12 @@ export function Toaster() {
   return (
     <ToastProvider>
       {toasts.map(({ id, title, description, action, icon, variant, ...props }) => (
-        <Toast key={id} variant={variant} icon={icon ?? DEFAULT_ICON[variant ?? "default"]} {...props}>
+        <Toast
+          key={id}
+          variant={variant}
+          icon={icon ?? DEFAULT_ICON[variant ?? "default"]}
+          {...props}
+        >
           {title ? <ToastTitle>{title}</ToastTitle> : null}
           {description ? <ToastDescription>{description}</ToastDescription> : null}
           {action}

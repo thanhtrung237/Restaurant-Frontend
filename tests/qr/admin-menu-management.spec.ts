@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test"
 
-test("restaurant menu keeps global changes and branch stock in their own scopes", async ({ page }) => {
+test("restaurant menu keeps global changes and branch stock in their own scopes", async ({
+  page,
+}) => {
   const branches = [
     { id: 10, restaurantId: 1, name: "Chi nhánh Quận 1", status: "ACTIVE" },
     { id: 20, restaurantId: 1, name: "Chi nhánh Quận 7", status: "ACTIVE" },
@@ -8,23 +10,40 @@ test("restaurant menu keeps global changes and branch stock in their own scopes"
   const category = { id: 5, name: "Món chính", status: "ACTIVE", restaurantId: 1 }
   const imageUrl = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
   const dish = {
-    id: 8, restaurantId: 1, name: "Phở bò", categoryId: category.id, categoryName: category.name,
-    basePrice: 45000, status: "ACTIVE", imageUrl,
+    id: 8,
+    restaurantId: 1,
+    name: "Phở bò",
+    categoryId: category.id,
+    categoryName: category.name,
+    basePrice: 45000,
+    status: "ACTIVE",
+    imageUrl,
   }
   let stock = "IN_STOCK"
   let overridePrice: number | null = 49000
   const menuRequests: string[] = []
   const updates: string[] = []
   let releaseBranchMenu!: () => void
-  const branchMenuReady = new Promise<void>((resolve) => { releaseBranchMenu = resolve })
+  const branchMenuReady = new Promise<void>((resolve) => {
+    releaseBranchMenu = resolve
+  })
 
   await page.addInitScript(() => {
     localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
-    localStorage.setItem("pho-viet-auth", JSON.stringify({ version: 0, state: {
-      role: "RESTAURANT_ADMIN", branchId: null, assignmentId: 7,
-      accessToken: "test-token", isAuthenticated: true,
-      account: { id: 1, restaurantId: 1, fullName: "Quản trị test" },
-    } }))
+    localStorage.setItem(
+      "pho-viet-auth",
+      JSON.stringify({
+        version: 0,
+        state: {
+          role: "RESTAURANT_ADMIN",
+          branchId: null,
+          assignmentId: 7,
+          accessToken: "test-token",
+          isAuthenticated: true,
+          account: { id: 1, restaurantId: 1, fullName: "Quản trị test" },
+        },
+      }),
+    )
   })
   await page.route("**/ws/**", (route) => route.abort())
   await page.route("**/api/v1/**", async (route) => {
@@ -53,7 +72,12 @@ test("restaurant menu keeps global changes and branch stock in their own scopes"
     if (path === "/dish-overrides/45" && request.method() === "DELETE") overridePrice = null
     if (path === "/dish-overrides" && request.method() === "POST") {
       expect(overridePrice).toBeNull()
-      expect(request.postDataJSON()).toEqual({ branchId: 20, dishId: 8, overridePrice: 200000, isHidden: false })
+      expect(request.postDataJSON()).toEqual({
+        branchId: 20,
+        dishId: 8,
+        overridePrice: 200000,
+        isHidden: false,
+      })
       overridePrice = 200000
       data = { id: 45, branchId: 20, dishId: 8, overridePrice, isHidden: false }
     }
@@ -73,14 +97,22 @@ test("restaurant menu keeps global changes and branch stock in their own scopes"
         menuRequests.push(path)
         if (branch.id === 20) await branchMenuReady
         const branchPrice = branch.id === 20 ? overridePrice : null
-        data = [{
-          dishId: dish.id, dishName: dish.name, categoryId: category.id, categoryName: category.name,
-          imageUrl: branch.id === 20 ? "data:image/gif;base64,AA==" : imageUrl,
-          basePrice: dish.basePrice, effectivePrice: branchPrice ?? dish.basePrice,
-          overridePrice: branchPrice, hasOverride: branchPrice != null, isHidden: false,
-          stockStatus: branch.id === 20 ? stock : "IN_STOCK",
-          isBranchSpecific: false,
-        }]
+        data = [
+          {
+            dishId: dish.id,
+            dishName: dish.name,
+            categoryId: category.id,
+            categoryName: category.name,
+            imageUrl: branch.id === 20 ? "data:image/gif;base64,AA==" : imageUrl,
+            basePrice: dish.basePrice,
+            effectivePrice: branchPrice ?? dish.basePrice,
+            overridePrice: branchPrice,
+            hasOverride: branchPrice != null,
+            isHidden: false,
+            stockStatus: branch.id === 20 ? stock : "IN_STOCK",
+            isBranchSpecific: false,
+          },
+        ]
       }
     }
     await route.fulfill({ headers, json: { data } })
@@ -89,8 +121,12 @@ test("restaurant menu keeps global changes and branch stock in their own scopes"
   const menuUrl = "/quan-tri-nha-hang/thuc-don"
   await page.setViewportSize({ width: 1231, height: 905 })
   await page.goto(menuUrl)
-  await expect(page.getByRole("navigation", { name: "Phạm vi thực đơn" }).getByRole("button")).toHaveCount(2)
-  await expect(page.getByText("Toàn nhà hàng · 1 món · 1 đang bán").filter({ visible: true })).toBeVisible()
+  await expect(
+    page.getByRole("navigation", { name: "Phạm vi thực đơn" }).getByRole("button"),
+  ).toHaveCount(2)
+  await expect(
+    page.getByText("Toàn nhà hàng · 1 món · 1 đang bán").filter({ visible: true }),
+  ).toBeVisible()
   const commonSearch = page.getByRole("textbox", { name: "Tìm món", exact: true })
   const branchSearch = page.getByRole("textbox", { name: "Tìm món tại chi nhánh" })
   const branchTab = page.getByRole("button", { name: "Theo chi nhánh", exact: true })
@@ -98,7 +134,9 @@ test("restaurant menu keeps global changes and branch stock in their own scopes"
   const commonTabY = (await branchTab.boundingBox())!.y
   const commonTableY = (await page.getByRole("table").boundingBox())!.y
   const thumbnail = page.locator(`img[src="${imageUrl}"]`).filter({ visible: true })
-  await expect.poll(() => thumbnail.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0)
+  await expect
+    .poll(() => thumbnail.evaluate((image: HTMLImageElement) => image.naturalWidth))
+    .toBeGreaterThan(0)
   await expect(page.getByRole("switch")).toHaveCount(0)
   await page.getByRole("textbox", { name: "Tìm món", exact: true }).fill("bún")
   await expect(page.getByText("Không tìm thấy món phù hợp.")).toBeVisible()
@@ -130,7 +168,9 @@ test("restaurant menu keeps global changes and branch stock in their own scopes"
   await page.getByRole("combobox", { name: "Chọn chi nhánh" }).click()
   await page.getByRole("option", { name: "Chi nhánh Quận 7" }).click()
   try {
-    await expect(page.getByText("Đang tải thực đơn chi nhánh…").filter({ visible: true })).toBeVisible()
+    await expect(
+      page.getByText("Đang tải thực đơn chi nhánh…").filter({ visible: true }),
+    ).toBeVisible()
     expect((await branchSearch.boundingBox())!.y).toBeCloseTo(commonSearchY, 0)
     expect((await branchTab.boundingBox())!.y).toBeCloseTo(commonTabY, 0)
     expect((await page.getByRole("table").boundingBox())!.y).toBeCloseTo(commonTableY, 0)
@@ -139,7 +179,11 @@ test("restaurant menu keeps global changes and branch stock in their own scopes"
   }
   await expect(page.getByText("49.000đ", { exact: true }).filter({ visible: true })).toBeVisible()
   expect((await branchSearch.boundingBox())!.y).toBeCloseTo(commonSearchY, 0)
-  const branchDishCell = page.getByRole("row").filter({ hasText: "Phở bò" }).getByRole("cell").first()
+  const branchDishCell = page
+    .getByRole("row")
+    .filter({ hasText: "Phở bò" })
+    .getByRole("cell")
+    .first()
   await expect(branchDishCell.locator("svg[aria-hidden='true']")).toBeVisible()
   await page.getByRole("button", { name: "Chỉnh giá và hiển thị: Phở bò" }).click()
   const priceDialog = page.getByRole("dialog", { name: "Giá và hiển thị · Phở bò" })
@@ -153,7 +197,9 @@ test("restaurant menu keeps global changes and branch stock in their own scopes"
   await expect(deleteOverride.locator("p div")).toHaveCount(0)
   await remove.click()
   await expect(deleteOverride).toBeHidden()
-  await expect(page.getByText("Theo giá gốc", { exact: true }).filter({ visible: true })).toBeVisible()
+  await expect(
+    page.getByText("Theo giá gốc", { exact: true }).filter({ visible: true }),
+  ).toBeVisible()
 
   await page.getByRole("button", { name: "Chỉnh giá và hiển thị: Phở bò" }).click()
   await priceDialog.getByRole("spinbutton", { name: "Giá ghi đè" }).fill("200000")
@@ -169,13 +215,20 @@ test("restaurant menu keeps global changes and branch stock in their own scopes"
   ])
 
   await page.getByRole("button", { name: /^Chi nhánh hiện tại: Tất cả chi nhánh/ }).click()
-  await page.getByRole("dialog", { name: "Chuyển chi nhánh" }).getByRole("button", { name: /Chi nhánh Quận 1/ }).click()
-  await expect(page.getByText("Chi nhánh · Chi nhánh Quận 1", { exact: true }).filter({ visible: true })).toBeVisible()
+  await page
+    .getByRole("dialog", { name: "Chuyển chi nhánh" })
+    .getByRole("button", { name: /Chi nhánh Quận 1/ })
+    .click()
+  await expect(
+    page.getByText("Chi nhánh · Chi nhánh Quận 1", { exact: true }).filter({ visible: true }),
+  ).toBeVisible()
   await expect(page.getByRole("switch", { name: "Còn món: Phở bò" })).toBeChecked()
   await expect(page.getByRole("combobox", { name: "Chọn chi nhánh" })).toHaveCount(0)
 
   await page.setViewportSize({ width: 375, height: 812 })
-  await expect.poll(() => thumbnail.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0)
+  await expect
+    .poll(() => thumbnail.evaluate((image: HTMLImageElement) => image.naturalWidth))
+    .toBeGreaterThan(0)
   await expect(page.getByRole("switch", { name: "Còn món: Phở bò" })).toBeVisible()
   await page.getByRole("button", { name: "Thêm món riêng", exact: true }).click()
   const branchDialog = page.getByRole("dialog", { name: "Thêm món riêng" })
@@ -186,5 +239,7 @@ test("restaurant menu keeps global changes and branch stock in their own scopes"
   await expect(commonSearch).toBeVisible()
   expect((await commonSearch.boundingBox())!.y).toBeCloseTo(mobileBranchSearchY, 0)
   await page.getByRole("button", { name: "Thêm món", exact: true }).click()
-  await expect(page.getByRole("dialog", { name: "Thêm món" }).getByText("Phạm vi áp dụng · Toàn nhà hàng")).toBeVisible()
+  await expect(
+    page.getByRole("dialog", { name: "Thêm món" }).getByText("Phạm vi áp dụng · Toàn nhà hàng"),
+  ).toBeVisible()
 })

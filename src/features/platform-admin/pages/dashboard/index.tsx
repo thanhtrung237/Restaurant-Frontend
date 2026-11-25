@@ -24,11 +24,7 @@ import {
   ExternalLink,
 } from "lucide-react"
 
-import {
-  useRestaurantsPage,
-  useBranchesPage,
-  useAuditLogs,
-} from "@/features/platform-admin/api"
+import { useRestaurantsPage, useBranchesPage, useAuditLogs } from "@/features/platform-admin/api"
 import type { RestaurantListItem, AuditLog, BranchListItem } from "@/types/models"
 
 export default function PlatformDashboardPage() {
@@ -46,10 +42,7 @@ export default function PlatformDashboardPage() {
   })
 
   // 2. Fetch danh sách chi nhánh toàn hệ thống
-  const {
-    data: branchPage,
-    isLoading: isBranchesLoading,
-  } = useBranchesPage({
+  const { data: branchPage, isLoading: isBranchesLoading } = useBranchesPage({
     page: 0,
     size: 200,
   })
@@ -74,11 +67,11 @@ export default function PlatformDashboardPage() {
     const suspendedRest = restaurants.filter((r) => r.status === "INACTIVE").length
 
     // Tổng số chi nhánh toàn nền tảng
-    const totalBranchCount = branchPage?.totalElements ?? (
-      branches.length > 0
+    const totalBranchCount =
+      branchPage?.totalElements ??
+      (branches.length > 0
         ? branches.length
-        : restaurants.reduce((sum, r) => sum + (r.branchCount || 0), 0)
-    )
+        : restaurants.reduce((sum, r) => sum + (r.branchCount || 0), 0))
 
     // Phân loại mô hình đối tác: Chuỗi (>= 2 CN) vs Đơn lẻ (1 CN)
     const chainCount = restaurants.filter((r) => (r.branchCount ?? 0) >= 2).length
@@ -200,7 +193,7 @@ export default function PlatformDashboardPage() {
 
   const maxChartCount = Math.max(
     ...metrics.monthlyData.map((d) => Math.max(d.restaurants, d.branches)),
-    8
+    8,
   )
 
   return (
@@ -209,16 +202,15 @@ export default function PlatformDashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-1">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-              Tổng quan nền tảng
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Tổng quan nền tảng</h1>
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Hệ thống ổn định
             </span>
           </div>
           <p className="text-sm text-gray-500 mt-1">
-            Trung tâm giám sát vận hành kỹ thuật, quy mô đối tác và an ninh hệ thống SaaS Multi-tenant
+            Trung tâm giám sát vận hành kỹ thuật, quy mô đối tác và an ninh hệ thống SaaS
+            Multi-tenant
           </p>
         </div>
 
@@ -249,8 +241,9 @@ export default function PlatformDashboardPage() {
         <ShieldCheck className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
         <div>
           <strong className="font-semibold">Nguyên tắc cách ly bảo mật (BR-21): </strong>
-          Dashboard Quản trị nền tảng chỉ hiển thị metadata định danh kỹ thuật, tình trạng hạ tầng và nhật ký kiểm toán.
-          Tuyệt đối không truy cập hoặc tổng hợp số liệu doanh thu, hóa đơn hay dữ liệu kinh doanh của từng nhà hàng.
+          Dashboard Quản trị nền tảng chỉ hiển thị metadata định danh kỹ thuật, tình trạng hạ tầng
+          và nhật ký kiểm toán. Tuyệt đối không truy cập hoặc tổng hợp số liệu doanh thu, hóa đơn
+          hay dữ liệu kinh doanh của từng nhà hàng.
         </div>
       </div>
 
@@ -337,9 +330,13 @@ export default function PlatformDashboardPage() {
             <span className="text-xs text-gray-500 font-medium">chuỗi đa chi nhánh</span>
           </div>
           <div className="mt-3 text-xs text-gray-500 font-medium flex items-center gap-2">
-            <span>Đơn cơ sở: <strong className="text-gray-700">{metrics.singleCount}</strong></span>
+            <span>
+              Đơn cơ sở: <strong className="text-gray-700">{metrics.singleCount}</strong>
+            </span>
             <span className="text-gray-300">·</span>
-            <span>Mở rộng: <strong className="text-indigo-600">{metrics.chainCount}</strong></span>
+            <span>
+              Mở rộng: <strong className="text-indigo-600">{metrics.chainCount}</strong>
+            </span>
           </div>
         </div>
 
@@ -436,25 +433,19 @@ export default function PlatformDashboardPage() {
                         <div
                           style={{ height: `${restHeightPercent}%` }}
                           className={`w-full max-w-[20px] rounded-t-lg transition-all duration-300 ${
-                            isLatest
-                              ? "bg-[#E03A14]"
-                              : "bg-gray-200 group-hover:bg-[#E03A14]/50"
+                            isLatest ? "bg-[#E03A14]" : "bg-gray-200 group-hover:bg-[#E03A14]/50"
                           }`}
                         />
                         {/* Bar 2: Chi nhánh */}
                         <div
                           style={{ height: `${branchHeightPercent}%` }}
                           className={`w-full max-w-[20px] rounded-t-lg transition-all duration-300 ${
-                            isLatest
-                              ? "bg-orange-300"
-                              : "bg-gray-100 group-hover:bg-orange-200"
+                            isLatest ? "bg-orange-300" : "bg-gray-100 group-hover:bg-orange-200"
                           }`}
                         />
                       </div>
 
-                      <span className="text-xs font-semibold text-gray-500 mt-2">
-                        {d.month}
-                      </span>
+                      <span className="text-xs font-semibold text-gray-500 mt-2">{d.month}</span>
                     </div>
                   )
                 })}
@@ -465,11 +456,15 @@ export default function PlatformDashboardPage() {
                 <div className="flex items-center gap-4">
                   <span className="flex items-center gap-1.5">
                     <span className="w-3 h-3 rounded-sm bg-[#E03A14]" />
-                    <span>Nhà hàng: <strong>{metrics.totalRest}</strong></span>
+                    <span>
+                      Nhà hàng: <strong>{metrics.totalRest}</strong>
+                    </span>
                   </span>
                   <span className="flex items-center gap-1.5">
                     <span className="w-3 h-3 rounded-sm bg-orange-300" />
-                    <span>Chi nhánh: <strong>{metrics.totalBranchCount}</strong></span>
+                    <span>
+                      Chi nhánh: <strong>{metrics.totalBranchCount}</strong>
+                    </span>
                   </span>
                 </div>
                 <span className="italic text-gray-400">
@@ -556,7 +551,9 @@ export default function PlatformDashboardPage() {
                     <ShieldCheck className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-semibold text-gray-900">Tenant Isolation Guard</div>
+                    <div className="text-xs font-semibold text-gray-900">
+                      Tenant Isolation Guard
+                    </div>
                     <div className="text-[11px] text-gray-400">Chốt chặn truy cập chéo tenant</div>
                   </div>
                 </div>
@@ -720,9 +717,7 @@ export default function PlatformDashboardPage() {
                           {act.adminName}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-600 truncate mt-1">
-                        {act.target}
-                      </p>
+                      <p className="text-xs text-gray-600 truncate mt-1">{act.target}</p>
                     </div>
                     <span className="text-[11px] text-gray-400 font-medium shrink-0 pt-0.5">
                       {act.time}
@@ -753,9 +748,9 @@ export default function PlatformDashboardPage() {
             <span>Khu vực Quản trị Vận hành Nền tảng (Platform Operations)</span>
           </div>
           <p className="text-xs text-gray-300 max-w-2xl leading-relaxed">
-            Hệ thống tuân thủ nghiêm ngặt nguyên tắc cách ly dữ liệu nhiều người thuê (BR-21).
-            Quản trị nền tảng chỉ vận hành ở tầng định danh, cấu hình và giám sát kỹ thuật,
-            không can thiệp vào nghiệp vụ bán hàng của từng cơ sở.
+            Hệ thống tuân thủ nghiêm ngặt nguyên tắc cách ly dữ liệu nhiều người thuê (BR-21). Quản
+            trị nền tảng chỉ vận hành ở tầng định danh, cấu hình và giám sát kỹ thuật, không can
+            thiệp vào nghiệp vụ bán hàng của từng cơ sở.
           </p>
         </div>
 

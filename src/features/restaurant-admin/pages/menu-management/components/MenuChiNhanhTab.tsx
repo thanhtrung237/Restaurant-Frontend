@@ -68,9 +68,7 @@ export const MenuChiNhanhTab: React.FC<MenuChiNhanhTabProps> = ({
   )
 
   const handleToggle = (id: number, newStatus: boolean) => {
-    setItems((prev) =>
-      prev.map((it) => (it.id === id ? { ...it, isAvailable: newStatus } : it))
-    )
+    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, isAvailable: newStatus } : it)))
     onToggleStatus?.(id, newStatus)
   }
 
@@ -103,7 +101,11 @@ export const MenuChiNhanhTab: React.FC<MenuChiNhanhTabProps> = ({
   const renderStatus = (item: BranchDishItem) => {
     if (item.isCustom) {
       return (
-        <Badge dot variant="warning" className="bg-brand-primary-subtle text-brand-primary font-medium">
+        <Badge
+          dot
+          variant="warning"
+          className="bg-brand-primary-subtle text-brand-primary font-medium"
+        >
           Món riêng
         </Badge>
       )
@@ -180,9 +182,7 @@ export const MenuChiNhanhTab: React.FC<MenuChiNhanhTabProps> = ({
                     <dt className="text-[11px] font-bold uppercase tracking-wider text-text-tertiary">
                       Giá gốc
                     </dt>
-                    <dd className="mt-1 text-text-secondary">
-                      {formatMoney(item.originalPrice)}
-                    </dd>
+                    <dd className="mt-1 text-text-secondary">{formatMoney(item.originalPrice)}</dd>
                   </div>
                   <div>
                     <dt className="text-[11px] font-bold uppercase tracking-wider text-text-tertiary">
@@ -201,9 +201,7 @@ export const MenuChiNhanhTab: React.FC<MenuChiNhanhTabProps> = ({
                 </dl>
 
                 {/* Báo hết / mở bán lại tại chi nhánh (FR-MNU-03) — giữ ngay trong card */}
-                <div className="mt-3 border-t border-border-default pt-3">
-                  {renderStatus(item)}
-                </div>
+                <div className="mt-3 border-t border-border-default pt-3">{renderStatus(item)}</div>
               </li>
             ))}
           </ul>
@@ -251,9 +249,7 @@ export const MenuChiNhanhTab: React.FC<MenuChiNhanhTabProps> = ({
                       <p className="font-semibold text-text-primary text-sm tracking-tight leading-snug">
                         {item.name}
                       </p>
-                      <p className="text-xs text-text-tertiary mt-0.5">
-                        {item.category}
-                      </p>
+                      <p className="text-xs text-text-tertiary mt-0.5">{item.category}</p>
                     </div>
                   </div>
                 </TableCell>
@@ -269,14 +265,10 @@ export const MenuChiNhanhTab: React.FC<MenuChiNhanhTabProps> = ({
                 </TableCell>
 
                 {/* Cột Chênh lệch */}
-                <TableCell className="py-3.5 px-4 text-sm">
-                  {renderDiff(item)}
-                </TableCell>
+                <TableCell className="py-3.5 px-4 text-sm">{renderDiff(item)}</TableCell>
 
                 {/* Cột Trạng thái */}
-                <TableCell className="py-3.5 px-4 text-sm">
-                  {renderStatus(item)}
-                </TableCell>
+                <TableCell className="py-3.5 px-4 text-sm">{renderStatus(item)}</TableCell>
 
                 {/* Cột Thao tác */}
                 <TableCell className="py-3.5 pr-6 pl-4 text-right">

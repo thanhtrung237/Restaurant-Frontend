@@ -4,7 +4,9 @@ import { qk } from "@/lib/query-keys"
 import type { DiningTable } from "@/types/models"
 import type { DiningTableStatus } from "@/types/enums"
 import type {
-  DiningTableAddRequest, DiningTableReservationRequest, DiningTableUpdateRequest,
+  DiningTableAddRequest,
+  DiningTableReservationRequest,
+  DiningTableUpdateRequest,
 } from "@/types/requests"
 
 export function getTable(id: number) {
@@ -31,12 +33,18 @@ export function changeTableStatus(id: number, status: DiningTableStatus) {
 }
 export function generateTableQrCode(id: number, frontendBaseUrl?: string) {
   return apiPost<string>(`/tables/${id}/generate-qr`, null, {
-    params: { frontendBaseUrl: frontendBaseUrl ?? (typeof window !== "undefined" ? window.location.origin : undefined) },
+    params: {
+      frontendBaseUrl:
+        frontendBaseUrl ?? (typeof window !== "undefined" ? window.location.origin : undefined),
+    },
   })
 }
 export function getTableQrUrl(id: number, frontendBaseUrl?: string) {
   return apiGet<string>(`/tables/${id}/qr-url`, {
-    params: { frontendBaseUrl: frontendBaseUrl ?? (typeof window !== "undefined" ? window.location.origin : undefined) },
+    params: {
+      frontendBaseUrl:
+        frontendBaseUrl ?? (typeof window !== "undefined" ? window.location.origin : undefined),
+    },
   })
 }
 /** Đặt bàn ở cấp BÀN. Lưu ý còn một luồng đặt trước khác qua `POST /table-sessions`. */
@@ -79,7 +87,8 @@ export function useCreateTable() {
 export function useUpdateTable() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (vars: { id: number; body: DiningTableUpdateRequest }) => updateTable(vars.id, vars.body),
+    mutationFn: (vars: { id: number; body: DiningTableUpdateRequest }) =>
+      updateTable(vars.id, vars.body),
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.tables.all }),
   })
 }
@@ -93,7 +102,8 @@ export function useDeleteTable() {
 export function useChangeTableStatus() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, status }: { id: number; status: DiningTableStatus }) => changeTableStatus(id, status),
+    mutationFn: ({ id, status }: { id: number; status: DiningTableStatus }) =>
+      changeTableStatus(id, status),
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.tables.all }),
   })
 }

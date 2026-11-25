@@ -1,13 +1,25 @@
 import { useState } from "react"
 import {
-  AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
-  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { getErrorMessage } from "@/lib/http"
 
 export function BranchActionDialog({
-  label, name, description, blocked, onConfirm, onComplete, destructive = true,
+  label,
+  name,
+  description,
+  blocked,
+  onConfirm,
+  onComplete,
+  destructive = true,
 }: {
   label: string
   name: string
@@ -36,24 +48,44 @@ export function BranchActionDialog({
   }
 
   return (
-    <AlertDialog open={open} onOpenChange={(nextOpen) => {
-      if (pending) return
-      setError(undefined)
-      setOpen(nextOpen)
-    }}>
+    <AlertDialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (pending) return
+        setError(undefined)
+        setOpen(nextOpen)
+      }}
+    >
       <AlertDialogTrigger asChild>
-        <Button type="button" variant="ghost" className={destructive ? "text-status-danger" : undefined}>{label}</Button>
+        <Button
+          type="button"
+          variant="ghost"
+          className={destructive ? "text-status-danger" : undefined}
+        >
+          {label}
+        </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{label} · {name}</AlertDialogTitle>
+          <AlertDialogTitle>
+            {label} · {name}
+          </AlertDialogTitle>
           <AlertDialogDescription>{blocked ?? description}</AlertDialogDescription>
         </AlertDialogHeader>
-        {error ? <p role="alert" className="text-sm text-status-danger">{error}</p> : null}
+        {error ? (
+          <p role="alert" className="text-sm text-status-danger">
+            {error}
+          </p>
+        ) : null}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={pending}>{blocked ? "Đóng" : "Hủy"}</AlertDialogCancel>
           {!blocked ? (
-            <Button type="button" variant={destructive ? "destructive" : "default"} disabled={pending} onClick={() => void confirm()}>
+            <Button
+              type="button"
+              variant={destructive ? "destructive" : "default"}
+              disabled={pending}
+              onClick={() => void confirm()}
+            >
               {pending ? "Đang xử lý…" : label}
             </Button>
           ) : null}

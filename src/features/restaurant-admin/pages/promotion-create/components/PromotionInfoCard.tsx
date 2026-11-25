@@ -59,7 +59,7 @@ export const PromotionInfoCard: React.FC<PromotionInfoCardProps> = ({
               "flex flex-col items-start p-4 rounded-xl border text-left transition-all cursor-pointer relative",
               applyLevel === "dish"
                 ? "border-brand-primary bg-brand-primary-subtle/30 ring-2 ring-brand-primary/20 shadow-xs"
-                : "border-border-default bg-surface-card hover:border-border-strong hover:bg-surface-muted/30"
+                : "border-border-default bg-surface-card hover:border-border-strong hover:bg-surface-muted/30",
             )}
           >
             <div className="flex items-center gap-2.5 mb-1.5">
@@ -68,7 +68,7 @@ export const PromotionInfoCard: React.FC<PromotionInfoCardProps> = ({
                   "flex size-8 shrink-0 items-center justify-center rounded-lg",
                   applyLevel === "dish"
                     ? "bg-brand-primary text-white"
-                    : "bg-surface-muted text-text-secondary"
+                    : "bg-surface-muted text-text-secondary",
                 )}
               >
                 <Utensils className="size-4" />
@@ -88,7 +88,7 @@ export const PromotionInfoCard: React.FC<PromotionInfoCardProps> = ({
               "flex flex-col items-start p-4 rounded-xl border text-left transition-all cursor-pointer relative",
               applyLevel === "order"
                 ? "border-brand-primary bg-brand-primary-subtle/30 ring-2 ring-brand-primary/20 shadow-xs"
-                : "border-border-default bg-surface-card hover:border-border-strong hover:bg-surface-muted/30"
+                : "border-border-default bg-surface-card hover:border-border-strong hover:bg-surface-muted/30",
             )}
           >
             <div className="flex items-center gap-2.5 mb-1.5">
@@ -97,7 +97,7 @@ export const PromotionInfoCard: React.FC<PromotionInfoCardProps> = ({
                   "flex size-8 shrink-0 items-center justify-center rounded-lg",
                   applyLevel === "order"
                     ? "bg-brand-primary text-white"
-                    : "bg-surface-muted text-text-secondary"
+                    : "bg-surface-muted text-text-secondary",
                 )}
               >
                 <Receipt className="size-4" />

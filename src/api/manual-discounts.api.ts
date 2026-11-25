@@ -17,7 +17,8 @@ interface PendingDiscountApproval {
 export function usePendingDiscountApproval(invoiceId?: number) {
   return useQuery({
     queryKey: [...qk.manualDiscounts.byInvoice(invoiceId as number), "approval"],
-    queryFn: () => apiGet<PendingDiscountApproval>(`/manual-discounts/invoice/${invoiceId}/approval`),
+    queryFn: () =>
+      apiGet<PendingDiscountApproval>(`/manual-discounts/invoice/${invoiceId}/approval`),
     enabled: invoiceId !== undefined,
     refetchInterval: invoiceId !== undefined ? 2500 : false,
   })
@@ -26,8 +27,18 @@ export function usePendingDiscountApproval(invoiceId?: number) {
 export function useDecideDiscountApproval(sessionId?: number) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ invoiceId, requestId, approved }: { invoiceId: number; requestId: string; approved: boolean }) =>
-      apiPost<Invoice>(`/manual-discounts/invoice/${invoiceId}/approval/${approved}`, { requestId }),
+    mutationFn: ({
+      invoiceId,
+      requestId,
+      approved,
+    }: {
+      invoiceId: number
+      requestId: string
+      approved: boolean
+    }) =>
+      apiPost<Invoice>(`/manual-discounts/invoice/${invoiceId}/approval/${approved}`, {
+        requestId,
+      }),
     onSuccess: async (invoice) => {
       if (sessionId !== undefined) qc.setQueryData(qk.invoices.bySession(sessionId), invoice)
       await qc.invalidateQueries({ queryKey: qk.invoices.all })
@@ -38,7 +49,13 @@ export function useDecideDiscountApproval(sessionId?: number) {
 export function useSaveInvoiceDiscount(sessionId?: number) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ invoiceId, discount }: { invoiceId: number; discount: InvoiceDiscountInput | null }) =>
+    mutationFn: ({
+      invoiceId,
+      discount,
+    }: {
+      invoiceId: number
+      discount: InvoiceDiscountInput | null
+    }) =>
       discount
         ? apiPut<Invoice>(`/manual-discounts/invoice/${invoiceId}`, discount)
         : apiDelete<Invoice>(`/manual-discounts/invoice/${invoiceId}`),

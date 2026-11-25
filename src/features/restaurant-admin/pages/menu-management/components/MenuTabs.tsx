@@ -33,7 +33,7 @@ export const MenuTabs: React.FC<MenuTabsProps> = ({ activeTab, onTabChange }) =>
                 "py-3 px-1 border-b-2 font-medium text-sm transition-colors cursor-pointer relative",
                 isActive
                   ? "border-brand-primary text-brand-primary font-semibold"
-                  : "border-transparent text-text-tertiary hover:text-text-primary hover:border-border-strong"
+                  : "border-transparent text-text-tertiary hover:text-text-primary hover:border-border-strong",
               )}
             >
               {tab.label}

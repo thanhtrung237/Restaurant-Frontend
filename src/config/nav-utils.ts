@@ -1,10 +1,6 @@
 import { matchPath } from "react-router-dom"
 import { APP_ROLE, type AppRole } from "@/config/roles"
-import {
-  getNavGroupsForRole,
-  type NavItem,
-  type NavSurface,
-} from "@/config/nav-items"
+import { getNavGroupsForRole, type NavItem, type NavSurface } from "@/config/nav-items"
 
 /**
  * Tiện ích suy ra menu cho MỌI biến thể điều hướng của khu vực nhân viên
@@ -16,10 +12,7 @@ import {
  */
 
 /** Gộp mọi nhóm thành một danh sách phẳng, giữ nguyên thứ tự khai báo. */
-export function flattenNavItems(
-  role: AppRole,
-  surface: NavSurface = "mobile",
-): NavItem[] {
+export function flattenNavItems(role: AppRole, surface: NavSurface = "mobile"): NavItem[] {
   return getNavGroupsForRole(role, surface).flatMap((group) => group.items)
 }
 
@@ -130,10 +123,7 @@ export function getBottomNavItems(
  *
  * Báo cáo KHÔNG nằm trong danh sách: đây chính là phân hệ xem tổng hợp nhiều chi nhánh.
  */
-const BRANCH_SCOPED_PERMISSIONS = new Set<NavItem["permission"]>([
-  "TABLE_MAP",
-  "ORDER_AND_PREP",
-])
+const BRANCH_SCOPED_PERMISSIONS = new Set<NavItem["permission"]>(["TABLE_MAP", "ORDER_AND_PREP"])
 
 /** true nếu mục menu này cần một chi nhánh cụ thể. */
 export function navItemRequiresBranch(item: NavItem | undefined): boolean {

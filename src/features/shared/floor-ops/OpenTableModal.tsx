@@ -10,7 +10,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Minus, Plus } from "lucide-react"
 import type { DiningTable, TableSession } from "@/types/models"
-import { useCreateTableSession, openSessionLegacy, useConfirmOpenSession } from "@/features/shared/floor-ops/api"
+import {
+  useCreateTableSession,
+  openSessionLegacy,
+  useConfirmOpenSession,
+} from "@/features/shared/floor-ops/api"
 import { useAuthStore } from "@/stores/auth.store"
 import { useToast } from "@/hooks/use-toast"
 
@@ -30,17 +34,12 @@ interface OpenTableModalProps {
  * - Ô nhập ghi chú (tùy chọn)
  * - Dòng thông báo trạng thái: "Bàn sẽ chuyển sang trạng [• Đang phục vụ]"
  * - Nút Hủy và Xác nhận mở bàn (cam brand)
- * 
- * API: 
+ *
+ * API:
  * - Nếu table có session WAITING_FOR_OPEN: gọi POST /table-sessions/{id}/confirm-open
  * - Nếu không: gọi POST /table-sessions/legacy để mở bàn ngay
  */
-export function OpenTableModal({
-  isOpen,
-  table,
-  session,
-  onClose,
-}: OpenTableModalProps) {
+export function OpenTableModal({ isOpen, table, session, onClose }: OpenTableModalProps) {
   const { toast } = useToast()
   const branchId = useAuthStore((s) => s.branchId)
   const [guestCount, setGuestCount] = React.useState<number>(2)
@@ -48,7 +47,7 @@ export function OpenTableModal({
 
   const createSessionMutation = useCreateTableSession()
   const confirmOpenMutation = useConfirmOpenSession()
-  
+
   // Kiểm tra xem có phải là xác nhận mở bàn hay không
   const isConfirmMode = !!session
 

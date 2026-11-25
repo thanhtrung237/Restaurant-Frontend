@@ -2,8 +2,10 @@ import * as React from "react"
 import { Search, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-export interface SearchInputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> {
+export interface SearchInputProps extends Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  "size"
+> {
   onClear?: () => void
   variant?: "pill" | "rounded"
   size?: "sm" | "default" | "lg"
@@ -26,7 +28,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
       size = "default",
       ...props
     },
-    ref
+    ref,
   ) => {
     const hasValue = value !== undefined && value !== ""
 
@@ -45,10 +47,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
     return (
       <div className="relative flex w-full items-center">
         <Search
-          className={cn(
-            "pointer-events-none absolute text-text-tertiary",
-            iconSizes[size]
-          )}
+          className={cn("pointer-events-none absolute text-text-tertiary", iconSizes[size])}
         />
         <input
           ref={ref}
@@ -61,7 +60,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
             "focus:bg-surface-card focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary border border-transparent",
             variant === "pill" ? "rounded-pill" : "rounded-md",
             sizeClasses[size],
-            className
+            className,
           )}
           {...props}
         />
@@ -77,6 +76,6 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
         ) : null}
       </div>
     )
-  }
+  },
 )
 SearchInput.displayName = "SearchInput"

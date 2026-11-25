@@ -14,7 +14,9 @@ export default function ManualDiscountPage() {
       <PageHeader title="Chiết khấu thủ công" subtitle="Chưa khả dụng" />
 
       <div className="p-6">
-        <p className="text-muted-foreground text-sm">Trang này sẽ được triển khai ở các phase tiếp theo.</p>
+        <p className="text-muted-foreground text-sm">
+          Trang này sẽ được triển khai ở các phase tiếp theo.
+        </p>
       </div>
     </div>
   )

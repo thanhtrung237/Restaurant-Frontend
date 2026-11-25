@@ -86,10 +86,7 @@ export const ROLE_PERMISSIONS: Record<AppRole, PermissionKey[]> = {
     "INVOICES",
     // KHÔNG có: MENU, PROMOTIONS, STAFF
   ],
-  [APP_ROLE.WAITER]: [
-    "TABLE_MAP",
-    "ORDER_AND_PREP",
-  ],
+  [APP_ROLE.WAITER]: ["TABLE_MAP", "ORDER_AND_PREP"],
   [APP_ROLE.CASHIER]: [
     "TABLE_MAP",
     // Hóa đơn — tra cứu lại hóa đơn sau khi chốt bàn
@@ -104,7 +101,7 @@ export const ROLE_PERMISSIONS: Record<AppRole, PermissionKey[]> = {
  */
 export function hasPermission(
   role: AppRole | null | undefined,
-  permission: PermissionKey
+  permission: PermissionKey,
 ): boolean {
   if (!role) return false
   // Không còn lối tắt "Quản trị NH luôn true": ROLE_PERMISSIONS ở trên đã liệt kê đủ

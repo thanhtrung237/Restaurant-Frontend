@@ -55,12 +55,19 @@ export default function InvoicePage() {
   const tableSessionId = tableSession?.id
 
   // Lấy bill từ BE (invoice nếu có, preview nếu chưa có), polling mỗi 3 giây để đồng bộ tự động với thu ngân
-  const { data: bill, isLoading: billLoading, hasInvoice } = useBill(tableSessionId, {
+  const {
+    data: bill,
+    isLoading: billLoading,
+    hasInvoice,
+  } = useBill(tableSessionId, {
     refetchInterval: 3000,
   })
-  
-  const { data: orderDetails = [], isLoading: orderDetailsLoading } =
-    useOrderDetailsBySession(tableSessionId, undefined, { refetchInterval: 3000 })
+
+  const { data: orderDetails = [], isLoading: orderDetailsLoading } = useOrderDetailsBySession(
+    tableSessionId,
+    undefined,
+    { refetchInterval: 3000 },
+  )
 
   // Invoice (BE) không expose danh sách dòng món riêng — luôn gộp từ order details.
   // Món đã huỷ được gộp riêng theo lý do huỷ (không gộp chung với món còn tính tiền
@@ -70,12 +77,17 @@ export default function InvoicePage() {
     orderDetails.forEach((detail) => {
       const cancelInfo = getCancelInfo(detail)
       // Thêm options + promotionId vào key để phân biệt món cùng món nhưng khác KM
-      const optionsKey = detail.options?.map(opt => opt.optionItemId).sort().join('-') || 'no-options'
-      const promoKey = detail.promotionId ?? 'no-promo'
+      const optionsKey =
+        detail.options
+          ?.map((opt) => opt.optionItemId)
+          .sort()
+          .join("-") || "no-options"
+      const promoKey = detail.promotionId ?? "no-promo"
       const key = `${detail.dishId}-${detail.priceAtOrderTime || 0}-${cancelInfo ? cancelInfo.label + cancelInfo.billable : "active"}-${optionsKey}-${promoKey}`
       const existing = grouped.get(key)
       // Tổng giá options của 1 suất (priceSnapshot của từng option)
-      const optionsTotalPrice = detail.options?.reduce((s, opt) => s + (opt.priceSnapshot ?? 0), 0) ?? 0
+      const optionsTotalPrice =
+        detail.options?.reduce((s, opt) => s + (opt.priceSnapshot ?? 0), 0) ?? 0
       const discountPerDetail = detail.promotionDiscountAmount ?? 0
       if (existing) {
         existing.quantity += detail.quantity
@@ -223,7 +235,10 @@ export default function InvoicePage() {
                           {formatVnd((line.unitPrice + line.optionsTotalPrice) * line.quantity)}
                         </span>
                         <span className="shrink-0 font-medium text-brand-primary">
-                          {formatVnd((line.unitPrice + line.optionsTotalPrice) * line.quantity - line.totalDiscountAmount)}
+                          {formatVnd(
+                            (line.unitPrice + line.optionsTotalPrice) * line.quantity -
+                              line.totalDiscountAmount,
+                          )}
                         </span>
                         <span className="text-[11px] font-semibold text-status-success">
                           -{formatVnd(line.totalDiscountAmount)}
@@ -281,9 +296,7 @@ export default function InvoicePage() {
                 <span className="font-medium text-text-primary">{formatVnd(bill.serviceFee)}</span>
               </div>
               <div className="flex items-center justify-between gap-3 py-1.5 text-sm">
-                <span className="text-text-tertiary">
-                  VAT ({bill.vatRate.toFixed(0)}%)
-                </span>
+                <span className="text-text-tertiary">VAT ({bill.vatRate.toFixed(0)}%)</span>
                 <span className="font-medium text-text-primary">{formatVnd(bill.vatAmount)}</span>
               </div>
               <Divider className="my-1" />
@@ -302,7 +315,9 @@ export default function InvoicePage() {
           <Button
             size="lg"
             className="w-full"
-            onClick={() => navigate(generatePath(CUSTOMER_PATHS.PAYMENT_QR, { qrCode: qrCode ?? "" }))}
+            onClick={() =>
+              navigate(generatePath(CUSTOMER_PATHS.PAYMENT_QR, { qrCode: qrCode ?? "" }))
+            }
           >
             Thanh toán chuyển khoản (QR)
           </Button>

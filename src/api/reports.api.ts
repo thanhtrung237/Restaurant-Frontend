@@ -30,12 +30,7 @@ export function useRevenueReport(params?: {
 }) {
   const { branchIds, from, to, groupBy = "DAY" } = params ?? {}
   return useQuery({
-    queryKey: qk.reports.revenue(
-      branchIds ?? [],
-      from ?? "",
-      to ?? "",
-      groupBy,
-    ),
+    queryKey: qk.reports.revenue(branchIds ?? [], from ?? "", to ?? "", groupBy),
     queryFn: () => getRevenueReport(branchIds!, from!, to!, groupBy),
     enabled: !!branchIds && branchIds.length > 0 && !!from && !!to,
   })
@@ -43,21 +38,13 @@ export function useRevenueReport(params?: {
 
 // ── FR-RPT-02: Hourly Revenue ───────────────────────────────────────
 
-export function getHourlyRevenue(
-  branchIds: number[],
-  from: string,
-  to: string,
-) {
+export function getHourlyRevenue(branchIds: number[], from: string, to: string) {
   return apiGet<HourlyRevenueResponse>("/reports/hourly", {
     params: { branchIds: branchIds.join(","), from, to },
   })
 }
 
-export function useHourlyRevenue(params?: {
-  branchIds?: number[]
-  from?: string
-  to?: string
-}) {
+export function useHourlyRevenue(params?: { branchIds?: number[]; from?: string; to?: string }) {
   const { branchIds, from, to } = params ?? {}
   return useQuery({
     queryKey: qk.reports.hourly(branchIds ?? [], from ?? "", to ?? ""),
@@ -68,12 +55,7 @@ export function useHourlyRevenue(params?: {
 
 // ── FR-RPT-03: Top Dishes ───────────────────────────────────────────
 
-export function getTopDishes(
-  branchIds: number[],
-  from: string,
-  to: string,
-  topN: number,
-) {
+export function getTopDishes(branchIds: number[], from: string, to: string, topN: number) {
   return apiGet<TopDishResponse>("/reports/top-dishes", {
     params: { branchIds: branchIds.join(","), from, to, topN },
   })
@@ -95,11 +77,7 @@ export function useTopDishes(params?: {
 
 // ── FR-RPT-04: Branch Comparison ────────────────────────────────────
 
-export function getBranchComparison(
-  restaurantId: number,
-  from: string,
-  to: string,
-) {
+export function getBranchComparison(restaurantId: number, from: string, to: string) {
   return apiGet<BranchRevenueCompareResponse>("/reports/branch-comparison", {
     params: { restaurantId, from, to },
   })
@@ -120,21 +98,13 @@ export function useBranchComparison(params?: {
 
 // ── AI Anomaly Detection ──────────────────────────────────────────
 
-export function getAnomalyReport(
-  branchIds: number[],
-  from: string,
-  to: string,
-) {
+export function getAnomalyReport(branchIds: number[], from: string, to: string) {
   return apiGet<AnomalyReportResponse>("/reports/anomalies", {
     params: { branchIds: branchIds.join(","), from, to },
   })
 }
 
-export function useAnomalyReport(params?: {
-  branchIds?: number[]
-  from?: string
-  to?: string
-}) {
+export function useAnomalyReport(params?: { branchIds?: number[]; from?: string; to?: string }) {
   const { branchIds, from, to } = params ?? {}
   return useQuery({
     queryKey: qk.reports.anomalies(branchIds ?? [], from ?? "", to ?? ""),
@@ -160,7 +130,8 @@ export async function downloadReportFile(params: ExportReportParams): Promise<vo
     params: {
       type: params.type,
       format: params.format,
-      branchIds: params.branchIds && params.branchIds.length > 0 ? params.branchIds.join(",") : undefined,
+      branchIds:
+        params.branchIds && params.branchIds.length > 0 ? params.branchIds.join(",") : undefined,
       restaurantId: params.restaurantId,
       from: params.from,
       to: params.to,
@@ -171,7 +142,8 @@ export async function downloadReportFile(params: ExportReportParams): Promise<vo
 
   // Trích xuất tên file từ header Content-Disposition nếu có
   let filename = ""
-  const disposition = response.headers?.["content-disposition"] ?? response.headers?.["Content-Disposition"]
+  const disposition =
+    response.headers?.["content-disposition"] ?? response.headers?.["Content-Disposition"]
   if (disposition && typeof disposition === "string") {
     const filenameMatch = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
     if (filenameMatch && filenameMatch[1]) {
@@ -181,17 +153,19 @@ export async function downloadReportFile(params: ExportReportParams): Promise<vo
 
   if (!filename) {
     const dateStr = params.from.split("T")[0] || new Date().toISOString().split("T")[0]
-    const base = params.type === "HOURLY"
-      ? `bao-cao-khung-gio-${dateStr}`
-      : params.type === "BRANCH_COMPARISON"
-      ? `bao-cao-so-sanh-chi-nhanh-${dateStr}`
-      : `bao-cao-doanh-thu-${dateStr}`
+    const base =
+      params.type === "HOURLY"
+        ? `bao-cao-khung-gio-${dateStr}`
+        : params.type === "BRANCH_COMPARISON"
+          ? `bao-cao-so-sanh-chi-nhanh-${dateStr}`
+          : `bao-cao-doanh-thu-${dateStr}`
     filename = `${base}.${params.format}`
   }
 
-  const mimeType = params.format === "csv"
-    ? "text/csv;charset=utf-8"
-    : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  const mimeType =
+    params.format === "csv"
+      ? "text/csv;charset=utf-8"
+      : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
   const blob = new Blob([response.data], { type: mimeType })
   const blobUrl = window.URL.createObjectURL(blob)

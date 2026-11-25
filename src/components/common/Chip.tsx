@@ -28,7 +28,7 @@ export function Chip({
           ? "bg-brand-primary text-text-on-brand shadow-xs"
           : "border border-border-default bg-surface-card text-text-secondary hover:border-border-strong hover:text-text-primary",
         disabled && "cursor-not-allowed opacity-50",
-        className
+        className,
       )}
       {...props}
     >

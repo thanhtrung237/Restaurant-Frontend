@@ -31,7 +31,7 @@ export default function RequestBillPage() {
   // Trạng thái THẬT của phiên, hỏi lại theo nhịp — quyết định có gọi API hay chỉ hiển thị.
   const { data: liveSession } = useTableSession(tableSessionId, { refetchInterval: 3000 })
   const liveStatus = liveSession?.status
-  
+
   // Lấy bill từ BE (invoice nếu có, preview nếu chưa có), polling mỗi 3 giây
   const { data: bill, isLoading: billLoading } = useBill(tableSessionId, { refetchInterval: 3000 })
 
@@ -59,9 +59,7 @@ export default function RequestBillPage() {
       onError: (error) => {
         // Cho phép thử lại ở lần vào sau; KHÔNG khoá phiên khi API lỗi.
         requestedForSession.current = null
-        setErrorMessage(
-          error instanceof Error ? error.message : "Không gửi được yêu cầu tính tiền"
-        )
+        setErrorMessage(error instanceof Error ? error.message : "Không gửi được yêu cầu tính tiền")
       },
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps

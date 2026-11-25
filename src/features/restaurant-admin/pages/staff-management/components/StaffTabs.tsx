@@ -33,13 +33,22 @@ export function StaffNavigationTabs({ activeTab }: { activeTab: StaffTabType }) 
   const isBranchManager = useAuthStore((state) => state.role === APP_ROLE.BRANCH_MANAGER)
   const paths = isBranchManager ? BRANCH_TAB_PATHS : ADMIN_TAB_PATHS
 
-  return <StaffTabs activeTab={activeTab} onTabChange={(tab) => {
-    const path = paths[tab]
-    if (path) navigate(path)
-  }} />
+  return (
+    <StaffTabs
+      activeTab={activeTab}
+      onTabChange={(tab) => {
+        const path = paths[tab]
+        if (path) navigate(path)
+      }}
+    />
+  )
 }
 
-export const StaffTabs: React.FC<StaffTabsProps> = ({ activeTab, onTabChange, tabs = DEFAULT_TABS }) => {
+export const StaffTabs: React.FC<StaffTabsProps> = ({
+  activeTab,
+  onTabChange,
+  tabs = DEFAULT_TABS,
+}) => {
   return (
     // KHÔNG tự vẽ border-b: dải tab của PageHeader đã có đường kẻ dưới.
     <div>
@@ -60,7 +69,7 @@ export const StaffTabs: React.FC<StaffTabsProps> = ({ activeTab, onTabChange, ta
                 "py-3.5 px-1 border-b-2 font-medium text-sm transition-colors cursor-pointer relative",
                 isActive
                   ? "border-[#EA4A2A] text-[#EA4A2A]"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300",
               )}
             >
               {tab.label}

@@ -30,8 +30,7 @@ interface PageHeaderContextValue extends PageHeaderValue {
   setPageHeader: (value: PageHeaderValue) => void
 }
 
-export const PageHeaderContext =
-  React.createContext<PageHeaderContextValue | null>(null)
+export const PageHeaderContext = React.createContext<PageHeaderContextValue | null>(null)
 
 /**
  * Tạo giá trị cho `PageHeaderContext.Provider`.

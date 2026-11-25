@@ -197,9 +197,7 @@ export const BranchMenuTab: React.FC<BranchMenuTabProps> = ({
                         <p className="font-semibold text-text-primary text-sm tracking-tight leading-snug">
                           {item.name}
                         </p>
-                        <p className="text-xs text-text-tertiary mt-0.5">
-                          {item.category}
-                        </p>
+                        <p className="text-xs text-text-tertiary mt-0.5">{item.category}</p>
                       </div>
                     </div>
                   </TableCell>
@@ -215,9 +213,7 @@ export const BranchMenuTab: React.FC<BranchMenuTabProps> = ({
                   </TableCell>
 
                   {/* Cột Chênh lệch */}
-                  <TableCell className="py-3.5 px-4 text-sm">
-                    {renderDiffText(item)}
-                  </TableCell>
+                  <TableCell className="py-3.5 px-4 text-sm">{renderDiffText(item)}</TableCell>
 
                   {/* Cột Trạng thái */}
                   <TableCell className="py-3.5 px-4 text-sm">

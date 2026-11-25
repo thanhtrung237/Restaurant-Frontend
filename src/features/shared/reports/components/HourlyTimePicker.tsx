@@ -1,10 +1,6 @@
 import { Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Select,
   SelectContent,
@@ -28,7 +24,7 @@ export interface HourlyTimePickerProps {
 
 /**
  * HourlyTimePicker — Bộ chọn khung giờ cho báo cáo theo khung giờ.
- * 
+ *
  * Hiển thị "8h – 18h" và cho phép người dùng chọn giờ bắt đầu và kết thúc (0-23).
  */
 export function HourlyTimePicker({
@@ -70,13 +66,13 @@ export function HourlyTimePicker({
             variant === "toolbar"
               ? "rounded-xl border border-border-default/90 bg-surface-card px-4 py-2 text-sm font-medium text-text-primary shadow-2xs hover:bg-surface-muted"
               : "rounded-pill bg-surface-muted px-3 py-1.5 text-xs font-semibold text-text-secondary hover:bg-border-strong",
-            className
+            className,
           )}
         >
           <Clock
             className={cn(
               "shrink-0 text-text-tertiary",
-              variant === "toolbar" ? "size-4" : "size-3.5"
+              variant === "toolbar" ? "size-4" : "size-3.5",
             )}
           />
           <span className="truncate">{displayText}</span>
@@ -85,13 +81,8 @@ export function HourlyTimePicker({
       <PopoverContent className="w-64 p-4" align="end">
         <div className="space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-text-primary">
-              Từ giờ
-            </label>
-            <Select
-              value={String(startHour)}
-              onValueChange={handleStartHourChange}
-            >
+            <label className="text-sm font-medium text-text-primary">Từ giờ</label>
+            <Select value={String(startHour)} onValueChange={handleStartHourChange}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Chọn giờ bắt đầu" />
               </SelectTrigger>
@@ -106,13 +97,8 @@ export function HourlyTimePicker({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-text-primary">
-              Đến giờ
-            </label>
-            <Select
-              value={String(endHour)}
-              onValueChange={handleEndHourChange}
-            >
+            <label className="text-sm font-medium text-text-primary">Đến giờ</label>
+            <Select value={String(endHour)} onValueChange={handleEndHourChange}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Chọn giờ kết thúc" />
               </SelectTrigger>

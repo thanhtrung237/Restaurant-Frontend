@@ -11,7 +11,7 @@ import type { Order } from "@/types/models"
 /**
  * Xác nhận order — Phục vụ xác nhận các order chờ (status = PENDING) để món được đẩy xuống bếp.
  * Nguồn: Desktop / Xác nhận order
- * 
+ *
  * API: GET /orders/branch/{branchId}?status=PENDING (poll 5s)
  *      POST /orders/{id}/confirm
  *      POST /orders/{id}/cancel
@@ -21,11 +21,9 @@ export default function OrderConfirmPage() {
   const branchId = useAuthStore((s) => s.branchId)
 
   // Fetch pending orders với auto-refresh 1 giây
-  const { data: orders = [], isLoading } = useOrdersByBranch(
-    branchId ?? undefined,
-    "PENDING",
-    { refetchInterval: 1000 }
-  )
+  const { data: orders = [], isLoading } = useOrdersByBranch(branchId ?? undefined, "PENDING", {
+    refetchInterval: 1000,
+  })
 
   const confirmMutation = useConfirmOrder()
   const cancelMutation = useCancelOrder()
@@ -69,9 +67,7 @@ export default function OrderConfirmPage() {
           vào một thanh thao tác chung. */}
       <PageHeader
         title="Xác nhận order"
-        subtitle={
-          isLoading ? "Đang tải..." : `${orders.length} order đang chờ xác nhận`
-        }
+        subtitle={isLoading ? "Đang tải..." : `${orders.length} order đang chờ xác nhận`}
         actions={
           <Badge variant="outline" className="gap-1.5">
             <Clock className="size-3.5" />
@@ -81,39 +77,37 @@ export default function OrderConfirmPage() {
       />
 
       <div className="flex flex-col gap-6 p-6 sm:p-8">
-      {/* <md: giữ lại chỉ báo tự làm mới dưới dạng dòng chữ nhỏ, không chiếm header */}
-      <p className="flex items-center gap-1.5 text-xs text-text-tertiary md:hidden">
-        <Clock className="size-3.5" />
-        Tự động làm mới 1s
-      </p>
+        {/* <md: giữ lại chỉ báo tự làm mới dưới dạng dòng chữ nhỏ, không chiếm header */}
+        <p className="flex items-center gap-1.5 text-xs text-text-tertiary md:hidden">
+          <Clock className="size-3.5" />
+          Tự động làm mới 1s
+        </p>
 
-      {/* Order List */}
-      {isLoading ? (
-        <div className="flex items-center justify-center h-64">
-          <p className="text-text-secondary">Đang tải...</p>
-        </div>
-      ) : orders.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-64 rounded-card border border-dashed border-border-strong bg-surface-card p-6">
-          <CheckCircle2 className="size-12 text-status-success mb-3" />
-          <p className="text-lg font-semibold text-text-primary">Không có order chờ xác nhận</p>
-          <p className="mt-1 text-sm text-text-tertiary">
-            Tất cả order hiện tại đã được xử lý
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
-          {orders.map((order) => (
-            <OrderCard
-              key={order.id}
-              order={order}
-              onConfirm={handleConfirm}
-              onCancel={handleCancel}
-              isConfirming={confirmMutation.isPending}
-              isCancelling={cancelMutation.isPending}
-            />
-          ))}
-        </div>
-      )}
+        {/* Order List */}
+        {isLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <p className="text-text-secondary">Đang tải...</p>
+          </div>
+        ) : orders.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-64 rounded-card border border-dashed border-border-strong bg-surface-card p-6">
+            <CheckCircle2 className="size-12 text-status-success mb-3" />
+            <p className="text-lg font-semibold text-text-primary">Không có order chờ xác nhận</p>
+            <p className="mt-1 text-sm text-text-tertiary">Tất cả order hiện tại đã được xử lý</p>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
+            {orders.map((order) => (
+              <OrderCard
+                key={order.id}
+                order={order}
+                onConfirm={handleConfirm}
+                onCancel={handleCancel}
+                isConfirming={confirmMutation.isPending}
+                isCancelling={cancelMutation.isPending}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -129,21 +123,20 @@ interface OrderCardProps {
 
 function OrderCard({ order, onConfirm, onCancel, isConfirming, isCancelling }: OrderCardProps) {
   const totalQuantity = order.items?.reduce((sum, item) => sum + item.quantity, 0) ?? 0
-  
+
   // Tính tổng tiền tạm (chưa có field totalAmount trong OrderResponse)
-  const subtotal = order.items?.reduce((sum, item) => {
-    const price = item.price ?? item.priceAtOrderTime * item.quantity
-    return sum + price
-  }, 0) ?? 0
+  const subtotal =
+    order.items?.reduce((sum, item) => {
+      const price = item.price ?? item.priceAtOrderTime * item.quantity
+      return sum + price
+    }, 0) ?? 0
 
   return (
     <div className="rounded-card border border-border-default bg-surface-card p-5 shadow-2xs space-y-4">
       {/* Header: Bàn + Thời gian */}
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="text-lg font-bold text-text-primary">
-            Bàn #{order.tableSessionId}
-          </h3>
+          <h3 className="text-lg font-bold text-text-primary">Bàn #{order.tableSessionId}</h3>
           <p className="text-xs text-text-tertiary mt-0.5">
             {order.createdAt ? new Date(order.createdAt).toLocaleString("vi-VN") : ""}
           </p>
@@ -204,12 +197,8 @@ function OrderCard({ order, onConfirm, onCancel, isConfirming, isCancelling }: O
 
       {/* Tổng cộng */}
       <div className="flex items-center justify-between border-t border-border-default pt-3">
-        <p className="text-sm font-medium text-text-secondary">
-          Tổng cộng ({totalQuantity} món)
-        </p>
-        <p className="text-lg font-bold text-text-primary">
-          {formatCurrency(subtotal)}
-        </p>
+        <p className="text-sm font-medium text-text-secondary">Tổng cộng ({totalQuantity} món)</p>
+        <p className="text-lg font-bold text-text-primary">{formatCurrency(subtotal)}</p>
       </div>
 
       {/* Actions */}

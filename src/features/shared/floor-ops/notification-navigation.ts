@@ -23,14 +23,24 @@ export function getOrderRoundPath(role: AppRole | null, sessionId: number, order
   return path ? `${generatePath(path, { orderId: String(sessionId) })}?round=${orderId}` : null
 }
 
-export function getNotificationDestination(notification: StaffNotification, session: TableSession, role: AppRole | null) {
+export function getNotificationDestination(
+  notification: StaffNotification,
+  session: TableSession,
+  role: AppRole | null,
+) {
   const payment = getStaffPaymentPaths(role)
-  if (payment && (notification.type === "BANK_PAYMENT_VERIFIED"
-      || (notification.type === "PAYMENT_QR_OPENED" && session.status === "WAITING_FOR_PAY"))) {
+  if (
+    payment &&
+    (notification.type === "BANK_PAYMENT_VERIFIED" ||
+      (notification.type === "PAYMENT_QR_OPENED" && session.status === "WAITING_FOR_PAY"))
+  ) {
     return generatePath(payment.QR_TRANSFER_PAYMENT, { tableSessionId: String(session.id) })
   }
-  if ((notification.type === "PAYMENT_REQUESTED" || notification.type === "DISCOUNT_APPROVAL")
-      && session.status === "WAITING_FOR_PAY" && payment) {
+  if (
+    (notification.type === "PAYMENT_REQUESTED" || notification.type === "DISCOUNT_APPROVAL") &&
+    session.status === "WAITING_FOR_PAY" &&
+    payment
+  ) {
     return generatePath(payment.CHECKOUT, { tableSessionId: String(session.id) })
   }
   const kitchen = role ? kitchenPaths[role] : undefined

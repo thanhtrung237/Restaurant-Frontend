@@ -41,7 +41,11 @@ function StatusPill({ status }: { status: StaffRow["status"] }) {
           : "inline-flex items-center gap-1.5 rounded-full bg-[#F2F4F7] px-3 py-1 text-xs font-medium whitespace-nowrap text-[#667085]"
       }
     >
-      <span className={isActive ? "size-1.5 rounded-full bg-[#12B76A]" : "size-1.5 rounded-full bg-[#98A2B3]"} />
+      <span
+        className={
+          isActive ? "size-1.5 rounded-full bg-[#12B76A]" : "size-1.5 rounded-full bg-[#98A2B3]"
+        }
+      />
       {ACCOUNT_STATUS_LABEL[status]}
     </span>
   )

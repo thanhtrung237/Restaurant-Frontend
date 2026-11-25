@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test"
 
-test("branch manager stays in their branch menu and can add an own dish with a shared topping", async ({ page }) => {
+test("branch manager stays in their branch menu and can add an own dish with a shared topping", async ({
+  page,
+}) => {
   const branch = { id: 10, restaurantId: 1, name: "Chi nhánh Quận 1", status: "ACTIVE" }
   const category = { id: 5, name: "Khai vị", status: "ACTIVE" }
   const group = { id: 20, name: "Topping", selectionType: "OPTIONAL", minSelect: 0, maxSelect: 3 }
@@ -16,33 +18,65 @@ test("branch manager stays in their branch menu and can add an own dish with a s
   const links: unknown[] = []
   await page.addInitScript(() => {
     localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
-    localStorage.setItem("pho-viet-auth", JSON.stringify({ version: 0, state: {
-      role: "BRANCH_MANAGER", branchId: 10, assignmentId: 7, accessToken: "test-token", isAuthenticated: true,
-      account: { id: 1, restaurantId: 1, fullName: "Quản lý test" },
-    } }))
+    localStorage.setItem(
+      "pho-viet-auth",
+      JSON.stringify({
+        version: 0,
+        state: {
+          role: "BRANCH_MANAGER",
+          branchId: 10,
+          assignmentId: 7,
+          accessToken: "test-token",
+          isAuthenticated: true,
+          account: { id: 1, restaurantId: 1, fullName: "Quản lý test" },
+        },
+      }),
+    )
   })
   await page.route("**/ws/**", (route) => route.abort())
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request()
     const path = new URL(request.url()).pathname.replace("/api/v1", "")
     const method = request.method()
-    const headers = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "GET,POST,OPTIONS" }
+    const headers = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Headers": "*",
+      "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+    }
     if (method === "OPTIONS") return route.fulfill({ status: 204, headers })
     let data: unknown = []
     if (path === "/branches/10") data = branch
-    if (path === "/assignments/account/1") data = [{ id: 7, roleCode: "BRANCH_MANAGER", branchId: 10 }]
+    if (path === "/assignments/account/1")
+      data = [{ id: 7, roleCode: "BRANCH_MANAGER", branchId: 10 }]
     if (path === "/categories/restaurant/1") data = [category]
     if (path === "/option-groups/restaurant/1") data = [group]
     if (path === "/option-items/group/20") data = optionItems
-    if (path === "/branches/10/menu/overview") data = [
-      { dishId: 6, dishName: "Phở bò", isBranchSpecific: false },
-      { dishId: 7, dishName: "Bánh canh", isBranchSpecific: true },
-    ].map((dish) => ({ ...dish, categoryId: 5, categoryName: category.name, basePrice: 45000, effectivePrice: 45000 }))
+    if (path === "/branches/10/menu/overview")
+      data = [
+        { dishId: 6, dishName: "Phở bò", isBranchSpecific: false },
+        { dishId: 7, dishName: "Bánh canh", isBranchSpecific: true },
+      ].map((dish) => ({
+        ...dish,
+        categoryId: 5,
+        categoryName: category.name,
+        basePrice: 45000,
+        effectivePrice: 45000,
+      }))
     if (path === "/dish-option-groups/dish/6" || path === "/dish-option-groups/dish/7") {
-      data = [{ id: 30, dishId: Number(path.at(-1)), optionGroupId: group.id, optionGroupName: group.name,
-        selectionType: group.selectionType, minSelect: group.minSelect, maxSelect: group.maxSelect }]
+      data = [
+        {
+          id: 30,
+          dishId: Number(path.at(-1)),
+          optionGroupId: group.id,
+          optionGroupName: group.name,
+          selectionType: group.selectionType,
+          minSelect: group.minSelect,
+          maxSelect: group.maxSelect,
+        },
+      ]
     }
-    if (path.includes("/menu/overview") || path.includes("/dishes/restaurant/")) menuRequests.push(path)
+    if (path.includes("/menu/overview") || path.includes("/dishes/restaurant/"))
+      menuRequests.push(path)
     if (path === "/dishes" && method === "POST") {
       const body = request.postDataJSON()
       creates.push(body)
@@ -58,7 +92,11 @@ test("branch manager stays in their branch menu and can add an own dish with a s
   await page.goto("/quan-ly-chi-nhanh/thuc-don?tab=options")
   await expect(page.getByRole("heading", { name: "Tùy chọn món", exact: true })).toBeVisible()
   await expect(page.getByText("Thêm nấm", { exact: false })).toBeVisible()
-  await expect(page.getByRole("button", { name: /Thêm nhóm tùy chọn|Chỉnh sửa nhóm tùy chọn|Xóa nhóm tùy chọn/ })).toHaveCount(0)
+  await expect(
+    page.getByRole("button", {
+      name: /Thêm nhóm tùy chọn|Chỉnh sửa nhóm tùy chọn|Xóa nhóm tùy chọn/,
+    }),
+  ).toHaveCount(0)
   await page.getByRole("button", { name: "Về thực đơn chi nhánh" }).click()
   await expect(page.getByRole("heading", { name: "Thực đơn chi nhánh", exact: true })).toBeVisible()
   await expect(page.getByRole("button", { name: "Thực đơn chung", exact: true })).toHaveCount(0)

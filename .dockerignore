@@ -1,0 +1,17 @@
+.git
+.idea
+.vscode
+.agents
+.codex
+.impeccable
+node_modules
+dist
+dist-ssr
+test-results
+playwright-report
+.env
+.env.*
+*.local
+*.ps1
+*.log
+README.md

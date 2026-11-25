@@ -25,12 +25,16 @@ export interface PromotionSelectModalProps {
 
 const formatVnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`
 
-export function calculatePromoDiscount(promo: Promotion, subtotal: number): { discount: number; isEligible: boolean; minOrderValue: number } {
+export function calculatePromoDiscount(
+  promo: Promotion,
+  subtotal: number,
+): { discount: number; isEligible: boolean; minOrderValue: number } {
   let discount = 0
   let minOrderValue = 0
 
   try {
-    const condObj = typeof promo.condition === "string" ? JSON.parse(promo.condition) : promo.condition
+    const condObj =
+      typeof promo.condition === "string" ? JSON.parse(promo.condition) : promo.condition
     const actionObj = typeof promo.action === "string" ? JSON.parse(promo.action) : promo.action
 
     const rawMin = condObj?.minOrderValue ?? condObj?.minTotal
@@ -42,7 +46,9 @@ export function calculatePromoDiscount(promo: Promotion, subtotal: number): { di
     }
 
     const type = actionObj?.type || actionObj?.actionType || "fixed_amount"
-    const val = Number(actionObj?.value ?? actionObj?.discountPercent ?? actionObj?.discountAmount ?? 0)
+    const val = Number(
+      actionObj?.value ?? actionObj?.discountPercent ?? actionObj?.discountAmount ?? 0,
+    )
 
     if (type === "percentage") {
       const pct = Math.min(Math.max(val, 0), 100)
@@ -82,9 +88,7 @@ export function PromotionSelectModal({
   const invoicePromotions = React.useMemo(() => {
     const invoiceLevel = activePromotions.filter((p) => p.applyLevel === "INVOICE")
     // Nếu có KM tìm qua mã (queriedPromo) chưa có trong list → thêm vào đầu
-    const baseList = invoiceLevel.length > 0
-      ? invoiceLevel
-      : activePromotions // fallback: hiện tất cả nếu chi nhánh không có KM cấp INVOICE
+    const baseList = invoiceLevel.length > 0 ? invoiceLevel : activePromotions // fallback: hiện tất cả nếu chi nhánh không có KM cấp INVOICE
     if (queriedPromo && !baseList.some((p) => p.id === queriedPromo.id)) {
       return [queriedPromo, ...baseList]
     }
@@ -121,7 +125,7 @@ export function PromotionSelectModal({
       const { isEligible, minOrderValue } = calculatePromoDiscount(promo, subtotal)
       if (!isEligible) {
         setCodeError(
-          `Mã "${code}" chưa đủ điều kiện — đơn tối thiểu ${formatVnd(minOrderValue)} (hiện tại ${formatVnd(subtotal)})`
+          `Mã "${code}" chưa đủ điều kiện — đơn tối thiểu ${formatVnd(minOrderValue)} (hiện tại ${formatVnd(subtotal)})`,
         )
         setQueriedPromo(promo) // Vẫn hiện trong list để thấy thông tin
         setSelectedPromo(null) // Nhưng không chọn
@@ -214,7 +218,10 @@ export function PromotionSelectModal({
           ) : (
             invoicePromotions.map((promo) => {
               const isSelected = selectedPromo?.id === promo.id
-              const { discount, isEligible, minOrderValue } = calculatePromoDiscount(promo, subtotal)
+              const { discount, isEligible, minOrderValue } = calculatePromoDiscount(
+                promo,
+                subtotal,
+              )
               const isInvoiceLevel = promo.applyLevel === "INVOICE"
               // Không đủ điều kiện → không cho chọn
               const isDisabled = !isEligible
@@ -240,7 +247,9 @@ export function PromotionSelectModal({
                 >
                   <div className="space-y-1 min-w-0 flex-1 pr-3">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`truncate text-sm font-bold ${isDisabled ? "text-text-tertiary" : "text-text-primary"}`}>
+                      <span
+                        className={`truncate text-sm font-bold ${isDisabled ? "text-text-tertiary" : "text-text-primary"}`}
+                      >
                         {promo.name}
                       </span>
                       {promo.code ? (
@@ -256,17 +265,17 @@ export function PromotionSelectModal({
                     </div>
 
                     {promo.description ? (
-                      <p className="line-clamp-2 text-xs text-text-tertiary">
-                        {promo.description}
-                      </p>
+                      <p className="line-clamp-2 text-xs text-text-tertiary">{promo.description}</p>
                     ) : null}
 
                     {minOrderValue > 0 ? (
                       <p className="text-[11px] text-text-secondary">
-                        Đơn tối thiểu: <span className="font-semibold">{formatVnd(minOrderValue)}</span>
+                        Đơn tối thiểu:{" "}
+                        <span className="font-semibold">{formatVnd(minOrderValue)}</span>
                         {isDisabled ? (
                           <span className="ml-1 font-semibold text-status-danger">
-                            — Hiện tại {formatVnd(subtotal)} (thiếu {formatVnd(minOrderValue - subtotal)})
+                            — Hiện tại {formatVnd(subtotal)} (thiếu{" "}
+                            {formatVnd(minOrderValue - subtotal)})
                           </span>
                         ) : null}
                       </p>
@@ -285,11 +294,13 @@ export function PromotionSelectModal({
                     ) : null}
                   </div>
 
-                  <div className={`flex size-5 shrink-0 items-center justify-center rounded-full border mt-1 ${
-                    isDisabled
-                      ? "border-border-default bg-surface-muted"
-                      : "border-border-default bg-white"
-                  }`}>
+                  <div
+                    className={`flex size-5 shrink-0 items-center justify-center rounded-full border mt-1 ${
+                      isDisabled
+                        ? "border-border-default bg-surface-muted"
+                        : "border-border-default bg-white"
+                    }`}
+                  >
                     {isSelected && !isDisabled ? (
                       <div className="flex size-full items-center justify-center rounded-full bg-brand-primary text-white">
                         <Check className="size-3.5 stroke-[3]" />
@@ -308,7 +319,8 @@ export function PromotionSelectModal({
           <div className="mt-3 flex items-start gap-2 rounded-xl bg-status-warning-subtle border border-status-warning/30 px-3 py-2.5">
             <AlertCircle className="mt-0.5 size-3.5 shrink-0 text-status-warning" />
             <p className="text-xs text-status-warning leading-relaxed">
-              <strong>{selectedPromo.name}</strong> là khuyến mãi cấp món — sẽ tự động áp theo số lượng món, không áp thêm vào hóa đơn. Chọn KM cấp <em>Hóa đơn</em> để giảm tổng tiền.
+              <strong>{selectedPromo.name}</strong> là khuyến mãi cấp món — sẽ tự động áp theo số
+              lượng món, không áp thêm vào hóa đơn. Chọn KM cấp <em>Hóa đơn</em> để giảm tổng tiền.
             </p>
           </div>
         )}

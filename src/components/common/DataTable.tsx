@@ -1,5 +1,12 @@
 import type { ReactNode } from "react"
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table"
 import { EmptyState } from "@/components/common/EmptyState"
 import { cn } from "@/lib/utils"
 
@@ -86,7 +93,9 @@ export function DataTable<T>({
                   key={col.key}
                   className={cn(col.align ? ALIGN_CLASS[col.align] : undefined, col.className)}
                 >
-                  {col.cell ? col.cell(row, rowIndex) : String((row as Record<string, unknown>)[col.key] ?? "")}
+                  {col.cell
+                    ? col.cell(row, rowIndex)
+                    : String((row as Record<string, unknown>)[col.key] ?? "")}
                 </TableCell>
               ))}
             </TableRow>

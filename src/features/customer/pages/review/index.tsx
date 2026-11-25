@@ -71,9 +71,7 @@ export default function ReviewPage() {
                 <Star
                   className={cn(
                     "size-9 transition-colors",
-                    star <= rating
-                      ? "fill-[#F79009] text-[#F79009]"
-                      : "fill-none text-[#D0D5DD]"
+                    star <= rating ? "fill-[#F79009] text-[#F79009]" : "fill-none text-[#D0D5DD]",
                   )}
                   strokeWidth={1.5}
                 />

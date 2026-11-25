@@ -92,8 +92,7 @@ export const BranchConfigManagerTab: React.FC<BranchConfigManagerTabProps> = ({
     if (hasError) {
       toast({
         title: "Chưa lưu được",
-        description:
-          bankAccountError ?? businessDayStartError ?? bankPairError ?? "",
+        description: bankAccountError ?? businessDayStartError ?? bankPairError ?? "",
         variant: "danger",
       })
       return
@@ -134,9 +133,7 @@ export const BranchConfigManagerTab: React.FC<BranchConfigManagerTabProps> = ({
               id="branch-business-day-start"
               type="time"
               value={config.businessDayStartTime}
-              onChange={(e) =>
-                onConfigChange({ ...config, businessDayStartTime: e.target.value })
-              }
+              onChange={(e) => onConfigChange({ ...config, businessDayStartTime: e.target.value })}
               placeholder="06:00"
             />
             <p className="mt-1.5 text-xs text-text-tertiary">
@@ -154,7 +151,9 @@ export const BranchConfigManagerTab: React.FC<BranchConfigManagerTabProps> = ({
               Tài khoản nhận chuyển khoản
             </CardTitle>
             <CardDescription className="text-xs text-text-tertiary">
-              {canEditBankAccount ? "Mỗi chi nhánh dùng tài khoản riêng · FR-PAY-03" : "Chỉ Quản trị nhà hàng được chỉnh sửa."}
+              {canEditBankAccount
+                ? "Mỗi chi nhánh dùng tài khoản riêng · FR-PAY-03"
+                : "Chỉ Quản trị nhà hàng được chỉnh sửa."}
             </CardDescription>
           </CardHeader>
 
@@ -202,18 +201,13 @@ export const BranchConfigManagerTab: React.FC<BranchConfigManagerTabProps> = ({
               </Select>
               {canEditBankAccount && isLegacyBankSelected ? (
                 <p className="mt-1.5 text-xs text-status-warning">
-                  Giá trị này chưa theo danh sách chuẩn. Nên chọn lại ngân hàng tương ứng rồi
-                  Lưu.
+                  Giá trị này chưa theo danh sách chuẩn. Nên chọn lại ngân hàng tương ứng rồi Lưu.
                 </p>
               ) : null}
             </FormField>
 
             {/* Số tài khoản — chỉ chữ số */}
-            <FormField
-              label="Số tài khoản"
-              htmlFor="branch-bank-account"
-              error={bankAccountError}
-            >
+            <FormField label="Số tài khoản" htmlFor="branch-bank-account" error={bankAccountError}>
               <Input
                 id="branch-bank-account"
                 disabled={!canEditBankAccount}
@@ -248,10 +242,7 @@ export const BranchConfigManagerTab: React.FC<BranchConfigManagerTabProps> = ({
 
           <CardContent className="p-6 pt-0 space-y-4">
             {/* Thời gian tự huỷ CHỜ MỞ BÀN (phút) */}
-            <FormField
-              label="Thời gian tự huỷ CHỜ MỞ BÀN (phút)"
-              htmlFor="auto-cancel-waiting"
-            >
+            <FormField label="Thời gian tự huỷ CHỜ MỞ BÀN (phút)" htmlFor="auto-cancel-waiting">
               <Input
                 id="auto-cancel-waiting"
                 type="number"
@@ -265,16 +256,11 @@ export const BranchConfigManagerTab: React.FC<BranchConfigManagerTabProps> = ({
                 }
                 placeholder="10"
               />
-              <p className="mt-1.5 text-xs text-text-tertiary">
-                Tối thiểu 1 phút
-              </p>
+              <p className="mt-1.5 text-xs text-text-tertiary">Tối thiểu 1 phút</p>
             </FormField>
 
             {/* Thời gian giữ chỗ đặt bàn (phút) */}
-            <FormField
-              label="Thời gian giữ chỗ đặt bàn (phút)"
-              htmlFor="reservation-holding"
-            >
+            <FormField label="Thời gian giữ chỗ đặt bàn (phút)" htmlFor="reservation-holding">
               <Input
                 id="reservation-holding"
                 type="number"
@@ -288,9 +274,7 @@ export const BranchConfigManagerTab: React.FC<BranchConfigManagerTabProps> = ({
                 }
                 placeholder="15"
               />
-              <p className="mt-1.5 text-xs text-text-tertiary">
-                Tối thiểu 1 phút
-              </p>
+              <p className="mt-1.5 text-xs text-text-tertiary">Tối thiểu 1 phút</p>
             </FormField>
           </CardContent>
         </Card>

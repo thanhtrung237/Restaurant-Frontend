@@ -1,19 +1,19 @@
-import type { BillPreview } from "@/hooks/useBill";
+import type { BillPreview } from "@/hooks/useBill"
 
 interface BillSummaryProps {
-  bill: BillPreview;
+  bill: BillPreview
   /** Hiển thị chi tiết từng dòng hay chỉ tổng cộng */
-  mode?: "full" | "compact";
+  mode?: "full" | "compact"
   /** Custom className cho container */
-  className?: string;
+  className?: string
 }
 
-const formatVnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`;
+const formatVnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`
 
 /**
  * Component hiển thị thống nhất breakdown hóa đơn theo BR-13.
  * Dùng chung cho cả 6 trang: thu ngân + khách hàng.
- * 
+ *
  * Thứ tự hiển thị (theo mục 4 của phân tích):
  * 1. Tiền hàng (gốc) = grossSubTotal
  * 2. - KM món = itemPromotionDiscount
@@ -35,19 +35,17 @@ export function BillSummary({ bill, mode = "full", className = "" }: BillSummary
     vatRate,
     vatAmount,
     grandTotal,
-  } = bill;
+  } = bill
 
   if (mode === "compact") {
     return (
       <div className={className}>
         <div className="flex items-center justify-between">
           <span className="text-base font-bold text-text-primary">Tổng cộng</span>
-          <span className="text-2xl font-bold text-brand-primary">
-            {formatVnd(grandTotal)}
-          </span>
+          <span className="text-2xl font-bold text-brand-primary">{formatVnd(grandTotal)}</span>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -56,9 +54,7 @@ export function BillSummary({ bill, mode = "full", className = "" }: BillSummary
         {/* Tiền hàng gốc (trước mọi giảm giá) */}
         <div className="flex items-center justify-between text-sm">
           <span className="text-text-secondary">Tiền hàng</span>
-          <span className="font-medium text-text-primary">
-            {formatVnd(grossSubTotal)}
-          </span>
+          <span className="font-medium text-text-primary">{formatVnd(grossSubTotal)}</span>
         </div>
 
         {/* KM món - chỉ hiện nếu > 0 */}
@@ -87,30 +83,20 @@ export function BillSummary({ bill, mode = "full", className = "" }: BillSummary
         {manualDiscount > 0 && (
           <div className="flex items-center justify-between text-sm">
             <span className="text-status-success">Chiết khấu tay</span>
-            <span className="font-medium text-status-success">
-              −{formatVnd(manualDiscount)}
-            </span>
+            <span className="font-medium text-status-success">−{formatVnd(manualDiscount)}</span>
           </div>
         )}
 
         {/* Phí dịch vụ */}
         <div className="flex items-center justify-between text-sm">
-          <span className="text-text-secondary">
-            Phí dịch vụ ({serviceFeeRate.toFixed(0)}%)
-          </span>
-          <span className="font-medium text-text-primary">
-            {formatVnd(serviceFee)}
-          </span>
+          <span className="text-text-secondary">Phí dịch vụ ({serviceFeeRate.toFixed(0)}%)</span>
+          <span className="font-medium text-text-primary">{formatVnd(serviceFee)}</span>
         </div>
 
         {/* VAT */}
         <div className="flex items-center justify-between text-sm">
-          <span className="text-text-secondary">
-            VAT ({vatRate.toFixed(0)}%)
-          </span>
-          <span className="font-medium text-text-primary">
-            {formatVnd(vatAmount)}
-          </span>
+          <span className="text-text-secondary">VAT ({vatRate.toFixed(0)}%)</span>
+          <span className="font-medium text-text-primary">{formatVnd(vatAmount)}</span>
         </div>
       </div>
 
@@ -120,10 +106,8 @@ export function BillSummary({ bill, mode = "full", className = "" }: BillSummary
       {/* Tổng cộng */}
       <div className="flex items-center justify-between">
         <span className="text-base font-bold text-text-primary">Tổng cộng</span>
-        <span className="text-2xl font-bold text-brand-primary">
-          {formatVnd(grandTotal)}
-        </span>
+        <span className="text-2xl font-bold text-brand-primary">{formatVnd(grandTotal)}</span>
       </div>
     </div>
-  );
+  )
 }

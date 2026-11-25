@@ -42,8 +42,7 @@ export function MenuItemCard({
   disabledReason,
 }: MenuItemCardProps) {
   // Định dạng theo đúng quy ước tiền tệ dùng chung trong toàn app: "45.000đ" (không phải "VND")
-  const formattedPrice =
-    typeof price === "number" ? `${price.toLocaleString("vi-VN")}đ` : price
+  const formattedPrice = typeof price === "number" ? `${price.toLocaleString("vi-VN")}đ` : price
 
   const formattedOriginalPrice =
     originalPrice !== undefined
@@ -59,7 +58,7 @@ export function MenuItemCard({
         "group relative flex items-center justify-between gap-3 rounded-[18px] bg-white p-3.5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all sm:gap-3.5",
         onClick && "cursor-pointer hover:shadow-md",
         disabled && "opacity-60",
-        className
+        className,
       )}
     >
       {/* Cột trái: Ảnh món & Thông tin */}
@@ -79,9 +78,7 @@ export function MenuItemCard({
 
         {/* Nội dung text */}
         <div className="min-w-0 flex-1">
-          <h4 className="truncate text-sm font-bold text-text-primary sm:text-base">
-            {name}
-          </h4>
+          <h4 className="truncate text-sm font-bold text-text-primary sm:text-base">{name}</h4>
           {description ? (
             <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-text-tertiary">
               {description}
@@ -130,7 +127,9 @@ export function MenuItemCard({
               onAdd()
             }}
             disabled={disabled}
-            aria-label={disabled && disabledReason ? `Thêm ${name} — ${disabledReason}` : `Thêm ${name}`}
+            aria-label={
+              disabled && disabledReason ? `Thêm ${name} — ${disabledReason}` : `Thêm ${name}`
+            }
             className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-primary text-white shadow-xs transition-all hover:bg-brand-primary-hover active:scale-90 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-tertiary"
           >
             {/* `currentColor` để icon xám theo nút khi bị khoá — tô trắng cứng thì nền xám + icon trắng gần như vô hình */}

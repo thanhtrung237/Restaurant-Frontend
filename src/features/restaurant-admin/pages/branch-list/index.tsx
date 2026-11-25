@@ -53,7 +53,10 @@ export default function BranchListPage() {
   const [statusTarget, setStatusTarget] = useState<BranchListItem | null>(null)
 
   const branches = useMemo(() => branchesQuery.data ?? [], [branchesQuery.data])
-  const activeCount = useMemo(() => branches.filter((b) => b.status === "ACTIVE").length, [branches])
+  const activeCount = useMemo(
+    () => branches.filter((b) => b.status === "ACTIVE").length,
+    [branches],
+  )
   const filtered = useMemo(
     () => (statusFilter === "ALL" ? branches : branches.filter((b) => b.status === statusFilter)),
     [branches, statusFilter],
@@ -80,7 +83,11 @@ export default function BranchListPage() {
         closeModal()
         return {}
       } catch (error) {
-        toast({ title: "Không lưu được chi nhánh", description: getErrorMessage(error), variant: "danger" })
+        toast({
+          title: "Không lưu được chi nhánh",
+          description: getErrorMessage(error),
+          variant: "danger",
+        })
         return {}
       }
     }
@@ -99,7 +106,11 @@ export default function BranchListPage() {
     } catch (error) {
       // 409: trùng mã trong nhà hàng → hiện ngay cạnh ô mã.
       if (error instanceof ApiError && error.status === 409) return { codeError: error.message }
-      toast({ title: "Không thêm được chi nhánh", description: getErrorMessage(error), variant: "danger" })
+      toast({
+        title: "Không thêm được chi nhánh",
+        description: getErrorMessage(error),
+        variant: "danger",
+      })
       return {}
     }
 
@@ -136,7 +147,11 @@ export default function BranchListPage() {
       })
       setStatusTarget(null)
     } catch (error) {
-      toast({ title: "Không đổi được trạng thái", description: getErrorMessage(error), variant: "danger" })
+      toast({
+        title: "Không đổi được trạng thái",
+        description: getErrorMessage(error),
+        variant: "danger",
+      })
     }
   }
 
@@ -158,7 +173,10 @@ export default function BranchListPage() {
       return (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3" aria-busy="true">
           {Array.from({ length: 3 }, (_, i) => (
-            <div key={i} className="h-64 animate-pulse rounded-card border border-border-default bg-surface-card" />
+            <div
+              key={i}
+              className="h-64 animate-pulse rounded-card border border-border-default bg-surface-card"
+            />
           ))}
         </div>
       )
@@ -215,7 +233,12 @@ export default function BranchListPage() {
         subtitle={`${subtitle} · mỗi chi nhánh có cấu hình, bàn và báo cáo riêng`}
         mobileSubtitle={subtitle}
         actions={
-          <Button type="button" onClick={openAddModal} disabled={!canAdd} className="h-10 gap-1.5 px-4">
+          <Button
+            type="button"
+            onClick={openAddModal}
+            disabled={!canAdd}
+            className="h-10 gap-1.5 px-4"
+          >
             <Plus className="size-4 stroke-[2.5]" />
             <span>Thêm chi nhánh</span>
           </Button>

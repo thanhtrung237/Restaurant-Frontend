@@ -3,7 +3,13 @@ import { Plus } from "lucide-react"
 import { useCreateArea } from "@/api/areas.api"
 import { Button } from "@/components/ui/button"
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
@@ -60,12 +66,23 @@ export function AddAreaDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label htmlFor={fieldId} className="text-sm font-semibold">Tên khu vực</label>
-            <Input id={fieldId} value={name} onChange={(event) => {
-              setName(event.target.value)
-              if (createArea.isError) createArea.reset()
-            }} maxLength={100} required placeholder="Ví dụ: Tầng 2, Sân thượng" disabled={createArea.isPending}
-              aria-invalid={createArea.isError} aria-describedby={createArea.isError ? `${fieldId}-error` : undefined} />
+            <label htmlFor={fieldId} className="text-sm font-semibold">
+              Tên khu vực
+            </label>
+            <Input
+              id={fieldId}
+              value={name}
+              onChange={(event) => {
+                setName(event.target.value)
+                if (createArea.isError) createArea.reset()
+              }}
+              maxLength={100}
+              required
+              placeholder="Ví dụ: Tầng 2, Sân thượng"
+              disabled={createArea.isPending}
+              aria-invalid={createArea.isError}
+              aria-describedby={createArea.isError ? `${fieldId}-error` : undefined}
+            />
             {createArea.isError ? (
               <p id={`${fieldId}-error`} role="alert" className="text-sm text-status-danger">
                 {getErrorMessage(createArea.error)}
@@ -73,7 +90,14 @@ export function AddAreaDialog({
             ) : null}
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={createArea.isPending}>Hủy</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+              disabled={createArea.isPending}
+            >
+              Hủy
+            </Button>
             <Button type="submit" disabled={!name.trim() || createArea.isPending}>
               {createArea.isPending ? "Đang lưu…" : "Lưu khu vực"}
             </Button>

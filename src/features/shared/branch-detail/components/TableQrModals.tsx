@@ -10,7 +10,13 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { DraggableTableQr, getTableGuestUrl } from "@/components/common/TableCard"
 import type { DiningTable, Area } from "@/types/models"
 import { groupBranchTables } from "../table-areas"
@@ -75,9 +81,7 @@ export function AddTableModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[420px] rounded-2xl p-6">
         <DialogHeader>
-          <DialogTitle className="text-lg font-bold text-text-primary">
-            Thêm bàn mới
-          </DialogTitle>
+          <DialogTitle className="text-lg font-bold text-text-primary">Thêm bàn mới</DialogTitle>
           <DialogDescription className="text-xs text-text-tertiary">
             Hệ thống sẽ tự động khởi tạo mã QR cho bàn sau khi tạo thành công.
           </DialogDescription>
@@ -105,9 +109,7 @@ export function AddTableModal({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-text-secondary">
-              Số chỗ ngồi
-            </label>
+            <label className="text-xs font-semibold text-text-secondary">Số chỗ ngồi</label>
             <input
               type="number"
               min="1"
@@ -165,7 +167,10 @@ interface EditTableModalProps {
   onOpenChange: (open: boolean) => void
   table: DiningTable | null
   areas: Area[]
-  onSuccess: (id: number, data: { name?: string; capacity?: number; areaId?: number; clearArea?: boolean }) => Promise<void>
+  onSuccess: (
+    id: number,
+    data: { name?: string; capacity?: number; areaId?: number; clearArea?: boolean },
+  ) => Promise<void>
   actions?: React.ReactNode
 }
 
@@ -234,9 +239,7 @@ export function EditTableModal({
           )}
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-text-secondary">
-              Tên bàn
-            </label>
+            <label className="text-xs font-semibold text-text-secondary">Tên bàn</label>
             <input
               type="text"
               required
@@ -247,9 +250,7 @@ export function EditTableModal({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-text-secondary">
-              Số chỗ ngồi
-            </label>
+            <label className="text-xs font-semibold text-text-secondary">Số chỗ ngồi</label>
             <input
               type="number"
               min="1"
@@ -300,7 +301,9 @@ export function EditTableModal({
             </Button>
           </div>
         </form>
-        {actions ? <div className="flex flex-wrap gap-2 border-t border-border-default pt-2">{actions}</div> : null}
+        {actions ? (
+          <div className="flex flex-wrap gap-2 border-t border-border-default pt-2">{actions}</div>
+        ) : null}
       </DialogContent>
     </Dialog>
   )
@@ -345,13 +348,14 @@ export function PrintSingleQrModal({
         </DialogHeader>
 
         {/* Khung in thẻ QR */}
-        <div id="printable-single-qr" className="my-4 rounded-2xl border-2 border-border-default bg-white p-6 shadow-sm flex flex-col items-center">
+        <div
+          id="printable-single-qr"
+          className="my-4 rounded-2xl border-2 border-border-default bg-white p-6 shadow-sm flex flex-col items-center"
+        >
           <p className="text-sm font-bold text-brand-primary uppercase tracking-wider">
             {branchName}
           </p>
-          <p className="text-2xl font-extrabold text-text-primary mt-1">
-            {table.name}
-          </p>
+          <p className="text-2xl font-extrabold text-text-primary mt-1">{table.name}</p>
           <p className="text-xs text-text-tertiary mt-0.5">
             {table.capacity} chỗ · {table.areaName || "Khu vực chính"}
           </p>
@@ -381,8 +385,8 @@ export function PrintSingleQrModal({
         <div className="flex flex-col gap-2 pt-1">
           {!canPrint ? (
             <p className="rounded-lg bg-status-warning-subtle px-3 py-2 text-xs font-medium text-status-warning print:hidden">
-              Chưa in được: <strong>{table.name}</strong> chưa có mã QR. Sửa bàn để hệ thống
-              tạo mã, rồi in lại.
+              Chưa in được: <strong>{table.name}</strong> chưa có mã QR. Sửa bàn để hệ thống tạo mã,
+              rồi in lại.
             </p>
           ) : null}
 
@@ -435,12 +439,17 @@ export function PrintAllQrModal({
 }: PrintAllQrModalProps) {
   const tableGroups = groupBranchTables(areas, tables)
   const selectedGroup = tableGroups.get(areaFilter)
-  const scopedTables = (selectedGroup?.tables ?? tables).filter((table) => table.status !== "INACTIVE")
-  const printableTables = scopedTables.flatMap((table) => table.qrCode ? [{ ...table, qrCode: table.qrCode }] : [])
+  const scopedTables = (selectedGroup?.tables ?? tables).filter(
+    (table) => table.status !== "INACTIVE",
+  )
+  const printableTables = scopedTables.flatMap((table) =>
+    table.qrCode ? [{ ...table, qrCode: table.qrCode }] : [],
+  )
   const missingTables = scopedTables.filter((table) => !table.qrCode)
-  const pages = Array.from({ length: Math.ceil(printableTables.length / QR_CARDS_PER_PAGE) }, (_, index) => (
-    printableTables.slice(index * QR_CARDS_PER_PAGE, (index + 1) * QR_CARDS_PER_PAGE)
-  ))
+  const pages = Array.from(
+    { length: Math.ceil(printableTables.length / QR_CARDS_PER_PAGE) },
+    (_, index) => printableTables.slice(index * QR_CARDS_PER_PAGE, (index + 1) * QR_CARDS_PER_PAGE),
+  )
 
   return (
     <>
@@ -452,17 +461,27 @@ export function PrintAllQrModal({
           </DialogHeader>
           <div className="flex flex-wrap items-center gap-2 border-b border-border-default pb-4 sm:justify-between">
             <Select value={selectedGroup ? areaFilter : "all"} onValueChange={onAreaFilterChange}>
-              <SelectTrigger aria-label="Phạm vi in QR" className="min-w-0 max-w-full flex-1 basis-48 sm:max-w-72 [&>span]:truncate">
+              <SelectTrigger
+                aria-label="Phạm vi in QR"
+                className="min-w-0 max-w-full flex-1 basis-48 sm:max-w-72 [&>span]:truncate"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="max-w-[calc(100vw-2rem)]">
                 <SelectItem value="all">Toàn chi nhánh</SelectItem>
                 {Array.from(tableGroups, ([id, group]) => (
-                  <SelectItem key={id} value={id} className="break-words">{group.name}</SelectItem>
+                  <SelectItem key={id} value={id} className="break-words">
+                    {group.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Button type="button" onClick={() => window.print()} disabled={printableTables.length === 0} className="h-11 shrink-0">
+            <Button
+              type="button"
+              onClick={() => window.print()}
+              disabled={printableTables.length === 0}
+              className="h-11 shrink-0"
+            >
               <Printer aria-hidden="true" />
               In {printableTables.length} mã QR
             </Button>
@@ -470,14 +489,20 @@ export function PrintAllQrModal({
 
           {missingTables.length > 0 ? (
             <div className="rounded-xl bg-status-warning-subtle px-3.5 py-2.5 text-xs">
-              <p className="font-semibold text-status-warning">{missingTables.length} bàn chưa có mã QR</p>
-              <p className="mt-1 text-text-secondary">{missingTables.map((table) => table.name).join(", ")}</p>
+              <p className="font-semibold text-status-warning">
+                {missingTables.length} bàn chưa có mã QR
+              </p>
+              <p className="mt-1 text-text-secondary">
+                {missingTables.map((table) => table.name).join(", ")}
+              </p>
             </div>
           ) : null}
 
           {printableTables.length === 0 ? (
             <p className="py-8 text-center text-sm text-text-secondary">
-              {scopedTables.length > 0 ? "Chưa có mã QR nào để in trong phạm vi này." : "Phạm vi này chưa có bàn đang sử dụng."}
+              {scopedTables.length > 0
+                ? "Chưa có mã QR nào để in trong phạm vi này."
+                : "Phạm vi này chưa có bàn đang sử dụng."}
             </p>
           ) : (
             <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:grid-cols-3 sm:gap-4">
@@ -488,31 +513,47 @@ export function PrintAllQrModal({
           )}
         </DialogContent>
       </Dialog>
-      {open && pages.length > 0 ? createPortal(
-        <div id="bulk-table-qr-print">
-          {pages.map((page) => (
-            <section key={page[0].id} className="bulk-table-qr-sheet">
-              {page.map((table) => <BulkQrCard key={table.id} table={table} branchName={branchName} print />)}
-            </section>
-          ))}
-        </div>,
-        document.body,
-      ) : null}
+      {open && pages.length > 0
+        ? createPortal(
+            <div id="bulk-table-qr-print">
+              {pages.map((page) => (
+                <section key={page[0].id} className="bulk-table-qr-sheet">
+                  {page.map((table) => (
+                    <BulkQrCard key={table.id} table={table} branchName={branchName} print />
+                  ))}
+                </section>
+              ))}
+            </div>,
+            document.body,
+          )
+        : null}
     </>
   )
 }
 
-function BulkQrCard({ table, branchName, print = false }: {
+function BulkQrCard({
+  table,
+  branchName,
+  print = false,
+}: {
   table: DiningTable & { qrCode: string }
   branchName: string
   print?: boolean
 }) {
-  const details = [table.capacity ? `${table.capacity} chỗ` : null, table.areaName || "Chưa phân khu"]
-    .filter(Boolean).join(" · ")
+  const details = [
+    table.capacity ? `${table.capacity} chỗ` : null,
+    table.areaName || "Chưa phân khu",
+  ]
+    .filter(Boolean)
+    .join(" · ")
   return (
     <div className="bulk-table-qr-card flex min-w-0 flex-col items-center rounded-xl border border-gray-300 bg-white p-2 text-center text-gray-900 sm:p-4">
-      <p className="w-full break-words text-[11px] font-bold uppercase text-brand-primary">{branchName}</p>
-      <p className="w-full break-words text-base font-bold leading-tight sm:text-xl">{table.name}</p>
+      <p className="w-full break-words text-[11px] font-bold uppercase text-brand-primary">
+        {branchName}
+      </p>
+      <p className="w-full break-words text-base font-bold leading-tight sm:text-xl">
+        {table.name}
+      </p>
       <p className="w-full break-words text-[10px] text-gray-600">{details}</p>
       <div className="my-2 flex max-w-full items-center justify-center">
         {print ? (

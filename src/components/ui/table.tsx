@@ -10,8 +10,15 @@ import { cn } from "@/lib/utils"
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
-    <div data-slot="table-container" className="relative w-full overflow-x-auto rounded-lg border border-border">
-      <table data-slot="table" className={cn("w-full caption-bottom text-sm", className)} {...props} />
+    <div
+      data-slot="table-container"
+      className="relative w-full overflow-x-auto rounded-lg border border-border"
+    >
+      <table
+        data-slot="table"
+        className={cn("w-full caption-bottom text-sm", className)}
+        {...props}
+      />
     </div>
   )
 }
@@ -76,7 +83,10 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
   return (
     <td
       data-slot="table-cell"
-      className={cn("whitespace-nowrap px-4 py-3 align-middle text-foreground [&:has([role=checkbox])]:pr-0", className)}
+      className={cn(
+        "whitespace-nowrap px-4 py-3 align-middle text-foreground [&:has([role=checkbox])]:pr-0",
+        className,
+      )}
       {...props}
     />
   )

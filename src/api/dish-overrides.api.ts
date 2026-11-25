@@ -38,16 +38,23 @@ function invalidateOverrideScope(qc: ReturnType<typeof useQueryClient>) {
 }
 export function useCreateDishOverride() {
   const qc = useQueryClient()
-  return useMutation({ mutationFn: createDishOverride, onSuccess: () => invalidateOverrideScope(qc) })
+  return useMutation({
+    mutationFn: createDishOverride,
+    onSuccess: () => invalidateOverrideScope(qc),
+  })
 }
 export function useUpdateDishOverride() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (vars: { id: number; body: DishOverrideUpdateRequest }) => updateDishOverride(vars.id, vars.body),
+    mutationFn: (vars: { id: number; body: DishOverrideUpdateRequest }) =>
+      updateDishOverride(vars.id, vars.body),
     onSuccess: () => invalidateOverrideScope(qc),
   })
 }
 export function useDeleteDishOverride() {
   const qc = useQueryClient()
-  return useMutation({ mutationFn: deleteDishOverride, onSuccess: () => invalidateOverrideScope(qc) })
+  return useMutation({
+    mutationFn: deleteDishOverride,
+    onSuccess: () => invalidateOverrideScope(qc),
+  })
 }

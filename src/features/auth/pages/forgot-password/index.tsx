@@ -21,12 +21,11 @@ export default function ForgotPasswordPage() {
       subtitle="Liên hệ quản trị viên nhà hàng để được hỗ trợ đặt lại mật khẩu"
     >
       <div className="space-y-4 text-sm text-text-secondary">
+        <p>Hệ thống hiện không hỗ trợ tự động đặt lại mật khẩu qua email hoặc SMS.</p>
         <p>
-          Hệ thống hiện không hỗ trợ tự động đặt lại mật khẩu qua email hoặc SMS.
-        </p>
-        <p>
-          Vui lòng liên hệ <span className="font-semibold text-text-primary">Quản trị viên nhà hàng</span> của
-          bạn để được hỗ trợ đặt lại mật khẩu.
+          Vui lòng liên hệ{" "}
+          <span className="font-semibold text-text-primary">Quản trị viên nhà hàng</span> của bạn để
+          được hỗ trợ đặt lại mật khẩu.
         </p>
       </div>
 

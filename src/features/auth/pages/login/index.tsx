@@ -199,7 +199,9 @@ export default function LoginPage() {
 
       if (validChoices.length === 0) {
         clearTokens()
-        setError("Tài khoản chưa được phân vai trò hợp lệ. Vui lòng liên hệ quản trị viên nhà hàng.")
+        setError(
+          "Tài khoản chưa được phân vai trò hợp lệ. Vui lòng liên hệ quản trị viên nhà hàng.",
+        )
         return
       }
 
@@ -243,9 +245,7 @@ export default function LoginPage() {
           <div className="flex size-12 items-center justify-center rounded-2xl bg-white shadow-md">
             <span className="text-2xl font-black text-[#F0522B]">P</span>
           </div>
-          <span className="text-2xl font-bold tracking-tight text-white">
-            Phở Việt
-          </span>
+          <span className="text-2xl font-bold tracking-tight text-white">Phở Việt</span>
         </div>
 
         {/* Thông điệp & Giới thiệu hệ thống */}
@@ -284,7 +284,9 @@ export default function LoginPage() {
                   Chọn vai trò đăng nhập
                 </h2>
                 <p className="mt-2 text-sm text-[#868E96]">
-                  Tài khoản <span className="font-semibold text-[#212529]">{pendingAccount.fullName}</span> có nhiều vai trò — chọn vai trò để tiếp tục:
+                  Tài khoản{" "}
+                  <span className="font-semibold text-[#212529]">{pendingAccount.fullName}</span> có
+                  nhiều vai trò — chọn vai trò để tiếp tục:
                 </p>
               </div>
 
@@ -325,9 +327,7 @@ export default function LoginPage() {
             <div>
               {/* Tiêu đề */}
               <div className="mb-7">
-                <h2 className="text-3xl font-extrabold tracking-tight text-[#212529]">
-                  Đăng nhập
-                </h2>
+                <h2 className="text-3xl font-extrabold tracking-tight text-[#212529]">Đăng nhập</h2>
                 <p className="mt-1.5 text-sm text-[#868E96] font-medium">
                   Dành cho nhân viên nhà hàng
                 </p>
@@ -366,9 +366,7 @@ export default function LoginPage() {
                   <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3.5">
                     <div className="flex items-center justify-between">
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-neutral-500 mb-0.5">
-                          Đăng nhập vào
-                        </p>
+                        <p className="text-xs font-medium text-neutral-500 mb-0.5">Đăng nhập vào</p>
                         <p className="text-sm font-semibold text-[#212529] truncate">
                           Mã nhà hàng: {restaurantCode}
                         </p>
@@ -386,10 +384,7 @@ export default function LoginPage() {
 
                 {/* Email hoặc số điện thoại */}
                 <div className="space-y-1.5">
-                  <label
-                    htmlFor="username"
-                    className="text-sm font-semibold text-[#212529]"
-                  >
+                  <label htmlFor="username" className="text-sm font-semibold text-[#212529]">
                     Tên đăng nhập
                   </label>
                   <Input
@@ -408,10 +403,7 @@ export default function LoginPage() {
 
                 {/* Mật khẩu */}
                 <div className="space-y-1.5">
-                  <label
-                    htmlFor="password"
-                    className="text-sm font-semibold text-[#212529]"
-                  >
+                  <label htmlFor="password" className="text-sm font-semibold text-[#212529]">
                     Mật khẩu
                   </label>
                   <div className="relative">
@@ -482,7 +474,8 @@ export default function LoginPage() {
 
                 {/* Chú thích vai trò */}
                 <p className="text-xs text-neutral-400 text-center leading-relaxed pt-2">
-                  Tài khoản do quản lý cấp theo vai trò (Chủ nhà hàng · Quản lý chi nhánh · Thu ngân · Phục vụ).
+                  Tài khoản do quản lý cấp theo vai trò (Chủ nhà hàng · Quản lý chi nhánh · Thu ngân
+                  · Phục vụ).
                 </p>
               </form>
             </div>

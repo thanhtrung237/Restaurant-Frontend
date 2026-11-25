@@ -6,7 +6,10 @@ import { cn } from "@/lib/utils"
 
 const ToastProvider = ToastPrimitives.Provider
 
-function ToastViewport({ className, ...props }: React.ComponentProps<typeof ToastPrimitives.Viewport>) {
+function ToastViewport({
+  className,
+  ...props
+}: React.ComponentProps<typeof ToastPrimitives.Viewport>) {
   return (
     <ToastPrimitives.Viewport
       className={cn(
@@ -99,13 +102,22 @@ function ToastClose({ className, ...props }: React.ComponentProps<typeof ToastPr
 
 function ToastTitle({ className, ...props }: React.ComponentProps<typeof ToastPrimitives.Title>) {
   return (
-    <ToastPrimitives.Title className={cn("text-sm font-semibold text-text-primary", className)} {...props} />
+    <ToastPrimitives.Title
+      className={cn("text-sm font-semibold text-text-primary", className)}
+      {...props}
+    />
   )
 }
 
-function ToastDescription({ className, ...props }: React.ComponentProps<typeof ToastPrimitives.Description>) {
+function ToastDescription({
+  className,
+  ...props
+}: React.ComponentProps<typeof ToastPrimitives.Description>) {
   return (
-    <ToastPrimitives.Description className={cn("text-sm text-text-tertiary", className)} {...props} />
+    <ToastPrimitives.Description
+      className={cn("text-sm text-text-tertiary", className)}
+      {...props}
+    />
   )
 }
 

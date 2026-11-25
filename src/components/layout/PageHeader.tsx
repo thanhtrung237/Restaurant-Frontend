@@ -64,23 +64,15 @@ export function PageHeader({
     <div className={cn("hidden md:block", className)}>
       <div className="flex flex-col gap-4 border-b border-border-default bg-surface-card px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary">
-            {title}
-          </h1>
-          {subtitle ? (
-            <div className="mt-1 text-sm text-text-tertiary">{subtitle}</div>
-          ) : null}
+          <h1 className="text-2xl font-bold tracking-tight text-text-primary">{title}</h1>
+          {subtitle ? <div className="mt-1 text-sm text-text-tertiary">{subtitle}</div> : null}
         </div>
 
-        {actions ? (
-          <div className="flex flex-wrap items-center gap-3">{actions}</div>
-        ) : null}
+        {actions ? <div className="flex flex-wrap items-center gap-3">{actions}</div> : null}
       </div>
 
       {tabs ? (
-        <div className="border-b border-border-default bg-surface-card px-6 sm:px-8">
-          {tabs}
-        </div>
+        <div className="border-b border-border-default bg-surface-card px-6 sm:px-8">{tabs}</div>
       ) : null}
     </div>
   )

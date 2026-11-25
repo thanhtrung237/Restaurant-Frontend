@@ -7,7 +7,13 @@ export interface StaffNotification {
   branchId: number
   tableSessionId: number
   tableName: string
-  type: "NEW_ORDER" | "PAYMENT_REQUESTED" | "STAFF_CALL" | "PAYMENT_QR_OPENED" | "BANK_PAYMENT_VERIFIED" | "DISCOUNT_APPROVAL"
+  type:
+    | "NEW_ORDER"
+    | "PAYMENT_REQUESTED"
+    | "STAFF_CALL"
+    | "PAYMENT_QR_OPENED"
+    | "BANK_PAYMENT_VERIFIED"
+    | "DISCOUNT_APPROVAL"
   orderId?: number | null
   orderDetailId?: number | null
   dishName?: string | null
@@ -16,9 +22,7 @@ export interface StaffNotification {
   read: boolean
 }
 
-type InboxAction =
-  | { type: "read" | "resolve"; id: number }
-  | { type: "readAll" | "hideAll" }
+type InboxAction = { type: "read" | "resolve"; id: number } | { type: "readAll" | "hideAll" }
 
 export const staffInboxKey = (accountId?: number, branchId?: number | null) =>
   ["staff-notifications", accountId, branchId] as const
@@ -27,7 +31,9 @@ export function getNotificationTableLabel(tableName: string | undefined | null, 
   const name = tableName?.trim()
   if (!name) return `Phiên #${sessionId}`
   if (name.startsWith("Mang về #")) return name
-  return /^bàn(?:\s|$)/iu.test(name) ? name[0].toLocaleUpperCase("vi-VN") + name.slice(1) : `Bàn ${name}`
+  return /^bàn(?:\s|$)/iu.test(name)
+    ? name[0].toLocaleUpperCase("vi-VN") + name.slice(1)
+    : `Bàn ${name}`
 }
 
 export function useStaffInbox() {

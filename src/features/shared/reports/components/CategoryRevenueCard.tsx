@@ -21,7 +21,11 @@ interface CategoryStat {
 const CATEGORY_COLORS = [
   { color: "text-amber-600", barColor: "bg-amber-500", badgeBg: "bg-amber-50 text-amber-700" },
   { color: "text-blue-600", barColor: "bg-blue-500", badgeBg: "bg-blue-50 text-blue-700" },
-  { color: "text-emerald-600", barColor: "bg-emerald-500", badgeBg: "bg-emerald-50 text-emerald-700" },
+  {
+    color: "text-emerald-600",
+    barColor: "bg-emerald-500",
+    badgeBg: "bg-emerald-50 text-emerald-700",
+  },
   { color: "text-violet-600", barColor: "bg-violet-500", badgeBg: "bg-violet-50 text-violet-700" },
   { color: "text-rose-600", barColor: "bg-rose-500", badgeBg: "bg-rose-50 text-rose-700" },
   { color: "text-teal-600", barColor: "bg-teal-500", badgeBg: "bg-teal-50 text-teal-700" },
@@ -82,7 +86,9 @@ export function CategoryRevenueCard({ dishes = [] }: CategoryRevenueCardProps) {
             </p>
           </div>
           {topCategory && topCategory.percent > 0 && (
-            <span className={cn("text-xs font-semibold px-2.5 py-1 rounded-full", topCategory.badgeBg)}>
+            <span
+              className={cn("text-xs font-semibold px-2.5 py-1 rounded-full", topCategory.badgeBg)}
+            >
               Chủ lực: {topCategory.name} ({formatPercent(topCategory.percent, 0)})
             </span>
           )}
@@ -94,9 +100,7 @@ export function CategoryRevenueCard({ dishes = [] }: CategoryRevenueCardProps) {
             <div className="flex size-10 items-center justify-center rounded-full bg-surface-muted text-text-tertiary">
               <Layers className="size-5" />
             </div>
-            <p className="mt-3 text-sm font-semibold text-text-primary">
-              Chưa có dữ liệu danh mục
-            </p>
+            <p className="mt-3 text-sm font-semibold text-text-primary">Chưa có dữ liệu danh mục</p>
             <p className="mt-1 text-xs text-text-tertiary max-w-[240px]">
               Không ghi nhận món bán nào thuộc danh mục trong kỳ này.
             </p>
@@ -107,12 +111,8 @@ export function CategoryRevenueCard({ dishes = [] }: CategoryRevenueCardProps) {
               <div key={cat.name} className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs sm:text-sm">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-text-primary">
-                      {cat.name}
-                    </span>
-                    <span className="text-[11px] text-text-tertiary">
-                      ({cat.quantity} phần)
-                    </span>
+                    <span className="font-semibold text-text-primary">{cat.name}</span>
+                    <span className="text-[11px] text-text-tertiary">({cat.quantity} phần)</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="font-bold text-text-primary">
@@ -140,11 +140,8 @@ export function CategoryRevenueCard({ dishes = [] }: CategoryRevenueCardProps) {
       {/* Footer Info */}
       <div className="mt-6 border-t border-border-default/60 pt-3 flex items-center justify-between text-xs">
         <span className="text-text-tertiary">Tổng doanh thu món bán:</span>
-        <span className="text-sm font-bold text-brand-primary">
-          {formatCurrency(totalRevenue)}
-        </span>
+        <span className="text-sm font-bold text-brand-primary">{formatCurrency(totalRevenue)}</span>
       </div>
     </div>
   )
 }
-

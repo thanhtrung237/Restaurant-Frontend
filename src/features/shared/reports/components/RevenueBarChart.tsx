@@ -1,5 +1,13 @@
 import { ChartNoAxesColumn } from "lucide-react"
-import { Bar, BarChart, Rectangle, Tooltip, XAxis, useChartWidth, type BarShapeProps } from "recharts"
+import {
+  Bar,
+  BarChart,
+  Rectangle,
+  Tooltip,
+  XAxis,
+  useChartWidth,
+  type BarShapeProps,
+} from "recharts"
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart"
 
 interface RevenueChartPoint {
@@ -25,15 +33,27 @@ function ActiveRevenueBar({ x, y, width, height, payload }: BarShapeProps) {
   if (!point || !chartWidth) return null
 
   const tooltipWidth = Math.min(168, chartWidth - 8)
-  const tooltipX = Math.max(4, Math.min(x + width / 2 - tooltipWidth / 2, chartWidth - tooltipWidth - 4))
+  const tooltipX = Math.max(
+    4,
+    Math.min(x + width / 2 - tooltipWidth / 2, chartWidth - tooltipWidth - 4),
+  )
 
   return (
     <g className="pointer-events-none">
       <Rectangle x={x} y={y} width={width} height={height} radius={6} fill="#EA4A2A" />
-      <foreignObject x={tooltipX} y={Math.max(4, Math.min(y, y + height) - 56)} width={tooltipWidth} height={56}>
+      <foreignObject
+        x={tooltipX}
+        y={Math.max(4, Math.min(y, y + height) - 56)}
+        width={tooltipWidth}
+        height={56}
+      >
         <div className="mx-auto mt-1 w-fit max-w-full rounded-lg bg-[#1E2229] px-3 py-1.5 text-center shadow-md">
-          <p className="truncate text-[11px] text-slate-300" title={point.fullDay}>{point.fullDay}</p>
-          <p className="whitespace-nowrap text-[13px] font-bold text-white">{point.revenue.toLocaleString("vi-VN")}đ</p>
+          <p className="truncate text-[11px] text-slate-300" title={point.fullDay}>
+            {point.fullDay}
+          </p>
+          <p className="whitespace-nowrap text-[13px] font-bold text-white">
+            {point.revenue.toLocaleString("vi-VN")}đ
+          </p>
         </div>
       </foreignObject>
     </g>
@@ -49,9 +69,18 @@ export function RevenueBarChart({ data, title, subtitle, maxBarSize = 48 }: Reve
       {subtitle && <p className="mt-1 text-sm text-text-secondary">{subtitle}</p>}
 
       {hasRevenue ? (
-        <ChartContainer config={chartConfig} className="mt-5 h-[280px] w-full aspect-auto sm:h-[320px]">
+        <ChartContainer
+          config={chartConfig}
+          className="mt-5 h-[280px] w-full aspect-auto sm:h-[320px]"
+        >
           <BarChart data={data} margin={{ top: 72, right: 12, left: 12, bottom: 4 }}>
-            <XAxis dataKey="day" axisLine={false} tickLine={false} tickMargin={10} minTickGap={12} />
+            <XAxis
+              dataKey="day"
+              axisLine={false}
+              tickLine={false}
+              tickMargin={10}
+              minTickGap={12}
+            />
             <Tooltip cursor={false} content={() => null} isAnimationActive={false} />
             <Bar
               dataKey="revenue"
@@ -69,7 +98,9 @@ export function RevenueBarChart({ data, title, subtitle, maxBarSize = 48 }: Reve
           <div className="rounded-full bg-surface-muted p-3 text-text-secondary">
             <ChartNoAxesColumn className="size-5" aria-hidden="true" />
           </div>
-          <p className="text-sm font-semibold text-text-primary">Chưa có doanh thu trong khoảng này</p>
+          <p className="text-sm font-semibold text-text-primary">
+            Chưa có doanh thu trong khoảng này
+          </p>
           <p className="text-xs text-text-secondary">Chọn khoảng thời gian khác để xem biểu đồ.</p>
         </div>
       )}

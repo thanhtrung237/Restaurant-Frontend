@@ -16,11 +16,7 @@ import {
   navItemRequiresBranch,
 } from "@/config/nav-utils"
 import { isSubScreenRoute } from "@/config/sub-screen-routes"
-import {
-  PageHeaderContext,
-  usePageHeaderState,
-  usePageHeaderValue,
-} from "@/hooks/use-page-header"
+import { PageHeaderContext, usePageHeaderState, usePageHeaderValue } from "@/hooks/use-page-header"
 import { useStaffWebSocket } from "@/hooks/use-staff-websocket"
 
 /**
@@ -88,8 +84,7 @@ function StaffLayoutInner() {
   const bottomNavActiveKey = activeItem?.path ?? ""
 
   // Đang ở chế độ "Tất cả chi nhánh" nhưng mở phân hệ cần chi nhánh cụ thể.
-  const needsBranchSelection =
-    branchId === null && navItemRequiresBranch(activeItem)
+  const needsBranchSelection = branchId === null && navItemRequiresBranch(activeItem)
 
   function handleBottomNavChange(key: string) {
     // "Thêm" MỞ drawer, không điều hướng.
@@ -154,12 +149,10 @@ function SelectBranchEmptyState() {
         <Building2 className="size-7" />
       </span>
       <div className="max-w-sm">
-        <h2 className="text-lg font-bold text-text-primary">
-          Chọn một chi nhánh để tiếp tục
-        </h2>
+        <h2 className="text-lg font-bold text-text-primary">Chọn một chi nhánh để tiếp tục</h2>
         <p className="mt-1.5 text-sm text-text-secondary">
-          Màn hình này làm việc trên dữ liệu của một chi nhánh cụ thể. Bạn đang ở chế độ
-          xem tổng hợp tất cả chi nhánh.
+          Màn hình này làm việc trên dữ liệu của một chi nhánh cụ thể. Bạn đang ở chế độ xem tổng
+          hợp tất cả chi nhánh.
         </p>
       </div>
       <BranchSwitcher variant="full" className="text-sm font-semibold text-brand-primary" />

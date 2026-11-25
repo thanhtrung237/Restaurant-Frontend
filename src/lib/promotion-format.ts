@@ -136,7 +136,7 @@ export interface PromotionDisplayInfo {
 export function getPromotionDisplayStatus(promotion: Promotion): PromotionDisplayInfo {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  
+
   const endDate = new Date(promotion.endDate)
   endDate.setHours(23, 59, 59, 999)
 
@@ -206,14 +206,12 @@ export function isValidDateFormat(date: string): boolean {
   if (!date) return false
   const regex = /^\d{2}\/\d{2}\/\d{4}$/
   if (!regex.test(date)) return false
-  
+
   const [day, month, year] = date.split("/").map(Number)
   const dateObj = new Date(year, month - 1, day)
-  
+
   return (
-    dateObj.getFullYear() === year &&
-    dateObj.getMonth() === month - 1 &&
-    dateObj.getDate() === day
+    dateObj.getFullYear() === year && dateObj.getMonth() === month - 1 && dateObj.getDate() === day
   )
 }
 

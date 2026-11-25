@@ -13,8 +13,17 @@
  * không có DTO ở đây mà nằm ở tham số hàm trong `src/api/*.api.ts`.
  */
 import type {
-  AccountStatus, ApplyLevel, BranchStatus, CancelReason, CategoryStatus,
-  DiscountType, DishStatus, PaymentMethod, PromotionStatus, RoleScope, SelectionType,
+  AccountStatus,
+  ApplyLevel,
+  BranchStatus,
+  CancelReason,
+  CategoryStatus,
+  DiscountType,
+  DishStatus,
+  PaymentMethod,
+  PromotionStatus,
+  RoleScope,
+  SelectionType,
 } from "../enums"
 
 // ---------------------------------------------------------------- Auth

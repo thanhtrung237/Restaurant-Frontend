@@ -6,10 +6,17 @@ interface HourlyRevenueBarChartProps {
   title?: string
 }
 
-export function HourlyRevenueBarChart({ data, title = "Doanh thu theo giờ" }: HourlyRevenueBarChartProps) {
+export function HourlyRevenueBarChart({
+  data,
+  title = "Doanh thu theo giờ",
+}: HourlyRevenueBarChartProps) {
   return (
     <RevenueBarChart
-      data={data.map(({ hour, timeRange, revenue }) => ({ day: hour, fullDay: timeRange, revenue }))}
+      data={data.map(({ hour, timeRange, revenue }) => ({
+        day: hour,
+        fullDay: timeRange,
+        revenue,
+      }))}
       title={title}
       maxBarSize={28}
     />

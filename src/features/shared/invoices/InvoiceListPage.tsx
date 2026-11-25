@@ -55,10 +55,11 @@ export default function InvoiceListPage() {
   const [dateFrom, setDateFrom] = React.useState(today)
   const [dateTo, setDateTo] = React.useState(today)
 
-  const { data: invoices = [], isLoading, isError } = useInvoicesByBranch(
-    branchId ?? undefined,
-    statusFilter === "ALL" ? undefined : statusFilter,
-  )
+  const {
+    data: invoices = [],
+    isLoading,
+    isError,
+  } = useInvoicesByBranch(branchId ?? undefined, statusFilter === "ALL" ? undefined : statusFilter)
 
   const filtered = React.useMemo(() => {
     return invoices.filter((inv) => {
@@ -81,8 +82,7 @@ export default function InvoiceListPage() {
       const q = search.trim().toLowerCase()
       if (q) {
         return (
-          inv.invoiceNumber?.toLowerCase().includes(q) ||
-          inv.tableName?.toLowerCase().includes(q)
+          inv.invoiceNumber?.toLowerCase().includes(q) || inv.tableName?.toLowerCase().includes(q)
         )
       }
       return true
@@ -98,10 +98,7 @@ export default function InvoiceListPage() {
   )
 
   const hasActiveFilter =
-    !!search ||
-    statusFilter !== "ALL" ||
-    dateFrom !== today ||
-    dateTo !== today
+    !!search || statusFilter !== "ALL" || dateFrom !== today || dateTo !== today
 
   function handleRowClick(inv: InvoiceListItem) {
     const path =
@@ -185,7 +182,10 @@ export default function InvoiceListPage() {
               {(dateFrom || dateTo) && (
                 <button
                   type="button"
-                  onClick={() => { setDateFrom(""); setDateTo("") }}
+                  onClick={() => {
+                    setDateFrom("")
+                    setDateTo("")
+                  }}
                   className="text-xs text-brand-primary hover:underline cursor-pointer whitespace-nowrap"
                 >
                   Tất cả ngày
@@ -220,11 +220,21 @@ export default function InvoiceListPage() {
           <table className="w-full text-sm">
             <thead className="border-b border-border-default bg-surface-muted/40">
               <tr>
-                <th className="py-3 pl-5 text-left text-xs font-semibold text-text-tertiary tracking-wide uppercase">Số hóa đơn</th>
-                <th className="py-3 px-4 text-left text-xs font-semibold text-text-tertiary tracking-wide uppercase">Bàn</th>
-                <th className="py-3 px-4 text-left text-xs font-semibold text-text-tertiary tracking-wide uppercase">Thời gian</th>
-                <th className="py-3 px-4 text-right text-xs font-semibold text-text-tertiary tracking-wide uppercase">Tổng tiền</th>
-                <th className="py-3 pl-4 pr-5 text-left text-xs font-semibold text-text-tertiary tracking-wide uppercase">Trạng thái</th>
+                <th className="py-3 pl-5 text-left text-xs font-semibold text-text-tertiary tracking-wide uppercase">
+                  Số hóa đơn
+                </th>
+                <th className="py-3 px-4 text-left text-xs font-semibold text-text-tertiary tracking-wide uppercase">
+                  Bàn
+                </th>
+                <th className="py-3 px-4 text-left text-xs font-semibold text-text-tertiary tracking-wide uppercase">
+                  Thời gian
+                </th>
+                <th className="py-3 px-4 text-right text-xs font-semibold text-text-tertiary tracking-wide uppercase">
+                  Tổng tiền
+                </th>
+                <th className="py-3 pl-4 pr-5 text-left text-xs font-semibold text-text-tertiary tracking-wide uppercase">
+                  Trạng thái
+                </th>
                 <th className="w-8" />
               </tr>
             </thead>
@@ -262,9 +272,15 @@ export default function InvoiceListPage() {
                         {inv.invoiceNumber ?? `#${inv.id}`}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 font-medium text-text-primary">{inv.tableName ?? "—"}</td>
-                    <td className="py-3.5 px-4 text-text-secondary">{formatDateTime(inv.createdAt)}</td>
-                    <td className="py-3.5 px-4 text-right font-bold text-text-primary">{formatVnd(inv.grandTotal)}</td>
+                    <td className="py-3.5 px-4 font-medium text-text-primary">
+                      {inv.tableName ?? "—"}
+                    </td>
+                    <td className="py-3.5 px-4 text-text-secondary">
+                      {formatDateTime(inv.createdAt)}
+                    </td>
+                    <td className="py-3.5 px-4 text-right font-bold text-text-primary">
+                      {formatVnd(inv.grandTotal)}
+                    </td>
                     <td className="py-3.5 pl-4 pr-5">
                       <StatusBadge type="invoice" status={inv.status} />
                     </td>
@@ -278,7 +294,8 @@ export default function InvoiceListPage() {
           </table>
           {!isLoading && !isError && filtered.length > 0 && (
             <div className="border-t border-border-default/60 bg-surface-muted/20 px-5 py-3 text-xs text-text-tertiary">
-              {filtered.length} hóa đơn{hasActiveFilter ? " (đã lọc)" : ""}{" · "}
+              {filtered.length} hóa đơn{hasActiveFilter ? " (đã lọc)" : ""}
+              {" · "}
               Tổng đã thu:{" "}
               <span className="font-bold text-brand-primary">{formatVnd(totalPaid)}</span>
             </div>
@@ -318,7 +335,9 @@ export default function InvoiceListPage() {
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    <span className="text-sm font-bold text-text-primary">{formatVnd(inv.grandTotal)}</span>
+                    <span className="text-sm font-bold text-text-primary">
+                      {formatVnd(inv.grandTotal)}
+                    </span>
                     <StatusBadge type="invoice" status={inv.status} />
                   </div>
                 </div>
@@ -328,8 +347,7 @@ export default function InvoiceListPage() {
           {!isLoading && !isError && filtered.length > 0 && (
             <p className="text-center text-xs text-text-tertiary pt-1">
               {filtered.length} hóa đơn ·{" "}
-              <span className="font-bold text-brand-primary">{formatVnd(totalPaid)}</span>{" "}
-              đã thu
+              <span className="font-bold text-brand-primary">{formatVnd(totalPaid)}</span> đã thu
             </p>
           )}
         </div>

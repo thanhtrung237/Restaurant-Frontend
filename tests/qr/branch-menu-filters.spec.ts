@@ -1,22 +1,78 @@
 import { expect, test } from "@playwright/test"
 
-test("combines branch menu filters and updates them after visibility, price and stock changes", async ({ page }) => {
+test("combines branch menu filters and updates them after visibility, price and stock changes", async ({
+  page,
+}) => {
   test.setTimeout(60000)
   const branch = { id: 10, restaurantId: 1, name: "Chi nhánh Quận 1", status: "ACTIVE" }
-  const categories = [{ id: 1, name: "Món chính" }, { id: 2, name: "Khai vị" }]
+  const categories = [
+    { id: 1, name: "Món chính" },
+    { id: 2, name: "Khai vị" },
+  ]
   const dishes = [
-    { dishId: 1, dishName: "Phở bò", categoryId: 1, hidden: true, branchSpecific: false, hasOverride: true, overridePrice: 50000, stockStatus: "AVAILABLE" },
-    { dishId: 2, dishName: "Đậu hũ", categoryId: 2, hidden: true, branchSpecific: false, hasOverride: false, stockStatus: "AVAILABLE" },
-    { dishId: 3, dishName: "Bún bò riêng", categoryId: 1, hidden: false, branchSpecific: true, hasOverride: false, stockStatus: "OUT_OF_STOCK" },
-    { dishId: 4, dishName: "Gỏi riêng", categoryId: 2, isHidden: true, isBranchSpecific: true, hasOverride: false, stockStatus: "AVAILABLE" },
-    { dishId: 5, dishName: "Cơm gà", categoryId: 1, isHidden: false, isBranchSpecific: false, hasOverride: false, stockStatus: "AVAILABLE" },
+    {
+      dishId: 1,
+      dishName: "Phở bò",
+      categoryId: 1,
+      hidden: true,
+      branchSpecific: false,
+      hasOverride: true,
+      overridePrice: 50000,
+      stockStatus: "AVAILABLE",
+    },
+    {
+      dishId: 2,
+      dishName: "Đậu hũ",
+      categoryId: 2,
+      hidden: true,
+      branchSpecific: false,
+      hasOverride: false,
+      stockStatus: "AVAILABLE",
+    },
+    {
+      dishId: 3,
+      dishName: "Bún bò riêng",
+      categoryId: 1,
+      hidden: false,
+      branchSpecific: true,
+      hasOverride: false,
+      stockStatus: "OUT_OF_STOCK",
+    },
+    {
+      dishId: 4,
+      dishName: "Gỏi riêng",
+      categoryId: 2,
+      isHidden: true,
+      isBranchSpecific: true,
+      hasOverride: false,
+      stockStatus: "AVAILABLE",
+    },
+    {
+      dishId: 5,
+      dishName: "Cơm gà",
+      categoryId: 1,
+      isHidden: false,
+      isBranchSpecific: false,
+      hasOverride: false,
+      stockStatus: "AVAILABLE",
+    },
   ]
   await page.addInitScript(() => {
     localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
-    localStorage.setItem("pho-viet-auth", JSON.stringify({ version: 0, state: {
-      role: "BRANCH_MANAGER", branchId: 10, assignmentId: 7, accessToken: "test-token", isAuthenticated: true,
-      account: { id: 1, restaurantId: 1, fullName: "Quản lý test" },
-    } }))
+    localStorage.setItem(
+      "pho-viet-auth",
+      JSON.stringify({
+        version: 0,
+        state: {
+          role: "BRANCH_MANAGER",
+          branchId: 10,
+          assignmentId: 7,
+          accessToken: "test-token",
+          isAuthenticated: true,
+          account: { id: 1, restaurantId: 1, fullName: "Quản lý test" },
+        },
+      }),
+    )
   })
   await page.route("**/ws/**", (route) => route.abort())
   await page.route("**/api/v1/**", async (route) => {
@@ -25,19 +81,29 @@ test("combines branch menu filters and updates them after visibility, price and 
     const path = url.pathname.replace("/api/v1", "")
     const method = request.method()
     const headers = {
-      "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Headers": "*",
       "Access-Control-Allow-Methods": "GET,PUT,OPTIONS",
     }
     if (method === "OPTIONS") return route.fulfill({ status: 204, headers })
     let data: unknown = []
     if (path === "/branches/10") data = branch
-    if (path === "/assignments/account/1") data = [{ id: 7, roleCode: "BRANCH_MANAGER", branchId: 10 }]
+    if (path === "/assignments/account/1")
+      data = [{ id: 7, roleCode: "BRANCH_MANAGER", branchId: 10 }]
     if (path === "/categories/restaurant/1") data = categories
-    if (path === "/branches/10/menu/overview") data = dishes.map((dish) => ({
-      ...dish, categoryName: categories.find((category) => category.id === dish.categoryId)?.name,
-      basePrice: 45000, effectivePrice: dish.overridePrice ?? 45000, priceDifference: dish.hasOverride ? 5000 : 0,
-    }))
-    if (path === "/dish-overrides/branch/10") data = [{ id: 21, dishId: 1 }, { id: 22, dishId: 2 }]
+    if (path === "/branches/10/menu/overview")
+      data = dishes.map((dish) => ({
+        ...dish,
+        categoryName: categories.find((category) => category.id === dish.categoryId)?.name,
+        basePrice: 45000,
+        effectivePrice: dish.overridePrice ?? 45000,
+        priceDifference: dish.hasOverride ? 5000 : 0,
+      }))
+    if (path === "/dish-overrides/branch/10")
+      data = [
+        { id: 21, dishId: 1 },
+        { id: 22, dishId: 2 },
+      ]
     if (path === "/dish-overrides/21" && method === "PUT") {
       expect(request.postDataJSON()).toEqual({ isHidden: true, clearOverridePrice: true })
       dishes[0].hasOverride = false
@@ -48,11 +114,18 @@ test("combines branch menu filters and updates them after visibility, price and 
       dishes[1].hidden = false
     }
     if (path === "/branch-dish-stocks/branch/10/dish/3/toggle") dishes[2].stockStatus = "AVAILABLE"
-    if (path === "/dishes/3") data = {
-      id: 3, name: dishes[2].dishName, branchId: 10, categoryId: 1, basePrice: 45000, kitchenStationType: "KITCHEN",
-      status: dishes[2].hidden ? "INACTIVE" : "ACTIVE",
-    }
-    if (path === "/dishes/3/status" && method === "PUT") dishes[2].hidden = url.searchParams.get("status") === "INACTIVE"
+    if (path === "/dishes/3")
+      data = {
+        id: 3,
+        name: dishes[2].dishName,
+        branchId: 10,
+        categoryId: 1,
+        basePrice: 45000,
+        kitchenStationType: "KITCHEN",
+        status: dishes[2].hidden ? "INACTIVE" : "ACTIVE",
+      }
+    if (path === "/dishes/3/status" && method === "PUT")
+      dishes[2].hidden = url.searchParams.get("status") === "INACTIVE"
     return route.fulfill({ headers, json: { data } })
   })
 
@@ -75,7 +148,9 @@ test("combines branch menu filters and updates them after visibility, price and 
   const priceModal = page.getByRole("dialog", { name: "Giá và hiển thị · Phở bò" })
   await priceModal.getByRole("spinbutton", { name: "Giá ghi đè" }).fill("")
   await priceModal.getByRole("button", { name: "Cập nhật" }).click()
-  await expect(page.getByText("Không tìm thấy món phù hợp.").filter({ visible: true })).toBeVisible()
+  await expect(
+    page.getByText("Không tìm thấy món phù hợp.").filter({ visible: true }),
+  ).toBeVisible()
 
   await selectStatus("Tạm ẩn")
   await expect(table.getByRole("row")).toHaveCount(4)
@@ -97,7 +172,9 @@ test("combines branch menu filters and updates them after visibility, price and 
   await expect(dish("Gỏi riêng")).toBeVisible()
   const search = page.getByRole("textbox", { name: "Tìm món tại chi nhánh" })
   await search.fill("Phở")
-  await expect(page.getByText("Không tìm thấy món phù hợp.").filter({ visible: true })).toBeVisible()
+  await expect(
+    page.getByText("Không tìm thấy món phù hợp.").filter({ visible: true }),
+  ).toBeVisible()
   await search.clear()
   await category.click()
   await page.getByRole("option", { name: "Tất cả danh mục" }).click()

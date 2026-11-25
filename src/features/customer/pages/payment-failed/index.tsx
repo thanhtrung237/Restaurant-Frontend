@@ -25,7 +25,7 @@ export default function PaymentFailedPage() {
 
   const tableSession = useCustomerSessionStore((s) => s.tableSession)
   const tableName = tableSession?.tableName || "Bàn"
-  
+
   const paymentAmount = useCustomerPaymentStore((s) => s.amount)
   const resetPayment = useCustomerPaymentStore((s) => s.reset)
 
@@ -33,12 +33,13 @@ export default function PaymentFailedPage() {
   const failureReason = React.useMemo(() => {
     const searchParams = new URLSearchParams(window.location.search)
     const reason = searchParams.get("reason")
-    
+
     switch (reason) {
       case "timeout":
         return {
           title: "Hết thời gian thanh toán",
-          description: "Mã QR đã hết hạn. Vui lòng tạo mã thanh toán mới hoặc gọi nhân viên hỗ trợ.",
+          description:
+            "Mã QR đã hết hạn. Vui lòng tạo mã thanh toán mới hoặc gọi nhân viên hỗ trợ.",
         }
       case "cancelled":
         return {
@@ -92,7 +93,10 @@ export default function PaymentFailedPage() {
           <div className="mb-6 flex size-[120px] items-center justify-center rounded-full bg-[#FEF3F2] animate-in zoom-in-50 duration-500">
             <div className="flex size-[88px] items-center justify-center rounded-full bg-[#FEE4E2]">
               <div className="flex size-[64px] items-center justify-center rounded-full bg-status-danger">
-                <AlertCircle className="size-10 text-white animate-in zoom-in duration-300 delay-150" strokeWidth={2.5} />
+                <AlertCircle
+                  className="size-10 text-white animate-in zoom-in duration-300 delay-150"
+                  strokeWidth={2.5}
+                />
               </div>
             </div>
           </div>
@@ -121,11 +125,10 @@ export default function PaymentFailedPage() {
           <div className="mt-8 flex w-full max-w-sm items-start gap-3 rounded-[20px] bg-[#FEF6EE] px-4 py-4 text-left animate-in fade-in duration-500 delay-500">
             <Phone className="mt-0.5 size-5 shrink-0 text-[#B54708]" />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-[#B54708] leading-snug">
-                Cần hỗ trợ?
-              </p>
+              <p className="text-sm font-semibold text-[#B54708] leading-snug">Cần hỗ trợ?</p>
               <p className="mt-1 text-xs text-[#93370D] leading-relaxed">
-                Nhân viên của chúng tôi sẵn sàng hỗ trợ bạn thanh toán bằng tiền mặt hoặc các phương thức khác.
+                Nhân viên của chúng tôi sẵn sàng hỗ trợ bạn thanh toán bằng tiền mặt hoặc các phương
+                thức khác.
               </p>
             </div>
           </div>

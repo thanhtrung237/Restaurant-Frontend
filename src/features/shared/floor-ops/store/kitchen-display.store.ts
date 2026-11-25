@@ -1,20 +1,20 @@
-import { create } from "zustand";
-import type { KDSTicketStatus } from "@/components/common/KDSTicket";
+import { create } from "zustand"
+import type { KDSTicketStatus } from "@/components/common/KDSTicket"
 
 /** Trạng thái luồng bếp: Chờ xác nhận -> Đang chế biến -> Sẵn sàng phục vụ -> (biến mất khỏi bảng) */
-export type KDSColumn = "AWAITING_CONFIRM" | "COOKING" | "READY";
+export type KDSColumn = "AWAITING_CONFIRM" | "COOKING" | "READY"
 
 export interface KDSTicketItem {
-  id: number;
-  tableName: string;
-  timeAgo: string;
-  dishName: string;
-  quantity?: number;
-  note?: string;
-  hint?: string;
+  id: number
+  tableName: string
+  timeAgo: string
+  dishName: string
+  quantity?: number
+  note?: string
+  hint?: string
   /** Món bán theo cân — cần nhập số cân trước khi được xác nhận gửi bếp (BR bán theo cân) */
-  requiresWeighing?: boolean;
-  column: KDSColumn;
+  requiresWeighing?: boolean
+  column: KDSColumn
 }
 
 const INITIAL_TICKETS: KDSTicketItem[] = [
@@ -87,23 +87,23 @@ const INITIAL_TICKETS: KDSTicketItem[] = [
     quantity: 1,
     column: "COOKING",
   },
-];
+]
 
-export type KDSFilter = "ALL" | "AWAITING_CONFIRM" | "COOKING";
+export type KDSFilter = "ALL" | "AWAITING_CONFIRM" | "COOKING"
 
 interface KitchenDisplayState {
-  tickets: KDSTicketItem[];
-  filter: KDSFilter;
+  tickets: KDSTicketItem[]
+  filter: KDSFilter
 
-  setFilter: (filter: KDSFilter) => void;
+  setFilter: (filter: KDSFilter) => void
   /** Nhập số cân xong -> chuyển thẳng sang "Đang chế biến" */
-  submitWeight: (ticketId: number) => void;
+  submitWeight: (ticketId: number) => void
   /** Bếp xác nhận đã nhận món -> chuyển sang "Đang chế biến" */
-  confirmTicket: (ticketId: number) => void;
+  confirmTicket: (ticketId: number) => void
   /** Bếp đánh dấu nấu xong -> chuyển sang "Sẵn sàng phục vụ" */
-  markCooked: (ticketId: number) => void;
+  markCooked: (ticketId: number) => void
   /** Phục vụ đã mang món ra bàn -> phiếu biến mất khỏi bảng bếp */
-  markServed: (ticketId: number) => void;
+  markServed: (ticketId: number) => void
 }
 
 export const useKitchenDisplayStore = create<KitchenDisplayState>((set) => ({
@@ -130,9 +130,7 @@ export const useKitchenDisplayStore = create<KitchenDisplayState>((set) => ({
   confirmTicket: (ticketId) =>
     set((state) => ({
       tickets: state.tickets.map((t) =>
-        t.id === ticketId
-          ? { ...t, column: "COOKING", timeAgo: "vừa xác nhận" }
-          : t,
+        t.id === ticketId ? { ...t, column: "COOKING", timeAgo: "vừa xác nhận" } : t,
       ),
     })),
 
@@ -147,6 +145,6 @@ export const useKitchenDisplayStore = create<KitchenDisplayState>((set) => ({
     set((state) => ({
       tickets: state.tickets.filter((t) => t.id !== ticketId),
     })),
-}));
+}))
 
-export type { KDSTicketStatus };
+export type { KDSTicketStatus }

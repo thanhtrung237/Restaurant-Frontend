@@ -33,7 +33,10 @@ export function fromKg(weightKg: number, unit: WeightUnit): number {
 }
 
 /** Bước nhảy & số thập phân hợp lý cho input theo từng đơn vị. */
-export const WEIGHT_INPUT_CONFIG: Record<WeightUnit, { step: string; min: string; quickValues: string[] }> = {
+export const WEIGHT_INPUT_CONFIG: Record<
+  WeightUnit,
+  { step: string; min: string; quickValues: string[] }
+> = {
   kg: { step: "0.05", min: "0.05", quickValues: ["0.5", "0.8", "1.0", "1.2", "1.5", "2.0"] },
   g: { step: "10", min: "10", quickValues: ["100", "250", "500", "750", "1000"] },
 }

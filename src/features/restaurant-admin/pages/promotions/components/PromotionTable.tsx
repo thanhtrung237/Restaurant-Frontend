@@ -23,10 +23,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import type { Promotion } from "@/types/models"
-import { 
-  getPromotionDisplayStatus, 
+import {
+  getPromotionDisplayStatus,
   formatUsageDisplay,
-  formatDateForDisplay 
+  formatDateForDisplay,
 } from "@/lib/promotion-format"
 
 interface PromotionTableProps {
@@ -65,9 +65,17 @@ function formatBriefRule(promo: Promotion): string {
     try {
       const cond = JSON.parse(promo.condition)
       if (isDish) {
-        if (cond.target === "category" && Array.isArray(cond.categoryIds) && cond.categoryIds.length > 0) {
+        if (
+          cond.target === "category" &&
+          Array.isArray(cond.categoryIds) &&
+          cond.categoryIds.length > 0
+        ) {
           conditionText = `${cond.categoryIds.length} danh mục`
-        } else if (cond.target === "specific_dish" && Array.isArray(cond.dishIds) && cond.dishIds.length > 0) {
+        } else if (
+          cond.target === "specific_dish" &&
+          Array.isArray(cond.dishIds) &&
+          cond.dishIds.length > 0
+        ) {
           conditionText = `${cond.dishIds.length} món cụ thể`
         } else {
           conditionText = "Tất cả món"
@@ -111,7 +119,7 @@ export const PromotionTable: React.FC<PromotionTableProps> = ({
 
   const renderStatusBadge = (promotion: Promotion) => {
     const { status, label } = getPromotionDisplayStatus(promotion)
-    
+
     const variantMap = {
       RUNNING: "success" as const,
       PAUSED: "warning" as const,
@@ -189,7 +197,7 @@ export const PromotionTable: React.FC<PromotionTableProps> = ({
                 const usageDisplay = formatUsageDisplay(promo.usageCount, promo.usageLimit)
                 const isDish = promo.applyLevel === "ITEM"
                 const briefRule = formatBriefRule(promo)
-                
+
                 return (
                   <TableRow
                     key={promo.id}
@@ -202,7 +210,10 @@ export const PromotionTable: React.FC<PromotionTableProps> = ({
                           <p className="font-bold text-text-primary text-sm tracking-tight leading-snug">
                             {promo.name}
                           </p>
-                          <Badge variant={isDish ? "secondary" : "default"} className="text-[11px] py-0 px-2 font-semibold">
+                          <Badge
+                            variant={isDish ? "secondary" : "default"}
+                            className="text-[11px] py-0 px-2 font-semibold"
+                          >
                             {isDish ? "Cấp Món" : "Cấp Hóa đơn"}
                           </Badge>
                           {promo.code && (
@@ -219,7 +230,8 @@ export const PromotionTable: React.FC<PromotionTableProps> = ({
 
                         {/* Thời gian */}
                         <p className="text-[11px] text-text-tertiary">
-                          {formatDateForDisplay(promo.startDate)} – {formatDateForDisplay(promo.endDate)}
+                          {formatDateForDisplay(promo.startDate)} –{" "}
+                          {formatDateForDisplay(promo.endDate)}
                           {promo.timeWindow ? ` · ${promo.timeWindow}` : ""}
                           {promo.daysOfWeek ? ` · ${promo.daysOfWeek}` : ""}
                         </p>
@@ -232,7 +244,8 @@ export const PromotionTable: React.FC<PromotionTableProps> = ({
                         <span className="font-semibold text-text-primary">{usageDisplay}</span>
                         {promo.usageLimit != null && (
                           <span className="text-[11px] text-text-tertiary">
-                            {Math.round(((promo.usageCount || 0) / promo.usageLimit) * 100)}% đã dùng
+                            {Math.round(((promo.usageCount || 0) / promo.usageLimit) * 100)}% đã
+                            dùng
                           </span>
                         )}
                       </div>
@@ -254,16 +267,17 @@ export const PromotionTable: React.FC<PromotionTableProps> = ({
                     {/* 4. Cột ƯU TIÊN (Badge số tròn) */}
                     <TableCell className="py-4 px-4">
                       <div className="flex justify-center">
-                        <span className="size-6 rounded-full bg-brand-primary-subtle text-brand-primary font-bold text-xs flex items-center justify-center" title="Độ ưu tiên (BR-23)">
+                        <span
+                          className="size-6 rounded-full bg-brand-primary-subtle text-brand-primary font-bold text-xs flex items-center justify-center"
+                          title="Độ ưu tiên (BR-23)"
+                        >
                           {promo.priority ?? 0}
                         </span>
                       </div>
                     </TableCell>
 
                     {/* 5. Cột TRẠNG THÁI */}
-                    <TableCell className="py-4 px-4">
-                      {renderStatusBadge(promo)}
-                    </TableCell>
+                    <TableCell className="py-4 px-4">{renderStatusBadge(promo)}</TableCell>
 
                     {/* 6. Cột THAO TÁC (Switch + Nút sửa + Nút xoá) */}
                     <TableCell className="py-4 pr-6 pl-4 text-right">
@@ -328,23 +342,29 @@ export const PromotionTable: React.FC<PromotionTableProps> = ({
             <AlertDialogDescription className="pt-2 text-sm text-text-secondary">
               {hasUsage ? (
                 <>
-                  Chương trình <strong className="text-text-primary">"{deleteTarget?.name}"</strong> đã phát sinh{" "}
-                  <strong className="text-status-danger">{deleteTarget?.usageCount} lượt sử dụng</strong>. Để đảm bảo toàn vẹn dữ liệu lịch sử hóa đơn, bạn không thể xóa chương trình này.
-                  <br /><br />
-                  Vui lòng chuyển trạng thái sang <strong className="text-text-primary">Tạm dừng (tắt switch)</strong> nếu muốn ngừng áp dụng.
+                  Chương trình <strong className="text-text-primary">"{deleteTarget?.name}"</strong>{" "}
+                  đã phát sinh{" "}
+                  <strong className="text-status-danger">
+                    {deleteTarget?.usageCount} lượt sử dụng
+                  </strong>
+                  . Để đảm bảo toàn vẹn dữ liệu lịch sử hóa đơn, bạn không thể xóa chương trình này.
+                  <br />
+                  <br />
+                  Vui lòng chuyển trạng thái sang{" "}
+                  <strong className="text-text-primary">Tạm dừng (tắt switch)</strong> nếu muốn
+                  ngừng áp dụng.
                 </>
               ) : (
                 <>
                   Bạn có chắc chắn muốn xóa chương trình khuyến mãi{" "}
-                  <strong className="text-text-primary">"{deleteTarget?.name}"</strong>? Hành động này không thể hoàn tác.
+                  <strong className="text-text-primary">"{deleteTarget?.name}"</strong>? Hành động
+                  này không thể hoàn tác.
                 </>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>
-              {hasUsage ? "Đã hiểu" : "Huỷ"}
-            </AlertDialogCancel>
+            <AlertDialogCancel>{hasUsage ? "Đã hiểu" : "Huỷ"}</AlertDialogCancel>
             {!hasUsage && (
               <AlertDialogAction
                 onClick={handleConfirmDelete}

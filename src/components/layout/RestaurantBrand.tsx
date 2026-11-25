@@ -38,7 +38,11 @@ export function RestaurantBrand({ size = "sm", className }: RestaurantBrandProps
       )}
     >
       {logoUrl ? (
-        <img src={logoUrl} alt={name ? `Logo ${name}` : "Logo nhà hàng"} className="size-full object-cover" />
+        <img
+          src={logoUrl}
+          alt={name ? `Logo ${name}` : "Logo nhà hàng"}
+          className="size-full object-cover"
+        />
       ) : (
         <span className={cn("font-extrabold text-text-on-brand font-sans", letter)}>{initial}</span>
       )}

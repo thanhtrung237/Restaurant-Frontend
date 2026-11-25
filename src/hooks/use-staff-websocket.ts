@@ -30,13 +30,18 @@ export function useStaffWebSocket() {
     if (branchId == null || accountId == null) return
     let active = true
     const seen = new Set<string>()
-    const refreshInbox = () => void queryClient.invalidateQueries({ queryKey: staffInboxKey(accountId, branchId) })
-    const refreshTakeaway = () => void queryClient.invalidateQueries({ queryKey: qk.takeawayOrders.byBranch(branchId) })
+    const refreshInbox = () =>
+      void queryClient.invalidateQueries({ queryKey: staffInboxKey(accountId, branchId) })
+    const refreshTakeaway = () =>
+      void queryClient.invalidateQueries({ queryKey: qk.takeawayOrders.byBranch(branchId) })
     const client = new Client({
       webSocketFactory: () => new SockJS(getWsUrl()) as WebSocket,
       reconnectDelay: 5000,
-      beforeConnect: () => { client.connectHeaders = { Authorization: `Bearer ${getAccessToken() ?? ""}` } },
-      onStompError: (frame) => console.error("[WS] STOMP error:", frame.headers["message"], frame.body),
+      beforeConnect: () => {
+        client.connectHeaders = { Authorization: `Bearer ${getAccessToken() ?? ""}` }
+      },
+      onStompError: (frame) =>
+        console.error("[WS] STOMP error:", frame.headers["message"], frame.body),
       onWebSocketError: (error) => console.error("[WS] Không kết nối được WebSocket:", error),
       onConnect: () => {
         if (!active) return
@@ -59,7 +64,10 @@ export function useStaffWebSocket() {
           void queryClient.invalidateQueries({ queryKey: qk.invoices.bySession(sessionId) })
         })
         refreshTakeaway()
-        const subscribe = (topic: string, handle: (event: StaffEvent, tableName: string) => void) => {
+        const subscribe = (
+          topic: string,
+          handle: (event: StaffEvent, tableName: string) => void,
+        ) => {
           client.subscribe(`/topic/branch/${branchId}/${topic}`, ({ body }) => {
             if (!active) return
             let event: StaffEvent
@@ -70,8 +78,12 @@ export function useStaffWebSocket() {
               return
             }
             if (!Number.isSafeInteger(event?.tableSessionId)) return
-            const key = event.notificationId != null ? `notification-${event.notificationId}`
-              : event.orderId != null ? `order-${event.orderId}` : null
+            const key =
+              event.notificationId != null
+                ? `notification-${event.notificationId}`
+                : event.orderId != null
+                  ? `order-${event.orderId}`
+                  : null
             if (key && seen.has(key)) return
             if (key) {
               seen.add(key)
@@ -88,19 +100,34 @@ export function useStaffWebSocket() {
 
         subscribe("new-order", (event, table) => {
           if (event.orderedById !== accountId) {
-            toast({ title: "Có món mới", description: `${table} · Lượt gọi #${event.orderId}`, variant: "warning" })
+            toast({
+              title: "Có món mới",
+              description: `${table} · Lượt gọi #${event.orderId}`,
+              variant: "warning",
+            })
           }
           void queryClient.invalidateQueries({ queryKey: qk.orders.all })
           void queryClient.invalidateQueries({ queryKey: qk.orderDetails.all })
           void queryClient.invalidateQueries({ queryKey: qk.tableSessions.all })
         })
         subscribe("payment-request", (event, table) => {
-          const title = event.type === "PAYMENT_QR_OPENED" ? "Khách đã mở mã QR thanh toán"
-            : event.type === "BANK_PAYMENT_VERIFIED" ? "Ngân hàng đã xác nhận thanh toán"
-              : event.type === "DISCOUNT_APPROVAL" ? "Yêu cầu duyệt chiết khấu" : "Yêu cầu tính tiền"
-          toast({ title, description: table, variant: event.type === "BANK_PAYMENT_VERIFIED" ? "success" : "info" })
+          const title =
+            event.type === "PAYMENT_QR_OPENED"
+              ? "Khách đã mở mã QR thanh toán"
+              : event.type === "BANK_PAYMENT_VERIFIED"
+                ? "Ngân hàng đã xác nhận thanh toán"
+                : event.type === "DISCOUNT_APPROVAL"
+                  ? "Yêu cầu duyệt chiết khấu"
+                  : "Yêu cầu tính tiền"
+          toast({
+            title,
+            description: table,
+            variant: event.type === "BANK_PAYMENT_VERIFIED" ? "success" : "info",
+          })
           if (event.type === "BANK_PAYMENT_VERIFIED" || event.type === "DISCOUNT_APPROVAL") {
-            void queryClient.invalidateQueries({ queryKey: qk.invoices.bySession(event.tableSessionId) })
+            void queryClient.invalidateQueries({
+              queryKey: qk.invoices.bySession(event.tableSessionId),
+            })
           }
           void queryClient.invalidateQueries({ queryKey: qk.tableSessions.all })
         })

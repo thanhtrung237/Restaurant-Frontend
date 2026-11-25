@@ -31,7 +31,12 @@ import { ResetPasswordModal } from "./components/ResetPasswordModal"
 import { DisableAccountDialog } from "./components/DisableAccountDialog"
 import { countDistinctRoles, matchesStaffSearch, toStaffRow } from "./lib"
 import { RESTAURANT_ADMIN_PATHS } from "@/app/router/paths"
-import { ACCOUNT_STATUS_LABEL, type StaffRow, type StaffStatusFilter, type StaffTabType } from "./types"
+import {
+  ACCOUNT_STATUS_LABEL,
+  type StaffRow,
+  type StaffStatusFilter,
+  type StaffTabType,
+} from "./types"
 
 /** Mã vai trò Quản trị nhà hàng — trùng `TenantGuard.ROLE_MANAGER` ở backend. */
 const MANAGER_ROLE_CODE = "MANAGER"
@@ -85,10 +90,7 @@ export default function StaffManagementPage() {
     toast({ title, description: getErrorMessage(error), variant: "danger" })
   }
 
-  const allRows = useMemo(
-    () => (accountsQuery.data ?? []).map(toStaffRow),
-    [accountsQuery.data],
-  )
+  const allRows = useMemo(() => (accountsQuery.data ?? []).map(toStaffRow), [accountsQuery.data])
 
   const branchOptions = useMemo<StaffFilterOption[]>(
     () => [

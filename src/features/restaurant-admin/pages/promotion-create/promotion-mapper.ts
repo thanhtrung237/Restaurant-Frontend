@@ -281,7 +281,9 @@ export function buildPromotionPreview(
         .filter((d) => data.selectedDishes.includes(d.id))
         .map((d) => d.name)
       if (selectedNames.length > 0) {
-        parts.push(`cho [${selectedNames.slice(0, 3).join(", ")}${selectedNames.length > 3 ? ` và ${selectedNames.length - 3} món khác` : ""}]`)
+        parts.push(
+          `cho [${selectedNames.slice(0, 3).join(", ")}${selectedNames.length > 3 ? ` và ${selectedNames.length - 3} món khác` : ""}]`,
+        )
       } else {
         parts.push("cho món cụ thể (chưa chọn)")
       }

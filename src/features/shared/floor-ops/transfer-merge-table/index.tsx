@@ -35,25 +35,27 @@ export default function TransferMergeTablePage() {
   const branchId = useAuthStore((s) => s.branchId)
 
   // Đọc state hoặc query params truyền tới nếu có
-  const navState = (location.state as { sourceTableId?: number; sourceSessionId?: number; initialTab?: TabType } | null) || {}
+  const navState =
+    (location.state as {
+      sourceTableId?: number
+      sourceSessionId?: number
+      initialTab?: TabType
+    } | null) || {}
   const searchParams = new URLSearchParams(location.search)
   const queryTableId = searchParams.get("tableId") ? Number(searchParams.get("tableId")) : undefined
   const queryTab = searchParams.get("tab") as TabType | null
 
   const [activeTab, setActiveTab] = React.useState<TabType>(
-    queryTab || navState.initialTab || "transfer"
+    queryTab || navState.initialTab || "transfer",
   )
 
   // Danh sách bàn và phiên đang mở
-  const { data: tablesData = [] } = useTablesByBranch(
-    branchId ?? undefined,
-    undefined,
-    { refetchInterval: 2000 }
-  )
-  const { data: sessionsData = [] } = useOpenSessionsByBranch(
-    branchId ?? undefined,
-    { refetchInterval: 2000 }
-  )
+  const { data: tablesData = [] } = useTablesByBranch(branchId ?? undefined, undefined, {
+    refetchInterval: 2000,
+  })
+  const { data: sessionsData = [] } = useOpenSessionsByBranch(branchId ?? undefined, {
+    refetchInterval: 2000,
+  })
 
   // Map session theo tableId
   const sessionsByTableId = React.useMemo(() => {
@@ -69,7 +71,12 @@ export default function TransferMergeTablePage() {
     return tablesData
       .filter((t) => {
         const s = sessionsByTableId.get(t.id)
-        return s && (s.status === "SERVING" || s.status === "WAITING_FOR_PAY" || s.status === "WAITING_FOR_OPEN")
+        return (
+          s &&
+          (s.status === "SERVING" ||
+            s.status === "WAITING_FOR_PAY" ||
+            s.status === "WAITING_FOR_OPEN")
+        )
       })
       .map((t) => ({
         table: t,
@@ -87,7 +94,10 @@ export default function TransferMergeTablePage() {
   // Nếu chưa có bàn nguồn được chọn hoặc bàn nguồn không còn active, tự động chọn bàn đầu tiên
   React.useEffect(() => {
     if (activeTablesWithSession.length > 0) {
-      if (!selectedSourceTableId || !activeTablesWithSession.some((item) => item.table.id === selectedSourceTableId)) {
+      if (
+        !selectedSourceTableId ||
+        !activeTablesWithSession.some((item) => item.table.id === selectedSourceTableId)
+      ) {
         setSelectedSourceTableId(activeTablesWithSession[0].table.id)
       }
     } else {
@@ -103,12 +113,11 @@ export default function TransferMergeTablePage() {
   const { data: sourceOrderDetails = [] } = useOrderDetailsBySession(
     selectedSourceItem?.session?.id,
     undefined,
-    { enabled: !!selectedSourceItem?.session?.id }
+    { enabled: !!selectedSourceItem?.session?.id },
   )
-  const { data: sourceBillPreview } = useBillPreview(
-    selectedSourceItem?.session?.id,
-    { enabled: !!selectedSourceItem?.session?.id }
-  )
+  const { data: sourceBillPreview } = useBillPreview(selectedSourceItem?.session?.id, {
+    enabled: !!selectedSourceItem?.session?.id,
+  })
 
   // Tính số phút đã trôi qua
   const elapsedMinutes = React.useMemo(() => {
@@ -139,7 +148,10 @@ export default function TransferMergeTablePage() {
   const availableTargetTables = React.useMemo(() => {
     return tablesData.filter((t) => {
       const s = sessionsByTableId.get(t.id)
-      return t.status === "AVAILABLE" && (!s || s.status === "CLOSED" || s.status === "CANCELLED" || s.status === "MERGED")
+      return (
+        t.status === "AVAILABLE" &&
+        (!s || s.status === "CLOSED" || s.status === "CANCELLED" || s.status === "MERGED")
+      )
     })
   }, [tablesData, sessionsByTableId])
 
@@ -216,7 +228,9 @@ export default function TransferMergeTablePage() {
       return
     }
 
-    const targetItem = activeTablesWithSession.find((item) => item.table.id === selectedTargetTableId)
+    const targetItem = activeTablesWithSession.find(
+      (item) => item.table.id === selectedTargetTableId,
+    )
     if (!targetItem?.session) {
       toast({
         title: "Bàn chính không hợp lệ",
@@ -270,7 +284,7 @@ export default function TransferMergeTablePage() {
               "px-5 py-2 rounded-full text-sm font-semibold transition-all shadow-2xs",
               activeTab === "transfer"
                 ? "bg-[#EA580C] text-white"
-                : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+                : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200",
             )}
           >
             Chuyển bàn
@@ -282,7 +296,7 @@ export default function TransferMergeTablePage() {
               "px-5 py-2 rounded-full text-sm font-semibold transition-all shadow-2xs",
               activeTab === "merge"
                 ? "bg-[#EA580C] text-white"
-                : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+                : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200",
             )}
           >
             Gộp bàn
@@ -337,9 +351,7 @@ export default function TransferMergeTablePage() {
                   </div>
                   <div className="flex justify-between items-center text-gray-600">
                     <span>Thời gian</span>
-                    <span className="font-semibold text-gray-900">
-                      {elapsedMinutes} phút
-                    </span>
+                    <span className="font-semibold text-gray-900">{elapsedMinutes} phút</span>
                   </div>
                   <div className="flex justify-between items-center text-gray-600">
                     <span>Số món</span>
@@ -349,9 +361,7 @@ export default function TransferMergeTablePage() {
                   </div>
                   <div className="flex justify-between items-center text-gray-600 pt-2 border-t border-gray-100">
                     <span>Tạm tính</span>
-                    <span className="font-bold text-gray-900 text-base">
-                      {subtotalFormatted}
-                    </span>
+                    <span className="font-bold text-gray-900 text-base">{subtotalFormatted}</span>
                   </div>
                 </div>
               </div>
@@ -398,7 +408,7 @@ export default function TransferMergeTablePage() {
                           "flex flex-col items-center justify-center h-20 rounded-xl border text-center transition-all cursor-pointer p-2",
                           isSelected
                             ? "border-2 border-[#EA580C] bg-[#FFF7ED] text-[#EA580C] shadow-xs"
-                            : "border-gray-100 bg-[#F9FAFB] text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+                            : "border-gray-100 bg-[#F9FAFB] text-gray-700 hover:border-gray-300 hover:bg-gray-50",
                         )}
                       >
                         <span className="text-base font-bold">{tbl.name}</span>
@@ -408,37 +418,35 @@ export default function TransferMergeTablePage() {
                   })}
                 </div>
               )
+            ) : // Lưới bàn chính cho Gộp bàn
+            mergeTargetTables.length === 0 ? (
+              <div className="flex-1 flex items-center justify-center text-gray-400 text-sm italic">
+                Không có bàn nào khác đang phục vụ để gộp
+              </div>
             ) : (
-              // Lưới bàn chính cho Gộp bàn
-              mergeTargetTables.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center text-gray-400 text-sm italic">
-                  Không có bàn nào khác đang phục vụ để gộp
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
-                  {mergeTargetTables.map((item) => {
-                    const isSelected = selectedTargetTableId === item.table.id
-                    return (
-                      <button
-                        key={item.table.id}
-                        type="button"
-                        onClick={() => setSelectedTargetTableId(item.table.id)}
-                        className={cn(
-                          "flex flex-col items-center justify-center h-20 rounded-xl border text-center transition-all cursor-pointer p-2",
-                          isSelected
-                            ? "border-2 border-[#EA580C] bg-[#FFF7ED] text-[#EA580C] shadow-xs"
-                            : "border-gray-100 bg-[#F9FAFB] text-gray-700 hover:border-gray-300 hover:bg-gray-50"
-                        )}
-                      >
-                        <span className="text-base font-bold">{item.table.name}</span>
-                        <span className="text-xs font-normal text-gray-400 mt-0.5">
-                          {item.session.guestCount ?? 1} khách
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-              )
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+                {mergeTargetTables.map((item) => {
+                  const isSelected = selectedTargetTableId === item.table.id
+                  return (
+                    <button
+                      key={item.table.id}
+                      type="button"
+                      onClick={() => setSelectedTargetTableId(item.table.id)}
+                      className={cn(
+                        "flex flex-col items-center justify-center h-20 rounded-xl border text-center transition-all cursor-pointer p-2",
+                        isSelected
+                          ? "border-2 border-[#EA580C] bg-[#FFF7ED] text-[#EA580C] shadow-xs"
+                          : "border-gray-100 bg-[#F9FAFB] text-gray-700 hover:border-gray-300 hover:bg-gray-50",
+                      )}
+                    >
+                      <span className="text-base font-bold">{item.table.name}</span>
+                      <span className="text-xs font-normal text-gray-400 mt-0.5">
+                        {item.session.guestCount ?? 1} khách
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
             )}
           </div>
         </div>
@@ -470,20 +478,20 @@ export default function TransferMergeTablePage() {
               selectedTargetTableObj ? (
                 <>
                   Cả phiên của <strong>{selectedSourceItem?.table.name}</strong> sẽ chuyển sang{" "}
-                  <strong>{selectedTargetTableObj.name}</strong>. Bàn nguồn về trạng thái trống. Thao tác được ghi nhật ký.
+                  <strong>{selectedTargetTableObj.name}</strong>. Bàn nguồn về trạng thái trống.
+                  Thao tác được ghi nhật ký.
                 </>
               ) : (
                 "Chọn một bàn trống ở bảng bên phải để xác nhận chuyển phiên."
               )
+            ) : selectedTargetTableObj ? (
+              <>
+                Đơn &amp; phiên của <strong>{selectedSourceItem?.table.name}</strong> sẽ gộp vào bàn
+                chính <strong>{selectedTargetTableObj.name}</strong>. Bàn còn lại về trạng thái
+                trống. Thao tác được ghi nhật ký.
+              </>
             ) : (
-              selectedTargetTableObj ? (
-                <>
-                  Đơn &amp; phiên của <strong>{selectedSourceItem?.table.name}</strong> sẽ gộp vào bàn chính{" "}
-                  <strong>{selectedTargetTableObj.name}</strong>. Bàn còn lại về trạng thái trống. Thao tác được ghi nhật ký.
-                </>
-              ) : (
-                "Chọn bàn chính để gộp đơn và phiên vào."
-              )
+              "Chọn bàn chính để gộp đơn và phiên vào."
             )}
           </p>
 
