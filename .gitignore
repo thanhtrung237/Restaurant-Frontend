@@ -6,6 +6,7 @@ dist-ssr
 .env.*
 !.env.example
 *.ps1
+!deploy/deploy-frontend.ps1
 .env.local
 .agents
 .impeccable

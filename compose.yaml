@@ -1,0 +1,24 @@
+name: restaurant-client
+
+services:
+  frontend:
+    image: restaurant-frontend:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /api/v1
+        VITE_WS_URL: /ws
+    restart: unless-stopped
+    ports:
+      - "${HTTP_BIND_ADDRESS:-127.0.0.1}:${FRONTEND_PORT:-8088}:80"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  default:
+    external: true
+    name: ${RESTAURANT_NETWORK_NAME:-restaurant-shared}
