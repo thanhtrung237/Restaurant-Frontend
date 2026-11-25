@@ -237,7 +237,7 @@ export default function OrderedItemsPage() {
       <div className="flex flex-1 flex-col items-center justify-center bg-surface-page px-6">
         <div className="flex flex-col items-center text-center">
           <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-status-danger-subtle">
-            <span className="text-2xl">⚠️</span>
+            <AlertTriangle aria-hidden="true" className="size-7 text-status-danger" />
           </div>
           <h2 className="text-lg font-bold text-text-primary">Không thể tải món đã gọi</h2>
           <p className="mt-2 text-sm text-text-secondary">

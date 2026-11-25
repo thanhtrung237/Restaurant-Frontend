@@ -13,6 +13,7 @@ type ToasterToast = {
   action?: ToastActionElement
   icon?: React.ReactNode
   variant?: ToastVariant
+  replaceKey?: string
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }
@@ -46,8 +47,14 @@ function addToRemoveQueue(toastId: string) {
 
 export const reducer = (state: State, action: Action): State => {
   switch (action.type) {
-    case "ADD_TOAST":
-      return { ...state, toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT) }
+    case "ADD_TOAST": {
+      const { replaceKey } = action.toast
+      const remaining =
+        replaceKey === undefined
+          ? state.toasts
+          : state.toasts.filter((toast) => toast.replaceKey !== replaceKey)
+      return { ...state, toasts: [action.toast, ...remaining].slice(0, TOAST_LIMIT) }
+    }
     case "UPDATE_TOAST":
       return {
         ...state,

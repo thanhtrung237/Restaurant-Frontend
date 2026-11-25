@@ -264,3 +264,89 @@ test("a serving table opens the menu after confirmation", async ({ page, context
   await page.getByRole("button", { name: "Đúng bàn, tiếp tục" }).click()
   await expect(page).toHaveURL(/thuc-don/)
 })
+
+test("restores the unsent cart after reload until it expires or the table session changes", async ({
+  page,
+}) => {
+  const start = Date.now()
+  await page.clock.setFixedTime(start)
+  let sessionId = session.id
+  let rejectOrder = true
+  const dish = {
+    dishId: 7,
+    dishName: "Chả giò",
+    categoryId: 1,
+    categoryName: "Khai vị",
+    basePrice: 59000,
+    effectivePrice: 59000,
+    isHidden: false,
+  }
+
+  await page.route("**/api/v1/**", (route) => {
+    const path = new URL(route.request().url()).pathname
+    if (path.endsWith("/orders") && route.request().method() === "POST") {
+      return rejectOrder
+        ? route.fulfill({ status: 400, json: { message: "Không thể gửi món" } })
+        : route.fulfill({ json: { data: { id: 91 } } })
+    }
+    let data: unknown = []
+    if (path.endsWith("/tables/branch/1/qr/QR-B1-T1")) data = { id: 1 }
+    if (/\/table-sessions\/(10|11|table\/1\/open)$/.test(path)) {
+      data = { ...session, id: sessionId, status: "SERVING" }
+    }
+    if (path.endsWith("/branches/1/menu")) data = [dish]
+    return route.fulfill({ json: { data } })
+  })
+
+  const menu = "/ban/QR-B1-T1/thuc-don"
+  const addDish = page.getByRole("button", { name: "Thêm Chả giò" })
+  const viewCart = page.getByRole("button", { name: /Xem giỏ hàng/ })
+  const emptyCart = page.getByRole("heading", { name: "Giỏ hàng đang trống" })
+  const doublePrice = page.getByText("118.000đ", { exact: true })
+  const triplePrice = page.getByText("177.000đ", { exact: true })
+  const confirmSend = page.getByRole("dialog", { name: "Gửi món xuống bếp?" })
+
+  await page.goto(menu)
+  await addDish.click()
+  await addDish.click()
+  await viewCart.click()
+  await page.reload()
+  await expect(page.getByText("Chả giò", { exact: true })).toBeVisible()
+  await expect(doublePrice).toHaveCount(2)
+
+  await page.clock.setFixedTime(start + 59 * 60 * 1000)
+  await page.reload()
+  await expect(doublePrice).toHaveCount(2)
+  await page.getByRole("button", { name: "Tăng số lượng" }).click()
+
+  await page.clock.setFixedTime(start + 60 * 60 * 1000)
+  await page.reload()
+  await expect(triplePrice).toHaveCount(2)
+
+  await page.clock.setFixedTime(start + 119 * 60 * 1000)
+  await page.reload()
+  await expect(emptyCart).toBeVisible()
+
+  await page.getByRole("button", { name: "Xem thực đơn" }).click()
+  await addDish.click()
+  await viewCart.click()
+  sessionId++
+  await page.reload()
+  await expect(emptyCart).toBeVisible()
+
+  await page.getByRole("button", { name: "Xem thực đơn" }).click()
+  await addDish.click()
+  await viewCart.click()
+  await page.getByRole("button", { name: "Gửi món", exact: true }).click()
+  await confirmSend.getByRole("button", { name: "Gửi món", exact: true }).click()
+  await expect(page.getByText("Lỗi gửi order", { exact: true })).toBeVisible()
+  await page.reload()
+  await expect(page.getByText("Chả giò", { exact: true })).toBeVisible()
+
+  rejectOrder = false
+  await page.getByRole("button", { name: "Gửi món", exact: true }).click()
+  await confirmSend.getByRole("button", { name: "Gửi món", exact: true }).click()
+  await expect(page.getByRole("heading", { name: "Đã gửi món!" })).toBeVisible()
+  await page.reload()
+  await expect(emptyCart).toBeVisible()
+})

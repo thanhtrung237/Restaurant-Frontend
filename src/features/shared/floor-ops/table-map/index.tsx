@@ -6,7 +6,7 @@ import { useTakeawayOrders } from "@/api/takeaway-orders.api"
 import { ServiceModeLinks, TakeawayOrders } from "../TakeawayOrders"
 import { takeawayCreatePath } from "@/app/router/paths/takeaway.paths"
 import { StaffCallNotice } from "@/features/shared/floor-ops/StaffCallNotice"
-import { Bell, CalendarCheck, Plus, ArrowRightLeft, CircleAlert } from "lucide-react"
+import { Bell, CalendarCheck, Plus, ArrowRightLeft, CircleAlert, ShoppingBag } from "lucide-react"
 import { Chip } from "@/components/common/Chip"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { NotificationBell } from "@/components/layout/NotificationBell"
@@ -439,7 +439,7 @@ function BranchTableMap({ branchId }: { branchId?: number }) {
   }
 
   return (
-    <div className="flex flex-1 flex-col min-h-screen bg-surface-page">
+    <div className="@container/table-map flex min-h-screen flex-1 flex-col bg-surface-page">
       {/* ============================================================
           1. HEADER BAR: TIÊU ĐỀ + THỐNG KÊ + ACTIONS
           Theo Figma "Desktop / Sơ đồ bàn": vùng tiêu đề là thanh nền TRẮNG
@@ -448,15 +448,16 @@ function BranchTableMap({ branchId }: { branchId?: number }) {
           ============================================================ */}
       <PageHeader
         title="Sơ đồ bàn"
+        actionsClassName="min-w-0 lg:shrink-0"
         subtitle={
           headerStatus ??
           `${totalCount} bàn · ${occupiedCount} đang phục vụ · ${awaitingPaymentCount} chờ thanh toán`
         }
         mobileSubtitle={headerSubtitle}
         actions={
-          <>
+          <div className="flex min-w-0 w-full flex-nowrap items-center justify-end gap-2">
             {/* Ô tìm kiếm — ẩn ở tablet cho đỡ chật (Figma 834 không có ô này) */}
-            <div className="hidden w-56 lg:block lg:w-64">
+            <div className="hidden w-36 shrink-0 lg:block @min-[63rem]/table-map:w-40 @min-[76rem]/table-map:w-64">
               <SearchInput
                 aria-label="Tìm bàn"
                 value={searchQuery}
@@ -469,13 +470,18 @@ function BranchTableMap({ branchId }: { branchId?: number }) {
             </div>
 
             {/* Chuông thông báo real-time qua WebSocket (FR-SRV-03, FR-CUS-10, FR-CUS-07) */}
-            <NotificationBell variant="header" />
+            <NotificationBell variant="header" className="shrink-0" />
             {branchId && (
               <Link
                 to={takeawayCreatePath(pathname)}
-                className={buttonVariants({ variant: "outline" })}
+                title="Đơn mang về"
+                className={cn(
+                  buttonVariants({ variant: "outline" }),
+                  "h-10 px-2.5 @min-[63rem]/table-map:px-3.5",
+                )}
               >
-                + Đơn mang về
+                <ShoppingBag aria-hidden="true" className="@min-[63rem]/table-map:hidden" />
+                <span className="sr-only @min-[63rem]/table-map:not-sr-only">+ Đơn mang về</span>
               </Link>
             )}
 
@@ -484,13 +490,12 @@ function BranchTableMap({ branchId }: { branchId?: number }) {
               type="button"
               variant="outline"
               disabled={!canUseTables}
+              title="Danh sách đặt"
               onClick={() => setIsReservationPanelOpen(true)}
-              className="h-10 border-border-strong bg-surface-card px-4 text-sm font-semibold text-text-primary hover:bg-surface-muted hover:text-text-primary gap-2 shadow-2xs"
+              className="h-10 gap-1.5 border-border-strong bg-surface-card px-2.5 text-sm font-semibold text-text-primary shadow-2xs hover:bg-surface-muted hover:text-text-primary @min-[63rem]/table-map:px-3.5"
             >
               <CalendarCheck className="size-4 text-text-secondary" />
-              {/* Tablet chỉ hiện icon + số đếm, desktop mới có chữ (Figma 834) */}
-              <span className="hidden lg:inline">Danh sách đặt</span>
-              <span className="sr-only lg:hidden">Danh sách đặt</span>
+              <span className="sr-only @min-[63rem]/table-map:not-sr-only">Danh sách đặt</span>
               {canUseTables && reservedCount > 0 ? (
                 <span className="flex size-5 items-center justify-center rounded-full bg-[#2E90FA] text-[11px] font-bold text-white">
                   {reservedCount}
@@ -503,6 +508,7 @@ function BranchTableMap({ branchId }: { branchId?: number }) {
               type="button"
               variant="outline"
               disabled={!canUseTables}
+              title="Chuyển / Gộp bàn"
               onClick={() => {
                 const transferPath =
                   role === APP_ROLE.BRANCH_MANAGER
@@ -514,11 +520,10 @@ function BranchTableMap({ branchId }: { branchId?: number }) {
                         : WAITER_PATHS.TRANSFER_MERGE_TABLE
                 navigate(transferPath)
               }}
-              className="h-10 border-border-strong bg-surface-card px-4 text-sm font-semibold text-text-primary hover:bg-surface-muted hover:text-text-primary gap-2 shadow-2xs"
+              className="h-10 gap-1.5 border-border-strong bg-surface-card px-2.5 text-sm font-semibold text-text-primary shadow-2xs hover:bg-surface-muted hover:text-text-primary @min-[63rem]/table-map:px-3.5"
             >
               <ArrowRightLeft className="size-4 text-text-secondary" />
-              <span className="hidden lg:inline">Chuyển / Gộp bàn</span>
-              <span className="sr-only lg:hidden">Chuyển / Gộp bàn</span>
+              <span className="sr-only @min-[63rem]/table-map:not-sr-only">Chuyển / Gộp bàn</span>
             </Button>
 
             {isBranchInactive || !canReserve ? null : (
@@ -539,14 +544,14 @@ function BranchTableMap({ branchId }: { branchId?: number }) {
                     }
                     setIsReservationModalOpen(true)
                   }}
-                  className="h-10 bg-brand-primary px-5 text-sm font-semibold text-text-on-brand hover:bg-brand-primary-hover shadow-xs gap-1.5"
+                  className="h-10 gap-1.5 bg-brand-primary px-3 text-sm font-semibold text-text-on-brand shadow-xs hover:bg-brand-primary-hover @min-[63rem]/table-map:px-4"
                 >
                   <Plus className="size-4" strokeWidth={2.5} />
                   <span>Đặt bàn</span>
                 </Button>
               </>
             )}
-          </>
+          </div>
         }
       />
 

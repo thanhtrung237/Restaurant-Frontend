@@ -107,20 +107,21 @@ export function ReportHeaderActions({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex w-full min-w-0 flex-nowrap items-center justify-end gap-2 @min-[82rem]/report:gap-3">
         {/* Branch / Metric Selector */}
         {isBranchCompareTab ? (
-          <DropdownMenu>
+          <DropdownMenu className="min-w-0 max-w-48">
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="flex items-center gap-2 rounded-xl border border-border-default/90 bg-surface-card px-4 py-2 text-sm font-medium text-text-primary shadow-2xs hover:bg-surface-muted transition-colors cursor-pointer"
+                title={selectedMetric}
+                className="flex h-10 w-full min-w-0 cursor-pointer items-center gap-2 rounded-xl border border-border-default/90 bg-surface-card px-3 text-sm font-medium text-text-primary shadow-2xs transition-colors hover:bg-surface-muted"
               >
-                <span>{selectedMetric}</span>
-                <ChevronDown className="size-4 text-text-tertiary" />
+                <span className="truncate">{selectedMetric}</span>
+                <ChevronDown className="size-4 shrink-0 text-text-tertiary" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="right" className="w-48">
+            <DropdownMenuContent align="left" className="w-48">
               {MOCK_COMPARE_METRICS.map((m) => (
                 <DropdownMenuItem
                   key={m.value}
@@ -133,18 +134,19 @@ export function ReportHeaderActions({
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <DropdownMenu>
+          <DropdownMenu className="min-w-0 max-w-48">
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
                 disabled={isBranchManager}
-                className="flex items-center gap-2 rounded-xl border border-border-default/90 bg-surface-card px-4 py-2 text-sm font-medium text-text-primary shadow-2xs hover:bg-surface-muted transition-colors disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+                title={branchSelectorText}
+                className="flex h-10 w-full min-w-0 cursor-pointer items-center gap-2 rounded-xl border border-border-default/90 bg-surface-card px-3 text-sm font-medium text-text-primary shadow-2xs transition-colors hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <span>{branchSelectorText}</span>
-                <ChevronDown className="size-4 text-text-tertiary" />
+                <span className="truncate">{branchSelectorText}</span>
+                <ChevronDown className="size-4 shrink-0 text-text-tertiary" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="right" className="w-56">
+            <DropdownMenuContent align="left" className="w-56">
               {!isBranchManager && (
                 <>
                   <button
@@ -190,7 +192,12 @@ export function ReportHeaderActions({
         )}
 
         {/* Quick Presets Pills on Toolbar (1-click immediate access) */}
-        <div className="hidden lg:flex items-center rounded-xl bg-surface-muted p-1 border border-border-default/70">
+        <div
+          className={cn(
+            "hidden h-10 shrink-0 items-center rounded-xl border border-border-default/70 bg-surface-muted p-1 whitespace-nowrap",
+            currentTab === "hourly" ? "@min-[90rem]/report:flex" : "@min-[82rem]/report:flex",
+          )}
+        >
           <button
             type="button"
             onClick={() => handleToolbarPreset("today")}
@@ -245,7 +252,7 @@ export function ReportHeaderActions({
         <TimeRangeDropdown
           range={dateRange}
           onChangeRange={onChangeRange}
-          className="hidden md:flex"
+          className="hidden h-10 min-w-0 shrink gap-1.5 px-2.5 md:flex @min-[56rem]/report:gap-2 @min-[56rem]/report:px-3.5"
         />
 
         {/* HourlyTimePicker — chỉ hiện khi tab "Theo khung giờ" được chọn */}
@@ -255,28 +262,29 @@ export function ReportHeaderActions({
             endHour={hourlyEndHour}
             onStartHourChange={onHourlyStartHourChange}
             onEndHourChange={onHourlyEndHourChange}
-            className="hidden md:flex"
+            className="hidden h-10 min-w-0 gap-1.5 px-2.5 md:flex @min-[56rem]/report:px-3.5"
           />
         )}
 
         {/* Export Button & Dropdown (FR-RPT-05: Xuất .xlsx / .csv) */}
         {onExport && (
-          <DropdownMenu>
+          <DropdownMenu className="shrink-0">
             <DropdownMenuTrigger asChild>
               <Button
                 disabled={isExporting}
-                className="rounded-xl bg-brand-primary px-4 py-2 text-sm font-semibold text-text-on-brand shadow-2xs hover:bg-brand-primary-hover active:scale-[0.99] transition-all flex items-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                title="Xuất báo cáo"
+                className="h-10 shrink-0 cursor-pointer gap-2 rounded-xl bg-brand-primary px-3 text-sm font-semibold text-text-on-brand shadow-2xs transition-colors hover:bg-brand-primary-hover disabled:cursor-not-allowed disabled:opacity-60 @min-[56rem]/report:px-4"
               >
                 {isExporting ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    <span>Đang xuất...</span>
+                    <span className="sr-only @min-[56rem]/report:not-sr-only">Đang xuất...</span>
                   </>
                 ) : (
                   <>
                     <Download className="size-4" />
-                    <span>Xuất báo cáo</span>
-                    <ChevronDown className="size-3.5 opacity-80" />
+                    <span className="sr-only @min-[56rem]/report:not-sr-only">Xuất báo cáo</span>
+                    <ChevronDown className="hidden size-3.5 opacity-80 @min-[56rem]/report:block" />
                   </>
                 )}
               </Button>

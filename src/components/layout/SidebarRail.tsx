@@ -10,7 +10,7 @@ import { NotificationBell } from "@/components/layout/NotificationBell"
 import { cn } from "@/lib/utils"
 
 /**
- * SidebarRail — thanh điều hướng thu gọn cho TABLET (768–1023px), theo Figma
+ * SidebarRail — thanh điều hướng thu gọn cho tablet và desktop, theo Figma
  * "Sơ đồ bàn · Tablet (834)" và "Sidebar Rail".
  *
  * Bố cục dọc: logo · chip chi nhánh ("Q1 ▾") · danh sách icon · avatar + đăng xuất.
@@ -19,7 +19,13 @@ import { cn } from "@/lib/utils"
  * BottomNav. Trước đây component này giữ mảng `DEFAULT_SIDEBAR_RAIL_ITEMS` hard-code
  * 8 mục, nên vai trò nào cũng thấy đủ 8 icon kể cả Phục vụ hay Thu ngân.
  */
-export function SidebarRail() {
+export function SidebarRail({
+  className,
+  toggle,
+}: {
+  className?: string
+  toggle?: React.ReactNode
+}) {
   const account = useAuthStore((s) => s.account)
   const role = useAuthStore((s) => s.role)
   const { logout, isLoggingOut } = useLogout()
@@ -35,7 +41,12 @@ export function SidebarRail() {
       .toUpperCase() || "QL"
 
   return (
-    <aside className="hidden h-screen w-[72px] shrink-0 flex-col items-center gap-1 border-r border-border-default bg-surface-card py-3 select-none md:flex lg:hidden">
+    <aside
+      className={cn(
+        "h-dvh w-[72px] shrink-0 flex-col items-center gap-1 border-r border-border-default bg-surface-card py-3 select-none",
+        className,
+      )}
+    >
       {/* Logo */}
       <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand-primary shadow-xs">
         <span className="text-lg font-extrabold text-text-on-brand">P</span>
@@ -75,9 +86,16 @@ export function SidebarRail() {
         ))}
       </nav>
 
+      {toggle}
+
       {/* Chân: avatar + chuông thông báo + đăng xuất */}
-      <div className="flex w-full flex-col items-center gap-2 border-t border-border-default/60 pt-3">
-        <Avatar className="size-9 bg-text-primary text-text-on-brand text-xs font-bold">
+      <div className="flex w-full shrink-0 flex-col items-center gap-2 border-t border-border-default/60 pt-3">
+        <Avatar
+          className="size-9 bg-text-primary text-text-on-brand text-xs font-bold"
+          title={[account?.fullName, role ? APP_ROLE_LABEL[role] : null]
+            .filter(Boolean)
+            .join(" — ")}
+        >
           <AvatarFallback className="bg-text-primary text-text-on-brand">{initials}</AvatarFallback>
         </Avatar>
         <span className="sr-only">

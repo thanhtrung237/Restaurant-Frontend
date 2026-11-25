@@ -1,5 +1,66 @@
 import { expect, test } from "@playwright/test"
 
+test("keeps report filters and export aligned when resizing the page", async ({ page }) => {
+  await page.setViewportSize({ width: 1760, height: 900 })
+  await page.addInitScript(() => {
+    localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
+    localStorage.setItem(
+      "pho-viet-auth",
+      JSON.stringify({
+        version: 0,
+        state: {
+          role: "RESTAURANT_ADMIN",
+          branchId: null,
+          accessToken: "test-token",
+          isAuthenticated: true,
+          account: { id: 1, restaurantId: 1, fullName: "Quản trị" },
+        },
+      }),
+    )
+  })
+  await page.route("**/ws/**", (route) => route.abort())
+  await page.route("**/api/v1/**", (route) => {
+    const path = new URL(route.request().url()).pathname
+    if (path.endsWith("/reports/export")) {
+      return route.fulfill({ contentType: "text/csv", body: "date,total\n2026-11-26,0" })
+    }
+    const data = path.endsWith("/branches/restaurant/1")
+      ? [{ id: 2, name: "Phở Việt Quận 1" }]
+      : null
+    return route.fulfill({ json: { data } })
+  })
+
+  await page.goto("/quan-tri-nha-hang/bao-cao")
+  const exportButton = page.getByRole("button", { name: "Xuất báo cáo", exact: true })
+  const branch = page.getByRole("button", { name: "Tất cả chi nhánh", exact: true })
+  const date = page.getByRole("button", { name: /Chọn khoảng thời gian báo cáo/ })
+  await expect(page.getByRole("button", { name: "Hôm qua", exact: true })).toBeVisible()
+
+  for (const width of [1760, 1440, 1280, 1024, 834, 768]) {
+    await page.setViewportSize({ width, height: 900 })
+    await expect(exportButton).toBeInViewport({ ratio: 1 })
+    const [branchBounds, dateBounds, exportBounds] = await Promise.all([
+      branch.boundingBox(),
+      date.boundingBox(),
+      exportButton.boundingBox(),
+    ])
+    expect(branchBounds!.y).toBe(dateBounds!.y)
+    expect(dateBounds!.y).toBe(exportBounds!.y)
+    expect(exportBounds!.x).toBeGreaterThan(dateBounds!.x + dateBounds!.width)
+  }
+
+  await page.getByRole("button", { name: "Mở rộng thanh bên" }).click()
+  await page.getByRole("tab", { name: "Theo khung giờ" }).click()
+  await expect(exportButton).toBeInViewport({ ratio: 1 })
+  await date.click()
+  await expect(page.getByRole("dialog").getByRole("button", { name: "Hôm qua" })).toBeVisible()
+  await page.keyboard.press("Escape")
+  await exportButton.click()
+  const downloaded = page.waitForEvent("download")
+  await page.getByRole("button", { name: /Xuất CSV/ }).click()
+  expect((await downloaded).suggestedFilename()).toMatch(/^bao-cao-khung-gio-.*\.csv$/)
+})
+
 for (const width of [390, 1280]) {
   test(`report calendar jumps to past years at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 })

@@ -1,6 +1,6 @@
 import * as React from "react"
 import { Outlet, useLocation, useNavigate } from "react-router-dom"
-import { MoreHorizontal, Building2 } from "lucide-react"
+import { MoreHorizontal, Building2, PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { Sidebar } from "@/components/layout/Sidebar"
 import { SidebarRail } from "@/components/layout/SidebarRail"
 import { NavDrawer } from "@/components/layout/NavDrawer"
@@ -19,13 +19,25 @@ import { isSubScreenRoute } from "@/config/sub-screen-routes"
 import { PageHeaderContext, usePageHeaderState, usePageHeaderValue } from "@/hooks/use-page-header"
 import { useStaffWebSocket } from "@/hooks/use-staff-websocket"
 
+const DESKTOP_SIDEBAR_QUERY = "(min-width: 64rem)"
+
+function subscribeToDesktopSidebar(onChange: () => void) {
+  const mediaQuery = window.matchMedia(DESKTOP_SIDEBAR_QUERY)
+  mediaQuery.addEventListener("change", onChange)
+  return () => mediaQuery.removeEventListener("change", onChange)
+}
+
+function isDesktopSidebar() {
+  return window.matchMedia(DESKTOP_SIDEBAR_QUERY).matches
+}
+
 /**
  * Layout dùng chung cho khu vực NHÂN VIÊN: Phục vụ, Thu ngân, Quản lý chi nhánh,
  * Quản trị nhà hàng.
  *
- * Ba cấp điều hướng theo Figma:
- *  - lg+ (≥1024, PC)       : Sidebar đầy đủ.
- *  - md–lg (768–1023, Tab) : SidebarRail chỉ icon + chip chi nhánh. KHÔNG có BottomNav.
+ * Bố cục điều hướng mặc định:
+ *  - lg+ (≥1024, PC)       : Sidebar đầy đủ, có thể thu gọn.
+ *  - md–lg (768–1023, Tab) : SidebarRail chỉ icon + chip chi nhánh, có thể mở rộng.
  *  - <md (Mobile)          : MobileHeader (biến thể "app") + BottomNav + NavDrawer.
  *
  * Mọi biến thể lấy mục menu từ cùng một nguồn `getNavGroupsForRole(role)` thông qua
@@ -45,6 +57,17 @@ function StaffLayoutInner() {
   const location = useLocation()
   const role = useAuthStore((s) => s.role)
   const branchId = useAuthStore((s) => s.branchId)
+  const desktopSidebar = React.useSyncExternalStore(subscribeToDesktopSidebar, isDesktopSidebar)
+  const [sidebarExpanded, setSidebarExpanded] = React.useState<boolean | null>(null)
+  const isSidebarExpanded = sidebarExpanded ?? desktopSidebar
+  const sidebarToggleLabel = isSidebarExpanded ? "Thu gọn thanh bên" : "Mở rộng thanh bên"
+  const restoreSidebarFocus = React.useRef(false)
+  const focusSidebarToggle = React.useCallback((button: HTMLButtonElement | null) => {
+    if (button && restoreSidebarFocus.current) {
+      restoreSidebarFocus.current = false
+      button.focus({ preventScroll: true })
+    }
+  }, [])
 
   // A3: Kết nối WebSocket real-time (T-01) — tự ngắt/kết nối lại khi branchId thay đổi
   useStaffWebSocket()
@@ -99,12 +122,45 @@ function StaffLayoutInner() {
     }
   }
 
+  const sidebarToggle = (
+    <button
+      ref={focusSidebarToggle}
+      type="button"
+      aria-label={sidebarToggleLabel}
+      title={sidebarToggleLabel}
+      aria-controls="staff-sidebar-expanded"
+      aria-expanded={isSidebarExpanded}
+      onClick={() => {
+        restoreSidebarFocus.current = true
+        setSidebarExpanded(!isSidebarExpanded)
+      }}
+      className={`flex h-11 shrink-0 cursor-pointer items-center gap-3 rounded-lg text-sm font-medium text-text-secondary transition-colors hover:bg-surface-muted hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-primary ${
+        isSidebarExpanded ? "mx-3 mb-2 px-3" : "mb-1 w-11 justify-center"
+      }`}
+    >
+      {isSidebarExpanded ? (
+        <>
+          <PanelLeftClose aria-hidden="true" className="size-4.5" />
+          <span>Thu gọn</span>
+        </>
+      ) : (
+        <PanelLeftOpen aria-hidden="true" className="size-5" />
+      )}
+    </button>
+  )
+
   return (
     <div className="flex min-h-screen bg-surface-page">
-      {/* PC: sidebar đầy đủ (tự ẩn dưới lg) */}
-      <Sidebar />
-      {/* Tablet: thanh icon thu gọn (tự ẩn ngoài khoảng md–lg) */}
-      <SidebarRail />
+      <div className="sticky top-0 z-30 hidden h-dvh shrink-0 md:block">
+        <Sidebar
+          className={isSidebarExpanded ? "flex" : "hidden"}
+          toggle={isSidebarExpanded ? sidebarToggle : null}
+        />
+        <SidebarRail
+          className={isSidebarExpanded ? "hidden" : "flex"}
+          toggle={isSidebarExpanded ? null : sidebarToggle}
+        />
+      </div>
 
       <main className="flex min-w-0 flex-1 flex-col overflow-x-hidden pb-16 md:pb-0">
         {/* Mobile: header dạng app. Ẩn từ md trở lên vì đã có Sidebar/Rail. */}

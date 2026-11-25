@@ -174,7 +174,7 @@ export default function InvoicePage() {
               <ReceiptText className="mt-0.5 size-4 shrink-0 text-text-tertiary" />
               <p className="text-sm text-text-secondary">
                 <strong className="text-text-primary">Chưa có hoá đơn</strong> — đang chờ thu ngân
-                lập hoá đơn. Số bên dưới là <strong>tạm tính</strong> từ backend.
+                lập hoá đơn.
               </p>
             </div>
           ) : null}

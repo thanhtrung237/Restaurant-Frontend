@@ -118,7 +118,12 @@ export default function SearchDishPage() {
       imageUrl: dish.imageUrl || "",
       unitPrice: dish.effectivePrice,
     })
-    toast({ title: "Đã thêm vào giỏ", description: dish.dishName, variant: "success" })
+    toast({
+      title: "Đã thêm vào giỏ",
+      description: dish.dishName,
+      variant: "success",
+      replaceKey: "customer-cart-add",
+    })
   }
 
   function goToDishDetail(dishId: string) {

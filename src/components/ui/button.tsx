@@ -9,16 +9,16 @@ import { cn } from "@/lib/utils"
  *   primary / primary-disabled, outline / outline-disabled, link / link-disabled
  */
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-button text-sm font-semibold transition-colors outline-none disabled:pointer-events-none disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-brand-primary/40 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-button text-sm font-semibold transition-colors outline-none disabled:pointer-events-none disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-brand-primary/65 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-card [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         // Nền brand/primary, chữ text/on-brand, hover -> brand/primary-hover
         default:
-          "bg-brand-primary text-text-on-brand hover:bg-brand-primary-hover disabled:bg-surface-muted disabled:text-text-tertiary",
+          "bg-brand-primary text-text-on-brand shadow-2xs hover:bg-brand-primary-hover disabled:bg-surface-muted disabled:shadow-none disabled:text-text-tertiary",
         // Viền brand/primary, chữ brand/primary, nền trong suốt
         outline:
-          "border border-brand-primary bg-transparent text-brand-primary hover:bg-brand-primary-subtle disabled:border-border-default disabled:text-text-tertiary disabled:hover:bg-transparent",
+          "border border-border-strong bg-surface-card text-brand-primary hover:border-brand-primary/50 hover:bg-brand-primary-subtle disabled:border-border-default disabled:text-text-tertiary disabled:hover:bg-transparent",
         // Chỉ chữ brand/primary, không nền không viền
         link: "bg-transparent text-brand-primary hover:text-brand-primary-hover disabled:text-text-tertiary underline-offset-4 hover:underline",
         // Giữ lại để tương thích chỗ khác trong app đang dùng destructive/secondary/ghost

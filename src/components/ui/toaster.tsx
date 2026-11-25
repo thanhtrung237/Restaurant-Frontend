@@ -22,11 +22,12 @@ export function Toaster() {
 
   return (
     <ToastProvider>
-      {toasts.map(({ id, title, description, action, icon, variant, ...props }) => (
+      {toasts.map(({ id, title, description, action, icon, variant, replaceKey, ...props }) => (
         <Toast
           key={id}
           variant={variant}
           icon={icon ?? DEFAULT_ICON[variant ?? "default"]}
+          className={replaceKey ? "motion-safe:data-[state=open]:animate-none" : undefined}
           {...props}
         >
           {title ? <ToastTitle>{title}</ToastTitle> : null}

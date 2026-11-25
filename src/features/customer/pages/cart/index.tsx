@@ -1,6 +1,16 @@
 import * as React from "react"
 import { useNavigate, useParams, generatePath } from "react-router-dom"
-import { ChevronLeft, Plus, Trash2, ShoppingCart, Lock, Info, Tag } from "lucide-react"
+import {
+  ChevronLeft,
+  Plus,
+  Trash2,
+  ShoppingCart,
+  Lock,
+  Info,
+  Tag,
+  Check,
+  Lightbulb,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -166,7 +176,7 @@ export default function CartPage() {
       })
 
       // Clear cart và hiển thị success
-      clear()
+      clear({ qrCode: qrCode ?? null, tableSession })
       setModal({ kind: "sendSuccess", orderNumber: order.id })
     } catch (error: any) {
       const errorMsg = getErrorMessage(error)
@@ -258,7 +268,7 @@ export default function CartPage() {
 
         <div className="flex flex-1 flex-col items-center justify-center px-6 py-12">
           <div className="mb-6 flex size-20 items-center justify-center rounded-full bg-status-success-subtle">
-            <span className="text-4xl">✓</span>
+            <Check aria-hidden="true" className="size-9 text-status-success" />
           </div>
 
           <h1 className="text-2xl font-bold text-text-primary">Đã gửi món!</h1>
@@ -655,7 +665,7 @@ function CartLineRow({
       {/* Lời nhắc điều kiện KM chưa đủ (FR-CUS-09: ví dụ 'Thêm 1 ly nữa để được giảm 10%') */}
       {hint ? (
         <div className="flex items-center gap-1.5 rounded-lg bg-status-warning-subtle/50 px-2.5 py-1 border border-status-warning/20">
-          <span className="text-xs shrink-0">💡</span>
+          <Lightbulb aria-hidden="true" className="size-3.5 shrink-0 text-status-warning" />
           <p className="text-xs text-[#B54708] font-medium leading-tight">{hint}</p>
         </div>
       ) : null}

@@ -20,7 +20,7 @@
 
 import * as React from "react"
 import { useLocation, useNavigate } from "react-router-dom"
-import { Eye, EyeOff, Loader2, ChevronRight } from "lucide-react"
+import { Eye, EyeOff, Loader2, ChevronRight, Lightbulb } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -237,55 +237,55 @@ export default function LoginPage() {
   const isSubmitting = loginMutation.isPending || isResolving
 
   return (
-    <div className="flex min-h-screen w-full bg-white">
+    <div className="flex min-h-dvh w-full bg-surface-page">
       {/* -------------------- CỘT TRÁI: BANNER THƯƠNG HIỆU (Desktop) -------------------- */}
-      <div className="hidden lg:flex lg:w-1/2 xl:w-[48%] bg-[#F0522B] flex-col justify-between p-12 xl:p-16 select-none relative overflow-hidden">
+      <div className="relative hidden select-none flex-col justify-between overflow-hidden bg-[#712b21] bg-linear-to-br from-[#3e211e] via-[#712b21] to-[#a73723] p-12 lg:flex lg:w-[44%] xl:p-16">
         {/* Logo & Tên nhà hàng */}
-        <div className="flex items-center gap-3.5 z-10">
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-white shadow-md">
-            <span className="text-2xl font-black text-[#F0522B]">P</span>
+        <div className="relative z-10 flex items-center gap-4">
+          <div className="flex size-12 items-center justify-center rounded-xl bg-white">
+            <span className="text-2xl font-black text-brand-primary">P</span>
           </div>
           <span className="text-2xl font-bold tracking-tight text-white">Phở Việt</span>
         </div>
 
         {/* Thông điệp & Giới thiệu hệ thống */}
-        <div className="z-10 max-w-lg">
-          <h1 className="text-4xl xl:text-5xl font-extrabold leading-[1.2] tracking-tight text-white">
+        <div className="relative z-10 max-w-lg pb-4 xl:pb-10">
+          <h1 className="text-4xl leading-[1.18] font-bold tracking-tight text-balance text-white xl:text-[2.625rem] 2xl:text-5xl">
             Hệ thống quản lý
             <br />
             nhà hàng & gọi món QR
           </h1>
-          <p className="mt-5 text-base xl:text-lg text-white/90 font-normal leading-relaxed">
+          <p className="mt-5 max-w-md text-base leading-relaxed text-pretty text-white/85">
             Quản lý bàn, chế biến, thực đơn, khuyến mãi và báo cáo
           </p>
         </div>
 
         {/* Hoạ tiết trang trí mờ phía sau */}
-        <div className="absolute -bottom-24 -right-24 size-96 rounded-full bg-white/5 pointer-events-none" />
-        <div className="absolute -top-24 -left-24 size-80 rounded-full bg-white/5 pointer-events-none" />
+        <div className="pointer-events-none absolute -right-40 top-[16%] size-112 rounded-full border border-white/20 shadow-[0_0_0_28px_#ffffff09,0_0_0_56px_#ffffff07,0_0_0_84px_#ffffff05]" />
+        <div className="pointer-events-none absolute -right-24 top-[23%] size-80 rounded-full border border-white/10" />
       </div>
 
       {/* -------------------- CỘT PHẢI: FORM ĐĂNG NHẬP -------------------- */}
-      <div className="flex flex-1 flex-col justify-center items-center px-6 py-12 sm:px-10 lg:px-16 xl:px-24 bg-white">
-        <div className="w-full max-w-[420px]">
+      <div className="flex min-w-0 flex-1 flex-col items-center justify-center px-3 py-6 sm:px-8 sm:py-10 lg:px-12">
+        <div className="w-full max-w-[29rem] rounded-card border border-border-default bg-surface-card px-5 py-7 shadow-sm sm:px-8 sm:py-9">
           {/* Header Mobile: Hiện logo khi ở màn hình nhỏ */}
-          <div className="flex lg:hidden items-center gap-3 mb-8">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-[#F0522B] text-white shadow-sm">
+          <div className="mb-6 flex items-center gap-3 lg:hidden">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-brand-primary text-white shadow-sm">
               <span className="text-xl font-black">P</span>
             </div>
-            <span className="text-xl font-bold text-[#212529]">Phở Việt</span>
+            <span className="text-xl font-bold text-text-primary">Phở Việt</span>
           </div>
 
           {/* -------------------- BƯỚC 2: CHỌN VAI TRÒ (NẾU CÓ NHIỀU VAI TRÒ) -------------------- */}
           {choices && pendingAccount ? (
             <div className="space-y-6">
               <div>
-                <h2 className="text-3xl font-extrabold tracking-tight text-[#212529]">
+                <h2 className="text-2xl font-bold tracking-tight sm:text-3xl text-text-primary">
                   Chọn vai trò đăng nhập
                 </h2>
-                <p className="mt-2 text-sm text-[#868E96]">
+                <p className="mt-2 text-sm text-text-tertiary">
                   Tài khoản{" "}
-                  <span className="font-semibold text-[#212529]">{pendingAccount.fullName}</span> có
+                  <span className="font-semibold text-[#292723]">{pendingAccount.fullName}</span> có
                   nhiều vai trò — chọn vai trò để tiếp tục:
                 </p>
               </div>
@@ -296,19 +296,19 @@ export default function LoginPage() {
                     key={choice.assignment.id}
                     type="button"
                     onClick={() => handleChooseAssignment(choice)}
-                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-neutral-200 bg-white p-4 text-left transition-all hover:border-[#F0522B] hover:shadow-sm"
+                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-border-default bg-surface-card p-4 text-left transition-colors hover:border-brand-primary hover:bg-brand-primary-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-base font-semibold text-[#212529]">
+                      <p className="truncate text-base font-semibold text-text-primary">
                         {APP_ROLE_LABEL[choice.role]}
                       </p>
-                      <p className="truncate text-xs text-[#868E96] mt-0.5">
+                      <p className="truncate text-xs text-text-tertiary mt-0.5">
                         {choice.assignment.branchName
                           ? `Chi nhánh ${choice.assignment.branchName}`
                           : "Toàn nhà hàng"}
                       </p>
                     </div>
-                    <ChevronRight className="size-5 shrink-0 text-[#868E96]" />
+                    <ChevronRight className="size-5 shrink-0 text-text-tertiary" />
                   </button>
                 ))}
               </div>
@@ -327,8 +327,10 @@ export default function LoginPage() {
             <div>
               {/* Tiêu đề */}
               <div className="mb-7">
-                <h2 className="text-3xl font-extrabold tracking-tight text-[#212529]">Đăng nhập</h2>
-                <p className="mt-1.5 text-sm text-[#868E96] font-medium">
+                <h2 className="text-2xl font-bold tracking-tight sm:text-3xl text-text-primary">
+                  Đăng nhập
+                </h2>
+                <p className="mt-1.5 text-sm text-text-tertiary font-medium">
                   Dành cho nhân viên nhà hàng
                 </p>
               </div>
@@ -342,7 +344,7 @@ export default function LoginPage() {
                   <div className="space-y-1.5">
                     <label
                       htmlFor="restaurantCode"
-                      className="text-sm font-semibold text-[#212529]"
+                      className="text-sm font-semibold text-text-primary"
                     >
                       Mã nhà hàng
                     </label>
@@ -356,25 +358,29 @@ export default function LoginPage() {
                         setError(null)
                       }}
                       disabled={isSubmitting}
-                      className="h-11 rounded-xl border-neutral-200 bg-white px-3.5 text-sm transition-colors focus:border-[#F0522B] focus:ring-1 focus:ring-[#F0522B]"
+                      className="h-12 rounded-xl px-3.5 text-base sm:text-sm"
                     />
-                    <p className="text-xs text-neutral-500 mt-1">
-                      💡 Quản trị nền tảng không cần nhập mã nhà hàng
+                    <p className="mt-1 flex items-start gap-1.5 text-xs text-text-tertiary">
+                      <Lightbulb
+                        aria-hidden="true"
+                        className="mt-0.5 size-3 shrink-0 text-brand-primary"
+                      />
+                      Quản trị nền tảng không cần nhập mã nhà hàng
                     </p>
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3.5">
+                  <div className="rounded-xl border border-border-default bg-surface-muted p-3.5">
                     <div className="flex items-center justify-between">
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-medium text-neutral-500 mb-0.5">Đăng nhập vào</p>
-                        <p className="text-sm font-semibold text-[#212529] truncate">
+                        <p className="text-sm font-semibold text-text-primary truncate">
                           Mã nhà hàng: {restaurantCode}
                         </p>
                       </div>
                       <button
                         type="button"
                         onClick={handleChangeRestaurant}
-                        className="ml-3 shrink-0 text-xs font-medium text-[#F0522B] hover:underline"
+                        className="ml-3 shrink-0 text-xs font-medium text-brand-primary hover:underline"
                       >
                         Đổi
                       </button>
@@ -384,7 +390,7 @@ export default function LoginPage() {
 
                 {/* Email hoặc số điện thoại */}
                 <div className="space-y-1.5">
-                  <label htmlFor="username" className="text-sm font-semibold text-[#212529]">
+                  <label htmlFor="username" className="text-sm font-semibold text-text-primary">
                     Tên đăng nhập
                   </label>
                   <Input
@@ -397,13 +403,13 @@ export default function LoginPage() {
                       setError(null)
                     }}
                     disabled={isSubmitting}
-                    className="h-11 rounded-xl border-neutral-200 bg-white px-3.5 text-sm transition-colors focus:border-[#F0522B] focus:ring-1 focus:ring-[#F0522B]"
+                    className="h-12 rounded-xl px-3.5 text-base sm:text-sm"
                   />
                 </div>
 
                 {/* Mật khẩu */}
                 <div className="space-y-1.5">
-                  <label htmlFor="password" className="text-sm font-semibold text-[#212529]">
+                  <label htmlFor="password" className="text-sm font-semibold text-text-primary">
                     Mật khẩu
                   </label>
                   <div className="relative">
@@ -418,7 +424,7 @@ export default function LoginPage() {
                         setError(null)
                       }}
                       disabled={isSubmitting}
-                      className="h-11 rounded-xl border-neutral-200 bg-white px-3.5 pr-10 text-sm transition-colors focus:border-[#F0522B] focus:ring-1 focus:ring-[#F0522B]"
+                      className="h-12 rounded-xl px-3.5 pr-11 text-base sm:text-sm"
                       onKeyDown={(e) => {
                         // Enter để submit
                         if (e.key === "Enter" && !isSubmitting) {
@@ -439,13 +445,13 @@ export default function LoginPage() {
                 </div>
 
                 {/* Hàng tiện ích: Ghi nhớ đăng nhập & Quên mật khẩu */}
-                <div className="flex items-center justify-between pt-1">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-1">
                   <label className="flex items-center gap-2 cursor-pointer select-none group">
                     <Checkbox
                       id="rememberMe"
                       checked={rememberMe}
                       onCheckedChange={(checked) => setRememberMe(Boolean(checked))}
-                      className="size-4 rounded-md data-[state=checked]:bg-[#F0522B] data-[state=checked]:border-[#F0522B]"
+                      className="size-4 rounded-md data-[state=checked]:bg-brand-primary data-[state=checked]:border-brand-primary"
                     />
                     <span className="text-sm text-neutral-600 font-normal group-hover:text-neutral-900 transition-colors">
                       Ghi nhớ đăng nhập
@@ -455,7 +461,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => navigate(AUTH_PATHS.FORGOT_PASSWORD)}
-                    className="text-sm font-medium text-[#F0522B] hover:underline transition-all"
+                    className="text-sm font-medium text-brand-primary hover:underline transition-all"
                     tabIndex={-1}
                   >
                     Quên mật khẩu?
@@ -465,7 +471,7 @@ export default function LoginPage() {
                 {/* Nút Đăng nhập */}
                 <Button
                   type="submit"
-                  className="h-11 w-full rounded-xl bg-[#F0522B] text-base font-semibold text-white shadow-sm hover:bg-[#D8431F] transition-all mt-2"
+                  className="mt-2 h-12 w-full text-base"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
@@ -473,7 +479,7 @@ export default function LoginPage() {
                 </Button>
 
                 {/* Chú thích vai trò */}
-                <p className="text-xs text-neutral-400 text-center leading-relaxed pt-2">
+                <p className="pt-2 text-center text-xs leading-relaxed text-text-tertiary">
                   Tài khoản do quản lý cấp theo vai trò (Chủ nhà hàng · Quản lý chi nhánh · Thu ngân
                   · Phục vụ).
                 </p>

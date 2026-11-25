@@ -8,6 +8,7 @@ export interface StaffNotification {
   tableSessionId: number
   tableName: string
   type:
+    | "TABLE_OPEN_REQUESTED"
     | "NEW_ORDER"
     | "PAYMENT_REQUESTED"
     | "STAFF_CALL"

@@ -206,9 +206,10 @@ export function ReportDashboard({
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface-page">
+    <div className="@container/report flex min-h-screen flex-col bg-surface-page">
       <PageHeader
         title={headerMeta.title}
+        actionsClassName="min-w-0 flex-1"
         subtitle={
           currentTab === "daily"
             ? dateDisplayLabel

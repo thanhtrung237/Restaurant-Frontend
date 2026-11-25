@@ -17,6 +17,7 @@ export interface PageHeaderProps {
   mobileSubtitle?: string
   /** Cụm nút/điều khiển bên phải thanh tiêu đề (desktop). */
   actions?: React.ReactNode
+  actionsClassName?: string
   /**
    * Điều khiển riêng của trang trên MobileHeader — bộ lọc phạm vi hoặc menu "⋯".
    * BẮT BUỘC memo hoá ở nơi gọi (so sánh bằng tham chiếu).
@@ -47,6 +48,7 @@ export function PageHeader({
   subtitle,
   mobileSubtitle,
   actions,
+  actionsClassName,
   mobileHeaderActions,
   tabs,
   className,
@@ -62,17 +64,23 @@ export function PageHeader({
 
   return (
     <div className={cn("hidden md:block", className)}>
-      <div className="flex flex-col gap-4 border-b border-border-default bg-surface-card px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+      <div className="flex flex-col gap-4 border-b border-border-default bg-surface-card px-5 py-5 lg:flex-row lg:items-center lg:justify-between lg:px-8 lg:py-6">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary">{title}</h1>
-          {subtitle ? <div className="mt-1 text-sm text-text-tertiary">{subtitle}</div> : null}
+          <h1 className="text-2xl leading-tight font-bold tracking-tight text-text-primary">
+            {title}
+          </h1>
+          {subtitle ? (
+            <div className="mt-1.5 text-sm leading-relaxed text-text-tertiary">{subtitle}</div>
+          ) : null}
         </div>
 
-        {actions ? <div className="flex flex-wrap items-center gap-3">{actions}</div> : null}
+        {actions ? (
+          <div className={cn("flex flex-wrap items-center gap-3", actionsClassName)}>{actions}</div>
+        ) : null}
       </div>
 
       {tabs ? (
-        <div className="border-b border-border-default bg-surface-card px-6 sm:px-8">{tabs}</div>
+        <div className="border-b border-border-default bg-surface-card px-5 lg:px-8">{tabs}</div>
       ) : null}
     </div>
   )

@@ -1,3 +1,4 @@
+import { Soup } from "lucide-react"
 import { QuantityStepper } from "@/components/common/QuantityStepper"
 import { cn } from "@/lib/utils"
 
@@ -38,7 +39,7 @@ export function CartItemRow({
             <img src={imageUrl} alt={name} className="size-full object-cover" />
           ) : (
             <div className="flex size-full items-center justify-center bg-surface-muted text-text-tertiary text-xs">
-              🍜
+              <Soup aria-hidden="true" className="size-5" />
             </div>
           )}
         </div>

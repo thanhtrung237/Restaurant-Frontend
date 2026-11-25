@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useNavigate, useParams, useLocation, generatePath } from "react-router-dom"
-import { Clock, List } from "lucide-react"
+import { Clock, List, TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CUSTOMER_PATHS } from "@/app/router/paths"
 import { useGoBack } from "@/hooks/use-go-back"
@@ -120,7 +120,7 @@ export default function WaitingTableOpenPage() {
       <div className="flex min-h-dvh flex-1 flex-col items-center justify-center bg-white px-6">
         <div className="flex flex-col items-center text-center">
           <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-status-danger-subtle">
-            <span className="text-2xl">⚠️</span>
+            <TriangleAlert aria-hidden="true" className="size-7 text-status-danger" />
           </div>
           <h2 className="text-lg font-bold text-text-primary">Không thể tải thông tin phiên bàn</h2>
           <p className="mt-2 text-sm text-text-secondary">

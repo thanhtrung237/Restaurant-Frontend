@@ -3,10 +3,14 @@
  */
 
 export function getWsUrl(): string {
-  if (import.meta.env.VITE_WS_URL) return import.meta.env.VITE_WS_URL
-  const apiBase = import.meta.env.VITE_API_BASE_URL
+  const configured = import.meta.env.VITE_WS_URL?.trim()
+  if (configured) {
+    // SockJS starts with an HTTP(S) request to /info before upgrading.
+    return configured.replace(/^wss:/i, "https:").replace(/^ws:/i, "http:").replace(/\/+$/, "")
+  }
+  const apiBase = import.meta.env.VITE_API_BASE_URL?.trim()
   if (apiBase) {
-    return apiBase.replace(/\/api\/v1\/?$/, "") + "/ws"
+    return apiBase.replace(/\/+$/, "").replace(/\/api\/v1$/, "") + "/ws"
   }
   if (import.meta.env.DEV) return "/ws"
   const host = typeof window !== "undefined" ? window.location.hostname : "localhost"

@@ -29,6 +29,10 @@ export function getNotificationDestination(
   role: AppRole | null,
 ) {
   const payment = getStaffPaymentPaths(role)
+  if (notification.type === "TABLE_OPEN_REQUESTED") {
+    const tableMap = role === "WAITER" ? WAITER_PATHS.TABLE_MAP : payment?.TABLE_MAP
+    return tableMap && session.tableId ? `${tableMap}?table=${session.tableId}` : null
+  }
   if (
     payment &&
     (notification.type === "BANK_PAYMENT_VERIFIED" ||

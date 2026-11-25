@@ -1,7 +1,7 @@
 import * as React from "react"
 import { useLocation, useNavigate, useParams } from "react-router-dom"
 import { takeawayListPath } from "@/app/router/paths/takeaway.paths"
-import { Check, ChevronDown, Printer, ReceiptText, X, Loader2 } from "lucide-react"
+import { Check, ChevronDown, Printer, ReceiptText, X, Loader2, TriangleAlert } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -193,7 +193,7 @@ export default function EInvoicePage() {
       <div className="flex min-h-screen items-center justify-center bg-surface-page">
         <div className="flex flex-col items-center gap-4 text-center">
           <div className="flex size-16 items-center justify-center rounded-full bg-status-danger-subtle">
-            <span className="text-2xl">⚠️</span>
+            <TriangleAlert aria-hidden="true" className="size-7 text-status-danger" />
           </div>
           <h2 className="text-lg font-bold text-text-primary">Không tìm thấy hoá đơn</h2>
           <p className="text-sm text-text-tertiary">Hoá đơn không tồn tại hoặc đã bị xóa.</p>

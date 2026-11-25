@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils"
  * - Menu items: mục active có nền cam nhạt (#FEEBE4) và chữ/icon cam (#F0522B)
  * - Chân trang: Avatar + Tên / Vai trò nhân viên + Nút đăng xuất
  */
-export function Sidebar() {
+export function Sidebar({ className, toggle }: { className?: string; toggle?: React.ReactNode }) {
   const account = useAuthStore((s) => s.account)
   const role = useAuthStore((s) => s.role)
   const { logout, isLoggingOut } = useLogout()
@@ -40,10 +40,16 @@ export function Sidebar() {
       .toUpperCase() || "QL"
 
   return (
-    <aside className="hidden lg:flex h-screen w-60 shrink-0 flex-col border-r border-border-default/80 bg-surface-card select-none sticky top-0">
+    <aside
+      id="staff-sidebar-expanded"
+      className={cn(
+        "h-dvh w-72 shrink-0 flex-col border-r border-border-default/80 bg-surface-card select-none",
+        className,
+      )}
+    >
       {/* Brand & Branch Switcher */}
-      <div className="flex h-16 items-center justify-between border-b border-border-default/60 px-4">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="flex h-19 shrink-0 items-center justify-between border-b border-border-default px-4">
+        <div className="flex min-w-0 items-center gap-3">
           <RestaurantBrand size="sm" />
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-sm font-bold text-text-primary">
@@ -75,9 +81,9 @@ export function Sidebar() {
                     className={() => {
                       const isActive = isNavItemActive(item, pathname)
                       return cn(
-                        "flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-all",
+                        "group flex items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-primary",
                         isActive
-                          ? "bg-brand-primary-subtle text-brand-primary font-semibold shadow-2xs"
+                          ? "border-brand-primary/10 bg-brand-primary-subtle font-semibold text-brand-primary"
                           : "text-text-secondary hover:bg-surface-muted hover:text-text-primary",
                       )
                     }}
@@ -99,25 +105,33 @@ export function Sidebar() {
         ))}
       </nav>
 
+      {toggle}
+
       {/* User footer */}
-      <div className="border-t border-border-default/60 p-3">
-        <div className="flex items-center gap-1.5 rounded-xl bg-surface-page/60 p-2">
+      <div className="shrink-0 border-t border-border-default/60 p-3">
+        <div className="flex items-center gap-2 rounded-xl border border-border-default bg-surface-page px-2.5 py-2">
           <div className="flex min-w-0 flex-1 items-center gap-2">
-            <Avatar className="size-8 bg-text-primary text-text-on-brand font-bold text-xs shrink-0">
+            <Avatar className="size-7 bg-text-primary text-text-on-brand font-bold text-xs shrink-0">
               <AvatarFallback className="bg-text-primary text-text-on-brand">
                 {initials}
               </AvatarFallback>
             </Avatar>
-            <div className="min-w-0 flex-1 text-left">
-              <p className="text-xs leading-tight font-bold break-words text-text-primary">
+            <div className="min-w-0 flex-1 space-y-0.5 text-left">
+              <p
+                className="min-w-0 truncate text-xs leading-tight font-bold text-text-primary"
+                title={account?.fullName || "Quản lý"}
+              >
                 {account?.fullName || "Quản lý"}
               </p>
-              <p className="mt-0.5 text-[11px] leading-tight break-words text-text-secondary">
+              <p
+                className="truncate text-[11px] leading-tight text-text-secondary"
+                title={role ? APP_ROLE_LABEL[role] : "Quản trị nhà hàng"}
+              >
                 {role ? APP_ROLE_LABEL[role] : "Quản trị nhà hàng"}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex shrink-0 items-center justify-end gap-1">
             <NotificationBell variant="sidebar" />
             <button
               type="button"

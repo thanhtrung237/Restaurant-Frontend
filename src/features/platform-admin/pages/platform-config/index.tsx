@@ -15,6 +15,7 @@ import {
   Save,
   RefreshCw,
   Info,
+  Diamond,
 } from "lucide-react"
 
 import {
@@ -498,7 +499,7 @@ export default function PlatformConfigPage() {
               {logoPreview ? (
                 <img src={logoPreview} alt="Platform Logo" className="w-full h-full object-cover" />
               ) : (
-                <div className="w-7 h-7 rotate-45 border-2 border-white bg-white/20" />
+                <Diamond aria-hidden="true" className="size-8" />
               )}
             </div>
             <div>
@@ -933,9 +934,18 @@ export default function PlatformConfigPage() {
                 </span>
               </div>
               <div className="text-xs text-gray-600 mt-1">
-                {maintenanceMode
-                  ? "⚠️ Hệ thống đang ở chế độ bảo trì. Tất cả màn hình người dùng sẽ hiển thị trang thông báo bảo trì."
-                  : "Hệ thống đang hoạt động bình thường, phục vụ người dùng 24/7."}
+                {maintenanceMode ? (
+                  <>
+                    <AlertTriangle
+                      aria-hidden="true"
+                      className="mr-1 inline size-3.5 align-text-bottom text-status-danger"
+                    />
+                    Hệ thống đang ở chế độ bảo trì. Tất cả màn hình người dùng sẽ hiển thị trang
+                    thông báo bảo trì.
+                  </>
+                ) : (
+                  "Hệ thống đang hoạt động bình thường, phục vụ người dùng 24/7."
+                )}
               </div>
             </div>
             <button
@@ -1166,7 +1176,17 @@ export default function PlatformConfigPage() {
               <span>Xác nhận thay đổi cấu hình quan trọng</span>
             </DialogTitle>
             <DialogDescription className="text-gray-600 pt-2 text-sm leading-relaxed">
-              {pendingChangesSummary}
+              {pendingChangesSummary.startsWith("⚠️ ") ? (
+                <>
+                  <AlertTriangle
+                    aria-hidden="true"
+                    className="mr-1 inline size-4 align-text-bottom text-status-danger"
+                  />
+                  {pendingChangesSummary.slice("⚠️ ".length)}
+                </>
+              ) : (
+                pendingChangesSummary
+              )}
             </DialogDescription>
           </DialogHeader>
 

@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Tag, Check, Search, AlertCircle } from "lucide-react"
+import { Tag, Check, Search, AlertCircle, Lock } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -288,8 +288,9 @@ export function PromotionSelectModal({
                     ) : null}
 
                     {isDisabled ? (
-                      <p className="text-[11px] font-semibold text-status-danger">
-                        🔒 Chưa đủ điều kiện — không thể áp dụng
+                      <p className="flex items-start gap-1 text-[11px] font-semibold text-status-danger">
+                        <Lock aria-hidden="true" className="mt-0.5 size-3 shrink-0" />
+                        Chưa đủ điều kiện — không thể áp dụng
                       </p>
                     ) : null}
                   </div>

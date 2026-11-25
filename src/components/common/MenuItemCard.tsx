@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react"
+import { Plus, Soup, Tag } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export interface MenuItemCardProps {
@@ -55,24 +55,26 @@ export function MenuItemCard({
     <div
       onClick={onClick}
       className={cn(
-        "group relative flex items-center justify-between gap-3 rounded-[18px] bg-white p-3.5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all sm:gap-3.5",
-        onClick && "cursor-pointer hover:shadow-md",
+        "group relative flex min-w-0 items-center justify-between gap-2.5 rounded-card border border-border-default bg-surface-card p-3 shadow-2xs transition-colors sm:gap-4 sm:p-3.5",
+        onClick && "cursor-pointer hover:border-brand-primary/30",
         disabled && "opacity-60",
         className,
       )}
     >
       {/* Cột trái: Ảnh món & Thông tin */}
-      <div className="flex min-w-0 flex-1 items-center gap-3.5">
+      <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3.5">
         {/* Ảnh thumbnail */}
-        <div className="relative size-[72px] shrink-0 overflow-hidden rounded-[14px] bg-[#F1F3F5]">
+        <div className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-surface-muted sm:size-[72px]">
           {imageUrl ? (
             <img
               src={imageUrl}
               alt={name}
-              className="size-full object-cover transition-transform group-hover:scale-105"
+              className="size-full object-cover transition-transform motion-safe:group-hover:scale-105"
             />
           ) : (
-            <div className="size-full bg-[#F1F3F5]" />
+            <div className="flex size-full items-center justify-center bg-surface-muted text-text-tertiary">
+              <Soup aria-hidden="true" className="size-6" />
+            </div>
           )}
         </div>
 
@@ -86,7 +88,7 @@ export function MenuItemCard({
           ) : null}
 
           {/* Dòng giá */}
-          <div className="mt-1 flex items-baseline gap-2">
+          <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 tabular-nums">
             <span className="text-sm font-bold text-brand-primary sm:text-base">
               {formattedPrice}
             </span>
@@ -103,8 +105,11 @@ export function MenuItemCard({
           </div>
           {/* Nhãn tên chương trình KM — chỉ hiện khi còn lượt (BE filter sẵn) */}
           {promotionLabel ? (
-            <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-status-success-subtle px-2 py-0.5">
-              <span className="text-[10px] font-bold text-status-success">🏷 {promotionLabel}</span>
+            <div className="mt-1 inline-flex max-w-full min-w-0 items-center gap-1 rounded-full bg-status-success-subtle px-2 py-0.5">
+              <Tag aria-hidden="true" className="size-3 shrink-0 text-status-success" />
+              <span className="text-[10px] font-bold break-words text-status-success">
+                {promotionLabel}
+              </span>
             </div>
           ) : null}
         </div>
@@ -130,7 +135,7 @@ export function MenuItemCard({
             aria-label={
               disabled && disabledReason ? `Thêm ${name} — ${disabledReason}` : `Thêm ${name}`
             }
-            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-primary text-white shadow-xs transition-all hover:bg-brand-primary-hover active:scale-90 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-tertiary"
+            className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand-primary text-white shadow-xs transition-all hover:bg-brand-primary-hover active:scale-90 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-tertiary"
           >
             {/* `currentColor` để icon xám theo nút khi bị khoá — tô trắng cứng thì nền xám + icon trắng gần như vô hình */}
             <Plus className="size-4" strokeWidth={2.5} />

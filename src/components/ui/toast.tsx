@@ -12,10 +12,7 @@ function ToastViewport({
 }: React.ComponentProps<typeof ToastPrimitives.Viewport>) {
   return (
     <ToastPrimitives.Viewport
-      className={cn(
-        "fixed top-0 z-100 flex max-h-screen w-full flex-col-reverse p-4 sm:top-auto sm:right-0 sm:bottom-0 sm:flex-col md:max-w-[420px]",
-        className,
-      )}
+      className={cn("toast-viewport fixed z-100 grid", className)}
       {...props}
     />
   )
@@ -26,7 +23,7 @@ function ToastViewport({
  * và icon đổi màu theo variant (success/warning/danger/info), nút X ở góc.
  */
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-start gap-3 overflow-hidden rounded-md border bg-surface-card p-4 shadow-md transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
+  "toast-card group pointer-events-auto relative z-10 flex w-full items-start gap-2.5 overflow-hidden rounded-xl border bg-surface-card py-2.5 pr-9 pl-2.5 shadow-md transition-transform data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none motion-safe:data-[state=open]:animate-in motion-safe:data-[state=closed]:animate-out motion-safe:data-[swipe=end]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-1 data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-top-2",
   {
     variants: {
       variant: {
@@ -61,14 +58,14 @@ function Toast({
       {icon ? (
         <span
           className={cn(
-            "flex size-8 shrink-0 items-center justify-center rounded-full",
+            "flex size-7 shrink-0 items-center justify-center rounded-lg",
             ICON_DOT_CLASS[variant ?? "default"],
           )}
         >
           {icon}
         </span>
       ) : null}
-      <div className="flex-1 space-y-1">{props.children}</div>
+      <div className="min-w-0 flex-1 space-y-0.5 [overflow-wrap:anywhere]">{props.children}</div>
     </ToastPrimitives.Root>
   )
 }
@@ -89,13 +86,14 @@ function ToastClose({ className, ...props }: React.ComponentProps<typeof ToastPr
   return (
     <ToastPrimitives.Close
       className={cn(
-        "absolute top-3 right-3 rounded-md p-1 text-text-tertiary opacity-70 transition-opacity hover:text-text-primary hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-brand-primary/30",
+        "absolute top-1.5 right-1.5 flex size-7 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-surface-muted hover:text-text-primary focus-visible:outline-2 focus-visible:outline-brand-primary",
         className,
       )}
       toast-close=""
+      aria-label="Đóng thông báo"
       {...props}
     >
-      <XIcon className="size-4" />
+      <XIcon aria-hidden="true" className="size-3.5" />
     </ToastPrimitives.Close>
   )
 }
@@ -103,7 +101,7 @@ function ToastClose({ className, ...props }: React.ComponentProps<typeof ToastPr
 function ToastTitle({ className, ...props }: React.ComponentProps<typeof ToastPrimitives.Title>) {
   return (
     <ToastPrimitives.Title
-      className={cn("text-sm font-semibold text-text-primary", className)}
+      className={cn("text-sm leading-snug font-semibold text-text-primary", className)}
       {...props}
     />
   )
@@ -115,7 +113,7 @@ function ToastDescription({
 }: React.ComponentProps<typeof ToastPrimitives.Description>) {
   return (
     <ToastPrimitives.Description
-      className={cn("text-sm text-text-tertiary", className)}
+      className={cn("text-xs leading-relaxed text-text-secondary", className)}
       {...props}
     />
   )

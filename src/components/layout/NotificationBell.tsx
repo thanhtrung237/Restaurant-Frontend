@@ -6,6 +6,7 @@ import {
   CheckCheck,
   ChevronDown,
   CreditCard,
+  DoorOpen,
   Ellipsis,
   ShoppingBag,
   Trash2,
@@ -32,6 +33,11 @@ import { isApiStatus } from "@/lib/http"
 import { cn } from "@/lib/utils"
 
 const config = {
+  TABLE_OPEN_REQUESTED: {
+    title: "Khách yêu cầu mở bàn",
+    icon: DoorOpen,
+    tone: "bg-status-info-subtle text-status-info",
+  },
   NEW_ORDER: {
     title: "Có món mới",
     icon: ShoppingBag,

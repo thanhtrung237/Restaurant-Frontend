@@ -3,7 +3,7 @@ import { getStaffPaymentPaths } from "@/app/router/paths/staff-payment.paths"
 import * as React from "react"
 import { useLocation, useNavigate, useParams, generatePath } from "react-router-dom"
 import { useIsMutating } from "@tanstack/react-query"
-import { Loader2 } from "lucide-react"
+import { Loader2, TriangleAlert } from "lucide-react"
 import { PaymentMethodButtons } from "@/features/cashier/components/PaymentMethodButtons"
 
 import { Button } from "@/components/ui/button"
@@ -419,7 +419,7 @@ function QrTransferPayment({ tableSessionId }: { tableSessionId?: number }) {
       <div className="flex min-h-screen items-center justify-center bg-surface-page">
         <div className="flex flex-col items-center text-center">
           <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-status-danger-subtle">
-            <span className="text-2xl">⚠️</span>
+            <TriangleAlert aria-hidden="true" className="size-7 text-status-danger" />
           </div>
           <h2 className="text-lg font-bold text-text-primary">Không tìm thấy phiên bàn</h2>
           <Button className="mt-6" onClick={goBack}>

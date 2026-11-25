@@ -1,6 +1,23 @@
 import * as React from "react"
 import { useNavigate, useParams, generatePath } from "react-router-dom"
-import { Search, Bell, ClipboardList, Lock, Gift, X, Clock, Tag, TrendingUp } from "lucide-react"
+import {
+  Search,
+  Bell,
+  ClipboardList,
+  Lock,
+  Gift,
+  X,
+  Clock,
+  Tag,
+  TrendingUp,
+  TriangleAlert,
+  Info,
+  PartyPopper,
+  Check,
+  CircleCheck,
+  Sparkles,
+  Lightbulb,
+} from "lucide-react"
 import { MenuItemCard } from "@/components/common/MenuItemCard"
 import { useToast } from "@/hooks/use-toast"
 import { CUSTOMER_PATHS } from "@/app/router/paths"
@@ -261,7 +278,12 @@ export default function MenuPage() {
       promotionName: promotionMatch?.promotion.name,
       promotionDiscountAmount: promotionMatch?.discountAmount,
     })
-    toast({ title: "Đã thêm vào giỏ", description: dish.dishName, variant: "success" })
+    toast({
+      title: "Đã thêm vào giỏ",
+      description: dish.dishName,
+      variant: "success",
+      replaceKey: "customer-cart-add",
+    })
   }
 
   const callStaffMutation = useCallStaff()
@@ -307,7 +329,7 @@ export default function MenuPage() {
       <div className="flex flex-1 flex-col items-center justify-center bg-surface-page min-h-dvh px-6">
         <div className="flex flex-col items-center text-center">
           <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-status-danger-subtle">
-            <span className="text-2xl">⚠️</span>
+            <TriangleAlert aria-hidden="true" className="size-7 text-status-danger" />
           </div>
           <h2 className="text-lg font-bold text-text-primary">Không thể tải thực đơn</h2>
           <p className="mt-2 text-sm text-text-secondary">
@@ -335,29 +357,29 @@ export default function MenuPage() {
   return (
     <div className="relative flex flex-1 flex-col bg-surface-page min-h-dvh w-full">
       {/* ---- Header cố định: thông tin bàn + tìm kiếm + danh mục ---- */}
-      <div className="sticky top-0 z-10 bg-white pt-[max(0.75rem,env(safe-area-inset-top))] shadow-[0_1px_4px_rgba(0,0,0,0.02)] w-full">
+      <div className="sticky top-0 z-10 w-full border-b border-border-default bg-surface-card pt-[max(0.75rem,env(safe-area-inset-top))] shadow-2xs">
         <div className="w-full max-w-4xl mx-auto">
-          <div className="flex items-start justify-between gap-3 px-4 pb-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-3">
             <div className="min-w-0">
-              <p className="truncate text-xs font-semibold tracking-wider text-text-tertiary uppercase">
+              <p className="truncate text-xs font-semibold tracking-wide text-text-tertiary uppercase">
                 {tableName.toUpperCase()}
               </p>
               <h1 className="truncate text-lg sm:text-xl font-bold text-text-primary tracking-tight mt-0.5">
                 {shortRestaurantName} · {shortBranchName}
               </h1>
             </div>
-            <div className="shrink-0 flex items-center gap-2 pt-0.5">
+            <div className="flex min-w-0 flex-wrap items-center gap-2 pt-0.5">
               {/* Nút Khuyến mãi */}
               {activePromotions.length > 0 && (
                 <button
                   type="button"
                   onClick={() => setShowPromotionsModal(true)}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[#F79009] bg-[#FEF6EE] px-3 py-1.5 text-xs font-semibold text-[#B54708] shadow-2xs hover:bg-[#FEF0C7] transition-all active:scale-95 cursor-pointer"
+                  className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-brand-primary px-3 py-1.5 text-xs font-bold text-text-on-brand shadow-xs transition-colors hover:bg-brand-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
                   title="Xem khuyến mãi"
                 >
-                  <Gift className="size-3.5" />
+                  <Gift aria-hidden="true" className="size-4 shrink-0" />
                   <span>Khuyến mãi</span>
-                  <span className="flex min-w-4 h-4 px-1 items-center justify-center rounded-full bg-[#F79009] text-[10px] font-bold text-white">
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-surface-card px-1 text-[11px] font-bold text-brand-primary tabular-nums">
                     {activePromotions.length}
                   </span>
                 </button>
@@ -399,7 +421,7 @@ export default function MenuPage() {
 
           {!isTableOpenConfirmed ? (
             <div className="mx-4 mb-3 flex items-start gap-2 rounded-md bg-[#FEF6EE] px-3.5 py-2.5">
-              <span className="mt-0.5 text-sm">ℹ️</span>
+              <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-status-warning" />
               <p className="text-xs leading-relaxed text-[#B54708]">
                 Bạn đang xem trước thực đơn. Nhân viên chưa xác nhận mở bàn nên chưa thể thêm món
                 vào giỏ hàng.
@@ -417,7 +439,7 @@ export default function MenuPage() {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Tìm món trong thực đơn..."
-                className="flex h-11 w-full items-center rounded-full bg-[#F1F3F5] pl-11 pr-24 text-sm text-text-primary placeholder:text-text-tertiary transition-colors focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                className="flex h-11 w-full items-center rounded-xl border border-border-default bg-surface-muted pl-11 pr-24 text-base sm:text-sm text-text-primary placeholder:text-text-tertiary transition-colors focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
               />
               {searchInput && (
                 <button
@@ -430,7 +452,7 @@ export default function MenuPage() {
                   className="absolute right-[68px] top-1/2 -translate-y-1/2 flex size-6 items-center justify-center rounded-full bg-text-tertiary/10 text-text-tertiary hover:bg-text-tertiary/20 transition-colors"
                   title="Xóa"
                 >
-                  <span className="text-xs">✕</span>
+                  <X aria-hidden="true" className="size-3.5" />
                 </button>
               )}
               <button
@@ -445,7 +467,7 @@ export default function MenuPage() {
 
           {/* Danh mục — ẩn khi đang search */}
           {!searchText && (
-            <div className="flex gap-2.5 overflow-x-auto px-4 pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex gap-2 overflow-x-auto px-4 pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {categoryTabs.map((category) => {
                 const isSelected = category.id === activeCategoryId
                 return (
@@ -498,18 +520,22 @@ export default function MenuPage() {
               chỉ nhắc điều kiện để khách biết. Lượt có thể hết trước lúc chốt bàn.
           ---- */}
           {invoicePromos.length > 0 ? (
-            <div className="mb-3 space-y-1.5">
+            <div className="mb-5 grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:[&>:only-child]:col-span-2">
               {invoicePromos.map((promo) => {
                 const { discount } = calculatePromoDiscount(promo, cartSubtotal)
                 return (
                   <div
                     key={promo.id}
-                    className="flex items-center gap-2.5 rounded-xl bg-status-success-subtle/60 px-3.5 py-2.5 border border-status-success/20"
+                    className="flex min-w-0 items-start gap-3 rounded-card border border-brand-primary/25 border-s-4 border-s-brand-primary bg-brand-primary-subtle px-3.5 py-3.5 shadow-2xs sm:gap-3.5 sm:px-4"
                   >
-                    <span className="text-base">🎉</span>
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary text-text-on-brand">
+                      <PartyPopper aria-hidden="true" className="size-5" />
+                    </span>
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-status-success">{promo.name}</p>
-                      <p className="text-[11px] text-text-secondary">
+                      <p className="text-base leading-snug font-bold break-words text-brand-primary">
+                        {promo.name}
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed break-words text-text-secondary sm:text-sm">
                         {promo.description || "Áp dụng khi chốt hóa đơn"}.
                         {discount > 0
                           ? ` Dự kiến giảm ${discount.toLocaleString("vi-VN")}đ.`
@@ -533,7 +559,7 @@ export default function MenuPage() {
               <div className="col-span-full flex flex-col items-center justify-center py-12 text-center">
                 {searchText.trim() ? (
                   <>
-                    <span className="text-4xl mb-3">🔍</span>
+                    <Search aria-hidden="true" className="mb-3 size-9 text-text-tertiary" />
                     <p className="text-sm font-semibold text-text-primary mb-1">
                       Không tìm thấy "{searchText}"
                     </p>
@@ -829,7 +855,7 @@ function PromotionCard({ promotion, type, currentDiscount, cartSubtotal }: Promo
       {/* Badge "Đang áp dụng" */}
       {isApplied && (
         <div className="absolute top-3 right-3 flex items-center gap-1 px-2.5 py-1 rounded-full bg-status-success text-white text-xs font-bold shadow-sm">
-          <span className="text-xs">✓</span>
+          <Check aria-hidden="true" className="size-3" />
           <span>Đang áp dụng</span>
         </div>
       )}
@@ -878,7 +904,11 @@ function PromotionCard({ promotion, type, currentDiscount, cartSubtotal }: Promo
                 : "bg-white border-border-default",
           )}
         >
-          <span className="text-sm shrink-0">{isApplied || meetsCondition ? "✅" : "ℹ️"}</span>
+          {isApplied || meetsCondition ? (
+            <CircleCheck aria-hidden="true" className="size-4 shrink-0 text-status-success" />
+          ) : (
+            <Info aria-hidden="true" className="size-4 shrink-0 text-text-tertiary" />
+          )}
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-text-secondary">
               Điều kiện: Hóa đơn từ {minimumAmount?.toLocaleString("vi-VN")}đ
@@ -890,11 +920,16 @@ function PromotionCard({ promotion, type, currentDiscount, cartSubtotal }: Promo
                   isApplied || meetsCondition ? "text-status-success" : "text-text-tertiary",
                 )}
               >
-                {isApplied
-                  ? `✨ Đang giảm ${currentDiscount?.toLocaleString("vi-VN")}đ`
-                  : meetsCondition
-                    ? `Đạt điều kiện · Giảm ${currentDiscount?.toLocaleString("vi-VN")}đ`
-                    : `Hiện tại: ${cartSubtotal.toLocaleString("vi-VN")}đ · Còn thiếu ${((minimumAmount || 0) - cartSubtotal).toLocaleString("vi-VN")}đ`}
+                {isApplied ? (
+                  <>
+                    <Sparkles aria-hidden="true" className="mr-1 inline size-3 align-text-bottom" />
+                    {`Đang giảm ${currentDiscount?.toLocaleString("vi-VN")}đ`}
+                  </>
+                ) : meetsCondition ? (
+                  `Đạt điều kiện · Giảm ${currentDiscount?.toLocaleString("vi-VN")}đ`
+                ) : (
+                  `Hiện tại: ${cartSubtotal.toLocaleString("vi-VN")}đ · Còn thiếu ${((minimumAmount || 0) - cartSubtotal).toLocaleString("vi-VN")}đ`
+                )}
               </p>
             )}
           </div>
@@ -908,7 +943,7 @@ function PromotionCard({ promotion, type, currentDiscount, cartSubtotal }: Promo
           isApplied ? "bg-white/60" : "bg-white/80",
         )}
       >
-        <span className="text-sm shrink-0">💡</span>
+        <Lightbulb aria-hidden="true" className="size-4 shrink-0 text-status-warning" />
         <p className="text-xs text-text-secondary leading-relaxed">
           {isInvoicePromo ? (
             <>

@@ -1,5 +1,12 @@
 import * as React from "react"
-import { UtensilsCrossed, AlertTriangle, TrendingUp, Package, Sparkles } from "lucide-react"
+import {
+  UtensilsCrossed,
+  AlertTriangle,
+  TrendingUp,
+  Package,
+  Sparkles,
+  Lightbulb,
+} from "lucide-react"
 import { formatCurrency } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { DishRankItem } from "@/types/models/reports"
@@ -115,8 +122,9 @@ export function TopDishesCard({
         <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-200/70 bg-[#FFFBEB] p-3.5 text-xs text-amber-900 shadow-2xs">
           <Sparkles className="size-4 shrink-0 text-amber-600 mt-0.5" />
           <div className="space-y-0.5">
-            <p className="font-semibold text-amber-950">
-              💡 Gợi ý tối ưu thực đơn (Menu Engineering - FR-RPT-03):
+            <p className="flex items-start gap-1.5 font-semibold text-amber-950">
+              <Lightbulb aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+              Gợi ý tối ưu thực đơn (Menu Engineering - FR-RPT-03):
             </p>
             <p className="text-amber-800 leading-relaxed">
               Các món trong danh sách này có sản lượng bán và doanh số thấp nhất trong khoảng thời

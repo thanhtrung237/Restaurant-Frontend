@@ -29,6 +29,15 @@ async function checkPaymentButtons(page: Page, selected: "Tiền mặt" | "Chuy�
   const inactive = group.getByRole("button", { pressed: false })
   await expect(active).toBeVisible()
   await expect(inactive).toBeVisible()
+  const qrLabel = group.getByText("Chuyển khoản QR", { exact: true })
+  await expect(qrLabel).toHaveCSS("white-space", "nowrap")
+  expect(
+    await qrLabel.evaluate((label) => {
+      const bounds = label.getBoundingClientRect()
+      const button = label.closest("button")!.getBoundingClientRect()
+      return bounds.left >= button.left && bounds.right <= button.right
+    }),
+  ).toBe(true)
   const [activeBounds, inactiveBounds] = await Promise.all([
     active.boundingBox(),
     inactive.boundingBox(),
@@ -154,6 +163,11 @@ for (const { role, prefix, branchId, invoicePath } of roles) {
     await page.goto(checkout)
     await expect(page.getByRole("region", { name: "Thanh toán" })).toBeVisible()
     expect(invoiceRequests).toBe(0)
+    if (isMobileCheckout) {
+      await page.setViewportSize({ width: 320, height: 844 })
+      await checkPaymentButtons(page, "Tiền mặt")
+      await page.setViewportSize({ width: 390, height: 844 })
+    }
     const cashColors = await checkPaymentButtons(page, "Tiền mặt")
     await page.getByRole("button", { name: "Chuyển khoản QR" }).click()
     await expect(page).toHaveURL(checkout + "/chuyen-khoan-qr")

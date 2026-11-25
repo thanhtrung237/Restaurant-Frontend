@@ -294,13 +294,13 @@ export function TimeRangeDropdown({
               variant === "toolbar" ? "size-4" : "size-3.5",
             )}
           />
-          <span className="font-semibold text-text-primary">{triggerText}</span>
+          <span className="min-w-0 truncate font-semibold text-text-primary">{triggerText}</span>
           {activePresetLabel && variant === "toolbar" && (
-            <span className="hidden sm:inline-block rounded-md bg-brand-primary-subtle px-2 py-0.5 text-[11px] font-bold text-brand-primary">
+            <span className="hidden shrink-0 rounded-md bg-brand-primary-subtle px-2 py-0.5 text-[11px] font-bold text-brand-primary @min-[82rem]/report:inline-block">
               {activePresetLabel}
             </span>
           )}
-          <ChevronDown className="size-3.5 text-text-tertiary opacity-70 ml-0.5" />
+          <ChevronDown className="ml-0.5 size-3.5 shrink-0 text-text-tertiary opacity-70" />
         </Button>
       </PopoverTrigger>
 

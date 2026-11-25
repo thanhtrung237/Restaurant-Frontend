@@ -98,7 +98,7 @@ export default function PaymentSuccessPage() {
           {/* ---- Thông tin phiên ---- */}
           <div className="mt-8 flex w-full max-w-sm items-center gap-3 rounded-[20px] bg-[#F8F9FA] p-4 text-left animate-in fade-in duration-500 delay-500">
             <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-white">
-              <span className="text-xl font-bold text-brand-primary">✓</span>
+              <Check aria-hidden="true" className="size-5 text-brand-primary" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold text-text-primary">

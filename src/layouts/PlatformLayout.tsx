@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom"
-import { LayoutDashboard, Building2, ClipboardList, Sliders, LogOut } from "lucide-react"
+import { LayoutDashboard, Building2, ClipboardList, Sliders, LogOut, Diamond } from "lucide-react"
 import { useAuthStore } from "@/stores/auth.store"
 
 interface NavItem {
@@ -31,15 +31,15 @@ export default function PlatformLayout() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F8F9FA] text-[#1A1A1A]">
+    <div className="flex min-h-dvh flex-col bg-surface-page text-text-primary md:h-dvh md:flex-row md:overflow-hidden">
       {/* Dark Sidebar matching QTNT mockups — cố định không bị scroll theo nội dung */}
-      <aside className="w-64 shrink-0 bg-[#16181C] text-white flex flex-col justify-between select-none h-screen sticky top-0">
+      <aside className="flex shrink-0 select-none flex-col justify-between bg-[#292521] text-white md:h-dvh md:w-56 lg:w-64">
         <div className="flex flex-col min-h-0 flex-1">
           {/* Logo Brand Header */}
-          <div className="flex items-center gap-3 px-6 py-6 border-b border-[#252830] shrink-0">
-            <div className="w-10 h-10 rounded-xl bg-[#E03A14] flex items-center justify-center text-white shadow-sm">
+          <div className="flex shrink-0 items-center gap-3 border-b border-white/10 px-4 py-3 md:px-5 md:py-5">
+            <div className="w-10 h-10 rounded-xl bg-brand-primary flex items-center justify-center text-white shadow-sm">
               {/* Diamond symbol / Platform icon */}
-              <div className="w-4 h-4 rotate-45 border-2 border-white bg-white/20" />
+              <Diamond aria-hidden="true" className="size-5" />
             </div>
             <div>
               <div className="font-bold text-base tracking-tight leading-tight">Nền tảng</div>
@@ -48,7 +48,7 @@ export default function PlatformLayout() {
           </div>
 
           {/* Navigation Links */}
-          <nav className="p-4 space-y-1.5 flex-1 overflow-y-auto">
+          <nav className="grid flex-1 grid-cols-2 gap-1.5 p-2.5 md:block md:space-y-1.5 md:overflow-y-auto md:p-4">
             {navItems.map((item) => {
               const Icon = item.icon
               return (
@@ -57,15 +57,15 @@ export default function PlatformLayout() {
                   to={item.to}
                   end={item.exact}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                    `flex min-w-0 items-center gap-2 rounded-lg px-2 py-2 text-xs leading-snug font-medium transition-colors focus-visible:outline-2 focus-visible:outline-white md:gap-3 md:px-3 md:py-2.5 md:text-sm ${
                       isActive
-                        ? "bg-[#E03A14] text-white shadow-sm"
+                        ? "bg-brand-primary text-white shadow-sm"
                         : "text-gray-300 hover:text-white hover:bg-white/5"
                     }`
                   }
                 >
                   <Icon className="w-5 h-5 shrink-0" />
-                  <span>{item.label}</span>
+                  <span className="min-w-0 break-words">{item.label}</span>
                 </NavLink>
               )
             })}
@@ -73,10 +73,10 @@ export default function PlatformLayout() {
         </div>
 
         {/* User Card & Logout at Bottom */}
-        <div className="p-4 border-t border-[#252830] shrink-0">
-          <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#20232B] hover:bg-[#262A34] transition-colors">
+        <div className="shrink-0 border-t border-white/10 p-2.5 md:p-4">
+          <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-full bg-[#E03A14] text-white text-xs font-bold flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 rounded-full bg-brand-primary text-white text-xs font-bold flex items-center justify-center shrink-0">
                 SA
               </div>
               <div className="min-w-0">
@@ -98,8 +98,8 @@ export default function PlatformLayout() {
       </aside>
 
       {/* Main Content Area — cuộn nội dung độc lập */}
-      <div className="flex flex-1 flex-col min-w-0 h-screen overflow-y-auto">
-        <main className="flex-1 p-8">
+      <div className="flex min-w-0 flex-1 flex-col md:h-dvh md:overflow-y-auto">
+        <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
           <Outlet />
         </main>
       </div>

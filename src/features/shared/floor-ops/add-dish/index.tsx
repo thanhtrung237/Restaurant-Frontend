@@ -1,7 +1,7 @@
 import * as React from "react"
 import { useNavigate, useParams, generatePath } from "react-router-dom"
 import { useQueryClient } from "@tanstack/react-query"
-import { ChevronLeft, Search, ShoppingCart, Trash2 } from "lucide-react"
+import { ChevronLeft, Search, ShoppingCart, Trash2, Utensils } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { QuantityStepper } from "@/components/common/QuantityStepper"
@@ -433,7 +433,7 @@ function AddDishForm({ orderId, takeaway }: { orderId?: string; takeaway: boolea
                             className="size-full object-cover"
                           />
                         ) : (
-                          "🍽️"
+                          <Utensils aria-hidden="true" className="size-5 text-text-tertiary" />
                         )}
                       </div>
                       <div className="min-w-0 flex-1">

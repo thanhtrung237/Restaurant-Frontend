@@ -8,6 +8,7 @@ import {
   Store,
   Minimize2,
   ChevronUp,
+  Hand,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -235,7 +236,7 @@ export function ChatWidget({
 
           {/* Vùng tin nhắn trống với icon vẫy tay */}
           <div className="flex flex-1 flex-col items-center justify-center p-6 text-center select-none">
-            <div className="mb-3 text-4xl animate-bounce">👋</div>
+            <Hand aria-hidden="true" className="mb-3 size-9 text-brand-primary" />
             <p className="max-w-xs text-xs font-bold leading-relaxed text-text-secondary">
               Hãy gửi tin nhắn đầu tiên để mở đầu cuộc trò chuyện!
             </p>

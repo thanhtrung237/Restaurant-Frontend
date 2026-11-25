@@ -48,7 +48,7 @@ export function BottomNav({
   return (
     <nav
       className={cn(
-        "flex h-16 w-full items-center justify-around border-t border-border-default bg-surface-card px-2 select-none shadow-xs",
+        "flex h-16 w-full items-center justify-around border-t border-border-default bg-surface-card gap-1 px-2 select-none shadow-[0_-2px_10px_#2927230a]",
         className,
       )}
     >
@@ -65,10 +65,10 @@ export function BottomNav({
               onChange?.(item.key)
             }}
             className={cn(
-              "relative flex flex-1 flex-col items-center justify-center gap-1 py-1 transition-colors outline-none",
+              "relative flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1 py-1 text-center transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-primary",
               isActive
-                ? "text-brand-primary font-bold"
-                : "text-text-tertiary hover:text-text-secondary",
+                ? "bg-brand-primary-subtle font-bold text-brand-primary"
+                : "text-text-secondary hover:bg-surface-muted hover:text-text-primary",
             )}
           >
             <div className="relative">
@@ -79,7 +79,9 @@ export function BottomNav({
                 </span>
               ) : null}
             </div>
-            <span className="text-[11px] leading-tight">{item.label}</span>
+            <span className="max-w-full text-[11px] leading-tight [overflow-wrap:anywhere]">
+              {item.label}
+            </span>
           </button>
         )
       })}

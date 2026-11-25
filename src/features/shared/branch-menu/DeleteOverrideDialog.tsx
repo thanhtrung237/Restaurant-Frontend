@@ -1,3 +1,4 @@
+import { TriangleAlert } from "lucide-react"
 import { toast } from "sonner"
 import type { MouseEvent } from "react"
 import { useDeleteDishOverride } from "@/api/dish-overrides.api"
@@ -68,7 +69,10 @@ export function DeleteOverrideDialog({
                 Xác nhận xóa ghi đè cho món <strong>{dish.dishName}</strong> tại chi nhánh này?
               </p>
               <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                <p className="font-medium">⚠️ Lưu ý:</p>
+                <p className="flex items-center gap-1.5 font-medium">
+                  <TriangleAlert aria-hidden="true" className="size-4 shrink-0" />
+                  Lưu ý:
+                </p>
                 <ul className="mt-1 list-inside list-disc space-y-1">
                   <li>Món sẽ trở về giá gốc của nhà hàng</li>
                   {dish.isHidden && (

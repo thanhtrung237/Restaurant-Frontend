@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useNavigate, useParams, generatePath } from "react-router-dom"
-import { ChevronLeft } from "lucide-react"
+import { ChevronLeft, Soup, Tag, Lightbulb } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
@@ -195,7 +195,12 @@ export default function DishDetailPage() {
         promoEval.discountAmount > 0 ? Math.round(promoEval.discountAmount / quantity) : undefined,
     })
 
-    toast({ title: "Đã thêm vào giỏ", description: dish.name, variant: "success" })
+    toast({
+      title: "Đã thêm vào giỏ",
+      description: dish.name,
+      variant: "success",
+      replaceKey: "customer-cart-add",
+    })
     goBack()
   }
 
@@ -208,7 +213,9 @@ export default function DishDetailPage() {
             {dish.imageUrl ? (
               <img src={dish.imageUrl} alt={dish.name} className="size-full object-cover" />
             ) : (
-              <div className="flex size-full items-center justify-center text-4xl">🍜</div>
+              <div className="flex size-full items-center justify-center text-text-tertiary">
+                <Soup aria-hidden="true" className="size-10" />
+              </div>
             )}
             <button
               type="button"
@@ -241,15 +248,16 @@ export default function DishDetailPage() {
                 </span>
               ) : null}
               {promoEval.appliedPromotion ? (
-                <span className="rounded-full bg-status-success-subtle px-2.5 py-0.5 text-xs font-bold text-status-success">
-                  🏷 {promoEval.appliedPromotion.name}
+                <span className="inline-flex items-center gap-1 rounded-full bg-status-success-subtle px-2.5 py-0.5 text-xs font-bold text-status-success">
+                  <Tag aria-hidden="true" className="size-3 shrink-0" />
+                  {promoEval.appliedPromotion.name}
                 </span>
               ) : null}
             </div>
 
             {promoEval.hint ? (
               <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-status-warning-subtle/50 px-2.5 py-1 border border-status-warning/20">
-                <span className="text-xs">💡</span>
+                <Lightbulb aria-hidden="true" className="size-3.5 shrink-0 text-status-warning" />
                 <p className="text-xs text-[#B54708] font-medium leading-tight">{promoEval.hint}</p>
               </div>
             ) : null}
