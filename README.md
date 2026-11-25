@@ -51,13 +51,9 @@ cùng mạng Docker với backend mang tên service `backend`.
 
 ## CI/CD frontend
 
-Khi push lên nhánh làm việc, GitHub Actions dùng Prettier cho các file thay đổi
-so với nhánh mặc định. Nếu có thay đổi format, bot push một commit lên chính
-nhánh đó. CI chạy lint, build và Playwright trên commit sau khi format. Pull
-commit của bot về trước lần push tiếp theo nếu bot đã cập nhật nhánh.
-
-Pull request và mỗi lần push vào `main` đều kiểm tra format, lint, build và
-Playwright độc lập. Có thể format cục bộ bằng `npm run format -- <đường-dẫn>`.
+Khi push hoặc mở pull request, GitHub Actions kiểm tra format của các file thay đổi,
+chạy lint, build và Playwright trên commit được checkout. Có thể format cục bộ
+bằng `npm run format -- <đường-dẫn>` trước khi commit.
 
 Các test bắt buộc kiểm tra truy cập bằng QR, quản trị thực đơn và nhân viên
 chi nhánh. Chọn `full_browser_suite` trong
@@ -65,29 +61,5 @@ chi nhánh. Chọn `full_browser_suite` trong
 Playwright dùng Chromium trên CI và giả lập API trong trình duyệt. Nếu test
 lỗi, xem báo cáo Playwright trong mục Artifacts.
 
-Khi một lần push vào `main` vượt qua các bước kiểm tra, workflow build image
-từ `Dockerfile`, gọi `/healthz` và xác nhận Nginx phục vụ route `/login`.
-Image được đưa lên `ghcr.io/thanhtrung237/restaurant-frontend` với tag `latest`
-và `sha-<commit-sha>`. Workflow dùng `GITHUB_TOKEN` của GitHub Actions để publish.
-Máy triển khai có thể pull theo tag SHA để chọn đúng phiên bản.
-
-### Triển khai trên Docker Desktop
-
-Mở PowerShell tại repo frontend khi stack Compose đã chạy. Dùng SHA của lần
-phát hành cần triển khai. Script chỉ cập nhật service `frontend` và chờ healthcheck.
-
-```powershell
-.\deploy\deploy-frontend.ps1 -BackendDirectory ..\Restaurant-Backend `
-  -Image ghcr.io/thanhtrung237/restaurant-frontend:sha-<commit-sha>
-```
-
-Thay `<commit-sha>` bằng SHA thực tế. Với package riêng tư, đăng nhập GHCR
-trên máy Docker bằng tài khoản có quyền pull trước khi chạy. Có thể dùng lại
-cùng lệnh với một SHA cũ để quay về bản đã phát hành trước đó.
-
-Để tự động triển khai từ repo GitHub riêng tư, đăng ký runner Windows trên
-máy Docker với nhãn `restaurant-frontend-deploy`. Tài khoản chạy runner cần
-truy cập được Docker Desktop và GHCR. Đặt Actions variable
-`RESTAURANT_BACKEND_DIR` thành đường dẫn tuyệt đối tới repo backend chứa
-`compose.yaml` và `.env.docker`. Job triển khai tự chạy sau khi `main` phát hành
-image thành công. Repo công khai dùng lệnh PowerShell ở trên.
+Vercel triển khai frontend từ repo GitHub. Để build và chạy Docker thủ công,
+xem mục [Docker local](#docker-local).
