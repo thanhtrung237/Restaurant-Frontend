@@ -361,10 +361,10 @@ export default function MenuPage() {
         <div className="w-full max-w-4xl mx-auto">
           <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-3">
             <div className="min-w-0">
-              <p className="truncate text-xs font-semibold tracking-wide text-text-tertiary uppercase">
+              <p className="truncate max-md:whitespace-normal max-md:wrap-anywhere text-xs font-semibold tracking-wide text-text-tertiary uppercase">
                 {tableName.toUpperCase()}
               </p>
-              <h1 className="truncate text-lg sm:text-xl font-bold text-text-primary tracking-tight mt-0.5">
+              <h1 className="truncate max-md:whitespace-normal max-md:wrap-anywhere text-lg sm:text-xl font-bold text-text-primary tracking-tight mt-0.5">
                 {shortRestaurantName} · {shortBranchName}
               </h1>
             </div>
@@ -467,16 +467,21 @@ export default function MenuPage() {
 
           {/* Danh mục — ẩn khi đang search */}
           {!searchText && (
-            <div className="flex gap-2 overflow-x-auto px-4 pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div
+              role="group"
+              aria-label="Danh mục món"
+              className="flex max-w-full gap-2 overflow-x-auto px-4 pb-3 max-md:overscroll-x-contain md:[-ms-overflow-style:none] md:[scrollbar-width:none] md:[&::-webkit-scrollbar]:hidden"
+            >
               {categoryTabs.map((category) => {
                 const isSelected = category.id === activeCategoryId
                 return (
                   <button
                     key={category.id}
                     type="button"
+                    aria-pressed={isSelected}
                     onClick={() => setActiveCategoryId(category.id)}
                     className={cn(
-                      "h-[38px] shrink-0 rounded-[20px] px-5 text-sm transition-all whitespace-nowrap",
+                      "h-[38px] shrink-0 rounded-[20px] px-5 text-sm transition-all whitespace-nowrap max-md:h-auto max-md:min-h-11 max-md:max-w-full max-md:whitespace-normal max-md:wrap-anywhere max-md:px-4 max-md:py-1",
                       isSelected
                         ? "bg-brand-primary font-bold text-white shadow-xs"
                         : "border border-border-default bg-white font-medium text-text-secondary hover:border-border-strong hover:text-text-primary",

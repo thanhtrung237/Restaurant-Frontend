@@ -276,7 +276,7 @@ export default function TransferMergeTablePage() {
 
       <div className="flex-1 p-6 sm:p-8 max-w-7xl w-full mx-auto space-y-6">
         {/* TAB SWITCHER */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 max-md:flex-wrap">
           <button
             type="button"
             onClick={() => setActiveTab("transfer")}

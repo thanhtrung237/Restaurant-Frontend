@@ -133,7 +133,7 @@ export const MenuChiNhanhTab: React.FC<MenuChiNhanhTabProps> = ({
     <div className="pt-1">
       {/* ===== <md: chip lọc + danh sách card (Figma "Menu chi nhánh · Mobile") ===== */}
       <div className="space-y-4 md:hidden">
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 max-md:flex-wrap max-md:overflow-visible [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {BRANCH_MENU_FILTERS.map((f) => (
             <Chip
               key={f.key}

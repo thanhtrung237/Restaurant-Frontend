@@ -20,7 +20,13 @@ export function GuestJoinCode({ sessionId }: { sessionId: number }) {
   }
   return (
     <div className="space-y-2 rounded-xl border bg-white p-4">
-      <Button type="button" variant="outline" disabled={pending} onClick={() => void load()}>
+      <Button
+        type="button"
+        variant="outline"
+        className="max-md:h-auto max-md:min-h-11 max-md:max-w-full max-md:whitespace-normal max-md:wrap-anywhere max-md:py-2"
+        disabled={pending}
+        onClick={() => void load()}
+      >
         {pending ? "Đang lấy mã…" : "Lấy mã hỗ trợ khách không định vị được"}
       </Button>
       {code ? (

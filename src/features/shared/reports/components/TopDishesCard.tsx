@@ -67,12 +67,12 @@ export function TopDishesCard({
         <div>
           <h3 className="text-base font-bold text-text-primary tracking-tight">{title}</h3>
           <p className="text-xs text-text-tertiary mt-0.5">
-            Xếp hạng món bán chạy & cảnh báo món bán chậm (FR-RPT-03)
+            Xếp hạng món bán chạy & cảnh báo món bán chậm
           </p>
         </div>
 
         {/* Tab pills */}
-        <div className="inline-flex rounded-xl bg-surface-muted p-1 border border-border-default/60">
+        <div className="inline-flex rounded-xl bg-surface-muted p-1 border border-border-default/60 max-md:flex-wrap max-md:gap-1">
           <button
             type="button"
             onClick={() => setActiveTab("revenue")}
@@ -124,7 +124,7 @@ export function TopDishesCard({
           <div className="space-y-0.5">
             <p className="flex items-start gap-1.5 font-semibold text-amber-950">
               <Lightbulb aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-              Gợi ý tối ưu thực đơn (Menu Engineering - FR-RPT-03):
+              Gợi ý tối ưu thực đơn:
             </p>
             <p className="text-amber-800 leading-relaxed">
               Các món trong danh sách này có sản lượng bán và doanh số thấp nhất trong khoảng thời

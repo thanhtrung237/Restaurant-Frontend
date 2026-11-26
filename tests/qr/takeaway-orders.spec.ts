@@ -158,7 +158,7 @@ test("creates a counter order, adds items to the same order, and tracks payment 
   await expect(page.getByText("Chưa có đơn mang về đang xử lý.")).toBeVisible()
 })
 
-test("refreshes takeaway orders after a branch push without waiting for polling", async ({
+test("refreshes takeaway orders after a branch session update without waiting for polling", async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -221,7 +221,7 @@ test("refreshes takeaway orders after a branch push without waiting for polling"
       const subscription = frame.match(/^id:(.*)$/m)?.[1]
       if (
         !frame.startsWith("SUBSCRIBE") ||
-        destination !== "/topic/branch/10/takeaway-updated" ||
+        destination !== "/topic/branch/10/session-updated" ||
         !subscription
       )
         return

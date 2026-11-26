@@ -153,7 +153,7 @@ export default function AuditLogPage() {
 
   const subtitle = isLoading
     ? "Đang tải nhật ký…"
-    : `${totalElements} bản ghi · ghi vết giá trị trước, sau, người duyệt (BR-12)`
+    : `${totalElements} bản ghi · ghi vết giá trị trước, sau, người duyệt`
 
   return (
     <div className="flex min-h-full flex-col bg-surface-ground">

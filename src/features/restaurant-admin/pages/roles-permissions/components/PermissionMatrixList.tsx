@@ -26,13 +26,12 @@ export const PermissionMatrixList: React.FC<PermissionMatrixListProps> = ({ sect
     <div className="space-y-3">
       <div>
         <h3 className="text-sm font-semibold text-gray-900">{section.title}</h3>
-        <p className="text-xs text-gray-500">{section.source}</p>
       </div>
 
       {/* Chọn vai trò — cuộn ngang, ẩn thanh cuộn cho gọn */}
       <div
         aria-label={`Chọn vai trò để xem quyền — ${section.title}`}
-        className="flex items-center gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex items-center gap-2 overflow-x-auto pb-1 max-md:flex-wrap max-md:overflow-visible [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {section.columns.map((col) => (
           <Chip

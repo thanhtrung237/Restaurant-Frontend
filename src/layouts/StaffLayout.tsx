@@ -150,7 +150,7 @@ function StaffLayoutInner() {
   )
 
   return (
-    <div className="flex min-h-screen bg-surface-page">
+    <div className="flex min-h-dvh bg-surface-page">
       <div className="sticky top-0 z-30 hidden h-dvh shrink-0 md:block">
         <Sidebar
           className={isSidebarExpanded ? "flex" : "hidden"}
@@ -162,7 +162,7 @@ function StaffLayoutInner() {
         />
       </div>
 
-      <main className="flex min-w-0 flex-1 flex-col overflow-x-hidden pb-16 md:pb-0">
+      <main className="flex min-w-0 flex-1 flex-col overflow-x-hidden pb-[calc(4rem_+_env(safe-area-inset-bottom))] md:pb-0">
         {/* Mobile: header dạng app. Ẩn từ md trở lên vì đã có Sidebar/Rail. */}
         <div className="md:hidden">
           <MobileHeader
@@ -170,7 +170,9 @@ function StaffLayoutInner() {
             title={headerTitle}
             subtitle={pageHeader.subtitle}
             headerActions={pageHeader.headerActions}
-            rightActions={isSubScreen ? <NotificationBell className="size-9" /> : undefined}
+            rightActions={
+              isSubScreen ? <NotificationBell className="size-11 shrink-0" /> : undefined
+            }
           />
         </div>
 

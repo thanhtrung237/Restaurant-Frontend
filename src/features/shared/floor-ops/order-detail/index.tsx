@@ -658,11 +658,11 @@ export default function OrderDetailPage() {
       {staffCallId > 0 && (
         <StaffCallNotice notificationId={staffCallId} sessionId={tableSessionId} />
       )}
-      <div className="flex flex-1 flex-col gap-6 p-6 sm:p-8 lg:flex-row items-start">
+      <div className="flex flex-1 flex-col gap-6 p-6 max-md:gap-4 max-md:p-4 sm:p-8 lg:flex-row items-start">
         {/* ============================================================
             2. CỘT TRÁI: CÁC LƯỢT GỌI MÓN (GOM CHUNG 1 CARD DUY NHẤT)
             ============================================================ */}
-        <div className="flex-1 w-full rounded-2xl border border-border-default/60 bg-surface-card p-6 shadow-xs">
+        <div className="flex-1 w-full rounded-2xl border border-border-default/60 bg-surface-card p-6 shadow-xs max-md:min-w-0 max-md:p-4">
           {isLoading && rounds.length === 0 ? (
             <p className="text-center text-text-tertiary py-8">Đang tải...</p>
           ) : rounds.length === 0 ? (
@@ -699,8 +699,8 @@ export default function OrderDetailPage() {
                     return (
                       <div key={item.id} className="py-3.5 first:pt-0 last:pb-0">
                         {/* Dòng 1: Tên món + Badge + Số lượng + Giá */}
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-2.5 flex-wrap">
+                        <div className="flex items-center justify-between gap-4 max-md:flex-wrap max-md:gap-2">
+                          <div className="flex items-center gap-2.5 flex-wrap max-md:min-w-0 max-md:max-w-full max-md:wrap-anywhere">
                             <div className="flex flex-col gap-0.5">
                               <span className="text-sm font-bold text-text-primary">
                                 {item.dishName}
@@ -750,7 +750,7 @@ export default function OrderDetailPage() {
                         </div>
 
                         {/* Dòng 2: Ghi chú bên trái & Nút Hủy món bên phải */}
-                        <div className="flex items-center justify-between gap-4 mt-1.5 min-h-[26px]">
+                        <div className="flex items-center justify-between gap-4 mt-1.5 min-h-[26px] max-md:flex-wrap max-md:gap-2 max-md:wrap-anywhere">
                           <div>
                             {item.note ? (
                               <p className="text-xs text-text-tertiary">{item.note}</p>
@@ -1012,9 +1012,7 @@ export default function OrderDetailPage() {
               placeholder="VD: Khách đổi ý, chưa gọi món"
               autoFocus
             />
-            <p className="text-xs text-text-tertiary">
-              Lý do được ghi vào nhật ký hoạt động (BR-12).
-            </p>
+            <p className="text-xs text-text-tertiary">Lý do được ghi vào nhật ký hoạt động.</p>
           </div>
 
           <DialogFooter className="gap-2 sm:gap-2">
@@ -1091,7 +1089,7 @@ export default function OrderDetailPage() {
             đang chờ xác nhận trước.
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-3">
             <Button
               variant="outline"
               onClick={() => setIsConfirmPayModalOpen(false)}

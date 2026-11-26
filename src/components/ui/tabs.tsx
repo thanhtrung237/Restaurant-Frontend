@@ -11,7 +11,7 @@ function Tabs({ className, ...props }: React.ComponentProps<typeof TabsPrimitive
   return (
     <TabsPrimitive.Root
       data-slot="tabs"
-      className={cn("flex flex-col gap-2", className)}
+      className={cn("flex flex-col gap-2 max-md:min-w-0", className)}
       {...props}
     />
   )
@@ -22,7 +22,7 @@ function TabsList({ className, ...props }: React.ComponentProps<typeof TabsPrimi
     <TabsPrimitive.List
       data-slot="tabs-list"
       className={cn(
-        "inline-flex h-auto w-fit items-center gap-5 border-b border-border-default",
+        "inline-flex h-auto w-fit max-w-full min-w-0 items-center gap-3 overflow-x-auto overscroll-x-contain border-b sm:gap-5 border-border-default max-md:flex-wrap max-md:gap-x-3 max-md:gap-y-1 max-md:overflow-visible",
         className,
       )}
       {...props}
@@ -35,8 +35,8 @@ function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPr
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        "relative inline-flex items-center justify-center gap-1.5 whitespace-nowrap px-1 pb-3 text-sm font-medium text-text-tertiary transition-colors",
-        "after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-full after:bg-transparent",
+        "relative inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap px-1 pb-3 max-md:min-h-11 max-md:max-w-full max-md:whitespace-normal max-md:px-2 max-md:py-2 text-sm font-medium text-text-tertiary transition-colors",
+        "after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-transparent",
         "hover:text-text-primary",
         "data-[state=active]:font-semibold data-[state=active]:text-brand-primary data-[state=active]:after:bg-brand-primary",
         "disabled:pointer-events-none disabled:opacity-50",
@@ -52,7 +52,7 @@ function TabsContent({ className, ...props }: React.ComponentProps<typeof TabsPr
   return (
     <TabsPrimitive.Content
       data-slot="tabs-content"
-      className={cn("flex-1 outline-none", className)}
+      className={cn("flex-1 outline-none max-md:min-w-0", className)}
       {...props}
     />
   )

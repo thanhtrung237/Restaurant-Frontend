@@ -65,7 +65,7 @@ export const PermissionBadge: React.FC<PermissionBadgeProps> = ({
         return (
           <span
             className="inline-flex items-center justify-center rounded-full bg-[#FEF3F2] px-2.5 py-1 text-[11px] font-bold whitespace-nowrap text-[#B42318]"
-            title="Đặc tả ghi rõ: KHÔNG BAO GIỜ"
+            title="Vai trò này không có quyền thực hiện"
           >
             KHÔNG BAO GIỜ
           </span>

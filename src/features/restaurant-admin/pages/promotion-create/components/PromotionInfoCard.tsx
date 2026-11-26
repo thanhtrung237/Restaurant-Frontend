@@ -41,7 +41,7 @@ export const PromotionInfoCard: React.FC<PromotionInfoCardProps> = ({
           Cấp chương trình & Thông tin cơ bản
         </h2>
         <p className="text-xs text-text-tertiary">
-          Chọn cấp áp dụng trước để hệ thống cấu hình các điều kiện và hành động phù hợp (BR-22)
+          Chọn cấp áp dụng trước để hệ thống cấu hình các điều kiện và hành động phù hợp
         </p>
       </div>
 

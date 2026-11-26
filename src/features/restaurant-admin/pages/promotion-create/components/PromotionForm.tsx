@@ -65,7 +65,7 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
   isSubmitting,
   onCancel,
   title,
-  subtitle = "Cấu hình điều kiện và hành động · hệ thống tự áp khi thoả (BR-22)",
+  subtitle = "Cấu hình điều kiện và hành động · hệ thống tự áp khi thoả",
   submitText = "Lưu chương trình",
   currentUsageCount,
 }) => {
@@ -282,7 +282,7 @@ export const PromotionForm: React.FC<PromotionFormProps> = ({
             </div>
             <div className="min-w-0 flex-1">
               <span className="text-[11px] font-bold tracking-wider uppercase text-brand-primary">
-                Xem trước quy tắc tự động áp dụng (BR-22)
+                Xem trước quy tắc tự động áp dụng
               </span>
               <p className="mt-0.5 text-sm font-semibold text-text-primary leading-snug">
                 {previewSummary}

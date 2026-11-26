@@ -41,7 +41,7 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({ logs, isLoading = 
   const emptyTitle = isLoading ? "Đang tải nhật ký…" : "Chưa có nhật ký hoạt động"
   const emptyDescription = isLoading
     ? "Vui lòng chờ trong giây lát."
-    : "Mọi thao tác đổi tiền, đổi trạng thái sẽ được ghi vết ở đây (BR-12)."
+    : "Mọi thao tác đổi tiền, đổi trạng thái sẽ được ghi vết ở đây."
 
   return (
     <>

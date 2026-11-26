@@ -337,7 +337,7 @@ export default function EInvoicePage() {
             </div>
 
             {/* Bảng danh sách món */}
-            <div className="mt-8 overflow-hidden rounded-xl">
+            <div className="mt-8 min-w-0 max-w-full overflow-x-auto rounded-xl">
               <table className="w-full text-sm">
                 <thead className="bg-[#f8fafc] text-xs font-semibold tracking-wider text-text-tertiary">
                   <tr>
@@ -503,7 +503,7 @@ export default function EInvoicePage() {
       <Dialog open={isRefundModalOpen} onOpenChange={setRefundModalOpen}>
         <DialogContent
           showCloseButton={false}
-          className="w-[calc(100%-2rem)] max-w-[560px] sm:max-w-[560px] rounded-2xl p-6 sm:p-7 gap-0 border border-border-default/60 bg-surface-card shadow-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden"
+          className="w-[calc(100%_-_2rem)] max-w-[560px] sm:max-w-[560px] rounded-2xl p-4 sm:p-7 gap-0 border border-border-default/60 bg-surface-card shadow-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden"
         >
           {/* Nút đóng */}
           <DialogClose asChild>
@@ -522,7 +522,7 @@ export default function EInvoicePage() {
               Hoàn tiền / Điều chỉnh hóa đơn
             </DialogTitle>
             <DialogDescription className="text-xs text-text-tertiary font-normal leading-relaxed">
-              Cần Quản lý chi nhánh duyệt. Khi duyệt, hệ thống sinh hóa đơn điều chỉnh (BR-12).
+              Cần Quản lý chi nhánh duyệt. Khi duyệt, hệ thống sinh hóa đơn điều chỉnh.
             </DialogDescription>
           </DialogHeader>
 
@@ -613,8 +613,8 @@ export default function EInvoicePage() {
             {/* Thông báo BR-12 */}
             <div className="rounded-xl bg-[#fffaf0] border border-[#fde68a]/60 p-3.5 text-center">
               <p className="text-xs font-medium text-[#b45309] leading-relaxed">
-                Cần Quản lý chi nhánh duyệt. Hệ thống ghi nhật ký (BR-12) và gửi thông báo điều
-                chỉnh thuế theo mẫu 04/SS-HĐĐT.
+                Cần Quản lý chi nhánh duyệt. Hệ thống ghi nhật ký và gửi thông báo điều chỉnh thuế
+                theo mẫu 04/SS-HĐĐT.
               </p>
             </div>
 

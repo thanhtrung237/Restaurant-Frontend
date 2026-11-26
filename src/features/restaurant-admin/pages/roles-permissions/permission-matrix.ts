@@ -26,7 +26,6 @@ import type { PermissionMatrixSection } from "./types"
 const BRANCH_LEVEL: PermissionMatrixSection = {
   id: "branch-level",
   title: "Quyền cấp chi nhánh",
-  source: "Đặc tả mục 4.2 — 24 chức năng",
   columns: [
     { key: "customer", label: "Khách" },
     { key: "waiter", label: "Phục vụ" },
@@ -104,13 +103,11 @@ const BRANCH_LEVEL: PermissionMatrixSection = {
     {
       id: 11,
       feature: "Mở phiên bàn",
-      note: "Đặc tả tách từ dòng “Mở / đóng” của bản trước",
       cells: { waiter: "allow", branchManager: "allow", restaurantAdmin: "allow" },
     },
     {
       id: 12,
       feature: "Đóng phiên bàn",
-      note: "Đặc tả tách từ dòng “Mở / đóng” của bản trước",
       cells: { cashier: "allow", branchManager: "allow", restaurantAdmin: "allow" },
     },
     {
@@ -162,7 +159,6 @@ const BRANCH_LEVEL: PermissionMatrixSection = {
     {
       id: 20,
       feature: "Cấu hình chi nhánh — giờ giấc, TK ngân hàng, thời gian tự hủy phiên",
-      note: "FR-BRN-02",
       cells: { branchManager: "allow", restaurantAdmin: "allow" },
     },
     {
@@ -179,13 +175,11 @@ const BRANCH_LEVEL: PermissionMatrixSection = {
     {
       id: 23,
       feature: "Xem nhật ký hoạt động chi nhánh mình",
-      note: "FR-LOG-01",
       cells: { branchManager: "readonly", restaurantAdmin: "readonly" },
     },
     {
       id: 24,
       feature: "Hoàn tiền / điều chỉnh hóa đơn",
-      note: "FR-PAY-06",
       cells: { cashier: "approval", branchManager: "allow", restaurantAdmin: "allow" },
     },
   ],
@@ -195,7 +189,6 @@ const BRANCH_LEVEL: PermissionMatrixSection = {
 const RESTAURANT_LEVEL: PermissionMatrixSection = {
   id: "restaurant-level",
   title: "Quyền cấp nhà hàng và nền tảng",
-  source: "Đặc tả mục 4.3 — 11 chức năng",
   columns: [
     { key: "branchManager", label: "QL chi nhánh" },
     { key: "restaurantAdmin", label: "Quản trị nhà hàng" },

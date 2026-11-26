@@ -51,7 +51,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed left-1/2 top-1/2 z-50 grid w-full max-h-[calc(100dvh-1.5rem)] max-w-[calc(100%-1.5rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-card border border-border-default bg-surface-card p-4 shadow-xl sm:p-6 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:max-w-lg",
+          "fixed left-1/2 top-1/2 z-50 grid w-full grid-cols-[minmax(0,1fr)] max-h-[calc(100dvh-1.5rem)] max-w-[calc(100%_-_1.5rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto overscroll-contain wrap-anywhere rounded-card border border-border-default bg-surface-card p-4 shadow-xl sm:p-6 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:max-w-lg",
           className,
         )}
         {...props}
@@ -60,7 +60,7 @@ function DialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="absolute top-4 right-4 rounded-xs text-text-tertiary opacity-70 transition-opacity hover:opacity-100 hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/40 disabled:pointer-events-none"
+            className="absolute right-2 top-2 grid size-9 place-items-center rounded-xs text-text-tertiary opacity-70 transition-opacity hover:opacity-100 hover:text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/40 disabled:pointer-events-none"
           >
             <XIcon className="size-4" />
             <span className="sr-only">Đóng</span>
@@ -85,7 +85,10 @@ function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-footer"
-      className={cn("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end", className)}
+      className={cn(
+        "flex min-w-0 flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-end",
+        className,
+      )}
       {...props}
     />
   )
@@ -95,7 +98,7 @@ function DialogTitle({ className, ...props }: React.ComponentProps<typeof Dialog
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("text-lg leading-snug font-bold text-text-primary", className)}
+      className={cn("pr-8 text-lg leading-snug font-bold text-text-primary", className)}
       {...props}
     />
   )

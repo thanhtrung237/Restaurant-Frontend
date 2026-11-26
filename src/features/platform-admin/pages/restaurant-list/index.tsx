@@ -86,12 +86,7 @@ import {
   useDeleteRestaurant,
   useCreateAccount,
 } from "@/features/platform-admin/api"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Dialog,
   DialogContent,
@@ -124,7 +119,7 @@ function RestaurantBranchCell({ restaurant }: { restaurant: RestaurantListItem }
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
         isChain
           ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
-          : "bg-gray-100 text-gray-700"
+          : "bg-slate-100 text-slate-700"
       }`}
     >
       <GitBranch className="w-3.5 h-3.5" />
@@ -456,18 +451,20 @@ export default function RestaurantListPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="mx-auto min-w-0 max-w-7xl space-y-5 lg:space-y-6">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Quản lý nhà hàng</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">
+            Quản lý nhà hàng
+          </h1>
+          <p className="text-sm text-slate-600 mt-1">
             {restaurants.length} nhà hàng trên hệ thống · mỗi nhà hàng cách ly dữ liệu hoàn toàn
           </p>
         </div>
         <button
           onClick={() => setIsCreateOpen(true)}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#E03A14] text-white font-medium text-sm hover:bg-[#c9320f] shadow-sm transition-colors cursor-pointer"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-brand-primary text-white font-medium text-sm hover:bg-brand-primary-hover shadow-2xs transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
         >
           <Plus className="w-4 h-4" />
           <span>Tạo nhà hàng</span>
@@ -479,14 +476,14 @@ export default function RestaurantListPage() {
         <AlertTriangle className="w-5 h-5 shrink-0 text-[#D97706] mt-0.5" />
         <p className="text-sm leading-relaxed">
           Quản trị nền tảng chỉ thấy thông tin định danh nhà hàng. TUYỆT ĐỐI không truy cập dữ liệu
-          kinh doanh của khách (BR-21).
+          kinh doanh của khách.
         </p>
       </div>
 
       {/* Filter / Search Bar & Status Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+        <div className="relative flex-1 max-w-md min-w-0 basis-full sm:basis-0">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
             type="text"
             placeholder="Tìm theo tên hoặc mã nhà hàng..."
@@ -495,22 +492,22 @@ export default function RestaurantListPage() {
               setSearchTerm(e.target.value)
               setCurrentPage(1)
             }}
-            className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
+            className="min-w-0 w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary min-h-10"
           />
         </div>
 
         {/* Status Filter Tabs */}
-        <div className="inline-flex p-1 bg-gray-100 rounded-xl text-xs font-medium self-start sm:self-auto">
+        <div className="inline-flex p-1 bg-slate-100 rounded-xl text-xs font-medium self-start sm:self-auto">
           <button
             type="button"
             onClick={() => {
               setStatusFilter("ALL")
               setCurrentPage(1)
             }}
-            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary ${
               statusFilter === "ALL"
-                ? "bg-white text-gray-900 font-semibold shadow-2xs"
-                : "text-gray-500 hover:text-gray-900"
+                ? "bg-white text-slate-950 font-semibold shadow-2xs"
+                : "text-slate-600 hover:text-slate-950"
             }`}
           >
             Tất cả ({restaurants.length})
@@ -521,10 +518,10 @@ export default function RestaurantListPage() {
               setStatusFilter("ACTIVE")
               setCurrentPage(1)
             }}
-            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary ${
               statusFilter === "ACTIVE"
                 ? "bg-white text-emerald-700 font-semibold shadow-2xs"
-                : "text-gray-500 hover:text-emerald-700"
+                : "text-slate-600 hover:text-emerald-700"
             }`}
           >
             Đang hoạt động ({activeCount})
@@ -535,10 +532,10 @@ export default function RestaurantListPage() {
               setStatusFilter("INACTIVE")
               setCurrentPage(1)
             }}
-            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary ${
               statusFilter === "INACTIVE"
                 ? "bg-white text-rose-700 font-semibold shadow-2xs"
-                : "text-gray-500 hover:text-rose-700"
+                : "text-slate-600 hover:text-rose-700"
             }`}
           >
             Tạm ngưng ({inactiveCount})
@@ -547,34 +544,34 @@ export default function RestaurantListPage() {
       </div>
 
       {/* Table Container */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
         {isLoading ? (
-          <div className="p-12 flex flex-col items-center justify-center text-gray-400 gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-[#E03A14]" />
+          <div className="p-12 flex flex-col items-center justify-center text-slate-500 gap-3">
+            <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
             <p className="text-sm">Đang tải danh sách nhà hàng...</p>
           </div>
         ) : filteredRestaurants.length === 0 ? (
-          <div className="p-12 text-center text-gray-500">
+          <div className="p-12 text-center text-slate-600">
             <Store className="w-12 h-12 mx-auto text-gray-300 mb-3" />
             <p className="font-medium text-base">Không tìm thấy nhà hàng nào</p>
-            <p className="text-sm text-gray-400 mt-1">
+            <p className="text-sm text-slate-500 mt-1">
               Thử tìm kiếm với từ khóa khác hoặc tạo nhà hàng mới.
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto max-w-full overscroll-x-contain">
+            <table className="w-full min-w-[40rem] border-collapse text-left">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50/75 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                  <th className="py-3.5 px-6">NHÀ HÀNG</th>
-                  <th className="py-3.5 px-6">MÃ</th>
-                  <th className="py-3.5 px-6">MÃ SỐ THUẾ</th>
-                  <th className="py-3.5 px-6">CHI NHÁNH</th>
-                  <th className="py-3.5 px-6">TRẠNG THÁI</th>
-                  <th className="py-3.5 px-6 text-right"></th>
+                <tr className="border-b border-slate-200 bg-slate-100/65 text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
+                  <th className="py-3.5 px-4 lg:px-5">NHÀ HÀNG</th>
+                  <th className="py-3.5 px-4 lg:px-5">MÃ</th>
+                  <th className="py-3.5 px-4 lg:px-5">MÃ SỐ THUẾ</th>
+                  <th className="py-3.5 px-4 lg:px-5">CHI NHÁNH</th>
+                  <th className="py-3.5 px-4 lg:px-5">TRẠNG THÁI</th>
+                  <th className="py-3.5 px-4 lg:px-5 text-right"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 text-sm">
+              <tbody className="divide-y divide-slate-100 text-sm">
                 {paginatedRestaurants.map((restaurant) => {
                   const cleanedName = cleanText(restaurant.name) || "Chưa đặt tên"
                   const initial = cleanedName.charAt(0).toUpperCase() || "N"
@@ -583,41 +580,43 @@ export default function RestaurantListPage() {
                   return (
                     <tr
                       key={restaurant.id}
-                      className="hover:bg-gray-50/80 transition-colors group cursor-pointer"
+                      className="hover:bg-slate-50 transition-colors group cursor-pointer"
                       onClick={() => navigate(`/quan-tri-nen-tang/nha-hang/${restaurant.id}`)}
                     >
                       {/* Name & Avatar */}
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-4 lg:px-5">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-orange-100 text-[#E03A14] font-bold text-base flex items-center justify-center shrink-0">
+                          <div className="w-10 h-10 rounded-xl bg-orange-100 text-brand-primary font-bold text-base flex items-center justify-center shrink-0">
                             {initial}
                           </div>
                           <div>
-                            <div className="font-semibold text-gray-900 group-hover:text-[#E03A14] transition-colors">
+                            <div className="font-semibold text-slate-950 group-hover:text-brand-primary transition-colors">
                               {cleanedName}
                             </div>
-                            <div className="text-xs text-gray-400 mt-0.5">ID: #{restaurant.id}</div>
+                            <div className="text-xs text-slate-500 mt-0.5">
+                              ID: #{restaurant.id}
+                            </div>
                           </div>
                         </div>
                       </td>
 
                       {/* Code */}
-                      <td className="py-4 px-6 text-gray-600 font-mono text-xs font-medium">
+                      <td className="py-4 px-4 lg:px-5 text-slate-600 font-mono text-xs font-medium">
                         {restaurant.code}
                       </td>
 
                       {/* Tax Code */}
-                      <td className="py-4 px-6 text-gray-600 font-mono text-xs">
+                      <td className="py-4 px-4 lg:px-5 text-slate-600 font-mono text-xs">
                         {restaurant.taxCode || "—"}
                       </td>
 
                       {/* Branch Count */}
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-4 lg:px-5">
                         <RestaurantBranchCell restaurant={restaurant} />
                       </td>
 
                       {/* Status */}
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-4 lg:px-5">
                         {isActive ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -632,58 +631,78 @@ export default function RestaurantListPage() {
                       </td>
 
                       {/* Dropdown Action */}
-                      <td className="py-4 px-6 text-right" onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
+                      <td
+                        className="py-4 px-4 lg:px-5 text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Popover>
+                          <PopoverTrigger asChild>
                             <button
                               type="button"
-                              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                              aria-label={"Thao tác cho " + restaurant.name}
+                              className="inline-flex size-9 cursor-pointer items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
                             >
-                              <MoreVertical className="w-5 h-5" />
+                              <MoreVertical aria-hidden="true" className="size-5" />
                             </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="right" className="w-44">
-                            <DropdownMenuItem
+                          </PopoverTrigger>
+                          <PopoverContent
+                            aria-label={"Thao tác cho " + restaurant.name}
+                            align="end"
+                            sideOffset={6}
+                            collisionPadding={12}
+                            className="w-48 rounded-xl border-slate-200 bg-white p-1.5 shadow-lg"
+                          >
+                            <PopoverClose
+                              type="button"
                               onClick={() =>
-                                navigate(`/quan-tri-nen-tang/nha-hang/${restaurant.id}`)
+                                navigate("/quan-tri-nen-tang/nha-hang/" + restaurant.id)
                               }
-                              className="cursor-pointer"
+                              className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2.5 text-left text-sm font-medium text-slate-800 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-brand-primary"
                             >
-                              <Eye className="w-4 h-4 mr-2" />
-                              Xem chi tiết
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
+                              <Eye aria-hidden="true" className="size-4 shrink-0" />
+                              <span>Xem chi tiết</span>
+                            </PopoverClose>
+                            <PopoverClose
+                              type="button"
                               onClick={() => handleOpenEdit(restaurant)}
-                              className="cursor-pointer text-blue-600 focus:text-blue-700"
+                              className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2.5 text-left text-sm font-medium text-slate-800 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-brand-primary"
                             >
-                              <Edit2 className="w-4 h-4 mr-2" />
-                              Sửa thông tin
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
+                              <Edit2 aria-hidden="true" className="size-4 shrink-0" />
+                              <span>Sửa thông tin</span>
+                            </PopoverClose>
+                            <PopoverClose
+                              type="button"
                               onClick={() => handleToggleStatus(restaurant)}
-                              className="cursor-pointer"
+                              className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2.5 text-left text-sm font-medium hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-brand-primary"
                             >
                               {isActive ? (
                                 <>
-                                  <Lock className="w-4 h-4 mr-2 text-rose-600" />
+                                  <Lock
+                                    aria-hidden="true"
+                                    className="size-4 shrink-0 text-rose-600"
+                                  />
                                   <span className="text-rose-600">Khóa nhà hàng</span>
                                 </>
                               ) : (
                                 <>
-                                  <Unlock className="w-4 h-4 mr-2 text-emerald-600" />
+                                  <Unlock
+                                    aria-hidden="true"
+                                    className="size-4 shrink-0 text-emerald-600"
+                                  />
                                   <span className="text-emerald-600">Mở khóa</span>
                                 </>
                               )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
+                            </PopoverClose>
+                            <PopoverClose
+                              type="button"
                               onClick={() => handleDelete(restaurant)}
-                              className="cursor-pointer text-rose-600 focus:text-rose-700"
+                              className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2.5 text-left text-sm font-medium text-rose-600 hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-brand-primary"
                             >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Xóa nhà hàng
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                              <Trash2 aria-hidden="true" className="size-4 shrink-0" />
+                              <span>Xóa nhà hàng</span>
+                            </PopoverClose>
+                          </PopoverContent>
+                        </Popover>
                       </td>
                     </tr>
                   )
@@ -692,7 +711,7 @@ export default function RestaurantListPage() {
             </table>
 
             {/* Pagination footer */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50/50 text-xs text-gray-500">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50/70 text-xs text-slate-600">
               <div>
                 Hiển thị{" "}
                 <strong>
@@ -708,18 +727,18 @@ export default function RestaurantListPage() {
                     type="button"
                     disabled={currentPage === 1}
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                    className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
-                  <span className="font-semibold px-2 text-gray-700">
+                  <span className="font-semibold px-2 text-slate-700">
                     Trang {currentPage} / {totalPages}
                   </span>
                   <button
                     type="button"
                     disabled={currentPage >= totalPages}
                     onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                    className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>
@@ -738,16 +757,16 @@ export default function RestaurantListPage() {
           if (!open) resetCreateForm()
         }}
       >
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg min-w-0 border-slate-200 bg-white shadow-lg sm:p-5">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>Tạo nhà hàng mới</span>
-              <span className="text-xs font-normal text-gray-400 ml-2">Bước {createStep}/2</span>
+              <span className="text-xs font-normal text-slate-500 ml-2">Bước {createStep}/2</span>
             </DialogTitle>
             {/* Step indicator */}
-            <div className="flex items-center gap-2 mt-3">
+            <div className="mt-3 flex flex-wrap items-center gap-2">
               <div
-                className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${createStep === 1 ? "bg-[#E03A14] text-white" : "bg-emerald-100 text-emerald-700"}`}
+                className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${createStep === 1 ? "bg-brand-primary text-white" : "bg-emerald-100 text-emerald-700"}`}
               >
                 {createStep > 1 ? (
                   <CheckCircle2 className="w-3.5 h-3.5" />
@@ -758,7 +777,7 @@ export default function RestaurantListPage() {
               </div>
               <div className="h-px flex-1 bg-gray-200" />
               <div
-                className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${createStep === 2 ? "bg-[#E03A14] text-white" : "bg-gray-100 text-gray-400"}`}
+                className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${createStep === 2 ? "bg-brand-primary text-white" : "bg-slate-100 text-slate-500"}`}
               >
                 <User className="w-3.5 h-3.5" />
                 Tài khoản chủ
@@ -770,7 +789,7 @@ export default function RestaurantListPage() {
           {createStep === 1 && (
             <form onSubmit={handleStep1Next} className="space-y-4 py-2">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Tên nhà hàng <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -779,13 +798,13 @@ export default function RestaurantListPage() {
                   placeholder="VD: Phở Việt"
                   value={createForm.name}
                   onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                  className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
+                  className="min-w-0 w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary min-h-10"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Mã nhà hàng <span className="text-red-500">*</span>
-                  <span className="text-gray-400 font-normal ml-1">
+                  <span className="text-slate-500 font-normal ml-1">
                     (chữ in hoa và số, không dấu cách)
                   </span>
                 </label>
@@ -799,12 +818,12 @@ export default function RestaurantListPage() {
                       code: e.target.value.toUpperCase().replace(/\s/g, ""),
                     })
                   }
-                  className="w-full px-3.5 py-2 text-sm font-mono rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
+                  className="min-w-0 w-full px-3.5 py-2 text-sm font-mono rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary min-h-10"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Mã số thuế
                   </label>
                   <input
@@ -812,11 +831,11 @@ export default function RestaurantListPage() {
                     placeholder="VD: 0109823456"
                     value={createForm.taxCode}
                     onChange={(e) => setCreateForm({ ...createForm, taxCode: e.target.value })}
-                    className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
+                    className="min-w-0 w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary min-h-10"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Số điện thoại
                   </label>
                   <input
@@ -824,12 +843,12 @@ export default function RestaurantListPage() {
                     placeholder="VD: 0901234567"
                     value={createForm.phone}
                     onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
-                    className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
+                    className="min-w-0 w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary min-h-10"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Địa chỉ trụ sở
                 </label>
                 <input
@@ -837,24 +856,24 @@ export default function RestaurantListPage() {
                   placeholder="VD: 123 Lê Lợi, Q.1, TP.HCM"
                   value={createForm.address}
                   onChange={(e) => setCreateForm({ ...createForm, address: e.target.value })}
-                  className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
+                  className="min-w-0 w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary min-h-10"
                 />
               </div>
 
-              <DialogFooter className="mt-6 pt-2">
+              <DialogFooter className="mt-6 pt-2 gap-2.5 border-t border-slate-100 pt-4">
                 <button
                   type="button"
                   onClick={() => {
                     setIsCreateOpen(false)
                     resetCreateForm()
                   }}
-                  className="px-4 py-2 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl text-sm font-medium bg-[#E03A14] text-white hover:bg-[#c9320f] transition-colors cursor-pointer inline-flex items-center gap-2"
+                  className="px-4 py-2 rounded-lg text-sm font-medium bg-brand-primary text-white hover:bg-brand-primary-hover transition-colors cursor-pointer inline-flex items-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
                 >
                   Tiếp theo
                   <ChevronRight className="w-4 h-4" />
@@ -867,20 +886,20 @@ export default function RestaurantListPage() {
           {createStep === 2 && (
             <form onSubmit={handleCreate} className="space-y-4 py-2">
               {/* Summary box */}
-              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
-                <div className="w-9 h-9 rounded-lg bg-orange-100 text-[#E03A14] font-bold text-base flex items-center justify-center shrink-0">
+              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="w-9 h-9 rounded-lg bg-orange-100 text-brand-primary font-bold text-base flex items-center justify-center shrink-0">
                   {createForm.name.charAt(0).toUpperCase() || "N"}
                 </div>
                 <div>
-                  <div className="font-semibold text-sm text-gray-900">{createForm.name}</div>
-                  <div className="text-xs text-gray-400 font-mono">{createForm.code}</div>
+                  <div className="font-semibold text-sm text-slate-950">{createForm.name}</div>
+                  <div className="text-xs text-slate-500 font-mono">{createForm.code}</div>
                 </div>
               </div>
 
               {!createForm.skipOwner && (
                 <>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
                       <User className="w-3.5 h-3.5 inline mr-1" />
                       Họ tên chủ nhà hàng <span className="text-red-500">*</span>
                     </label>
@@ -892,12 +911,12 @@ export default function RestaurantListPage() {
                       onChange={(e) =>
                         setCreateForm({ ...createForm, ownerFullName: e.target.value })
                       }
-                      className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
+                      className="min-w-0 w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary min-h-10"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
                         Tên đăng nhập <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -907,11 +926,11 @@ export default function RestaurantListPage() {
                         onChange={(e) =>
                           setCreateForm({ ...createForm, ownerUsername: e.target.value })
                         }
-                        className="w-full px-3.5 py-2 text-sm font-mono rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
+                        className="min-w-0 w-full px-3.5 py-2 text-sm font-mono rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary min-h-10"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
                         <Mail className="w-3.5 h-3.5 inline mr-1" />
                         Email
                       </label>
@@ -922,13 +941,13 @@ export default function RestaurantListPage() {
                         onChange={(e) =>
                           setCreateForm({ ...createForm, ownerEmail: e.target.value })
                         }
-                        className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
+                        className="min-w-0 w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary min-h-10"
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
                         <KeyRound className="w-3.5 h-3.5 inline mr-1" />
                         Mật khẩu <span className="text-red-500">*</span>
                       </label>
@@ -939,11 +958,11 @@ export default function RestaurantListPage() {
                         onChange={(e) =>
                           setCreateForm({ ...createForm, ownerPassword: e.target.value })
                         }
-                        className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
+                        className="min-w-0 w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary min-h-10"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
                         Xác nhận mật khẩu <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -953,7 +972,7 @@ export default function RestaurantListPage() {
                         onChange={(e) =>
                           setCreateForm({ ...createForm, ownerPasswordConfirm: e.target.value })
                         }
-                        className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
+                        className="min-w-0 w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary min-h-10"
                       />
                     </div>
                   </div>
@@ -968,16 +987,16 @@ export default function RestaurantListPage() {
                   onChange={(e) => setCreateForm({ ...createForm, skipOwner: e.target.checked })}
                   className="w-4 h-4 rounded border-gray-300 accent-[#E03A14] cursor-pointer"
                 />
-                <span className="text-xs text-gray-600 group-hover:text-gray-900 transition-colors">
+                <span className="text-xs text-slate-600 group-hover:text-gray-900 transition-colors">
                   Bỏ qua — tạo tài khoản chủ sau (vào trang chi tiết nhà hàng)
                 </span>
               </label>
 
-              <DialogFooter className="mt-6 pt-2">
+              <DialogFooter className="mt-6 pt-2 gap-2.5 border-t border-slate-100 pt-4">
                 <button
                   type="button"
                   onClick={() => setCreateStep(1)}
-                  className="px-4 py-2 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer inline-flex items-center gap-2"
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer inline-flex items-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
                 >
                   <ChevronLeft className="w-4 h-4" />
                   Quay lại
@@ -985,7 +1004,7 @@ export default function RestaurantListPage() {
                 <button
                   type="submit"
                   disabled={createMutation.isPending || createAccountMutation.isPending}
-                  className="px-4 py-2 rounded-xl text-sm font-medium bg-[#E03A14] text-white hover:bg-[#c9320f] transition-colors cursor-pointer disabled:opacity-50 inline-flex items-center gap-2"
+                  className="px-4 py-2 rounded-lg text-sm font-medium bg-brand-primary text-white hover:bg-brand-primary-hover transition-colors cursor-pointer disabled:opacity-50 inline-flex items-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
                 >
                   {(createMutation.isPending || createAccountMutation.isPending) && (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -1000,13 +1019,13 @@ export default function RestaurantListPage() {
 
       {/* Modal Sửa nhà hàng */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md min-w-0 border-slate-200 bg-white shadow-lg sm:p-5">
           <DialogHeader>
             <DialogTitle>Sửa thông tin nhà hàng</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleUpdate} className="space-y-4 py-2">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Tên nhà hàng <span className="text-red-500">*</span>
               </label>
               <input
@@ -1015,32 +1034,32 @@ export default function RestaurantListPage() {
                 placeholder="VD: Phở Việt"
                 value={editForm.name}
                 onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
+                className="min-w-0 w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary min-h-10"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">
-                Mã nhà hàng (Không thể sửa theo FR-TEN-01)
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Mã nhà hàng (không thể sửa)
               </label>
               <input
                 type="text"
                 disabled
                 value={editForm.code}
-                className="w-full px-3.5 py-2 text-sm font-mono rounded-xl border border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed"
+                className="min-w-0 w-full px-3.5 py-2 text-sm font-mono rounded-lg border border-slate-200 bg-slate-100 text-slate-600 cursor-not-allowed min-h-10"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Mã số thuế</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Mã số thuế</label>
               <input
                 type="text"
                 placeholder="VD: 0109823456"
                 value={editForm.taxCode}
                 onChange={(e) => setEditForm({ ...editForm, taxCode: e.target.value })}
-                className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
+                className="min-w-0 w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary min-h-10"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Số điện thoại
               </label>
               <input
@@ -1048,11 +1067,11 @@ export default function RestaurantListPage() {
                 placeholder="VD: 0901234567"
                 value={editForm.phone}
                 onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
+                className="min-w-0 w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary min-h-10"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Địa chỉ trụ sở
               </label>
               <input
@@ -1060,22 +1079,22 @@ export default function RestaurantListPage() {
                 placeholder="VD: 123 Lê Lợi, Q.1, TP.HCM"
                 value={editForm.address}
                 onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
-                className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
+                className="min-w-0 w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary min-h-10"
               />
             </div>
 
-            <DialogFooter className="mt-6 pt-2">
+            <DialogFooter className="mt-6 pt-2 gap-2.5 border-t border-slate-100 pt-4">
               <button
                 type="button"
                 onClick={() => setIsEditOpen(false)}
-                className="px-4 py-2 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+                className="px-4 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
               >
                 Hủy
               </button>
               <button
                 type="submit"
                 disabled={updateMutation.isPending}
-                className="px-4 py-2 rounded-xl text-sm font-medium bg-[#E03A14] text-white hover:bg-[#c9320f] transition-colors cursor-pointer disabled:opacity-50 inline-flex items-center gap-2"
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-brand-primary text-white hover:bg-brand-primary-hover transition-colors cursor-pointer disabled:opacity-50 inline-flex items-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
               >
                 {updateMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                 Lưu thay đổi

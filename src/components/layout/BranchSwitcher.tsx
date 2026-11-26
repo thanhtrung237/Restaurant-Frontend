@@ -1,4 +1,4 @@
-import { Check, ChevronDown } from "lucide-react"
+import { Check, ChevronDown, RotateCw } from "lucide-react"
 import { PopoverClose } from "@radix-ui/react-popover"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
@@ -16,6 +16,7 @@ export interface BranchSwitcherProps {
    * "chip" — dùng trong SidebarRail và MobileHeader: chỉ hiện nhãn ngắn ("Q1 ▾").
    */
   variant?: BranchSwitcherVariant
+  compact?: boolean
   className?: string
 }
 
@@ -26,7 +27,11 @@ export interface BranchSwitcherProps {
  *
  * Tài khoản chỉ có 1 phân công: hiển thị tĩnh, không mở được dropdown (FR-ADM-04).
  */
-export function BranchSwitcher({ variant = "full", className }: BranchSwitcherProps) {
+export function BranchSwitcher({
+  variant = "full",
+  compact = false,
+  className,
+}: BranchSwitcherProps) {
   const {
     choices,
     activeChoice,
@@ -42,6 +47,23 @@ export function BranchSwitcher({ variant = "full", className }: BranchSwitcherPr
   const label = variant === "chip" ? activeChoice.shortName : activeChoice.name
 
   if (branchListError && !canSwitch) {
+    if (compact) {
+      return (
+        <button
+          type="button"
+          aria-label="Không tải được chi nhánh. Thử lại"
+          title="Thử tải lại chi nhánh"
+          className={cn(
+            "inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-primary-subtle text-brand-primary",
+            className,
+          )}
+          onClick={() => void retryBranchList()}
+        >
+          <RotateCw aria-hidden="true" className="size-4" />
+        </button>
+      )
+    }
+
     return (
       <button type="button" className={className} onClick={() => void retryBranchList()}>
         Không tải được chi nhánh. Thử lại
@@ -60,7 +82,7 @@ export function BranchSwitcher({ variant = "full", className }: BranchSwitcherPr
         )}
         title={activeChoice.name}
       >
-        {branchListLoading ? "Đang tải chi nhánh…" : label}
+        {branchListLoading && !compact ? "Đang tải chi nhánh…" : label}
       </span>
     )
   }

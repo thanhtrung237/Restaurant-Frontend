@@ -544,7 +544,7 @@ export default function CartPage() {
                 Khuyến mãi vừa hết lượt
               </DialogTitle>
               <DialogDescription className="mt-0.5 text-sm text-text-tertiary">
-                Xác nhận thay đổi giá trước khi gửi bếp (FR-CUS-05)
+                Xác nhận thay đổi giá trước khi gửi bếp
               </DialogDescription>
             </div>
           </DialogHeader>

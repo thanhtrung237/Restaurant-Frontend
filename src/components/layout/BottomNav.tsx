@@ -48,7 +48,7 @@ export function BottomNav({
   return (
     <nav
       className={cn(
-        "flex h-16 w-full items-center justify-around border-t border-border-default bg-surface-card gap-1 px-2 select-none shadow-[0_-2px_10px_#2927230a]",
+        "flex h-[calc(4rem_+_env(safe-area-inset-bottom))] w-full pb-[env(safe-area-inset-bottom)] items-center justify-around border-t border-border-default bg-surface-card gap-1 px-2 select-none shadow-[0_-2px_10px_#2927230a]",
         className,
       )}
     >

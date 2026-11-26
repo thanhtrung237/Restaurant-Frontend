@@ -39,8 +39,6 @@ export interface PermissionMatrixRow {
 export interface PermissionMatrixSection {
   id: string
   title: string
-  /** Nguồn của bảng trong đặc tả — hiện ngay trên giao diện để đối chiếu được. */
-  source: string
   columns: PermissionMatrixColumn[]
   rows: PermissionMatrixRow[]
 }

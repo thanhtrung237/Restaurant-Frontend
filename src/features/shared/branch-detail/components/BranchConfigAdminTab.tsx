@@ -75,7 +75,7 @@ export const BranchConfigAdminTab: React.FC<BranchConfigAdminTabProps> = ({
           <CardDescription className="text-xs text-text-tertiary">
             {readOnly
               ? "Nhóm 2 · Chỉ xem (CHỈ Quản trị nhà hàng mới sửa được)"
-              : "Nhóm 2 · CHỈ Quản trị nhà hàng được sửa (BR-08)"}
+              : "Nhóm 2 · CHỈ Quản trị nhà hàng được sửa"}
           </CardDescription>
         </CardHeader>
 
@@ -103,7 +103,7 @@ export const BranchConfigAdminTab: React.FC<BranchConfigAdminTabProps> = ({
               disabled={readOnly}
             />
             <p className="mt-1.5 text-xs text-text-tertiary">
-              Từ 0-100%. Áp dụng cho các phiên mới (BR-08).
+              Từ 0-100%. Áp dụng cho các phiên mới.
             </p>
           </FormField>
 
@@ -130,7 +130,7 @@ export const BranchConfigAdminTab: React.FC<BranchConfigAdminTabProps> = ({
               disabled={readOnly}
             />
             <p className="mt-1.5 text-xs text-text-tertiary">
-              Từ 0-100%. Áp dụng cho các phiên mới (BR-08).
+              Từ 0-100%. Áp dụng cho các phiên mới.
             </p>
           </FormField>
 
@@ -201,7 +201,7 @@ export const BranchConfigAdminTab: React.FC<BranchConfigAdminTabProps> = ({
               disabled={readOnly}
             />
             <p className="mt-1.5 text-xs text-text-tertiary">
-              Để trống để dùng MST nhà hàng (BR-20). Gửi trống = xóa MST riêng.
+              Để trống để dùng MST nhà hàng. Gửi trống = xóa MST riêng.
             </p>
           </FormField>
         </CardContent>

@@ -269,7 +269,7 @@ export const PromotionTable: React.FC<PromotionTableProps> = ({
                       <div className="flex justify-center">
                         <span
                           className="size-6 rounded-full bg-brand-primary-subtle text-brand-primary font-bold text-xs flex items-center justify-center"
-                          title="Độ ưu tiên (BR-23)"
+                          title="Độ ưu tiên"
                         >
                           {promo.priority ?? 0}
                         </span>

@@ -20,7 +20,10 @@ export const MenuTabs: React.FC<MenuTabsProps> = ({ activeTab, onTabChange }) =>
   return (
     // KHÔNG tự vẽ border-b: dải tab của PageHeader đã có đường kẻ dưới.
     <div>
-      <nav className="flex gap-5 whitespace-nowrap sm:gap-8" aria-label="Phạm vi thực đơn">
+      <nav
+        className="flex gap-5 whitespace-nowrap max-md:flex-wrap max-md:gap-x-3 max-md:gap-y-1 max-md:whitespace-normal sm:gap-8"
+        aria-label="Phạm vi thực đơn"
+      >
         {tabs.map((tab) => {
           const isActive = tab.id === "mon" ? activeTab !== "menu-chi-nhanh" : activeTab === tab.id
           return (

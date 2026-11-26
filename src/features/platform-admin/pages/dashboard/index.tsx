@@ -8,14 +8,10 @@ import {
   Sparkles,
   ArrowRight,
   Plus,
-  Sliders,
   ClipboardList,
   ShieldAlert,
   Loader2,
   Activity,
-  Server,
-  Database,
-  HardDrive,
   ShieldCheck,
   Layers,
   Users,
@@ -197,18 +193,20 @@ export default function PlatformDashboardPage() {
   )
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-8">
+    <div className="mx-auto min-w-0 max-w-7xl space-y-5 pb-8 lg:space-y-6">
       {/* ----------------- TOP HEADER ----------------- */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-1">
         <div>
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Tổng quan nền tảng</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">
+              Tổng quan nền tảng
+            </h1>
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Hệ thống ổn định
             </span>
           </div>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-slate-600 mt-1">
             Trung tâm giám sát vận hành kỹ thuật, quy mô đối tác và an ninh hệ thống SaaS
             Multi-tenant
           </p>
@@ -222,13 +220,13 @@ export default function PlatformDashboardPage() {
               refetchAudit()
             }}
             title="Làm mới dữ liệu"
-            className="p-2.5 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors shadow-2xs cursor-pointer"
+            className="p-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
           <button
             onClick={() => navigate("/quan-tri-nen-tang/nha-hang")}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-primary text-white font-medium text-sm hover:bg-brand-primary-hover shadow-xs transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-brand-primary text-white font-medium text-sm hover:bg-brand-primary-hover shadow-xs transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
           >
             <Plus className="w-4 h-4" />
             <span>Thêm nhà hàng</span>
@@ -237,10 +235,10 @@ export default function PlatformDashboardPage() {
       </div>
 
       {/* ----------------- RÀNG BUỘC BR-21 BANNER ----------------- */}
-      <div className="flex items-start gap-3 p-3.5 rounded-xl bg-amber-50/80 border border-amber-200/90 text-amber-900 text-xs leading-relaxed">
+      <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-3.5 text-slate-700 text-xs leading-relaxed">
         <ShieldCheck className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
         <div>
-          <strong className="font-semibold">Nguyên tắc cách ly bảo mật (BR-21): </strong>
+          <strong className="font-semibold">Nguyên tắc cách ly bảo mật: </strong>
           Dashboard Quản trị nền tảng chỉ hiển thị metadata định danh kỹ thuật, tình trạng hạ tầng
           và nhật ký kiểm toán. Tuyệt đối không truy cập hoặc tổng hợp số liệu doanh thu, hóa đơn
           hay dữ liệu kinh doanh của từng nhà hàng.
@@ -248,28 +246,28 @@ export default function PlatformDashboardPage() {
       </div>
 
       {/* ----------------- 4 STAT CARDS CHÍNH ----------------- */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 xl:grid-cols-4">
         {/* Card 1: Tổng số nhà hàng */}
-        <div className="min-w-0 rounded-card border border-border-default bg-surface-card p-5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+        <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-2xs sm:p-4">
+          <div className="flex min-w-0 items-center justify-between gap-1.5">
+            <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
               Tổng số nhà hàng
             </span>
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+            <div className="size-8 shrink-0 rounded-lg bg-slate-100 text-slate-700 sm:size-10 flex items-center justify-center">
               <Building2 className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 sm:mt-3">
             {isRestaurantsLoading ? (
-              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+              <Loader2 className="w-6 h-6 animate-spin text-slate-500" />
             ) : (
-              <span className="text-3xl font-extrabold text-gray-900 tracking-tight">
+              <span className="text-3xl font-semibold tabular-nums text-slate-950 tracking-tight">
                 {metrics.totalRest}
               </span>
             )}
-            <span className="text-xs text-gray-500 font-medium">nhà hàng</span>
+            <span className="text-xs text-slate-600 font-medium">nhà hàng</span>
           </div>
-          <div className="mt-3 flex items-center gap-2 text-xs font-medium text-gray-600">
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-slate-600">
             <span className="inline-flex items-center gap-1 text-emerald-600">
               <CheckCircle2 className="w-3.5 h-3.5" />
               {metrics.activeRest} hoạt động
@@ -283,26 +281,26 @@ export default function PlatformDashboardPage() {
         </div>
 
         {/* Card 2: Quy mô chi nhánh toàn hệ thống */}
-        <div className="min-w-0 rounded-card border border-border-default bg-surface-card p-5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+        <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-2xs sm:p-4">
+          <div className="flex min-w-0 items-center justify-between gap-1.5">
+            <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
               Quy mô chi nhánh
             </span>
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <div className="size-8 shrink-0 rounded-lg bg-slate-100 text-slate-700 sm:size-10 flex items-center justify-center">
               <GitBranch className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 sm:mt-3">
             {isBranchesLoading || isRestaurantsLoading ? (
-              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+              <Loader2 className="w-6 h-6 animate-spin text-slate-500" />
             ) : (
-              <span className="text-3xl font-extrabold text-emerald-600 tracking-tight">
+              <span className="text-3xl font-semibold tabular-nums text-slate-950 tracking-tight">
                 {metrics.totalBranchCount}
               </span>
             )}
-            <span className="text-xs text-gray-500 font-medium">chi nhánh đang vận hành</span>
+            <span className="text-xs text-slate-600 font-medium">chi nhánh đang vận hành</span>
           </div>
-          <div className="mt-3 text-xs text-gray-500 font-medium flex items-center gap-1.5">
+          <div className="mt-2 flex flex-wrap items-center gap-x-1.5 text-xs font-medium text-slate-600">
             <span>Trung bình:</span>
             <strong className="text-gray-800 font-semibold">{metrics.avgBranches}</strong>
             <span>chi nhánh / đối tác</span>
@@ -310,28 +308,28 @@ export default function PlatformDashboardPage() {
         </div>
 
         {/* Card 3: Cơ cấu mô hình đối tác */}
-        <div className="min-w-0 rounded-card border border-border-default bg-surface-card p-5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+        <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-2xs sm:p-4">
+          <div className="flex min-w-0 items-center justify-between gap-1.5">
+            <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
               Cơ cấu đối tác
             </span>
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <div className="size-8 shrink-0 rounded-lg bg-slate-100 text-slate-700 sm:size-10 flex items-center justify-center">
               <Layers className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 sm:mt-3">
             {isRestaurantsLoading ? (
-              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+              <Loader2 className="w-6 h-6 animate-spin text-slate-500" />
             ) : (
-              <span className="text-3xl font-extrabold text-indigo-600 tracking-tight">
+              <span className="text-3xl font-semibold tabular-nums text-slate-950 tracking-tight">
                 {metrics.chainCount}
               </span>
             )}
-            <span className="text-xs text-gray-500 font-medium">chuỗi đa chi nhánh</span>
+            <span className="text-xs text-slate-600 font-medium">chuỗi đa chi nhánh</span>
           </div>
-          <div className="mt-3 text-xs text-gray-500 font-medium flex items-center gap-2">
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 text-xs font-medium text-slate-600">
             <span>
-              Đơn cơ sở: <strong className="text-gray-700">{metrics.singleCount}</strong>
+              Đơn cơ sở: <strong className="text-slate-700">{metrics.singleCount}</strong>
             </span>
             <span className="text-gray-300">·</span>
             <span>
@@ -341,55 +339,55 @@ export default function PlatformDashboardPage() {
         </div>
 
         {/* Card 4: Tăng trưởng đối tác mới */}
-        <div className="min-w-0 rounded-card border border-border-default bg-surface-card p-5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+        <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-2xs sm:p-4">
+          <div className="flex min-w-0 items-center justify-between gap-1.5">
+            <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
               Tạo gần đây
             </span>
-            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+            <div className="size-8 shrink-0 rounded-lg bg-slate-100 text-slate-700 sm:size-10 flex items-center justify-center">
               <Sparkles className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 sm:mt-3">
             {isRestaurantsLoading ? (
-              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+              <Loader2 className="w-6 h-6 animate-spin text-slate-500" />
             ) : (
-              <span className="text-3xl font-extrabold text-purple-600 tracking-tight">
+              <span className="text-3xl font-semibold tabular-nums text-slate-950 tracking-tight">
                 {metrics.recent}
               </span>
             )}
-            <span className="text-xs text-gray-500 font-medium">trong 30 ngày qua</span>
+            <span className="text-xs text-slate-600 font-medium">trong 30 ngày qua</span>
           </div>
-          <div className="mt-3 text-xs text-purple-700 font-medium flex items-center gap-1">
+          <div className="mt-2 flex items-center gap-1 text-xs font-medium text-slate-600">
             <span>Tăng trưởng quy mô đối tác SaaS</span>
           </div>
         </div>
       </div>
 
-      {/* ----------------- SECTION 2: BIỂU ĐỒ & SỨC KHỎE HẠ TẦNG ----------------- */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Biểu đồ tăng trưởng số lượng Nhà hàng & Chi nhánh (2/3 chiều rộng) */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-6 shadow-xs flex flex-col justify-between">
+      {/* ----------------- SECTION 2: BIỂU ĐỒ ----------------- */}
+      <div className="min-w-0">
+        {/* Biểu đồ tăng trưởng số lượng Nhà hàng & Chi nhánh */}
+        <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-2xs sm:p-5 flex flex-col justify-between">
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <div>
-                <h2 className="font-bold text-gray-900 text-base">
+                <h2 className="font-bold text-slate-950 text-base">
                   Quy mô nhà hàng & Chi nhánh theo thời gian
                 </h2>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-xs text-slate-600 mt-0.5">
                   Tăng trưởng tích lũy các đối tác và điểm bán trên nền tảng
                 </p>
               </div>
 
               {/* Time Toggle */}
-              <div className="inline-flex p-1 bg-gray-100 rounded-xl text-xs font-medium self-start sm:self-auto">
+              <div className="inline-flex p-1 bg-slate-100 rounded-xl text-xs font-medium self-start sm:self-auto">
                 <button
                   type="button"
                   onClick={() => setActiveTabTime("6m")}
-                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
+                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary ${
                     activeTabTime === "6m"
-                      ? "bg-white text-gray-900 font-semibold shadow-2xs"
-                      : "text-gray-500 hover:text-gray-900"
+                      ? "bg-white text-slate-950 font-semibold shadow-2xs"
+                      : "text-slate-600 hover:text-slate-950"
                   }`}
                 >
                   6 tháng
@@ -397,10 +395,10 @@ export default function PlatformDashboardPage() {
                 <button
                   type="button"
                   onClick={() => setActiveTabTime("12m")}
-                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
+                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary ${
                     activeTabTime === "12m"
-                      ? "bg-white text-gray-900 font-semibold shadow-2xs"
-                      : "text-gray-500 hover:text-gray-900"
+                      ? "bg-white text-slate-950 font-semibold shadow-2xs"
+                      : "text-slate-600 hover:text-slate-950"
                   }`}
                 >
                   Năm nay
@@ -410,7 +408,7 @@ export default function PlatformDashboardPage() {
 
             {/* Custom Interactive Dual Bar Chart */}
             <div className="mt-6 pt-2">
-              <div className="h-56 flex items-end justify-between gap-3 sm:gap-6 px-3 sm:px-6 pb-2 border-b border-gray-200">
+              <div className="flex h-40 min-w-0 items-end justify-between gap-1.5 border-b border-slate-200 bg-[linear-gradient(to_top,var(--color-slate-100)_1px,transparent_1px)] [background-size:100%_25%] px-1 pb-2 sm:h-52 sm:gap-4 sm:px-4 xl:h-64">
                 {metrics.monthlyData.map((d, index) => {
                   const isLatest = index === metrics.monthlyData.length - 1
                   const restHeightPercent = Math.max(16, (d.restaurants / maxChartCount) * 100)
@@ -422,9 +420,9 @@ export default function PlatformDashboardPage() {
                       className="flex-1 flex flex-col items-center gap-2 group relative h-full justify-end"
                     >
                       {/* Tooltip on hover */}
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-12 bg-gray-900 text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-lg shadow-md pointer-events-none whitespace-nowrap z-20 flex flex-col items-center gap-0.5">
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-12 left-1/2 -translate-x-1/2 group-first:left-0 group-first:translate-x-0 group-last:left-auto group-last:right-0 group-last:translate-x-0 bg-gray-900 text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-lg shadow-md pointer-events-none whitespace-nowrap z-20 flex flex-col items-center gap-0.5">
                         <span>{d.restaurants} nhà hàng</span>
-                        <span className="text-orange-300">{d.branches} chi nhánh</span>
+                        <span className="text-slate-200">{d.branches} chi nhánh</span>
                       </div>
 
                       {/* Dual bars */}
@@ -432,7 +430,7 @@ export default function PlatformDashboardPage() {
                         {/* Bar 1: Nhà hàng */}
                         <div
                           style={{ height: `${restHeightPercent}%` }}
-                          className={`w-full max-w-[20px] rounded-t-lg transition-all duration-300 ${
+                          className={`w-full max-w-5 rounded-t-sm transition-colors ${
                             isLatest
                               ? "bg-brand-primary"
                               : "bg-gray-200 group-hover:bg-brand-primary/50"
@@ -441,20 +439,20 @@ export default function PlatformDashboardPage() {
                         {/* Bar 2: Chi nhánh */}
                         <div
                           style={{ height: `${branchHeightPercent}%` }}
-                          className={`w-full max-w-[20px] rounded-t-lg transition-all duration-300 ${
-                            isLatest ? "bg-orange-300" : "bg-gray-100 group-hover:bg-orange-200"
+                          className={`w-full max-w-5 rounded-t-sm transition-colors ${
+                            isLatest ? "bg-slate-400" : "bg-slate-200 group-hover:bg-slate-400"
                           }`}
                         />
                       </div>
 
-                      <span className="text-xs font-semibold text-gray-500 mt-2">{d.month}</span>
+                      <span className="text-xs font-semibold text-slate-600 mt-2">{d.month}</span>
                     </div>
                   )
                 })}
               </div>
 
               {/* Chart Legend */}
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
                 <div className="flex items-center gap-4">
                   <span className="flex items-center gap-1.5">
                     <span className="w-3 h-3 rounded-sm bg-brand-primary" />
@@ -463,140 +461,37 @@ export default function PlatformDashboardPage() {
                     </span>
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-sm bg-orange-300" />
+                    <span className="w-3 h-3 rounded-sm bg-slate-400" />
                     <span>
                       Chi nhánh: <strong>{metrics.totalBranchCount}</strong>
                     </span>
                   </span>
                 </div>
-                <span className="italic text-gray-400">
-                  *Thống kê định danh đối tác, bảo mật theo BR-21
-                </span>
+                <span className="italic text-slate-500">*Thống kê định danh đối tác</span>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Khối Sức khỏe Hạ tầng & Dịch vụ (1/3 chiều rộng) */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-gray-900 text-base flex items-center gap-2">
-                <Server className="w-4 h-4 text-emerald-600" />
-                <span>Trạng thái dịch vụ</span>
-              </h2>
-              <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                99.98% Uptime
-              </span>
-            </div>
-
-            <p className="text-xs text-gray-500 mb-4">
-              Giám sát tình trạng sẵn sàng của các thành phần hạ tầng kỹ thuật
-            </p>
-
-            <div className="space-y-3.5">
-              {/* Item 1: Core API Gateway */}
-              <div className="p-3 rounded-xl bg-gray-50/80 border border-gray-100 flex items-center justify-between">
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                    <Activity className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold text-gray-900">API Gateway / Core</div>
-                    <div className="text-[11px] text-gray-400">Độ trễ phản hồi: ~35ms</div>
-                  </div>
-                </div>
-                <span className="text-xs font-semibold text-emerald-600 flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  Online
-                </span>
-              </div>
-
-              {/* Item 2: Database Connection */}
-              <div className="p-3 rounded-xl bg-gray-50/80 border border-gray-100 flex items-center justify-between">
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
-                    <Database className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold text-gray-900">Database Pool</div>
-                    <div className="text-[11px] text-gray-400">Kết nối đang hoạt động: 8/20</div>
-                  </div>
-                </div>
-                <span className="text-xs font-semibold text-blue-600 flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-blue-500" />
-                  Ổn định
-                </span>
-              </div>
-
-              {/* Item 3: File / Media Storage */}
-              <div className="p-3 rounded-xl bg-gray-50/80 border border-gray-100 flex items-center justify-between">
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
-                    <HardDrive className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold text-gray-900">Lưu trữ Media/Asset</div>
-                    <div className="text-[11px] text-gray-400">Dung lượng: 1.4 GB / 50 GB</div>
-                  </div>
-                </div>
-                <span className="text-xs font-semibold text-indigo-600 flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-indigo-500" />
-                  Bình thường
-                </span>
-              </div>
-
-              {/* Item 4: Multi-tenant Guard */}
-              <div className="p-3 rounded-xl bg-gray-50/80 border border-gray-100 flex items-center justify-between">
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
-                    <ShieldCheck className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold text-gray-900">
-                      Tenant Isolation Guard
-                    </div>
-                    <div className="text-[11px] text-gray-400">Chốt chặn truy cập chéo tenant</div>
-                  </div>
-                </div>
-                <span className="text-xs font-semibold text-purple-600 flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-purple-500" />
-                  Kích hoạt
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-gray-100 mt-4">
-            <button
-              onClick={() => navigate("/quan-tri-nen-tang/cau-hinh")}
-              className="w-full py-2 px-3 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <Sliders className="w-3.5 h-3.5 text-gray-500" />
-              <span>Cấu hình tham số hệ thống</span>
-            </button>
           </div>
         </div>
       </div>
 
       {/* ----------------- SECTION 3: TOP ĐỐI TÁC & HOẠT ĐỘNG KIỂM TOÁN ----------------- */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-3">
         {/* Cột 1: Danh sách đối tác nổi bật (2/3 chiều rộng) */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-6 shadow-xs flex flex-col justify-between">
+        <div className="xl:col-span-2 min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-2xs sm:p-5 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
               <div>
-                <h2 className="font-bold text-gray-900 text-base flex items-center gap-2">
-                  <Building className="w-4 h-4 text-[#E03A14]" />
+                <h2 className="font-bold text-slate-950 text-base flex items-center gap-2">
+                  <Building className="w-4 h-4 text-brand-primary" />
                   <span>Đối tác nhà hàng trên nền tảng</span>
                 </h2>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-xs text-slate-600 mt-0.5">
                   Danh sách đối tác tiêu biểu và quy mô chi nhánh tương ứng
                 </p>
               </div>
               <button
                 onClick={() => navigate("/quan-tri-nen-tang/nha-hang")}
-                className="text-xs font-semibold text-[#E03A14] hover:underline flex items-center gap-1 cursor-pointer"
+                className="text-xs font-semibold text-brand-primary hover:underline flex items-center gap-1 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
               >
                 <span>Xem tất cả ({metrics.totalRest})</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -604,15 +499,15 @@ export default function PlatformDashboardPage() {
             </div>
 
             {isRestaurantsLoading ? (
-              <div className="py-12 flex justify-center text-gray-400">
-                <Loader2 className="w-6 h-6 animate-spin text-[#E03A14]" />
+              <div className="py-12 flex justify-center text-slate-500">
+                <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
               </div>
             ) : restaurants.length === 0 ? (
-              <div className="py-12 text-center text-gray-400 text-xs">
+              <div className="py-12 text-center text-slate-500 text-xs">
                 Chưa có nhà hàng nào được đăng ký trên hệ thống.
               </div>
             ) : (
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-slate-100">
                 {restaurants.slice(0, 5).map((r) => {
                   const initial = r.name ? r.name.charAt(0).toUpperCase() : "N"
                   const branchCount = r.branchCount ?? 0
@@ -622,17 +517,17 @@ export default function PlatformDashboardPage() {
                     <div
                       key={r.id}
                       onClick={() => navigate(`/quan-tri-nen-tang/nha-hang/${r.id}`)}
-                      className="py-3.5 flex items-center justify-between gap-3 hover:bg-gray-50/80 px-2 rounded-xl transition-colors cursor-pointer group"
+                      className="py-3.5 flex flex-wrap items-center justify-between gap-3 hover:bg-slate-50 px-2 rounded-xl transition-colors cursor-pointer group"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-xl bg-orange-100 text-[#E03A14] font-bold text-sm flex items-center justify-center shrink-0">
+                        <div className="w-9 h-9 rounded-xl bg-orange-100 text-brand-primary font-bold text-sm flex items-center justify-center shrink-0">
                           {initial}
                         </div>
                         <div className="min-w-0">
-                          <div className="font-semibold text-sm text-gray-900 group-hover:text-[#E03A14] transition-colors truncate">
+                          <div className="font-semibold text-sm text-slate-950 group-hover:text-brand-primary transition-colors truncate">
                             {r.name}
                           </div>
-                          <div className="text-xs text-gray-400 font-mono flex items-center gap-2 mt-0.5">
+                          <div className="text-xs text-slate-500 font-mono flex items-center gap-2 mt-0.5">
                             <span>{r.code}</span>
                             <span>·</span>
                             <span>MST: {r.taxCode || "Chưa cập nhật"}</span>
@@ -640,13 +535,13 @@ export default function PlatformDashboardPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3 shrink-0">
+                      <div className="flex max-w-full flex-wrap items-center gap-2">
                         {/* Branch badge */}
                         <span
                           className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium ${
                             isChain
                               ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
-                              : "bg-gray-100 text-gray-600"
+                              : "bg-slate-100 text-slate-600"
                           }`}
                         >
                           <GitBranch className="w-3 h-3" />
@@ -677,36 +572,36 @@ export default function PlatformDashboardPage() {
         </div>
 
         {/* Cột 2: Hoạt động quản trị nền tảng gần đây (1/3 chiều rộng) */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs flex flex-col justify-between">
+        <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-2xs sm:p-5 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-gray-900 text-base flex items-center gap-2">
-                <Activity className="w-4 h-4 text-[#E03A14]" />
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <h2 className="font-bold text-slate-950 text-base flex items-center gap-2">
+                <Activity className="w-4 h-4 text-brand-primary" />
                 <span>Hoạt động quản trị</span>
               </h2>
               <button
                 onClick={() => navigate("/quan-tri-nen-tang/nhat-ky-he-thong")}
-                className="text-xs font-semibold text-[#E03A14] hover:underline flex items-center gap-1 cursor-pointer"
+                className="text-xs font-semibold text-brand-primary hover:underline flex items-center gap-1 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
               >
                 <span>Xem tất cả</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            <p className="text-xs text-gray-500 mb-3">
+            <p className="text-xs text-slate-600 mb-3">
               Nhật ký kiểm toán các thao tác cấp quản trị nền tảng
             </p>
 
             {isAuditLoading ? (
-              <div className="py-12 flex justify-center text-gray-400">
-                <Loader2 className="w-6 h-6 animate-spin text-[#E03A14]" />
+              <div className="py-12 flex justify-center text-slate-500">
+                <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
               </div>
             ) : (
               <div className="space-y-3 mt-2">
                 {displayActivities.map((act) => (
                   <div
                     key={act.id}
-                    className="flex items-start justify-between gap-3 p-3 rounded-xl bg-gray-50/70 hover:bg-gray-100/60 transition-colors border border-gray-100"
+                    className="flex items-start justify-between gap-3 p-3 rounded-xl bg-gray-50/70 hover:bg-gray-100/60 transition-colors border border-slate-100"
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -715,13 +610,13 @@ export default function PlatformDashboardPage() {
                         >
                           {act.actionLabel}
                         </span>
-                        <span className="text-xs font-semibold text-gray-900 truncate">
+                        <span className="text-xs font-semibold text-slate-950 truncate">
                           {act.adminName}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-600 truncate mt-1">{act.target}</p>
+                      <p className="text-xs text-slate-600 truncate mt-1">{act.target}</p>
                     </div>
-                    <span className="text-[11px] text-gray-400 font-medium shrink-0 pt-0.5">
+                    <span className="text-[11px] text-slate-500 font-medium shrink-0 pt-0.5">
                       {act.time}
                     </span>
                   </div>
@@ -730,12 +625,12 @@ export default function PlatformDashboardPage() {
             )}
           </div>
 
-          <div className="pt-4 border-t border-gray-100 mt-4">
+          <div className="pt-4 border-t border-slate-100 mt-4">
             <button
               onClick={() => navigate("/quan-tri-nen-tang/nhat-ky-he-thong")}
-              className="w-full py-2 px-3 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              className="w-full py-2 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
             >
-              <ClipboardList className="w-3.5 h-3.5 text-gray-500" />
+              <ClipboardList className="w-3.5 h-3.5 text-slate-600" />
               <span>Xem toàn bộ nhật ký hệ thống</span>
             </button>
           </div>
@@ -743,33 +638,26 @@ export default function PlatformDashboardPage() {
       </div>
 
       {/* ----------------- SECTION 4: KHU VỰC THAO TÁC NHANH (QUICK ACTIONS) ----------------- */}
-      <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 text-white rounded-2xl p-6 shadow-md flex flex-col md:flex-row items-center justify-between gap-6">
+      <div className="min-w-0 rounded-xl border border-slate-800 bg-slate-950 p-4 text-white sm:p-5 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="space-y-1">
           <div className="text-base font-bold text-white flex items-center gap-2">
-            <ShieldAlert className="w-5 h-5 text-[#E03A14]" />
+            <ShieldAlert className="w-5 h-5 text-brand-primary" />
             <span>Khu vực Quản trị Vận hành Nền tảng (Platform Operations)</span>
           </div>
           <p className="text-xs text-gray-300 max-w-2xl leading-relaxed">
-            Hệ thống tuân thủ nghiêm ngặt nguyên tắc cách ly dữ liệu nhiều người thuê (BR-21). Quản
-            trị nền tảng chỉ vận hành ở tầng định danh, cấu hình và giám sát kỹ thuật, không can
-            thiệp vào nghiệp vụ bán hàng của từng cơ sở.
+            Hệ thống tuân thủ nghiêm ngặt nguyên tắc cách ly dữ liệu nhiều người thuê. Quản trị nền
+            tảng chỉ vận hành ở tầng định danh, cấu hình và giám sát kỹ thuật, không can thiệp vào
+            nghiệp vụ bán hàng của từng cơ sở.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 shrink-0">
           <button
             onClick={() => navigate("/quan-tri-nen-tang/nha-hang")}
-            className="px-4 py-2 text-xs font-semibold rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer border border-white/10 flex items-center gap-1.5"
+            className="px-4 py-2 text-xs font-semibold rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer border border-white/10 flex items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
           >
             <Users className="w-3.5 h-3.5" />
             <span>Quản lý nhà hàng</span>
-          </button>
-          <button
-            onClick={() => navigate("/quan-tri-nen-tang/cau-hinh")}
-            className="px-4 py-2 text-xs font-semibold rounded-xl bg-brand-primary hover:bg-brand-primary-hover text-white transition-colors cursor-pointer shadow-sm flex items-center gap-1.5"
-          >
-            <Sliders className="w-3.5 h-3.5" />
-            <span>Cấu hình nền tảng</span>
           </button>
         </div>
       </div>

@@ -1,13 +1,3 @@
-/**
- * useCustomerWebSocket — Kết nối STOMP/SockJS cho phía Khách hàng theo dõi trạng thái món.
- *
- * Subscribe topic:
- *   /topic/session/{sessionId}/item-status (FR-CUS-08, T-01: độ trễ ≤ 5s, không polling)
- *
- * Nhận trạng thái cập nhật món:
- *   PENDING (Đã nhận) → PENDING_WEIGHT (Đang cân) → PREPARING (Đang chế biến) → SERVED (Đã phục vụ)
- */
-
 import { getGuestCredential } from "@/lib/guest-credential"
 import * as React from "react"
 import { Client } from "@stomp/stompjs"
@@ -19,20 +9,61 @@ import { ORDER_DETAIL_STATUS_LABEL } from "@/types/enums"
 import type { OrderDetailStatus } from "@/types/enums"
 import { getWsUrl } from "@/lib/ws"
 
-export function useCustomerWebSocket(tableSessionId?: number) {
+export function useCustomerWebSocket(
+  tableSessionId?: number,
+  restaurantId?: number,
+  sessionToken?: string | null,
+  isClosed?: boolean,
+) {
   const queryClient = useQueryClient()
 
   React.useEffect(() => {
-    if (!tableSessionId) return
+    if (!tableSessionId || getGuestCredential()?.sessionId !== tableSessionId) return
+    let active = true
+    const refreshSession = () => {
+      for (const key of [
+        qk.tableSessions.detail(tableSessionId),
+        qk.tableSessions.billPreview(tableSessionId),
+        qk.orders.bySession(tableSessionId).slice(0, 3),
+        qk.orderDetails.bySession(tableSessionId).slice(0, 3),
+        qk.invoices.bySession(tableSessionId),
+      ]) {
+        void queryClient.invalidateQueries({ queryKey: key })
+      }
+    }
 
     const client = new Client({
       webSocketFactory: () => new SockJS(getWsUrl()) as WebSocket,
+      connectionTimeout: 10_000,
       reconnectDelay: 5000,
       beforeConnect: () => {
         client.connectHeaders = { "X-Guest-Token": getGuestCredential()?.token ?? "" }
       },
       onConnect: () => {
+        if (!active) return
+        client.subscribe(`/topic/session/${tableSessionId}/session-updated`, () => {
+          if (active) refreshSession()
+        })
+        refreshSession()
+        if (restaurantId != null) {
+          const refreshMenu = () => {
+            if (!active) return
+            for (const queryKey of [
+              qk.branchMenu.all,
+              qk.branchDishStocks.all,
+              qk.promotions.all,
+            ]) {
+              void queryClient.invalidateQueries({ queryKey })
+            }
+          }
+          client.subscribe(`/topic/restaurant/${restaurantId}/menu-updated`, refreshMenu, {
+            "X-Guest-Session": String(tableSessionId),
+          })
+          refreshMenu()
+        }
+        if (isClosed) return
         client.subscribe(`/topic/session/${tableSessionId}/item-status`, (msg) => {
+          if (!active) return
           try {
             const data = JSON.parse(msg.body) as {
               type?: string
@@ -44,6 +75,7 @@ export function useCustomerWebSocket(tableSessionId?: number) {
               queryKey: qk.orderDetails.bySession(tableSessionId),
             })
 
+            if (!(data.status in ORDER_DETAIL_STATUS_LABEL)) return
             const statusLabel = ORDER_DETAIL_STATUS_LABEL[data.status] || data.status
             toast({
               title: "Cập nhật món ăn",
@@ -59,7 +91,8 @@ export function useCustomerWebSocket(tableSessionId?: number) {
 
     client.activate()
     return () => {
-      client.deactivate()
+      active = false
+      void client.deactivate()
     }
-  }, [tableSessionId, queryClient])
+  }, [tableSessionId, restaurantId, sessionToken, isClosed, queryClient])
 }

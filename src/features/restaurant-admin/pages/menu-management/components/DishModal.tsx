@@ -369,8 +369,7 @@ function DishForm({
         />
         {soldByWeight ? (
           <p className="mt-1.5 text-xs text-text-tertiary">
-            Đơn giá/kg được chốt ngay khi gửi order; thành tiền chỉ tính sau khi có số cân thật
-            (BR-07).
+            Đơn giá/kg được chốt ngay khi gửi order; thành tiền chỉ tính sau khi có số cân thật.
           </p>
         ) : null}
       </FormField>

@@ -97,7 +97,7 @@ export function NavDrawer({ open, onOpenChange }: NavDrawerProps) {
                             isActive ? "text-brand-primary" : "text-text-tertiary",
                           )}
                         />
-                        <span className="truncate">{item.label}</span>
+                        <span className="min-w-0 wrap-anywhere">{item.label}</span>
                       </>
                     )}
                   </NavLink>

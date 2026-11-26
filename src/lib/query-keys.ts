@@ -173,6 +173,7 @@ export const qk = {
     byBranch: (branchId: number) => ["promotion-branches", "branch", branchId] as const,
     byPromotion: (promotionId: number) => ["promotion-branches", "promotion", promotionId] as const,
   },
+  operationalPermissions: { all: ["operational-permissions"] as const },
   auditLogs: {
     all: ["audit-logs"] as const,
     list: (params?: unknown) => ["audit-logs", "list", params ?? null] as const,

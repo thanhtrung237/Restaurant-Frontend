@@ -350,3 +350,52 @@ test("restores the unsent cart after reload until it expires or the table sessio
   await page.reload()
   await expect(emptyCart).toBeVisible()
 })
+
+test("opens the guest menu after a session update arrives over WebSocket", async ({ page }) => {
+  await page.addInitScript(() => {
+    const schedule = window.setInterval.bind(window)
+    window.setInterval = (handler, delay, ...args) =>
+      schedule(handler, delay === 1000 ? 60_000 : delay, ...args)
+  })
+  const activeSession = { ...session, restaurantId: 1 }
+  await mockApi(page, { ...table, locationRequired: false }, activeSession)
+
+  await page.route(/\/ws\/info(?:\?|$)/, (route) =>
+    route.fulfill({
+      headers: { "Access-Control-Allow-Origin": "*" },
+      json: { websocket: true, cookie_needed: false, origins: ["*:*"], entropy: 123 },
+    }),
+  )
+  let sentCredential: string | undefined
+  let publish: (() => void) | undefined
+  await page.routeWebSocket(/\/ws\/[^/]+\/[^/]+\/websocket$/, (socket) => {
+    const send = (frame: string) => socket.send("a" + JSON.stringify([frame]))
+    socket.onMessage((message) => {
+      if (typeof message !== "string") return
+      const [frame = ""] = JSON.parse(message) as string[]
+      if (frame.startsWith("CONNECT")) {
+        sentCredential = frame.match(/^X-Guest-Token:(.*)$/m)?.[1]
+        send("CONNECTED\nversion:1.2\nheart-beat:0,0\n\n\u0000")
+      }
+      const destination = frame.match(/^destination:(.*)$/m)?.[1]
+      const subscription = frame.match(/^id:(.*)$/m)?.[1]
+      if (frame.startsWith("SUBSCRIBE") && destination === "/topic/session/10/session-updated" && subscription) {
+        publish = () =>
+          send(
+            "MESSAGE\ndestination:" + destination + "\nsubscription:" + subscription +
+              "\nmessage-id:1\n\n{\"changed\":true}\u0000",
+          )
+      }
+    })
+    socket.send("o")
+  })
+
+  await page.goto("/ban/QR-B1-T1")
+  await page.getByRole("button", { name: "Gửi yêu cầu mở bàn" }).click()
+  await expect(page).toHaveURL(/cho-mo-ban/)
+  await expect.poll(() => Boolean(publish)).toBe(true)
+  expect(sentCredential).toBe(TOKEN)
+  activeSession.status = "SERVING"
+  publish!()
+  await expect(page).toHaveURL(/thuc-don/, { timeout: 1500 })
+})

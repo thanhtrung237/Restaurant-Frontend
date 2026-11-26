@@ -1,3 +1,4 @@
+import { qk } from "@/lib/query-keys"
 import { useQuery } from "@tanstack/react-query"
 import { apiGet } from "@/lib/http"
 import { useAuthStore } from "@/stores/auth.store"
@@ -23,7 +24,7 @@ interface BranchPermissions {
   permissions: PermissionItem[]
 }
 
-const root = ["operational-permissions"] as const
+const root = qk.operationalPermissions.all
 const endpoint = "/operational-permissions"
 
 export function useEmployeeOperationalPermissions(employeeId?: number) {

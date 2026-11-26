@@ -135,7 +135,7 @@ export default function PromotionsPage({
     <div className="flex min-h-full flex-col bg-surface-page">
       <PageHeader
         title="Khuyến mãi"
-        subtitle="Hệ thống tự động áp dụng khi đủ điều kiện (BR-22) · Ưu tiên theo priority (BR-23)"
+        subtitle="Hệ thống tự động áp dụng khi đủ điều kiện · Áp dụng theo thứ tự ưu tiên"
         mobileSubtitle="Tự động áp dụng khi đủ điều kiện"
         actions={
           <Button

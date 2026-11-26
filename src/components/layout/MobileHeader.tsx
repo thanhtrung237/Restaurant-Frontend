@@ -59,31 +59,35 @@ export function MobileHeader({
     <header
       className={cn(
         // min-h thay vì h cố định: biến thể này nay có thể kèm dòng phụ.
-        "sticky top-0 z-30 flex min-h-14 w-full items-center justify-between gap-2.5 border-b border-border-default bg-surface-card px-4 py-2 shadow-2xs",
+        "sticky top-0 z-30 flex min-h-14 w-full items-center justify-between gap-2 border-b border-border-default bg-surface-card px-3 py-2 shadow-2xs",
         className,
       )}
     >
-      <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
         {showBack ? (
           <button
             type="button"
             onClick={onBack ?? (() => window.history.back())}
             aria-label="Quay lại"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-muted text-text-primary transition-colors hover:bg-border-strong active:scale-95"
+            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-muted text-text-primary transition-colors hover:bg-border-strong active:scale-95"
           >
             <ChevronLeft className="size-5" />
           </button>
         ) : null}
         <div className="min-w-0">
-          <h2 className="truncate text-base font-bold leading-tight text-text-primary">{title}</h2>
+          <h2 className="wrap-anywhere text-base font-bold leading-tight text-text-primary">
+            {title}
+          </h2>
           {subtitle ? (
-            <p className="mt-0.5 truncate text-xs leading-tight text-text-tertiary">{subtitle}</p>
+            <p className="mt-0.5 wrap-anywhere text-xs leading-tight text-text-tertiary">
+              {subtitle}
+            </p>
           ) : null}
         </div>
       </div>
 
       {headerActions || rightActions ? (
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex max-w-[40%] shrink-0 flex-wrap items-center justify-end gap-1">
           {headerActions}
           {rightActions}
         </div>
@@ -116,41 +120,47 @@ function AppMobileHeader({
   return (
     <header
       className={cn(
-        "sticky top-0 z-30 flex w-full items-center gap-2.5 border-b border-border-default bg-surface-card px-4 py-2.5 shadow-2xs",
+        "sticky top-0 z-30 grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 border-b border-border-default bg-surface-card px-3 py-2 shadow-2xs",
         className,
       )}
     >
-      <Avatar className="size-10 shrink-0 bg-surface-muted text-xs font-bold text-text-primary">
-        <AvatarFallback className="bg-surface-muted text-text-primary">{initials}</AvatarFallback>
-      </Avatar>
-
-      <div className="min-w-0 flex-1">
-        <h1 className="truncate text-[17px] font-bold leading-tight text-text-primary">{title}</h1>
-        {subtitle ? (
-          <p className="mt-0.5 truncate text-xs leading-tight text-text-tertiary">{subtitle}</p>
-        ) : null}
+      <div className="flex min-w-0 items-center gap-2">
+        <Avatar className="size-8 shrink-0 bg-surface-muted text-xs font-bold text-text-primary">
+          <AvatarFallback className="bg-surface-muted text-text-primary">{initials}</AvatarFallback>
+        </Avatar>
+        <h1 className="min-w-0 wrap-anywhere text-base font-bold leading-tight text-text-primary">
+          {title}
+        </h1>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2">
-        {headerActions}
-        <BranchSwitcher variant="chip" />
-
+      <div className="flex min-w-0 items-center justify-end gap-1">
+        <BranchSwitcher
+          variant="chip"
+          compact
+          className="min-h-10 min-w-0 max-w-24 justify-center"
+        />
         <button
           type="button"
           onClick={() => void logout()}
           disabled={isLoggingOut}
           aria-label="Đăng xuất"
           title="Đăng xuất"
-          className="flex size-9 items-center justify-center rounded-full bg-surface-muted text-text-secondary transition-colors hover:bg-border-strong disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-muted text-text-secondary transition-colors hover:bg-border-strong disabled:cursor-not-allowed disabled:opacity-60"
         >
           <LogOut className="size-4" />
         </button>
-
-        {/* Chuông chỉ hiện khi trang KHÔNG có điều khiển riêng — đúng Figma: "Sơ đồ bàn ·
-            Mobile" có chuông, còn "Báo cáo · Mobile" (đã có chip kỳ) thì không. Ở 375px
-            nhồi cả hai sẽ ép tiêu đề trang cụt còn một chữ. */}
-        {rightActions ?? (headerActions ? null : <NotificationBell className="size-9" />)}
+        {rightActions ?? <NotificationBell className="size-11 shrink-0" />}
       </div>
+
+      {subtitle ? (
+        <p className="col-span-full wrap-anywhere text-xs leading-snug text-text-tertiary">
+          {subtitle}
+        </p>
+      ) : null}
+
+      {headerActions ? (
+        <div className="col-span-full min-w-0 max-w-full">{headerActions}</div>
+      ) : null}
     </header>
   )
 }

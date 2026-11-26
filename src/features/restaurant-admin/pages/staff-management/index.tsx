@@ -310,7 +310,7 @@ export default function StaffManagementPage() {
         tabs={<StaffTabs activeTab={activeTab} onTabChange={handleTabChange} />}
       />
 
-      <div className="flex flex-col gap-6 p-6 lg:p-8">
+      <div className="flex flex-col gap-6 p-6 max-md:min-w-0 max-md:p-4 lg:p-8">
         {/* <md: PageHeader ẩn nên tab và ô tìm phải hiện lại ở đây */}
         <div className="space-y-4 md:hidden">
           <StaffTabs activeTab={activeTab} onTabChange={handleTabChange} />

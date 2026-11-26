@@ -23,15 +23,15 @@ import { format as formatDate } from "date-fns"
 const TAB_HEADER_META: Record<string, { title: string; subtitle: string }> = {
   daily: {
     title: "Báo cáo doanh thu",
-    subtitle: "Doanh thu theo thời gian (FR-RPT-01)",
+    subtitle: "Doanh thu theo thời gian",
   },
   hourly: {
     title: "Doanh thu theo khung giờ",
-    subtitle: "Phân bổ doanh thu & số bàn theo giờ · cơ sở bố trí nhân sự (FR-RPT-02)",
+    subtitle: "Phân bổ doanh thu & số bàn theo giờ · cơ sở bố trí nhân sự",
   },
   branch: {
     title: "So sánh chi nhánh",
-    subtitle: "Xếp hạng & cảnh báo chỉ số bất thường (FR-RPT-04)",
+    subtitle: "Xếp hạng & cảnh báo chỉ số bất thường",
   },
 }
 
@@ -214,7 +214,7 @@ export function ReportDashboard({
           currentTab === "daily"
             ? dateDisplayLabel
             : currentTab === "branch"
-              ? `${dateDisplayLabel} · Xếp hạng & cảnh báo chỉ số bất thường (FR-RPT-04)`
+              ? `${dateDisplayLabel} · Xếp hạng & cảnh báo chỉ số bất thường`
               : headerMeta.subtitle
         }
         mobileSubtitle=""
@@ -240,7 +240,7 @@ export function ReportDashboard({
         }
       />
 
-      <div className="flex flex-col gap-6 p-6 lg:p-8">
+      <div className="flex flex-col gap-6 p-6 max-md:min-w-0 max-md:p-4 lg:p-8">
         {/* Tabs Navigation & Content */}
         <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full space-y-6">
           <TabsList className="w-full justify-start gap-8 border-b border-border-default/80 bg-transparent p-0 rounded-none">

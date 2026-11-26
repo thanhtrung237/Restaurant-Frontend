@@ -646,7 +646,7 @@ function BranchTableMap({ branchId }: { branchId?: number }) {
       <div
         role="group"
         aria-label="Lọc trạng thái bàn"
-        className="flex items-center gap-2 overflow-x-auto px-4 pt-2 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:px-8 lg:hidden [&::-webkit-scrollbar]:hidden"
+        className="flex items-center gap-2 overflow-x-auto px-4 pt-2 pb-1 max-md:flex-wrap max-md:overflow-visible [-ms-overflow-style:none] [scrollbar-width:none] sm:px-8 lg:hidden [&::-webkit-scrollbar]:hidden"
       >
         {QUICK_FILTERS.map((filter) => (
           <Chip

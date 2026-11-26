@@ -19,7 +19,6 @@ export const PermissionMatrixTable: React.FC<PermissionMatrixTableProps> = ({ se
     <div className="w-full overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-xs">
       <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-gray-100 bg-[#F9FAFB] px-6 py-3">
         <h3 className="text-sm font-semibold text-gray-900">{section.title}</h3>
-        <span className="text-xs text-gray-500">{section.source}</span>
       </div>
 
       <div className="overflow-x-auto">

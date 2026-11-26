@@ -374,14 +374,14 @@ function AddDishForm({ orderId, takeaway }: { orderId?: string; takeaway: boolea
             />
           </div>
 
-          <div className="mt-4 flex gap-2.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="mt-4 flex max-w-full gap-2.5 overflow-x-auto pb-1 max-md:overscroll-x-contain md:[-ms-overflow-style:none] md:[scrollbar-width:none] md:[&::-webkit-scrollbar]:hidden">
             {categoryTabs.map((c) => (
               <button
                 key={c.id}
                 type="button"
                 onClick={() => setActiveCategoryId(c.id)}
                 className={cn(
-                  "h-9 shrink-0 rounded-full px-4 text-sm transition-all whitespace-nowrap",
+                  "h-9 shrink-0 rounded-full px-4 text-sm transition-all whitespace-nowrap max-md:h-auto max-md:min-h-11 max-md:max-w-full max-md:whitespace-normal max-md:wrap-anywhere max-md:py-1",
                   c.id === activeCategoryId
                     ? "bg-brand-primary font-bold text-white"
                     : "border border-border-default bg-surface-card font-medium text-text-secondary hover:border-border-strong",

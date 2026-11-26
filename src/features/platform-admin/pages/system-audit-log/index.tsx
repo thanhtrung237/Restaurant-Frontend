@@ -387,12 +387,14 @@ export default function SystemAuditLogPage() {
   const toRecord = Math.min((pageIndex + 1) * pageSize, totalElements)
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="mx-auto min-w-0 max-w-7xl space-y-5 lg:space-y-6 pb-12">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-1">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Nhật ký hệ thống</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">
+            Nhật ký hệ thống
+          </h1>
+          <p className="text-sm text-slate-600 mt-1">
             Toàn bộ thao tác quản trị cấp nền tảng · Tự động phân ngày & phân trang
           </p>
         </div>
@@ -403,15 +405,15 @@ export default function SystemAuditLogPage() {
             onClick={() => refetch()}
             disabled={isFetching}
             title="Làm mới dữ liệu"
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 shadow-sm transition-colors cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors cursor-pointer disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
           >
-            <RefreshCw className={`w-4 h-4 text-gray-500 ${isFetching ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-4 h-4 text-slate-600 ${isFetching ? "animate-spin" : ""}`} />
             <span>Làm mới</span>
           </button>
 
           <button
             onClick={handleExportLog}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl bg-gray-900 text-white hover:bg-black shadow-sm transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-gray-900 text-white hover:bg-black shadow-2xs transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
           >
             <Download className="w-4 h-4" />
             <span>Xuất log (CSV)</span>
@@ -420,17 +422,17 @@ export default function SystemAuditLogPage() {
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm space-y-3">
+      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
           {/* Ô tìm kiếm */}
           <div className="lg:col-span-5 relative">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Tìm theo quản trị viên, đối tượng, thao tác..."
-              className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
+              className="min-w-0 w-full pl-10 pr-4 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary min-h-10"
             />
           </div>
 
@@ -439,7 +441,7 @@ export default function SystemAuditLogPage() {
             <select
               value={actionFilter}
               onChange={(e) => handleActionChange(e.target.value)}
-              className="w-full appearance-none pl-9 pr-8 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14] cursor-pointer"
+              className="min-w-0 w-full appearance-none pl-9 pr-8 py-2 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary cursor-pointer min-h-10"
             >
               <option value="ALL">Mọi thao tác quản trị</option>
               <option value="LOGIN">Đăng nhập</option>
@@ -450,7 +452,7 @@ export default function SystemAuditLogPage() {
               <option value="CONFIG_CHANGE">Cập nhật cấu hình</option>
               <option value="PERMISSION_CHANGE">Phân quyền</option>
             </select>
-            <Filter className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Filter className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
           {/* Lọc thời gian */}
@@ -458,7 +460,7 @@ export default function SystemAuditLogPage() {
             <select
               value={timeFilter}
               onChange={(e) => handleTimeChange(e.target.value)}
-              className="w-full appearance-none pl-9 pr-8 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14] cursor-pointer"
+              className="min-w-0 w-full appearance-none pl-9 pr-8 py-2 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary cursor-pointer min-h-10"
             >
               <option value="today">Hôm nay</option>
               <option value="7d">7 ngày qua</option>
@@ -466,53 +468,53 @@ export default function SystemAuditLogPage() {
               <option value="90d">90 ngày qua</option>
               <option value="all">Tất cả thời gian</option>
             </select>
-            <Calendar className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Calendar className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
         </div>
       </div>
 
       {/* Table Container */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
         {isLoading ? (
-          <div className="p-16 flex flex-col items-center justify-center text-gray-400 gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-[#E03A14]" />
-            <p className="text-sm font-medium text-gray-600">Đang tải nhật ký hệ thống...</p>
+          <div className="p-16 flex flex-col items-center justify-center text-slate-500 gap-3">
+            <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
+            <p className="text-sm font-medium text-slate-600">Đang tải nhật ký hệ thống...</p>
           </div>
         ) : filteredLogs.length === 0 ? (
-          <div className="p-16 text-center text-gray-400 space-y-2">
+          <div className="p-16 text-center text-slate-500 space-y-2">
             <Clock className="w-10 h-10 mx-auto text-gray-300" />
-            <p className="font-semibold text-gray-700 text-base">
+            <p className="font-semibold text-slate-700 text-base">
               Không có dữ liệu nhật ký phù hợp
             </p>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-slate-500">
               Hãy thử chọn khoảng thời gian khác hoặc điều chỉnh lại bộ lọc tìm kiếm.
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto max-w-full overscroll-x-contain">
+            <table className="w-full min-w-[44rem] border-collapse text-left">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50/80 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                  <th className="py-3.5 px-6 w-36">GIỜ THAO TÁC</th>
-                  <th className="py-3.5 px-6 w-56">QUẢN TRỊ VIÊN</th>
-                  <th className="py-3.5 px-6 w-44">THAO TÁC</th>
-                  <th className="py-3.5 px-6">ĐỐI TƯỢNG TÁC ĐỘNG</th>
-                  <th className="py-3.5 px-6 w-32 text-center">KẾT QUẢ</th>
-                  <th className="py-3.5 px-6 w-20 text-right">CHI TIẾT</th>
+                <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
+                  <th className="py-3.5 px-4 lg:px-5 w-36">GIỜ THAO TÁC</th>
+                  <th className="py-3.5 px-4 lg:px-5 w-56">QUẢN TRỊ VIÊN</th>
+                  <th className="py-3.5 px-4 lg:px-5 w-44">THAO TÁC</th>
+                  <th className="py-3.5 px-4 lg:px-5">ĐỐI TƯỢNG TÁC ĐỘNG</th>
+                  <th className="py-3.5 px-4 lg:px-5 w-36 text-center">KẾT QUẢ</th>
+                  <th className="py-3.5 px-4 lg:px-5 w-20 text-right">CHI TIẾT</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 text-sm">
+              <tbody className="divide-y divide-slate-100 text-sm">
                 {groupedLogs.map((group, groupIdx) => (
                   <React.Fragment key={groupIdx}>
                     {/* Header Phân Ngày (Date Group Header) */}
-                    <tr className="bg-gray-50/90 border-y border-gray-200 font-semibold text-xs text-gray-700">
-                      <td colSpan={6} className="py-2.5 px-6">
+                    <tr className="bg-gray-50/90 border-y border-slate-200 font-semibold text-xs text-slate-700">
+                      <td colSpan={6} className="py-2.5 px-4 lg:px-5">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <Calendar className="w-3.5 h-3.5 text-[#E03A14]" />
-                            <span className="text-gray-900 font-bold">{group.title}</span>
+                            <Calendar className="w-3.5 h-3.5 text-brand-primary" />
+                            <span className="text-slate-950 font-bold">{group.title}</span>
                           </div>
-                          <span className="text-xs text-gray-500 font-normal">
+                          <span className="text-xs text-slate-600 font-normal">
                             {group.items.length} thao tác trong ngày
                           </span>
                         </div>
@@ -534,29 +536,29 @@ export default function SystemAuditLogPage() {
                       return (
                         <tr
                           key={log.id}
-                          className="hover:bg-gray-50/80 transition-colors group cursor-pointer"
+                          className="hover:bg-slate-50 transition-colors group cursor-pointer"
                           onClick={() => setSelectedLog(log)}
                         >
                           {/* Giờ thao tác */}
-                          <td className="py-3.5 px-6 text-gray-600 font-mono text-xs flex items-center gap-1.5">
-                            <Clock className="w-3.5 h-3.5 text-gray-400" />
+                          <td className="py-3.5 px-4 lg:px-5 text-slate-600 font-mono text-xs flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5 text-slate-500" />
                             <span>{timeStr}</span>
                           </td>
 
                           {/* Quản trị viên */}
-                          <td className="py-3.5 px-6">
+                          <td className="py-3.5 px-4 lg:px-5">
                             <div className="flex items-center gap-2.5">
-                              <div className="w-7 h-7 rounded-full bg-orange-100 text-[#E03A14] font-bold text-xs flex items-center justify-center shrink-0">
+                              <div className="w-7 h-7 rounded-full bg-orange-100 text-brand-primary font-bold text-xs flex items-center justify-center shrink-0">
                                 {adminName.charAt(0).toUpperCase()}
                               </div>
-                              <div className="font-semibold text-gray-900 truncate max-w-[180px]">
+                              <div className="font-semibold text-slate-950 truncate max-w-[180px]">
                                 {adminName}
                               </div>
                             </div>
                           </td>
 
                           {/* Thao tác */}
-                          <td className="py-3.5 px-6">
+                          <td className="py-3.5 px-4 lg:px-5">
                             <span
                               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${badge.bg} ${badge.text} ${badge.border}`}
                             >
@@ -566,34 +568,34 @@ export default function SystemAuditLogPage() {
                           </td>
 
                           {/* Đối tượng */}
-                          <td className="py-3.5 px-6">
-                            <div className="text-gray-900 font-medium truncate max-w-md">
+                          <td className="py-3.5 px-4 lg:px-5">
+                            <div className="text-slate-950 font-medium truncate max-w-md">
                               {targetName}
                             </div>
                             {log.reason && (
-                              <div className="text-xs text-gray-500 truncate mt-0.5 max-w-md">
+                              <div className="text-xs text-slate-600 truncate mt-0.5 max-w-md">
                                 {cleanText(log.reason)}
                               </div>
                             )}
                           </td>
 
                           {/* Kết quả */}
-                          <td className="py-3.5 px-6 text-center">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                          <td className="py-3.5 px-4 lg:px-5 text-center">
+                            <span className="inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <CheckCircle2 className="w-3 h-3 shrink-0 text-emerald-500" />
                               Thành công
                             </span>
                           </td>
 
                           {/* Xem chi tiết */}
                           <td
-                            className="py-3.5 px-6 text-right"
+                            className="py-3.5 px-4 lg:px-5 text-right"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <button
                               onClick={() => setSelectedLog(log)}
                               title="Xem chi tiết thao tác"
-                              className="p-1 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                              className="p-1 text-slate-500 hover:text-slate-950 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
@@ -609,23 +611,23 @@ export default function SystemAuditLogPage() {
         )}
 
         {/* Thanh Phân Trang (Pagination Toolbar) */}
-        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="px-6 py-4 border-t border-slate-200 bg-slate-50/70 flex flex-col sm:flex-row items-center justify-between gap-4">
           {/* Thông tin số lượng */}
-          <div className="text-xs sm:text-sm text-gray-600">
-            Hiển thị <strong className="text-gray-900 font-semibold">{fromRecord}</strong>–
-            <strong className="text-gray-900 font-semibold">{toRecord}</strong> trong tổng số{" "}
-            <strong className="text-gray-900 font-semibold">{totalElements}</strong> thao tác
+          <div className="text-xs sm:text-sm text-slate-600">
+            Hiển thị <strong className="text-slate-950 font-semibold">{fromRecord}</strong>–
+            <strong className="text-slate-950 font-semibold">{toRecord}</strong> trong tổng số{" "}
+            <strong className="text-slate-950 font-semibold">{totalElements}</strong> thao tác
           </div>
 
           {/* Chọn số dòng mỗi trang & Điều hướng trang */}
           <div className="flex items-center gap-4">
             {/* Chọn số dòng */}
-            <div className="flex items-center gap-2 text-xs text-gray-600">
+            <div className="flex items-center gap-2 text-xs text-slate-600">
               <span>Hiển thị:</span>
               <select
                 value={pageSize}
                 onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                className="py-1 px-2 border border-gray-200 rounded-lg bg-white text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 cursor-pointer"
+                className="py-1 px-2 border border-slate-200 rounded-lg bg-white text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 cursor-pointer"
               >
                 <option value={10}>10 dòng/trang</option>
                 <option value={20}>20 dòng/trang</option>
@@ -642,7 +644,7 @@ export default function SystemAuditLogPage() {
                 onClick={() => setPageIndex(0)}
                 disabled={pageIndex <= 0 || isLoading}
                 title="Về trang đầu"
-                className="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
               >
                 <ChevronsLeft className="w-4 h-4" />
               </button>
@@ -653,14 +655,14 @@ export default function SystemAuditLogPage() {
                 onClick={() => setPageIndex((prev) => Math.max(0, prev - 1))}
                 disabled={pageIndex <= 0 || isLoading}
                 title="Trang trước"
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Trước</span>
               </button>
 
               {/* Hiển thị số trang */}
-              <div className="px-3 py-1 text-xs font-semibold text-gray-700 whitespace-nowrap">
+              <div className="px-3 py-1 text-xs font-semibold text-slate-700 whitespace-nowrap">
                 Trang {pageIndex + 1} / {totalPages}
               </div>
 
@@ -670,7 +672,7 @@ export default function SystemAuditLogPage() {
                 onClick={() => setPageIndex((prev) => Math.min(totalPages - 1, prev + 1))}
                 disabled={pageIndex >= totalPages - 1 || isLoading}
                 title="Trang sau"
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
               >
                 <span className="hidden sm:inline">Sau</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -682,7 +684,7 @@ export default function SystemAuditLogPage() {
                 onClick={() => setPageIndex(totalPages - 1)}
                 disabled={pageIndex >= totalPages - 1 || isLoading}
                 title="Đến trang cuối"
-                className="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
               >
                 <ChevronsRight className="w-4 h-4" />
               </button>
@@ -693,31 +695,31 @@ export default function SystemAuditLogPage() {
 
       {/* Modal Xem chi tiết nhật ký thao tác */}
       <Dialog open={!!selectedLog} onOpenChange={(open) => !open && setSelectedLog(null)}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg min-w-0 border-slate-200 bg-white shadow-lg sm:p-5">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-gray-900">
-              <Shield className="w-5 h-5 text-[#E03A14]" />
+            <DialogTitle className="flex items-center gap-2 text-slate-950">
+              <Shield className="w-5 h-5 text-brand-primary" />
               <span>Chi tiết thao tác nhật ký #{selectedLog?.id}</span>
             </DialogTitle>
           </DialogHeader>
 
           {selectedLog && (
             <div className="space-y-4 py-2 text-sm">
-              <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-gray-50 border border-gray-100">
+              <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100">
                 <div>
-                  <div className="text-xs text-gray-400 font-medium">Thời điểm thực hiện</div>
-                  <div className="text-gray-900 font-semibold mt-1">
+                  <div className="text-xs text-slate-500 font-medium">Thời điểm thực hiện</div>
+                  <div className="text-slate-950 font-semibold mt-1">
                     {new Date(selectedLog.occurredAt).toLocaleString("vi-VN")}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-400 font-medium">Quản trị viên</div>
-                  <div className="text-gray-900 font-semibold mt-1">
+                  <div className="text-xs text-slate-500 font-medium">Quản trị viên</div>
+                  <div className="text-slate-950 font-semibold mt-1">
                     {cleanText(selectedLog.performedByName) || "Super Admin"}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-400 font-medium">Loại thao tác</div>
+                  <div className="text-xs text-slate-500 font-medium">Loại thao tác</div>
                   <div className="mt-1">
                     <span
                       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
@@ -731,7 +733,7 @@ export default function SystemAuditLogPage() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-400 font-medium">Kết quả</div>
+                  <div className="text-xs text-slate-500 font-medium">Kết quả</div>
                   <div className="text-emerald-700 font-semibold mt-1 flex items-center gap-1 text-xs">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                     <span>Thành công</span>
@@ -741,11 +743,11 @@ export default function SystemAuditLogPage() {
 
               <div className="space-y-3">
                 <div>
-                  <div className="text-xs text-gray-400 font-medium">Đối tượng tác động</div>
-                  <div className="text-gray-900 font-semibold mt-0.5">
+                  <div className="text-xs text-slate-500 font-medium">Đối tượng tác động</div>
+                  <div className="text-slate-950 font-semibold mt-0.5">
                     {cleanText(selectedLog.restaurantName || selectedLog.entityType) || "Hệ thống"}
                     {selectedLog.entityId && (
-                      <span className="text-xs text-gray-400 font-normal ml-1.5">
+                      <span className="text-xs text-slate-500 font-normal ml-1.5">
                         (ID: {selectedLog.entityId})
                       </span>
                     )}
@@ -754,8 +756,8 @@ export default function SystemAuditLogPage() {
 
                 {selectedLog.reason && (
                   <div>
-                    <div className="text-xs text-gray-400 font-medium">Lý do / Ghi chú</div>
-                    <div className="text-gray-800 bg-gray-50 p-2.5 rounded-xl border border-gray-100 text-xs mt-1">
+                    <div className="text-xs text-slate-500 font-medium">Lý do / Ghi chú</div>
+                    <div className="text-gray-800 bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs mt-1">
                       {cleanText(selectedLog.reason)}
                     </div>
                   </div>
@@ -763,8 +765,8 @@ export default function SystemAuditLogPage() {
 
                 {selectedLog.valueBefore && (
                   <div>
-                    <div className="text-xs text-gray-400 font-medium">Giá trị trước thay đổi</div>
-                    <div className="text-gray-700 font-mono bg-gray-50 p-2 rounded-lg text-xs mt-1 overflow-x-auto">
+                    <div className="text-xs text-slate-500 font-medium">Giá trị trước thay đổi</div>
+                    <div className="text-slate-700 font-mono bg-slate-50 p-2 rounded-lg text-xs mt-1 overflow-x-auto">
                       {selectedLog.valueBefore}
                     </div>
                   </div>
@@ -772,19 +774,19 @@ export default function SystemAuditLogPage() {
 
                 {selectedLog.valueAfter && (
                   <div>
-                    <div className="text-xs text-gray-400 font-medium">Giá trị sau thay đổi</div>
-                    <div className="text-gray-700 font-mono bg-gray-50 p-2 rounded-lg text-xs mt-1 overflow-x-auto">
+                    <div className="text-xs text-slate-500 font-medium">Giá trị sau thay đổi</div>
+                    <div className="text-slate-700 font-mono bg-slate-50 p-2 rounded-lg text-xs mt-1 overflow-x-auto">
                       {selectedLog.valueAfter}
                     </div>
                   </div>
                 )}
               </div>
 
-              <DialogFooter className="mt-6 pt-2">
+              <DialogFooter className="mt-6 pt-2 gap-2.5 border-t border-slate-100 pt-4">
                 <button
                   type="button"
                   onClick={() => setSelectedLog(null)}
-                  className="px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-black transition-colors cursor-pointer"
+                  className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-black transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
                 >
                   Đóng
                 </button>

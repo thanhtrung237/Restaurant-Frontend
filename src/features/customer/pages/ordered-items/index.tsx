@@ -21,7 +21,6 @@ import {
   useCallStaff,
 } from "@/features/customer/api"
 import { useStaffCall } from "@/api/order-details.api"
-import { useCustomerWebSocket } from "@/hooks/use-customer-websocket"
 import { useCustomerSessionStore } from "@/features/customer/store/session.store"
 import { useBillLocked } from "@/features/customer/hooks/use-bill-locked"
 import { isBillableDetail } from "@/lib/order-detail-billing"
@@ -49,7 +48,6 @@ export default function OrderedItemsPage() {
   const tableSessionId = tableSession?.id
 
   // A3: Lắng nghe real-time qua WebSocket (FR-CUS-08, T-01: độ trễ ≤ 5s, không cần polling)
-  useCustomerWebSocket(tableSessionId)
 
   // Fetch order details — giữ refetchInterval làm fallback
   const {

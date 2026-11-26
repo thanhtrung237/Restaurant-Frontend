@@ -100,7 +100,7 @@ export function RestaurantConfigTab({
             Thông tin doanh nghiệp
           </h2>
           <p className="text-xs text-text-tertiary mt-0.5">
-            Cấp toàn hệ thống · được in lên hoá đơn (FR-ADM-03)
+            Cấp toàn hệ thống · được in lên hoá đơn
           </p>
         </div>
 
@@ -195,8 +195,8 @@ export function RestaurantConfigTab({
               <AlertTriangle className="mt-px size-3.5 shrink-0" />
               <span>
                 Đổi mã số thuế <strong>không sửa các hoá đơn đã phát hành</strong> — hoá đơn cũ giữ
-                nguyên mã số thuế tại thời điểm phát hành (BR-09). Mã mới chỉ áp cho hoá đơn phát
-                hành từ sau khi lưu.
+                nguyên mã số thuế tại thời điểm phát hành. Mã mới chỉ áp cho hoá đơn phát hành từ
+                sau khi lưu.
               </span>
             </p>
           ) : null}
@@ -259,8 +259,7 @@ export function RestaurantConfigTab({
           <Building2 className="mt-0.5 size-4 shrink-0 text-text-tertiary" />
           <p className="text-xs text-text-secondary">
             Số thực tế dùng khi tính tiền là số <strong>của từng chi nhánh</strong>, sao cứng vào
-            phiên lúc mở bàn (BR-08). Sửa tại <strong>Chi nhánh → Cấu hình → Thuế &amp; phí</strong>
-            .
+            phiên lúc mở bàn. Sửa tại <strong>Chi nhánh → Cấu hình → Thuế &amp; phí</strong>.
           </p>
         </div>
 
@@ -294,7 +293,7 @@ export function RestaurantConfigTab({
             Vai trò &amp; phân quyền
           </span>
           <span className="mt-0.5 block text-xs text-text-tertiary">
-            6 vai trò cố định của đặc tả · xem ma trận quyền theo chức năng (FR-ADM-02)
+            6 vai trò cố định · xem ma trận quyền theo chức năng
           </span>
         </span>
         <ChevronRight className="size-5 shrink-0 text-text-tertiary" />

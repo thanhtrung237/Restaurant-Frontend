@@ -109,7 +109,6 @@ const RestaurantConfigPage = lazy(
 const PlatformDashboardPage = lazy(() => import("@/features/platform-admin/pages/dashboard"))
 const RestaurantListPage = lazy(() => import("@/features/platform-admin/pages/restaurant-list"))
 const RestaurantDetailPage = lazy(() => import("@/features/platform-admin/pages/restaurant-detail"))
-const PlatformConfigPage = lazy(() => import("@/features/platform-admin/pages/platform-config"))
 const SystemAuditLogPage = lazy(() => import("@/features/platform-admin/pages/system-audit-log"))
 
 /**
@@ -377,7 +376,7 @@ export const router = createBrowserRouter([
                 path: "nha-hang/:restaurantId",
                 element: <RestaurantDetailPage />,
               }, // RESTAURANT_DETAIL
-              { path: "cau-hinh", element: <PlatformConfigPage /> }, // PLATFORM_CONFIG
+              { path: "cau-hinh", element: <Navigate to="/quan-tri-nen-tang" replace /> },
               { path: "nhat-ky-he-thong", element: <SystemAuditLogPage /> }, // SYSTEM_AUDIT_LOG
             ],
           },

@@ -11,10 +11,12 @@ import { cn } from "@/lib/utils"
  *                    bottom-36  khi màn CÓ sticky bar
  */
 /** Vị trí FAB ở màn KHÔNG có `StickyActionBar`. */
-export const FAB_POSITION_CLASS = "fixed bottom-20 right-4 z-40 md:hidden"
+export const FAB_POSITION_CLASS =
+  "fixed bottom-[calc(5rem_+_env(safe-area-inset-bottom))] right-4 z-40 md:hidden"
 
 /** Vị trí FAB ở màn CÓ `StickyActionBar` — nâng lên trên bar. */
-export const FAB_ABOVE_BAR_POSITION_CLASS = "fixed bottom-36 right-4 z-40 md:hidden"
+export const FAB_ABOVE_BAR_POSITION_CLASS =
+  "fixed bottom-[calc(9rem_+_env(safe-area-inset-bottom))] right-4 z-40 md:hidden"
 
 export interface StickyActionBarProps {
   children: React.ReactNode
@@ -39,7 +41,7 @@ export function StickyActionBar({ children, className }: StickyActionBarProps) {
 
       <div
         className={cn(
-          "fixed bottom-16 left-0 right-0 z-30 flex items-center gap-3 border-t border-border-default bg-surface-card px-4 py-3 shadow-[0_-2px_10px_rgba(16,24,40,0.06)] md:hidden",
+          "fixed bottom-[calc(4rem_+_env(safe-area-inset-bottom))] left-0 right-0 z-30 flex items-center gap-3 border-t border-border-default bg-surface-card px-4 py-3 shadow-[0_-2px_10px_rgba(16,24,40,0.06)] md:hidden",
           className,
         )}
       >

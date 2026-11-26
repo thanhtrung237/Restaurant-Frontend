@@ -106,7 +106,7 @@ export default function BranchTaxFeePage() {
     <div className="flex min-h-full flex-col bg-surface-page">
       <PageHeader
         title="Thuế & phí chi nhánh"
-        subtitle={`${branchName} · chỉ Quản trị nhà hàng sửa được (FR-BRN-02 nhóm 2)`}
+        subtitle={`${branchName} · chỉ Quản trị nhà hàng sửa được`}
         mobileSubtitle={branchName}
         actions={
           <button
@@ -130,8 +130,8 @@ export default function BranchTaxFeePage() {
                 <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#B54708]" />
                 <p className="text-sm text-[#B54708]">
                   Chi nhánh đang có <strong>{warning} phiên mở</strong>. Các phiên đó vẫn tính tiền
-                  theo VAT / phí dịch vụ đã sao cứng lúc mở bàn (BR-08); số mới chỉ áp cho phiên mở
-                  từ bây giờ.
+                  theo VAT / phí dịch vụ đã sao cứng lúc mở bàn; số mới chỉ áp cho phiên mở từ bây
+                  giờ.
                 </p>
               </div>
             ) : null}
@@ -140,7 +140,7 @@ export default function BranchTaxFeePage() {
               <div>
                 <h2 className="text-base font-bold tracking-tight text-text-primary">Thuế & phí</h2>
                 <p className="mt-0.5 text-xs text-text-tertiary">
-                  Sao cứng vào phiên tại thời điểm mở bàn (BR-08) — đổi ở đây không sửa hoá đơn cũ
+                  Sao cứng vào phiên tại thời điểm mở bàn — đổi ở đây không sửa hoá đơn cũ
                 </p>
               </div>
 
@@ -173,7 +173,7 @@ export default function BranchTaxFeePage() {
                   <AlertTriangle className="mt-px size-3.5 shrink-0" />
                   <span>
                     Đang đổi VAT / phí dịch vụ. Phiên bàn đang mở giữ nguyên bộ số cũ cho tới khi
-                    đóng (BR-08).
+                    đóng.
                   </span>
                 </p>
               ) : null}
@@ -205,7 +205,7 @@ export default function BranchTaxFeePage() {
                   placeholder="30000"
                 />
                 <p className="mt-1.5 text-xs text-text-tertiary">
-                  Chiết khấu tay vượt ngưỡng này bắt buộc Quản lý chi nhánh duyệt (BR-10).
+                  Chiết khấu tay vượt ngưỡng này bắt buộc Quản lý chi nhánh duyệt.
                 </p>
               </FormField>
 
@@ -218,8 +218,8 @@ export default function BranchTaxFeePage() {
                   placeholder="Để trống = dùng mã số thuế của nhà hàng"
                 />
                 <p className="mt-1.5 text-xs text-text-tertiary">
-                  BR-20: chi nhánh có mã số thuế riêng thì hoá đơn dùng mã của chi nhánh; để trống
-                  thì dùng mã của nhà hàng.
+                  Nếu chi nhánh có mã số thuế riêng, hóa đơn sẽ dùng mã đó. Để trống thì dùng mã của
+                  nhà hàng.
                 </p>
               </FormField>
 

@@ -24,6 +24,7 @@ export interface TableSession extends BaseResponse {
   tableName?: string
   /** BE bắt buộc có (`nullable = false`) — dùng để scope theo chi nhánh. */
   branchId: number
+  restaurantId?: number
   guestCount?: number
   note?: string
   coverFeePerGuestAtOpen?: number // BigDecimal

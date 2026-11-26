@@ -216,7 +216,7 @@ export default function InvoiceListPage() {
         </div>
 
         {/* BẢNG DESKTOP */}
-        <div className="hidden md:block rounded-card border border-border-default bg-surface-card overflow-hidden shadow-xs">
+        <div className="hidden md:block min-w-0 max-w-full overflow-x-auto rounded-card border border-border-default bg-surface-card shadow-xs">
           <table className="w-full text-sm">
             <thead className="border-b border-border-default bg-surface-muted/40">
               <tr>

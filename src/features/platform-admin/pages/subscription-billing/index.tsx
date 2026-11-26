@@ -205,21 +205,23 @@ export default function SubscriptionBillingPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="mx-auto min-w-0 max-w-7xl space-y-5 lg:space-y-6">
       {/* Top Header matching mockups */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Gói & thanh toán</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">
+            Gói & thanh toán
+          </h1>
+          <p className="text-sm text-slate-600 mt-1">
             Quản lý các gói dịch vụ SaaS và theo dõi subscription của nhà hàng
           </p>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={handleExportInvoice}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 shadow-sm transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
           >
-            <Download className="w-4 h-4 text-gray-500" />
+            <Download className="w-4 h-4 text-slate-600" />
             <span>Xuất hóa đơn</span>
           </button>
           <button
@@ -234,7 +236,7 @@ export default function SubscriptionBillingPage() {
               })
               setIsEditModalOpen(true)
             }}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl bg-[#E03A14] text-white hover:bg-[#c9320f] shadow-sm transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-brand-primary text-white hover:bg-brand-primary-hover shadow-2xs transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
           >
             <Plus className="w-4 h-4" />
             <span>+ Tạo gói</span>
@@ -243,23 +245,23 @@ export default function SubscriptionBillingPage() {
       </div>
 
       {/* Tabs Switcher matching mockups */}
-      <div className="flex border-b border-gray-200 gap-6">
+      <div className="flex border-b border-slate-200 gap-6">
         <button
           onClick={() => setActiveTab("plans")}
-          className={`pb-3 text-sm font-medium border-b-2 transition-all cursor-pointer ${
+          className={`pb-3 text-sm font-medium border-b-2 transition-all cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary ${
             activeTab === "plans"
-              ? "border-[#E03A14] text-[#E03A14] font-bold"
-              : "border-transparent text-gray-500 hover:text-gray-900"
+              ? "border-[#E03A14] text-brand-primary font-bold"
+              : "border-transparent text-slate-600 hover:text-slate-950"
           }`}
         >
           Danh mục gói
         </button>
         <button
           onClick={() => setActiveTab("billing")}
-          className={`pb-3 text-sm font-medium border-b-2 transition-all cursor-pointer ${
+          className={`pb-3 text-sm font-medium border-b-2 transition-all cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary ${
             activeTab === "billing"
-              ? "border-[#E03A14] text-[#E03A14] font-bold"
-              : "border-transparent text-gray-500 hover:text-gray-900"
+              ? "border-[#E03A14] text-brand-primary font-bold"
+              : "border-transparent text-slate-600 hover:text-slate-950"
           }`}
         >
           Thanh toán
@@ -272,34 +274,34 @@ export default function SubscriptionBillingPage() {
           {plans.map((plan) => (
             <div
               key={plan.id}
-              className={`rounded-2xl bg-white border p-6 flex flex-col justify-between relative transition-shadow ${
+              className={`rounded-xl bg-white border p-6 flex flex-col justify-between relative transition-shadow ${
                 plan.popular
                   ? "border-[#E03A14] shadow-md ring-1 ring-[#E03A14]/20"
-                  : "border-gray-200 shadow-sm hover:shadow-md"
+                  : "border-slate-200 shadow-2xs hover:shadow-md"
               }`}
             >
               {plan.popular && (
-                <div className="absolute -top-3 right-6 bg-[#E03A14] text-white text-[11px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                <div className="absolute -top-3 right-6 bg-brand-primary text-white text-[11px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider shadow-2xs">
                   Phổ biến
                 </div>
               )}
               <div>
-                <h3 className="text-xl font-bold text-gray-900">{plan.name}</h3>
-                <p className="text-xs text-gray-500 mt-1 min-h-[32px]">{plan.desc}</p>
+                <h3 className="text-xl font-bold text-slate-950">{plan.name}</h3>
+                <p className="text-xs text-slate-600 mt-1 min-h-[32px]">{plan.desc}</p>
 
                 <div className="mt-4 mb-6">
-                  <span className="text-3xl font-extrabold text-gray-900 tracking-tight">
+                  <span className="text-3xl font-extrabold text-slate-950 tracking-tight">
                     {plan.price}
                   </span>
-                  <span className="text-sm text-gray-500 ml-1 font-medium">{plan.period}</span>
+                  <span className="text-sm text-slate-600 ml-1 font-medium">{plan.period}</span>
                 </div>
 
-                <div className="space-y-3 border-t border-gray-100 pt-5">
-                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                <div className="space-y-3 border-t border-slate-100 pt-5">
+                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     Tính năng bao gồm:
                   </div>
                   {plan.features.map((feature, idx) => (
-                    <div key={idx} className="flex items-start gap-2.5 text-sm text-gray-600">
+                    <div key={idx} className="flex items-start gap-2.5 text-sm text-slate-600">
                       <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                       <span>{feature}</span>
                     </div>
@@ -307,13 +309,13 @@ export default function SubscriptionBillingPage() {
                 </div>
               </div>
 
-              <div className="mt-8 pt-4 border-t border-gray-100">
+              <div className="mt-8 pt-4 border-t border-slate-100">
                 <button
                   onClick={() => handleEditPlan(plan)}
-                  className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-colors cursor-pointer ${
+                  className={`w-full py-2.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary ${
                     plan.popular
-                      ? "bg-[#E03A14] text-white hover:bg-[#c9320f] shadow-sm"
-                      : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                      ? "bg-brand-primary text-white hover:bg-brand-primary-hover shadow-2xs"
+                      : "bg-slate-100 text-gray-800 hover:bg-slate-200"
                   }`}
                 >
                   Sửa gói
@@ -330,11 +332,11 @@ export default function SubscriptionBillingPage() {
           {/* 4 Stat Cards matching mockup */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Card 1 */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-              <div className="text-xs font-medium text-gray-500">
+            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs">
+              <div className="text-xs font-medium text-slate-600">
                 Doanh thu subscription / tháng
               </div>
-              <div className="text-2xl font-bold text-gray-900 mt-2">12.960.000đ</div>
+              <div className="text-2xl font-bold text-slate-950 mt-2">12.960.000đ</div>
               <div className="flex items-center gap-1.5 text-xs text-emerald-600 mt-2 font-medium">
                 <TrendingUp className="w-3.5 h-3.5" />
                 <span>+15% so với tháng trước</span>
@@ -342,25 +344,25 @@ export default function SubscriptionBillingPage() {
             </div>
 
             {/* Card 2 */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-              <div className="text-xs font-medium text-gray-500">Nhà hàng trả phí</div>
-              <div className="text-2xl font-bold text-gray-900 mt-2">3 / 4</div>
-              <div className="text-xs text-gray-400 mt-2">75% chuyển đổi thành công</div>
+            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs">
+              <div className="text-xs font-medium text-slate-600">Nhà hàng trả phí</div>
+              <div className="text-2xl font-bold text-slate-950 mt-2">3 / 4</div>
+              <div className="text-xs text-slate-500 mt-2">75% chuyển đổi thành công</div>
             </div>
 
             {/* Card 3 */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-              <div className="text-xs font-medium text-gray-500">Sắp hết hạn (7 ngày)</div>
+            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs">
+              <div className="text-xs font-medium text-slate-600">Sắp hết hạn (7 ngày)</div>
               <div className="text-2xl font-bold text-amber-600 mt-2">1</div>
-              <div className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+              <div className="text-xs text-slate-500 mt-2 flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5 text-amber-500" />
                 <span>Cần gửi thông báo gia hạn</span>
               </div>
             </div>
 
             {/* Card 4 */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-              <div className="text-xs font-medium text-gray-500">Quá hạn thanh toán</div>
+            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs">
+              <div className="text-xs font-medium text-slate-600">Quá hạn thanh toán</div>
               <div className="text-2xl font-bold text-rose-600 mt-2">1</div>
               <div className="text-xs text-rose-500 mt-2 flex items-center gap-1">
                 <AlertCircle className="w-3.5 h-3.5" />
@@ -370,33 +372,35 @@ export default function SubscriptionBillingPage() {
           </div>
 
           {/* Billing Table matching mockup */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+            <div className="overflow-x-auto max-w-full overscroll-x-contain">
+              <table className="w-full min-w-[40rem] border-collapse text-left">
                 <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50/75 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                    <th className="py-3.5 px-6">NHÀ HÀNG</th>
-                    <th className="py-3.5 px-6">GÓI</th>
-                    <th className="py-3.5 px-6">CHU KỲ</th>
-                    <th className="py-3.5 px-6">GIA HẠN</th>
-                    <th className="py-3.5 px-6">SỐ TIỀN / THÁNG</th>
-                    <th className="py-3.5 px-6">TRẠNG THÁI</th>
+                  <tr className="border-b border-slate-200 bg-slate-100/65 text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
+                    <th className="py-3.5 px-4 lg:px-5">NHÀ HÀNG</th>
+                    <th className="py-3.5 px-4 lg:px-5">GÓI</th>
+                    <th className="py-3.5 px-4 lg:px-5">CHU KỲ</th>
+                    <th className="py-3.5 px-4 lg:px-5">GIA HẠN</th>
+                    <th className="py-3.5 px-4 lg:px-5">SỐ TIỀN / THÁNG</th>
+                    <th className="py-3.5 px-4 lg:px-5">TRẠNG THÁI</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 text-sm">
+                <tbody className="divide-y divide-slate-100 text-sm">
                   {billings.map((b) => (
-                    <tr key={b.id} className="hover:bg-gray-50/80 transition-colors">
-                      <td className="py-4 px-6">
-                        <div className="font-semibold text-gray-900">{b.restaurantName}</div>
-                        <div className="text-xs text-gray-400 font-mono mt-0.5">{b.code}</div>
+                    <tr key={b.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="py-4 px-4 lg:px-5">
+                        <div className="font-semibold text-slate-950">{b.restaurantName}</div>
+                        <div className="text-xs text-slate-500 font-mono mt-0.5">{b.code}</div>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-4 lg:px-5">
                         <span className="font-semibold text-gray-800">{b.plan}</span>
                       </td>
-                      <td className="py-4 px-6 text-gray-600">{b.cycle}</td>
-                      <td className="py-4 px-6 text-gray-600 font-mono text-xs">{b.renewalDate}</td>
-                      <td className="py-4 px-6 font-semibold text-gray-900">{b.amount}</td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-4 lg:px-5 text-slate-600">{b.cycle}</td>
+                      <td className="py-4 px-4 lg:px-5 text-slate-600 font-mono text-xs">
+                        {b.renewalDate}
+                      </td>
+                      <td className="py-4 px-4 lg:px-5 font-semibold text-slate-950">{b.amount}</td>
+                      <td className="py-4 px-4 lg:px-5">
                         {b.status === "PAID" && (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">
                             <CheckCircle2 className="w-3 h-3 text-emerald-500" />
@@ -404,7 +408,7 @@ export default function SubscriptionBillingPage() {
                           </span>
                         )}
                         {b.status === "FREE" && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
                             Miễn phí
                           </span>
                         )}
@@ -426,24 +430,24 @@ export default function SubscriptionBillingPage() {
 
       {/* Edit Plan Modal */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md min-w-0 border-slate-200 bg-white shadow-lg sm:p-5">
           <DialogHeader>
             <DialogTitle>Cấu hình gói dịch vụ</DialogTitle>
           </DialogHeader>
           {editingPlan && (
             <form onSubmit={handleSavePlan} className="space-y-4 py-2">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Tên gói</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Tên gói</label>
                 <input
                   type="text"
                   required
                   value={editingPlan.name}
                   onChange={(e) => setEditingPlan({ ...editingPlan, name: e.target.value })}
-                  className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
+                  className="min-w-0 w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary min-h-10"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Giá hiển thị
                 </label>
                 <input
@@ -451,29 +455,31 @@ export default function SubscriptionBillingPage() {
                   required
                   value={editingPlan.price}
                   onChange={(e) => setEditingPlan({ ...editingPlan, price: e.target.value })}
-                  className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
+                  className="min-w-0 w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary min-h-10"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Mô tả ngắn</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Mô tả ngắn
+                </label>
                 <input
                   type="text"
                   value={editingPlan.desc}
                   onChange={(e) => setEditingPlan({ ...editingPlan, desc: e.target.value })}
-                  className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E03A14]/20 focus:border-[#E03A14]"
+                  className="min-w-0 w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary min-h-10"
                 />
               </div>
-              <DialogFooter className="mt-6 pt-2">
+              <DialogFooter className="mt-6 pt-2 gap-2.5 border-t border-slate-100 pt-4">
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 cursor-pointer"
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl text-sm font-medium bg-[#E03A14] text-white hover:bg-[#c9320f] cursor-pointer"
+                  className="px-4 py-2 rounded-lg text-sm font-medium bg-brand-primary text-white hover:bg-brand-primary-hover cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
                 >
                   Lưu thay đổi
                 </button>

@@ -137,7 +137,7 @@ export const BranchConfigManagerTab: React.FC<BranchConfigManagerTabProps> = ({
               placeholder="06:00"
             />
             <p className="mt-1.5 text-xs text-text-tertiary">
-              Mốc cắt doanh thu theo ngày (BR-06). Định dạng HH:mm. Để trống để xóa.
+              Mốc cắt doanh thu theo ngày. Định dạng HH:mm. Để trống để xóa.
             </p>
           </FormField>
         </CardContent>
@@ -152,7 +152,7 @@ export const BranchConfigManagerTab: React.FC<BranchConfigManagerTabProps> = ({
             </CardTitle>
             <CardDescription className="text-xs text-text-tertiary">
               {canEditBankAccount
-                ? "Mỗi chi nhánh dùng tài khoản riêng · FR-PAY-03"
+                ? "Mỗi chi nhánh dùng tài khoản riêng"
                 : "Chỉ Quản trị nhà hàng được chỉnh sửa."}
             </CardDescription>
           </CardHeader>
@@ -223,7 +223,7 @@ export const BranchConfigManagerTab: React.FC<BranchConfigManagerTabProps> = ({
                 placeholder="0071000988888"
               />
               <p className="mt-1.5 text-xs text-text-tertiary">
-                Dùng để sinh mã QR chuyển khoản cho hóa đơn của chi nhánh này (FR-PAY-03).
+                Dùng để sinh mã QR chuyển khoản cho hóa đơn của chi nhánh này.
               </p>
             </FormField>
           </CardContent>

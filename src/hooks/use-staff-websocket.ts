@@ -13,6 +13,7 @@ import { useAuthStore } from "@/stores/auth.store"
 import { toast } from "@/hooks/use-toast"
 import { getAccessToken } from "@/lib/auth-token"
 import { qk } from "@/lib/query-keys"
+import { APP_ROLE } from "@/config/roles"
 import { getWsUrl } from "@/lib/ws"
 
 interface StaffEvent {
@@ -28,19 +29,49 @@ interface StaffEvent {
 export function useStaffWebSocket() {
   const branchId = useAuthStore((state) => state.branchId)
   const accountId = useAuthStore((state) => state.account?.id)
+  const restaurantId = useAuthStore((state) => state.account?.restaurantId)
+  const role = useAuthStore((state) => state.role)
   const queryClient = useQueryClient()
   const ring = useNotificationRing((state) => state.ring)
 
   useEffect(() => {
-    if (branchId == null || accountId == null) return
+    if (accountId == null) return
     let active = true
     const seen = new Set<string>()
     const inboxKey = staffInboxKey(accountId, branchId)
     const refreshInbox = () => void queryClient.invalidateQueries({ queryKey: inboxKey })
-    const refreshOpenTables = () =>
-      void queryClient.invalidateQueries({ queryKey: qk.tableSessions.openByBranch(branchId) })
-    const refreshTakeaway = () =>
-      void queryClient.invalidateQueries({ queryKey: qk.takeawayOrders.byBranch(branchId) })
+    const refreshOpenTables = () => {
+      if (branchId != null) {
+        void queryClient.invalidateQueries({ queryKey: qk.tableSessions.openByBranch(branchId) })
+      }
+    }
+    let refreshTimer: ReturnType<typeof setTimeout> | undefined
+    const operationalKeys = [
+      qk.tables.all,
+      qk.tableSessions.all,
+      qk.orders.all,
+      qk.orderDetails.all,
+      qk.invoices.all,
+      qk.payments.all,
+      qk.manualDiscounts.all,
+      qk.takeawayOrders.all,
+      qk.reports.all,
+      qk.auditLogs.all,
+    ]
+    const refreshOperations = () => {
+      if (refreshTimer !== undefined) return
+      refreshTimer = setTimeout(() => {
+        refreshTimer = undefined
+        for (const queryKey of operationalKeys) {
+          void queryClient.invalidateQueries({ queryKey })
+        }
+      }, 80)
+    }
+    const refreshTakeaway = () => {
+      if (branchId != null) {
+        void queryClient.invalidateQueries({ queryKey: qk.takeawayOrders.byBranch(branchId) })
+      }
+    }
 
     function claim(key: string | null) {
       if (!key) return true
@@ -71,6 +102,7 @@ export function useStaffWebSocket() {
     let lastInboxId = cachedInbox === undefined ? undefined : newestId(cachedInbox)
     const unsubscribeInbox = queryClient.getQueryCache().subscribe((event) => {
       if (
+        branchId == null ||
         event.type !== "updated" ||
         event.action.type !== "success" ||
         event.query !== queryClient.getQueryCache().find({ queryKey: inboxKey, exact: true })
@@ -109,6 +141,58 @@ export function useStaffWebSocket() {
       onWebSocketError: (error) => console.error("[WS] Không kết nối được WebSocket:", error),
       onConnect: () => {
         if (!active) return
+
+        const refresh = (keys: ReadonlyArray<readonly unknown[]>) => {
+          if (!active) return
+          for (const queryKey of keys) void queryClient.invalidateQueries({ queryKey })
+        }
+        const watch = (destination: string, keys: ReadonlyArray<readonly unknown[]>) => {
+          client.subscribe(destination, () => refresh(keys))
+          refresh(keys)
+        }
+        if (role === APP_ROLE.PLATFORM_ADMIN) {
+          watch("/topic/platform/structure-updated", [
+            qk.restaurants.all,
+            qk.branches.all,
+            qk.auditLogs.all,
+          ])
+        }
+        if (restaurantId != null) {
+          watch(`/topic/restaurant/${restaurantId}/menu-updated`, [
+            qk.categories.all,
+            qk.dishes.all,
+            qk.branchMenu.all,
+            qk.branchDishStocks.all,
+            qk.dishOverrides.all,
+            qk.optionGroups.all,
+            qk.optionItems.all,
+            qk.dishOptionGroups.all,
+            qk.promotions.all,
+            qk.promotionBranches.all,
+          ])
+          watch(`/topic/restaurant/${restaurantId}/management-updated`, [
+            qk.restaurants.all,
+            qk.branches.all,
+            qk.areas.all,
+            qk.tables.all,
+            qk.accounts.all,
+            qk.assignments.all,
+            qk.roles.all,
+            qk.auditLogs.all,
+            qk.operationalPermissions.all,
+          ])
+        }
+
+        if (role === APP_ROLE.RESTAURANT_ADMIN && restaurantId != null) {
+          client.subscribe(`/topic/restaurant/${restaurantId}/operations-updated`, () => {
+            if (active) refreshOperations()
+          })
+          refreshOperations()
+        }
+        if (branchId == null) return
+        client.subscribe(`/topic/branch/${branchId}/session-updated`, () => {
+          if (active) refreshOperations()
+        })
         client.subscribe(`/topic/branch/${branchId}/takeaway-updated`, ({ body }) => {
           if (!active) return
           let event: StaffEvent
@@ -198,14 +282,15 @@ export function useStaffWebSocket() {
           })
         })
         refreshInbox()
-        refreshOpenTables()
+        refreshOperations()
       },
     })
     client.activate()
     return () => {
       active = false
       unsubscribeInbox()
+      clearTimeout(refreshTimer)
       void client.deactivate()
     }
-  }, [accountId, branchId, queryClient, ring])
+  }, [accountId, branchId, restaurantId, role, queryClient, ring])
 }

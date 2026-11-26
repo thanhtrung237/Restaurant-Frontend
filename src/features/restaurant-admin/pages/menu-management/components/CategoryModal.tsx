@@ -74,7 +74,7 @@ export function CategoryModal({
         <DialogHeader>
           <DialogTitle>{isEdit ? "Sửa danh mục" : "Thêm danh mục"}</DialogTitle>
           <DialogDescription>
-            Danh mục khai báo ở cấp nhà hàng, dùng chung mọi chi nhánh (FR-MNU-01).
+            Danh mục khai báo ở cấp nhà hàng, dùng chung mọi chi nhánh.
           </DialogDescription>
         </DialogHeader>
 

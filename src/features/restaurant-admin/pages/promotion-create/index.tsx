@@ -60,7 +60,7 @@ export default function PromotionCreatePage({
   return (
     <PromotionForm
       title="Tạo khuyến mãi"
-      subtitle="Cấu hình điều kiện và hành động theo cấp Món / Hóa đơn · hệ thống tự áp khi thoả (BR-22)"
+      subtitle="Cấu hình điều kiện và hành động theo cấp Món / Hóa đơn · hệ thống tự áp khi thoả"
       submitText="Lưu chương trình"
       isSubmitting={createMutation.isPending}
       onSubmit={handleSubmit}

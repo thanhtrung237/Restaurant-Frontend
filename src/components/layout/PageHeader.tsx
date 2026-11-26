@@ -66,7 +66,7 @@ export function PageHeader({
     <div className={cn("hidden md:block", className)}>
       <div className="flex flex-col gap-4 border-b border-border-default bg-surface-card px-5 py-5 lg:flex-row lg:items-center lg:justify-between lg:px-8 lg:py-6">
         <div className="min-w-0">
-          <h1 className="text-2xl leading-tight font-bold tracking-tight text-text-primary">
+          <h1 className="wrap-anywhere text-2xl leading-tight font-bold tracking-tight text-text-primary">
             {title}
           </h1>
           {subtitle ? (
@@ -75,7 +75,9 @@ export function PageHeader({
         </div>
 
         {actions ? (
-          <div className={cn("flex flex-wrap items-center gap-3", actionsClassName)}>{actions}</div>
+          <div className={cn("flex min-w-0 flex-wrap items-center gap-3", actionsClassName)}>
+            {actions}
+          </div>
         ) : null}
       </div>
 

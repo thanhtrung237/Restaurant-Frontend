@@ -54,7 +54,7 @@ export const StaffTabs: React.FC<StaffTabsProps> = ({
     <div>
       {/* Cuộn ngang ở màn hẹp để 3 tab không bị xuống dòng / tràn ngang trang */}
       <nav
-        className="flex space-x-8 overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex space-x-8 overflow-x-auto whitespace-nowrap max-md:flex-wrap max-md:gap-x-3 max-md:gap-y-1 max-md:space-x-0 max-md:overflow-visible max-md:whitespace-normal [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         aria-label="Tabs"
       >
         {tabs.map((tab) => {
