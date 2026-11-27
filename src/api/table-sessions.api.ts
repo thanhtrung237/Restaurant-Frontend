@@ -162,7 +162,10 @@ export function useCancelSession() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (vars: { id: number; reason: string }) => cancelSession(vars.id, vars.reason),
-    onSuccess: () => invalidateSessionScope(qc),
+    onSuccess: () => {
+      invalidateSessionScope(qc)
+      void qc.invalidateQueries({ queryKey: qk.invoices.all })
+    },
   })
 }
 

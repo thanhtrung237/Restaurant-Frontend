@@ -60,7 +60,7 @@ export interface NavGroup {
 }
 
 /**
- * 8 phân hệ chính của Nhà hàng theo thiết kế Figma (Desktop / Quản lý).
+ * Các phân hệ của Quản trị nhà hàng trên desktop và mobile.
  * Mỗi mục được gắn một permission tương ứng để hệ thống tự động lọc theo quyền vai trò.
  */
 export const RESTAURANT_MANAGEMENT_NAV: NavItem[] = [
@@ -112,15 +112,21 @@ export const RESTAURANT_MANAGEMENT_NAV: NavItem[] = [
     activeAlsoOn: [RESTAURANT_ADMIN_PATHS.ROLES_PERMISSIONS, RESTAURANT_ADMIN_PATHS.AUDIT_LOG],
   },
   {
+    label: "Hóa đơn",
+    path: RESTAURANT_ADMIN_PATHS.INVOICES,
+    icon: ReceiptText,
+    permission: "INVOICES",
+  },
+  {
     label: "Cấu hình",
     path: RESTAURANT_ADMIN_PATHS.CONFIG,
     icon: SlidersHorizontal,
     permission: "CONFIG",
   },
-  // CHỈ mobile: Figma "Menu Drawer · Mobile" có mục thứ 9 này, nhưng Figma Desktop
+  // CHỈ mobile: Figma "Menu Drawer · Mobile" có mục này, nhưng Figma Desktop
   // ("Quản lý thực đơn.png" và các màn khác) KHÔNG có nó trong sidebar — với Quản trị NH,
   // nhật ký là một tab trong trang Nhân viên. Bản mobile không có hàng tab đó nên cần lối
-  // vào riêng. QL chi nhánh thì khác: nhật ký chi nhánh mình là mục độc lập ở CẢ hai.
+  // vào riêng.
   {
     label: "Nhật ký hoạt động",
     shortLabel: "Nhật ký",
@@ -169,7 +175,7 @@ export const NAV_ITEMS_BY_ROLE: Record<Exclude<AppRole, "CUSTOMER">, NavGroup[]>
     },
   ],
 
-  // Thu ngân: xem tạm tính (sơ đồ bàn), chuyển/gộp bàn, thu tiền — không có gọi món/bếp
+  // Thu ngân kiêm phục vụ ở cùng chi nhánh có thêm Gọi món & Chế biến.
   [APP_ROLE.CASHIER]: [
     {
       items: [
@@ -178,6 +184,14 @@ export const NAV_ITEMS_BY_ROLE: Record<Exclude<AppRole, "CUSTOMER">, NavGroup[]>
           path: CASHIER_PATHS.TABLE_MAP,
           icon: LayoutGrid,
           permission: "TABLE_MAP",
+        },
+        {
+          label: "Gọi món & Chế biến",
+          shortLabel: "Đơn món",
+          path: CASHIER_PATHS.ORDER_AND_PREP,
+          icon: ChefHat,
+          permission: "ORDER_AND_PREP",
+          activeAlsoOn: [CASHIER_PATHS.ORDER_DETAIL],
         },
         {
           label: "Chuyển / gộp bàn",
@@ -221,6 +235,12 @@ export const NAV_ITEMS_BY_ROLE: Record<Exclude<AppRole, "CUSTOMER">, NavGroup[]>
           permission: "BRANCH_MENU",
         },
         {
+          label: "Khuyến mãi",
+          path: BRANCH_MANAGER_PATHS.PROMOTIONS,
+          icon: Tag,
+          permission: "BRANCH_PROMOTIONS_VIEW",
+        },
+        {
           label: "Báo cáo",
           path: BRANCH_MANAGER_PATHS.REPORT,
           icon: BarChart3,
@@ -237,7 +257,13 @@ export const NAV_ITEMS_BY_ROLE: Record<Exclude<AppRole, "CUSTOMER">, NavGroup[]>
           path: BRANCH_MANAGER_PATHS.STAFF,
           icon: Users,
           permission: "BRANCH_STAFF",
-          activeAlsoOn: [BRANCH_MANAGER_PATHS.ROLES_PERMISSIONS],
+          activeAlsoOn: [BRANCH_MANAGER_PATHS.ROLES_PERMISSIONS, BRANCH_MANAGER_PATHS.AUDIT_LOG],
+        },
+        {
+          label: "Hóa đơn",
+          path: BRANCH_MANAGER_PATHS.INVOICES,
+          icon: ReceiptText,
+          permission: "INVOICES",
         },
         {
           label: "Cấu hình",
@@ -251,12 +277,7 @@ export const NAV_ITEMS_BY_ROLE: Record<Exclude<AppRole, "CUSTOMER">, NavGroup[]>
           path: BRANCH_MANAGER_PATHS.AUDIT_LOG,
           icon: Clock,
           permission: "AUDIT_LOG",
-        },
-        {
-          label: "Hóa đơn",
-          path: BRANCH_MANAGER_PATHS.INVOICES,
-          icon: ReceiptText,
-          permission: "INVOICES",
+          mobileOnly: true,
         },
       ],
     },
@@ -292,7 +313,11 @@ export const NAV_ITEMS_BY_ROLE: Record<Exclude<AppRole, "CUSTOMER">, NavGroup[]>
 /** Bề mặt điều hướng đang hỏi menu — quyết định có áp `mobileOnly` hay không. */
 export type NavSurface = "desktop" | "mobile"
 
-export function getNavGroupsForRole(role: AppRole, surface: NavSurface = "mobile"): NavGroup[] {
+export function getNavGroupsForRole(
+  role: AppRole,
+  surface: NavSurface = "mobile",
+  canAlsoServe = false,
+): NavGroup[] {
   const groups = NAV_ITEMS_BY_ROLE[role as Exclude<AppRole, "CUSTOMER">] || []
 
   // Lọc theo quyền cho MỌI vai trò, kể cả Quản trị NH — ROLE_PERMISSIONS đã liệt kê
@@ -303,6 +328,7 @@ export function getNavGroupsForRole(role: AppRole, surface: NavSurface = "mobile
       items: group.items.filter((item) => {
         if (surface === "desktop" && item.mobileOnly) return false
         if (!item.permission) return true
+        if (role === APP_ROLE.CASHIER && item.permission === "ORDER_AND_PREP") return canAlsoServe
         return hasPermission(role, item.permission)
       }),
     }))

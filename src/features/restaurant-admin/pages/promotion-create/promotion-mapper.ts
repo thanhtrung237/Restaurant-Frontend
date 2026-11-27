@@ -305,9 +305,8 @@ export function buildPromotionPreview(
   if (data.daysOfWeek.length > 0 && data.daysOfWeek.length < 7) {
     parts.push(`vào ${data.daysOfWeek.join(", ")}`)
   }
-  if (data.startTime || data.endTime) {
-    parts.push(`khung giờ ${data.startTime || "00:00"}–${data.endTime || "23:59"}`)
-  }
+  const timeWindow = formatTimeWindowForApi(data.startTime, data.endTime)
+  parts.push(timeWindow ? `khung giờ ${timeWindow.replace("-", "–")}` : "cả ngày")
 
   // 4. Chi nhánh
   if (data.isAllBranches) {

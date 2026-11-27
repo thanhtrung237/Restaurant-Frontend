@@ -1,6 +1,6 @@
-import { Navigate, Outlet } from "react-router-dom"
+import { Navigate, Outlet, useLocation } from "react-router-dom"
 import { useAuthStore } from "@/stores/auth.store"
-import { ROLE_HOME } from "@/app/router/RoleHomeRedirect"
+import { resolvePostLoginTarget, type PostLoginFrom } from "@/app/router/post-login-target"
 
 /**
  * Đang đăng nhập mà vào trang đăng nhập ⇒ đưa thẳng về trang chủ của vai trò.
@@ -16,9 +16,11 @@ import { ROLE_HOME } from "@/app/router/RoleHomeRedirect"
 export default function RedirectIfAuthenticated() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const role = useAuthStore((s) => s.role)
+  const { state } = useLocation()
 
   if (isAuthenticated && role) {
-    return <Navigate to={ROLE_HOME[role]} replace />
+    const from = (state as { from?: PostLoginFrom } | null)?.from
+    return <Navigate to={resolvePostLoginTarget(role, from)} replace />
   }
   return <Outlet />
 }

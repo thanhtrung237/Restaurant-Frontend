@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select"
 import { IconButton } from "@/components/ui/icon-button"
 import { FormField } from "@/components/common/FormField"
+import { isStaffPhone, STAFF_PHONE_ERROR } from "@/lib/staff-phone"
 import type { Assignment } from "@/types/models"
 import type { RoleScope } from "@/types/enums"
 import type { StaffRow } from "../types"
@@ -47,7 +48,7 @@ const NO_BRANCH = "NONE"
 
 /**
  * Ràng buộc bám đúng `AccountAddRequest` của backend: họ tên ≤ 100, mã NV ≤ 20,
- * tên đăng nhập ≤ 50, email hợp lệ và ≤ 100, mật khẩu ≥ 8 ký tự.
+ * tên đăng nhập ≤ 50 và mật khẩu ≥ 8 ký tự.
  *
  * Quy tắc phạm vi vai trò không nằm trong schema tĩnh được (phải tra `scope` của vai trò vừa
  * chọn), nên nằm ở `superRefine` của schema dựng theo danh sách vai trò — xem `buildSchema`.
@@ -76,11 +77,16 @@ function buildSchema(roles: RoleOption[], isEdit: boolean) {
         .trim()
         .min(1, "Vui lòng nhập tên đăng nhập")
         .max(50, "Tên đăng nhập không được vượt quá 50 ký tự"),
-      email: z
+      phone: z
         .string()
         .trim()
-        .max(100, "Email không được vượt quá 100 ký tự")
-        .refine((v) => v === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), "Email không hợp lệ"),
+        .refine((value) => (isEdit && value === "") || isStaffPhone(value), STAFF_PHONE_ERROR),
+      hireDate: z
+        .string()
+        .refine(
+          (value) => (isEdit && value === "") || z.iso.date().safeParse(value).success,
+          "Vui lòng nhập ngày vào làm hợp lệ.",
+        ),
       password: z.string(),
       assignments: z.array(assignmentSchema),
       /**
@@ -147,7 +153,8 @@ export interface StaffAssignmentDraft {
 export interface StaffFormSubmitData {
   fullName: string
   username: string
-  email?: string
+  phone?: string
+  hireDate?: string
   /** Chỉ có khi tạo mới. */
   password?: string
   /** Phân công cần TẠO (dòng chưa có id). */
@@ -273,7 +280,8 @@ function StaffForm({
     defaultValues: {
       fullName: initialData?.fullName ?? "",
       username: initialData?.username ?? "",
-      email: initialData?.email ?? "",
+      phone: initialData?.phone ?? "",
+      hireDate: initialData?.hireDate ?? "",
       password: "",
       removedAssignmentIds: [],
       assignments: (initialAssignments ?? []).map((assignment) => ({
@@ -305,7 +313,8 @@ function StaffForm({
     await onSave({
       fullName: values.fullName.trim(),
       username: values.username.trim(),
-      email: values.email.trim() === "" ? undefined : values.email.trim(),
+      phone: values.phone || undefined,
+      hireDate: values.hireDate || undefined,
       password: isEdit ? undefined : values.password,
       assignmentsToAdd,
       assignmentIdsToRemove: values.removedAssignmentIds,
@@ -354,9 +363,36 @@ function StaffForm({
         />
       </FormField>
 
-      <FormField label="Email" htmlFor="staff-email" error={errors.email?.message}>
-        <Input id="staff-email" {...register("email")} placeholder="Tuỳ chọn" autoComplete="off" />
-      </FormField>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FormField
+          label="Số điện thoại"
+          htmlFor="staff-phone"
+          required={!isEdit || Boolean(initialData?.phone)}
+          error={errors.phone?.message}
+        >
+          <Input
+            id="staff-phone"
+            type="tel"
+            inputMode="numeric"
+            autoComplete="tel-national"
+            required={!isEdit || Boolean(initialData?.phone)}
+            {...register("phone")}
+          />
+        </FormField>
+        <FormField
+          label="Ngày vào làm"
+          htmlFor="staff-hire-date"
+          required={!isEdit || Boolean(initialData?.hireDate)}
+          error={errors.hireDate?.message}
+        >
+          <Input
+            id="staff-hire-date"
+            type="date"
+            required={!isEdit || Boolean(initialData?.hireDate)}
+            {...register("hireDate")}
+          />
+        </FormField>
+      </div>
 
       {isEdit ? (
         <FormField label="Mật khẩu">

@@ -167,14 +167,13 @@ export default function StaffManagementPage() {
     try {
       if (editing) {
         const infoChanged =
-          data.fullName !== editing.fullName || (data.email ?? "") !== (editing.email ?? "")
+          data.fullName !== editing.fullName ||
+          data.phone !== (editing.phone ?? undefined) ||
+          data.hireDate !== (editing.hireDate ?? undefined)
         if (infoChanged) {
           await updateAccount.mutateAsync({
             id: editing.id,
-            // Email gửi CHUỖI RỖNG chứ không phải undefined khi người dùng xoá trắng:
-            // `AccountMapper.updateEntity` bỏ qua giá trị null (field không gửi = giữ nguyên),
-            // nên undefined sẽ không xoá được email đang có.
-            body: { fullName: data.fullName, email: data.email ?? "" },
+            body: { fullName: data.fullName, phone: data.phone, hireDate: data.hireDate },
           })
         }
         for (const assignmentId of data.assignmentIdsToRemove) {
@@ -198,7 +197,8 @@ export default function StaffManagementPage() {
         restaurantId,
         fullName: data.fullName,
         username: data.username,
-        email: data.email,
+        phone: data.phone,
+        hireDate: data.hireDate,
         password: data.password ?? "",
       })
 

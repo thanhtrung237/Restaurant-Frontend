@@ -119,9 +119,7 @@ for (const width of [360, 834, 1440]) {
     const branch = page.getByRole("combobox", { name: "Chi nhánh", exact: true })
     const date = page.getByRole("button", { name: /Chọn khoảng ngày hóa đơn/ })
     const payment = page.getByRole("group", { name: "Trạng thái thanh toán" })
-    const search = page.getByRole("textbox", {
-      name: "Tìm theo số hóa đơn, tên bàn hoặc nhân viên",
-    })
+    const search = page.getByRole("textbox", { name: "Tìm theo số hóa đơn, tên bàn hoặc nhân viên" })
     const advanced = page.getByRole("button", { name: "Bộ lọc nâng cao", exact: true })
     await expect(branch).toHaveText("Chi nhánh 1")
     await expect(invoice("HD-ISSUED")).toBeVisible()

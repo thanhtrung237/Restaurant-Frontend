@@ -1,11 +1,12 @@
-import { NavLink } from "react-router-dom"
+import { NavLink, useLocation } from "react-router-dom"
 import { LogOut } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { BranchSwitcher } from "@/components/layout/BranchSwitcher"
 import { useLogout } from "@/features/auth/hooks/useLogout"
 import { useAuthStore } from "@/stores/auth.store"
+import { useCashierWaiter } from "@/hooks/use-cashier-waiter"
 import { APP_ROLE_LABEL } from "@/config/roles"
-import { flattenNavItems } from "@/config/nav-utils"
+import { flattenNavItems, isNavItemActive } from "@/config/nav-utils"
 import { NotificationBell } from "@/components/layout/NotificationBell"
 import { cn } from "@/lib/utils"
 
@@ -29,8 +30,10 @@ export function SidebarRail({
   const account = useAuthStore((s) => s.account)
   const role = useAuthStore((s) => s.role)
   const { logout, isLoggingOut } = useLogout()
+  const { pathname } = useLocation()
 
-  const items = role ? flattenNavItems(role, "desktop") : []
+  const { allowed: canAlsoServe } = useCashierWaiter()
+  const items = role ? flattenNavItems(role, "desktop", canAlsoServe) : []
 
   const initials =
     account?.fullName
@@ -65,14 +68,12 @@ export function SidebarRail({
             to={item.path}
             title={item.label}
             aria-label={item.label}
-            className={({ isActive }) =>
-              cn(
-                "group relative flex size-11 shrink-0 items-center justify-center rounded-xl transition-colors",
-                isActive
-                  ? "bg-brand-primary-subtle text-brand-primary"
-                  : "text-text-tertiary hover:bg-surface-muted hover:text-text-primary",
-              )
-            }
+            className={cn(
+              "group relative flex size-11 shrink-0 items-center justify-center rounded-xl transition-colors",
+              isNavItemActive(item, pathname)
+                ? "bg-brand-primary-subtle text-brand-primary"
+                : "text-text-tertiary hover:bg-surface-muted hover:text-text-primary",
+            )}
           >
             <item.icon className="size-5" />
             {/* Tooltip đơn giản bằng CSS — không thêm thư viện tooltip */}

@@ -19,6 +19,7 @@ export function BranchRevenueBarChart({
       }))}
       title={title}
       maxBarSize={84}
+      allowLine={false}
     />
   )
 }

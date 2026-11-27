@@ -10,11 +10,12 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { MOCK_COMPARE_METRICS } from "../mock-data"
 import {
-  TimeRangeDropdown,
-  detectActivePreset,
-  PRESET_OPTIONS,
-  type DateRangeValue,
-} from "./TimeRangeDropdown"
+  DATE_RANGE_PRESETS,
+  findRangePreset,
+  getPresetRange,
+  type CalendarDateRange,
+} from "@/lib/calendar-range"
+import { DateRangePicker } from "@/components/ui/date-range-picker"
 import { HourlyTimePicker } from "./HourlyTimePicker"
 import type { BranchListItem } from "@/types/models"
 import { cn } from "@/lib/utils"
@@ -25,8 +26,9 @@ interface ReportHeaderProps {
   selectedBranchIds: number[]
   onSelectBranchIds: (branchIds: number[]) => void
   isBranchManager: boolean
-  dateRange: DateRangeValue
-  onChangeRange: (range: DateRangeValue) => void
+  today: string
+  dateRange: CalendarDateRange
+  onChangeRange: (range: CalendarDateRange) => void
   selectedMetric?: string
   onSelectMetric?: (metric: string) => void
   onExport?: (format: "xlsx" | "csv") => void
@@ -43,6 +45,7 @@ export function ReportHeaderActions({
   selectedBranchIds,
   onSelectBranchIds,
   isBranchManager,
+  today,
   dateRange,
   onChangeRange,
   selectedMetric = "Theo doanh thu",
@@ -55,12 +58,7 @@ export function ReportHeaderActions({
   onHourlyEndHourChange,
 }: ReportHeaderProps) {
   const isBranchCompareTab = currentTab === "branch"
-  const now = React.useMemo(() => new Date(), [])
-
-  // Detect which preset is currently active
-  const activePresetKey = React.useMemo(() => {
-    return detectActivePreset(dateRange.from, dateRange.to, now)
-  }, [dateRange, now])
+  const activePresetKey = findRangePreset(dateRange, today)?.key
 
   // Get display text for branch selector
   const branchSelectorText = React.useMemo(() => {
@@ -98,10 +96,9 @@ export function ReportHeaderActions({
 
   // Quick preset clicks from toolbar
   const handleToolbarPreset = (presetKey: "today" | "yesterday" | "7days" | "thisMonth") => {
-    const preset = PRESET_OPTIONS.find((p) => p.key === presetKey)
+    const preset = DATE_RANGE_PRESETS.find((p) => p.key === presetKey)
     if (preset) {
-      const r = preset.getRange(now)
-      onChangeRange(r)
+      onChangeRange(getPresetRange(preset, today))
     }
   }
 
@@ -249,9 +246,14 @@ export function ReportHeaderActions({
         </div>
 
         {/* Date Range Picker Component with Compact Popover */}
-        <TimeRangeDropdown
+        <DateRangePicker
+          label="Chọn khoảng thời gian báo cáo"
+          dialogLabel="Khoảng ngày báo cáo"
+          today={today}
           range={dateRange}
-          onChangeRange={onChangeRange}
+          onApply={onChangeRange}
+          align="end"
+          showYearPresets
           className="hidden h-10 min-w-0 shrink gap-1.5 px-2.5 md:flex @min-[56rem]/report:gap-2 @min-[56rem]/report:px-3.5"
         />
 

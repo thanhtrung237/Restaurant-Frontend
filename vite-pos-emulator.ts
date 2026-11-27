@@ -64,7 +64,7 @@ async function renderReceipt(html: string) {
     if (await page.evaluate("Array.from(document.images).some(img => !img.naturalWidth)")) {
       throw new Error("Không tải được ảnh trên phiếu. Kiểm tra kết nối rồi in lại.")
     }
-    if ((await page.evaluate<number>("document.body.scrollHeight")) > receiptHeightLimit) {
+    if (await page.evaluate<number>("document.body.scrollHeight") > receiptHeightLimit) {
       throw new Error("Phiếu quá dài để in thử qua máy in ảo.")
     }
     const png = await page.screenshot({ fullPage: true, timeout: 10000 })

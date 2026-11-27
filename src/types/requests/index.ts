@@ -37,6 +37,8 @@ export interface LoginRequest {
 
 // ---------------------------------------------------------------- Account
 export interface AccountAddRequest {
+  phone?: string
+  hireDate?: string
   restaurantId: number
   fullName: string
   username: string
@@ -48,6 +50,8 @@ export interface AccountAddRequest {
    */
 }
 export interface AccountUpdateRequest {
+  phone?: string
+  hireDate?: string
   fullName?: string
   email?: string
 }

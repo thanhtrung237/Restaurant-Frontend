@@ -15,6 +15,7 @@ export const PERMISSION_KEYS = {
   /** Menu CHI NHÁNH (đè giá / ẩn món / món riêng / báo hết món). */
   BRANCH_MENU: "BRANCH_MENU",
   PROMOTIONS: "PROMOTIONS",
+  BRANCH_PROMOTIONS_VIEW: "BRANCH_PROMOTIONS_VIEW",
   REPORTS: "REPORTS",
   BRANCHES: "BRANCHES",
   STAFF: "STAFF",
@@ -22,7 +23,7 @@ export const PERMISSION_KEYS = {
   CONFIG: "CONFIG",
   /** Nhật ký hoạt động. QL chi nhánh chỉ ĐỌC và chỉ chi nhánh mình (R, FR-LOG-01). */
   AUDIT_LOG: "AUDIT_LOG",
-  /** Danh sách hóa đơn — Thu ngân (tra cứu) + QL chi nhánh (tra cứu + giám sát). */
+  /** Tra cứu hóa đơn theo phạm vi chi nhánh hoặc nhà hàng của vai trò. */
   INVOICES: "INVOICES",
 } as const
 
@@ -44,10 +45,11 @@ export type PermissionKey = keyof typeof PERMISSION_KEYS
  *   · Quản lý bàn & mã QR (Bảng 4.2)
  *   · Cấu hình chi nhánh nhóm 1 — giờ giấc, TK ngân hàng, thời gian tự huỷ phiên (FR-BRN-02)
  *   · Báo cáo chi nhánh mình
+ *   · Tra cứu khuyến mãi đang áp dụng tại chi nhánh mình
  *   · Nhật ký chi nhánh mình — CHỈ ĐỌC (R)
  * KHÔNG được (Bảng 4.3 để trống cho cột QL chi nhánh):
  *   · Menu nhà hàng / danh mục / nhóm tuỳ chọn món
- *   · Khuyến mãi
+ *   · Quản lý chương trình khuyến mãi
  *   · Quản lý tài khoản toàn nhà hàng và cấu hình quyền nền của vai trò
  *   · Cấu hình chi nhánh nhóm 2 — VAT, phí dịch vụ, ngưỡng chiết khấu, MST riêng
  *   · So sánh chi nhánh trong Báo cáo
@@ -70,12 +72,14 @@ export const ROLE_PERMISSIONS: Record<AppRole, PermissionKey[]> = {
     "STAFF",
     "CONFIG",
     "AUDIT_LOG",
+    "INVOICES",
   ],
   [APP_ROLE.BRANCH_MANAGER]: [
     "TABLE_MAP",
     "ORDER_AND_PREP",
     // Menu CHI NHÁNH — KHÔNG có "MENU" (menu nhà hàng) theo Bảng 4.3
     "BRANCH_MENU",
+    "BRANCH_PROMOTIONS_VIEW",
     "BRANCH_STAFF",
     "REPORTS",
     "BRANCHES",

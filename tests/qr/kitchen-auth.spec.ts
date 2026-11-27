@@ -236,6 +236,7 @@ async function mockKitchenPrinting(page: Page) {
             output.kitchenPrintedRows = JSON.stringify(rows)
             output.kitchenPrintedTotal =
               printDoc?.querySelector(".footer strong")?.textContent ?? ""
+            output.kitchenPrintHtml = printDoc?.documentElement.outerHTML ?? ""
             output.kitchenPrinted = "true"
           }
         }
@@ -309,6 +310,20 @@ test("batch confirmation keeps the selection on failure and returns focus to the
   await expect(page.locator("html")).toHaveAttribute("data-kitchen-printed", "true")
   await expect(page.getByRole("region", { name: "Danh sách món chế biến" })).toBeFocused()
   expect(attempts).toBe(2)
+
+  const html = await page.locator("html").getAttribute("data-kitchen-print-html")
+  expect(html).toBeTruthy()
+  const printPage = await page.context().newPage()
+  try {
+    await printPage.setContent(`<!doctype html>${html}`)
+    const pdf = (await printPage.pdf({ preferCSSPageSize: true })).toString("latin1")
+    expect(pdf.match(/\/Type\s*\/Page\b/g)).toHaveLength(1)
+    const [, width, height] = /\/MediaBox\s*\[0 0 ([\d.]+) ([\d.]+)\]/.exec(pdf) ?? []
+    expect(Math.abs((Number(width) * 25.4) / 72 - 80)).toBeLessThan(1)
+    expect((Number(height) * 25.4) / 72).toBeLessThan(200)
+  } finally {
+    await printPage.close()
+  }
 })
 
 test("batch confirmation selects pending groups and keeps newly arriving rounds outside the review", async ({

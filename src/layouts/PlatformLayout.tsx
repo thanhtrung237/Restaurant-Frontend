@@ -1,7 +1,8 @@
 import { useStaffWebSocket } from "@/hooks/use-staff-websocket"
-import { Outlet, NavLink, useNavigate } from "react-router-dom"
+import { Outlet, NavLink } from "react-router-dom"
 import { LayoutDashboard, Building2, ClipboardList, LogOut, Diamond } from "lucide-react"
 import { useAuthStore } from "@/stores/auth.store"
+import { useLogout } from "@/features/auth/hooks/useLogout"
 
 interface NavItem {
   to: string
@@ -22,14 +23,8 @@ const navItems: NavItem[] = [
  */
 export default function PlatformLayout() {
   useStaffWebSocket()
-  const navigate = useNavigate()
   const account = useAuthStore((s) => s.account)
-  const clearSession = useAuthStore((s) => s.clearSession)
-
-  const handleLogout = () => {
-    clearSession()
-    navigate("/dang-nhap")
-  }
+  const { logout, isLoggingOut } = useLogout()
 
   return (
     <div className="flex min-h-dvh flex-col bg-slate-50 text-slate-950 md:h-dvh md:flex-row md:overflow-hidden">
@@ -88,7 +83,8 @@ export default function PlatformLayout() {
               </div>
             </div>
             <button
-              onClick={handleLogout}
+              onClick={() => void logout()}
+              disabled={isLoggingOut}
               title="Đăng xuất"
               className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-lg text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-white"
             >

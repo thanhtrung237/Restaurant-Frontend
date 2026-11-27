@@ -3,6 +3,7 @@ import { LogOut } from "lucide-react"
 import { useAuthStore } from "@/stores/auth.store"
 import { APP_ROLE_LABEL } from "@/config/roles"
 import { getNavGroupsForRole } from "@/config/nav-items"
+import { useCashierWaiter } from "@/hooks/use-cashier-waiter"
 import { isNavItemActive } from "@/config/nav-utils"
 import { useLogout } from "@/features/auth/hooks/useLogout"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -26,7 +27,8 @@ export function Sidebar({ className, toggle }: { className?: string; toggle?: Re
   // Mặc định vai trò là Quản trị nhà hàng (RESTAURANT_ADMIN) để xem được toàn bộ màn hình
   const currentRole = role && role !== "CUSTOMER" ? role : "RESTAURANT_ADMIN"
   // "desktop": bỏ các mục chỉ dành cho điều hướng mobile (xem NavItem.mobileOnly).
-  const navGroups = getNavGroupsForRole(currentRole, "desktop")
+  const { allowed: canAlsoServe } = useCashierWaiter()
+  const navGroups = getNavGroupsForRole(currentRole, "desktop", canAlsoServe)
   const { pathname } = useLocation()
   // Tên hiện trên thanh bên lấy từ cấu hình nhà hàng thật (FR-ADM-03), không viết cứng.
   const restaurantName = useRestaurantName()

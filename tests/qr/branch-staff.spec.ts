@@ -50,8 +50,8 @@ test("branch manager creates staff and changes their branch roles", async ({ pag
     if (path === "/branches/10/staff" && method === "GET")
       data = staff ? [manager, staff] : [manager]
     if (path === "/branches/10/staff" && method === "POST") {
-      const { fullName, username, roles } = request.postDataJSON()
-      writes.push({ path, body: { fullName, username, roles } })
+      const { fullName, username, roles, phone, hireDate } = request.postDataJSON()
+      writes.push({ path, body: { fullName, username, roles, phone, hireDate } })
       staff = {
         id: 2,
         fullName,
@@ -86,8 +86,14 @@ test("branch manager creates staff and changes their branch roles", async ({ pag
   await expect(create.getByRole("button", { name: "Tạo tài khoản" })).toBeDisabled()
   await create.getByLabel("Họ và tên").fill("Nhân viên mới")
   await create.getByLabel("Tên đăng nhập").fill("new_staff")
+  await expect(create.getByLabel(/email/i)).toHaveCount(0)
+  await create.getByLabel("Ngày vào làm").fill("2026-11-25")
+  await create.getByLabel("Số điện thoại").fill("0401234567")
   await create.getByLabel("Mật khẩu ban đầu").fill("Start789!")
   await create.getByRole("checkbox", { name: "Phục vụ" }).click()
+  await create.getByRole("button", { name: "Tạo tài khoản" }).click()
+  await expect(create.getByText(/đầu số di động Việt Nam/)).toBeVisible()
+  await create.getByLabel("Số điện thoại").fill("0321234567")
   await create.getByRole("button", { name: "Tạo tài khoản" }).click()
   const change = page.getByRole("button", { name: "Đổi vai trò cho Nhân viên mới" })
   await expect(change).toBeVisible()
@@ -109,7 +115,7 @@ test("branch manager creates staff and changes their branch roles", async ({ pag
   expect(writes).toEqual([
     {
       path: "/branches/10/staff",
-      body: { fullName: "Nhân viên mới", username: "new_staff", roles: ["WAITER"] },
+      body: { fullName: "Nhân viên mới", username: "new_staff", roles: ["WAITER"], phone: "0321234567", hireDate: "2026-11-25" },
     },
     { path: "/branches/10/staff/2/roles", body: { expected: ["WAITER"], roles: ["CASHIER"] } },
   ])

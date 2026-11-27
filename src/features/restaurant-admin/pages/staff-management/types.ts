@@ -22,7 +22,8 @@ export interface StaffRow {
   fullName: string
   employeeCode: string
   username: string
-  email?: string
+  phone?: string
+  hireDate?: string
   status: AccountStatus
   initials: string
   /** Vai trò đã gộp trùng: waiter01 có 2 phân công cùng vai trò ⇒ 1 chip. */

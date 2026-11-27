@@ -59,7 +59,8 @@ export function toStaffRow(account: Account): StaffRow {
     fullName: account.fullName,
     employeeCode: account.employeeCode,
     username: account.username,
-    email: account.email,
+    phone: account.phone,
+    hireDate: account.hireDate,
     status: account.status,
     initials: initialsOf(account.fullName),
     roles: [...roles].map(([key, label]) => ({ key, label })),
@@ -78,7 +79,8 @@ export function matchesStaffSearch(row: StaffRow, searchTerm: string): boolean {
   return (
     row.fullName.toLowerCase().includes(query) ||
     row.employeeCode.toLowerCase().includes(query) ||
-    row.username.toLowerCase().includes(query)
+    row.username.toLowerCase().includes(query) ||
+    Boolean(row.phone?.includes(query))
   )
 }
 

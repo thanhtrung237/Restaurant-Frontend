@@ -4,6 +4,7 @@ import { CalendarDays, Clock } from "lucide-react"
 import { FormField } from "@/components/common/FormField"
 import { Calendar } from "@/components/ui/calendar"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { isValidDateFormat } from "@/lib/promotion-format"
 import { cn } from "@/lib/utils"
@@ -177,6 +178,25 @@ export function PromotionTimeCard({
             <Clock className="size-4 text-text-tertiary absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
         </FormField>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-text-secondary">
+          Giờ Việt Nam (24 giờ). Ví dụ 05:00–07:00 là từ 5 đến 7 giờ sáng.
+        </p>
+        {(startTime || endTime) && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              onStartTimeChange("")
+              onEndTimeChange("")
+            }}
+          >
+            Áp dụng cả ngày
+          </Button>
+        )}
       </div>
 
       {/* Row 3: Ngày trong tuần */}

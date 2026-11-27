@@ -15,7 +15,7 @@ export interface LoginResponse {
   accessToken: string
   refreshToken: string
   accountId: number
-  restaurantId: number
+  restaurantId: number | null
   username: string
   fullName: string
   roles?: string[]

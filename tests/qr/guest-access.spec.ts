@@ -379,18 +379,11 @@ test("opens the guest menu after a session update arrives over WebSocket", async
       }
       const destination = frame.match(/^destination:(.*)$/m)?.[1]
       const subscription = frame.match(/^id:(.*)$/m)?.[1]
-      if (
-        frame.startsWith("SUBSCRIBE") &&
-        destination === "/topic/session/10/session-updated" &&
-        subscription
-      ) {
+      if (frame.startsWith("SUBSCRIBE") && destination === "/topic/session/10/session-updated" && subscription) {
         publish = () =>
           send(
-            "MESSAGE\ndestination:" +
-              destination +
-              "\nsubscription:" +
-              subscription +
-              '\nmessage-id:1\n\n{"changed":true}\u0000',
+            "MESSAGE\ndestination:" + destination + "\nsubscription:" + subscription +
+              "\nmessage-id:1\n\n{\"changed\":true}\u0000",
           )
       }
     })

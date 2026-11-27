@@ -27,6 +27,7 @@ import {
 import { getTableSession } from "@/api/table-sessions.api"
 import { getNotificationDestination } from "@/features/shared/floor-ops/notification-navigation"
 import { useAuthStore } from "@/stores/auth.store"
+import { useCashierWaiter } from "@/hooks/use-cashier-waiter"
 import { useNotificationRing } from "@/stores/notification.store"
 import { useToast } from "@/hooks/use-toast"
 import { isApiStatus } from "@/lib/http"
@@ -103,6 +104,7 @@ export function NotificationBell({
   className?: string
 }) {
   const { branchId, enabled, inbox, action } = useStaffInbox()
+  const { allowed: canAlsoServe } = useCashierWaiter()
   const ringingBranch = useNotificationRing((state) => state.ringingBranch)
   const stop = useNotificationRing((state) => state.stop)
   const ringing = ringingBranch != null && ringingBranch === branchId
@@ -145,7 +147,12 @@ export function NotificationBell({
         toast({ title: "Phiên bàn đã kết thúc", variant: "info" })
         return
       }
-      const destination = getNotificationDestination(item, session, useAuthStore.getState().role)
+      const destination = getNotificationDestination(
+        item,
+        session,
+        useAuthStore.getState().role,
+        canAlsoServe,
+      )
       if (destination) {
         finish()
         navigate(destination)

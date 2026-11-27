@@ -9,6 +9,7 @@ import { NotificationBell } from "@/components/layout/NotificationBell"
 import { BottomNav, type BottomNavItem } from "@/components/layout/BottomNav"
 import { BranchSwitcher } from "@/components/layout/BranchSwitcher"
 import { useAuthStore } from "@/stores/auth.store"
+import { useCashierWaiter } from "@/hooks/use-cashier-waiter"
 import {
   BOTTOM_NAV_MORE_KEY,
   findActiveNavItem,
@@ -83,7 +84,10 @@ function StaffLayoutInner() {
     [location.pathname],
   )
 
-  const activeItem = role ? findActiveNavItem(role, location.pathname) : undefined
+  const { allowed: canAlsoServe } = useCashierWaiter()
+  const activeItem = role
+    ? findActiveNavItem(role, location.pathname, "mobile", canAlsoServe)
+    : undefined
 
   // Tiêu đề mobile: mặc định là nhãn mục menu đang active, trang có thể ghi đè
   // bằng `usePageHeader({ title, subtitle })` — phương án P2.
@@ -96,12 +100,12 @@ function StaffLayoutInner() {
 
   const bottomNavItems: BottomNavItem[] = React.useMemo(() => {
     if (!role) return []
-    return getBottomNavItems(role, "Thêm", MoreHorizontal).map((entry) => ({
+    return getBottomNavItems(role, "Thêm", MoreHorizontal, canAlsoServe).map((entry) => ({
       key: entry.key,
       label: entry.label,
       icon: entry.icon,
     }))
-  }, [role])
+  }, [role, canAlsoServe])
 
   // Khoá active của BottomNav chính là path của mục đang active (xem nav-utils).
   const bottomNavActiveKey = activeItem?.path ?? ""

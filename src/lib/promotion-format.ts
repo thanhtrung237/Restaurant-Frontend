@@ -104,8 +104,17 @@ export function parseDaysOfWeekFromApi(daysStr: string): string[] {
  * @returns "11:00-14:00" hoặc "" nếu cả hai rỗng
  */
 export function formatTimeWindowForApi(start: string, end: string): string {
-  if (!start && !end) return ""
-  return `${start || "00:00"}-${end || "23:59"}`
+  const from = normalizePromotionTime(start)
+  const to = normalizePromotionTime(end)
+  if (!from && !to) return ""
+  return `${from || "00:00"}-${to || "23:59"}`
+}
+
+function normalizePromotionTime(value: string): string {
+  const time = value.trim()
+  if (/^\d{1,2}$/.test(time)) return `${time.padStart(2, "0")}:00`
+  if (/^\d:\d{2}$/.test(time)) return `0${time}`
+  return time
 }
 
 /**
@@ -116,7 +125,7 @@ export function formatTimeWindowForApi(start: string, end: string): string {
 export function parseTimeWindowFromApi(timeWindow: string): [string, string] {
   if (!timeWindow || !timeWindow.includes("-")) return ["", ""]
   const [start, end] = timeWindow.split("-")
-  return [start.trim(), end.trim()]
+  return [normalizePromotionTime(start), normalizePromotionTime(end)]
 }
 
 // ==================== Trạng thái hiển thị ====================
@@ -222,4 +231,69 @@ export function isEndDateAfterStartDate(startDate: string, endDate: string): boo
   const start = new Date(formatDateForApi(startDate))
   const end = new Date(formatDateForApi(endDate))
   return end >= start
+}
+
+export function formatPromotionBriefRule(promo: Promotion): string {
+  const isDish = promo.applyLevel === "ITEM"
+  let actionText = ""
+  let conditionText = ""
+
+  if (promo.action) {
+    try {
+      const act = JSON.parse(promo.action)
+      const type = act.type || act.actionType
+      if (type === "percentage") {
+        const val = act.value ?? act.discountPercent ?? 0
+        actionText = `Giảm ${val}%`
+      } else if (type === "gift_dish") {
+        actionText = `Mua ${act.buyQty || 2} tặng ${act.getQty || 1}`
+      } else {
+        const val = Number(act.value ?? act.discountAmount ?? 0)
+        actionText = val > 0 ? `Giảm ${val.toLocaleString("vi-VN")}đ` : "Giảm giá"
+      }
+    } catch {
+      actionText = ""
+    }
+  }
+
+  if (promo.condition) {
+    try {
+      const cond = JSON.parse(promo.condition)
+      if (isDish) {
+        if (
+          cond.target === "category" &&
+          Array.isArray(cond.categoryIds) &&
+          cond.categoryIds.length > 0
+        ) {
+          conditionText = `${cond.categoryIds.length} danh mục`
+        } else if (
+          cond.target === "specific_dish" &&
+          Array.isArray(cond.dishIds) &&
+          cond.dishIds.length > 0
+        ) {
+          conditionText = `${cond.dishIds.length} món cụ thể`
+        } else {
+          conditionText = "Tất cả món"
+        }
+        const minQ = cond.minQty || cond.minQuantity
+        if (minQ && minQ > 1) {
+          conditionText += ` (từ ${minQ} món)`
+        }
+      } else {
+        const minOrder = cond.minOrderValue || cond.minTotal
+        if (minOrder && Number(minOrder) > 0) {
+          conditionText = `Đơn từ ${Number(minOrder).toLocaleString("vi-VN")}đ`
+        } else {
+          conditionText = "Toàn hóa đơn"
+        }
+      }
+    } catch {
+      conditionText = ""
+    }
+  }
+
+  if (actionText && conditionText) {
+    return `${actionText} · ${conditionText}`
+  }
+  return actionText || conditionText || (isDish ? "Khuyến mãi món" : "Khuyến mãi hóa đơn")
 }

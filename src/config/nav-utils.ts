@@ -12,8 +12,12 @@ import { getNavGroupsForRole, type NavItem, type NavSurface } from "@/config/nav
  */
 
 /** Gộp mọi nhóm thành một danh sách phẳng, giữ nguyên thứ tự khai báo. */
-export function flattenNavItems(role: AppRole, surface: NavSurface = "mobile"): NavItem[] {
-  return getNavGroupsForRole(role, surface).flatMap((group) => group.items)
+export function flattenNavItems(
+  role: AppRole,
+  surface: NavSurface = "mobile",
+  canAlsoServe = false,
+): NavItem[] {
+  return getNavGroupsForRole(role, surface, canAlsoServe).flatMap((group) => group.items)
 }
 
 /**
@@ -26,9 +30,10 @@ export function findActiveNavItem(
   role: AppRole,
   pathname: string,
   surface: NavSurface = "mobile",
+  canAlsoServe = false,
 ): NavItem | undefined {
-  const matched = flattenNavItems(role, surface).filter((item) =>
-    Boolean(matchPath({ path: item.path, end: false }, pathname)),
+  const matched = flattenNavItems(role, surface, canAlsoServe).filter((item) =>
+    isNavItemActive(item, pathname),
   )
   if (matched.length === 0) return undefined
   return matched.reduce((longest, item) =>
@@ -83,8 +88,9 @@ export function getBottomNavItems(
   role: AppRole,
   moreLabel = "Thêm",
   moreIcon?: NavItem["icon"],
+  canAlsoServe = false,
 ): BottomNavEntry[] {
-  const all = flattenNavItems(role)
+  const all = flattenNavItems(role, "mobile", canAlsoServe)
 
   let direct: NavItem[]
   if (role === APP_ROLE.RESTAURANT_ADMIN) {

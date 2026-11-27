@@ -20,7 +20,7 @@
 
 import * as React from "react"
 import { useLocation, useNavigate } from "react-router-dom"
-import { Eye, EyeOff, Loader2, ChevronRight, Lightbulb } from "lucide-react"
+import { Eye, EyeOff, Loader2, ChevronRight, ShieldCheck } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -28,17 +28,62 @@ import { useLoginMutation } from "@/api/auth.api"
 import { getAccount } from "@/api/accounts.api"
 import { getAssignmentsByAccount } from "@/api/assignments.api"
 import { getErrorMessage } from "@/lib/http"
-import { clearTokens } from "@/lib/auth-token"
+import { clearTokens, setTokens } from "@/lib/auth-token"
 import { useAuthStore } from "@/stores/auth.store"
 import { mapRoleCodeToAppRole, APP_ROLE_LABEL, APP_ROLE, type AppRole } from "@/config/roles"
 import { resolvePostLoginTarget } from "@/app/router/post-login-target"
 import { AUTH_PATHS } from "@/app/router/paths"
 import type { Account, Assignment } from "@/types/models"
+import brandArtwork from "./tt-pos-brand.png"
 
 /** 1 lựa chọn hiển thị ở bước chọn vai trò/chi nhánh — gắn liền 1 Assignment cụ thể. */
 interface AssignmentChoice {
   assignment: Assignment
   role: AppRole
+  includesWaiter?: boolean
+}
+
+function LoginBrand({ onBanner = false }: { onBanner?: boolean }) {
+  return (
+    <div
+      className={
+        onBanner
+          ? "relative z-10 flex items-center gap-4 text-white"
+          : "mb-6 flex items-center gap-3 text-text-primary lg:hidden"
+      }
+    >
+      <span
+        aria-hidden="true"
+        className={
+          onBanner
+            ? "relative size-28 shrink-0 overflow-hidden rounded-[31%]"
+            : "relative size-18 shrink-0 overflow-hidden rounded-[31%]"
+        }
+      >
+        <img
+          src={brandArtwork}
+          alt=""
+          width={1536}
+          height={1024}
+          className="absolute top-[-34.1%] left-[-31.1%] h-auto w-[310.9%] max-w-none"
+        />
+      </span>
+      <span
+        className="relative aspect-[626/143] w-36 max-w-full overflow-hidden rounded-[12%] lg:w-48"
+        style={{
+          maskImage: "radial-gradient(ellipse 72% 105% at center, #000 68%, transparent 100%)",
+        }}
+      >
+        <img
+          src={brandArtwork}
+          alt="T&T POS"
+          width={1536}
+          height={1024}
+          className="absolute top-[-478%] left-[-14.1%] h-auto w-[245.4%] max-w-none"
+        />
+      </span>
+    </div>
+  )
 }
 
 function ErrorBanner({ message }: { message: string }) {
@@ -49,22 +94,24 @@ function ErrorBanner({ message }: { message: string }) {
   )
 }
 
-export default function LoginPage() {
+export default function LoginPage({ platform = false }: { platform?: boolean }) {
   const navigate = useNavigate()
   const location = useLocation()
   const setSession = useAuthStore((s) => s.setSession)
   const loginMutation = useLoginMutation()
+  const rememberKey = platform ? "platform_remember_login" : "remember_login"
+  const usernameKey = platform ? "platform_saved_username" : "saved_username"
 
   const [restaurantCode, setRestaurantCode] = React.useState(() => {
     return localStorage.getItem("saved_restaurant_code") || ""
   })
   const [username, setUsername] = React.useState(() => {
-    return localStorage.getItem("saved_username") || ""
+    return localStorage.getItem(usernameKey) || ""
   })
   const [password, setPassword] = React.useState("")
   const [showPassword, setShowPassword] = React.useState(false)
   const [rememberMe, setRememberMe] = React.useState(() => {
-    return localStorage.getItem("remember_login") === "true"
+    return localStorage.getItem(rememberKey) === "true"
   })
   const [error, setError] = React.useState<string | null>(null)
   const [isResolving, setIsResolving] = React.useState(false)
@@ -82,13 +129,13 @@ export default function LoginPage() {
 
   function finalizeSession(account: Account, choice: AssignmentChoice, accessToken: string) {
     if (rememberMe) {
-      localStorage.setItem("remember_login", "true")
-      localStorage.setItem("saved_restaurant_code", restaurantCode.trim() || "")
-      localStorage.setItem("saved_username", username.trim())
+      localStorage.setItem(rememberKey, "true")
+      if (!platform) localStorage.setItem("saved_restaurant_code", restaurantCode.trim())
+      localStorage.setItem(usernameKey, username.trim())
     } else {
-      localStorage.removeItem("remember_login")
-      localStorage.removeItem("saved_restaurant_code")
-      localStorage.removeItem("saved_username")
+      localStorage.removeItem(rememberKey)
+      if (!platform) localStorage.removeItem("saved_restaurant_code")
+      localStorage.removeItem(usernameKey)
     }
 
     setSession({
@@ -121,15 +168,27 @@ export default function LoginPage() {
       setError("Vui lòng nhập đầy đủ Tên đăng nhập và Mật khẩu.")
       return
     }
+    if (!platform && !restaurantCode.trim()) {
+      setError("Vui lòng nhập mã nhà hàng.")
+      return
+    }
 
     try {
       const loginRes = await loginMutation.mutateAsync({
-        restaurantCode: restaurantCode.trim() || null,
+        restaurantCode: platform ? null : restaurantCode.trim(),
         username: username.trim(),
         password,
         deviceInfo: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
       })
 
+      const hasPlatformRole = loginRes.roles?.includes(APP_ROLE.PLATFORM_ADMIN)
+      const isRestaurantAccount = loginRes.restaurantId != null
+      if (platform ? !hasPlatformRole || isRestaurantAccount : !isRestaurantAccount) {
+        setError("Tài khoản không thuộc cổng đăng nhập này.")
+        return
+      }
+
+      setTokens({ accessToken: loginRes.accessToken, refreshToken: loginRes.refreshToken })
       setIsResolving(true)
 
       // `LoginResponse` không có branchId/employeeCode/status — lấy thêm từ 2 API sau.
@@ -149,32 +208,41 @@ export default function LoginPage() {
           const role = mapRoleCodeToAppRole(assignment.roleCode)
           return role ? { assignment, role } : null
         })
-        .filter((c): c is AssignmentChoice => c !== null)
+        .filter(
+          (c): c is AssignmentChoice =>
+            c !== null && (c.role === APP_ROLE.PLATFORM_ADMIN) === platform,
+        )
 
-      // Fallback an toàn cho Quản trị nền tảng (Platform Admin) nếu chưa có assignment trong DB
-      if (
-        validChoices.length === 0 &&
-        (loginRes.roles?.includes("PLATFORM_ADMIN") || !account.restaurantId)
-      ) {
-        validChoices = [
-          {
-            assignment: {
-              id: 100,
-              accountId: account.id,
-              roleId: 100,
-              roleName: "Quản trị nền tảng",
-              roleCode: "PLATFORM_ADMIN",
-              roleScope: "PLATFORM" as any,
-              branchId: undefined,
-              branchName: undefined,
-            },
-            role: APP_ROLE.PLATFORM_ADMIN,
-          },
-        ]
-      }
+      const cashierBranches = new Set(
+        validChoices
+          .filter(({ role }) => role === APP_ROLE.CASHIER)
+          .map(({ assignment }) => assignment.branchId)
+          .filter((id) => id != null),
+      )
+      const waiterBranches = new Set(
+        validChoices
+          .filter(({ role }) => role === APP_ROLE.WAITER)
+          .map(({ assignment }) => assignment.branchId)
+          .filter((id) => id != null),
+      )
+      validChoices = validChoices
+        .filter(
+          ({ role, assignment }) =>
+            role !== APP_ROLE.WAITER ||
+            assignment.branchId == null ||
+            !cashierBranches.has(assignment.branchId),
+        )
+        .map((choice) =>
+          choice.role === APP_ROLE.CASHIER &&
+          choice.assignment.branchId != null &&
+          waiterBranches.has(choice.assignment.branchId)
+            ? { ...choice, includesWaiter: true }
+            : choice,
+        )
 
       // Fallback an toàn cho Quản trị nhà hàng (Chủ nhà hàng / Manager) nếu chưa có assignment trong DB
       if (
+        !platform &&
         validChoices.length === 0 &&
         (loginRes.roles?.includes("MANAGER") ||
           loginRes.roles?.includes("RESTAURANT_ADMIN") ||
@@ -239,24 +307,28 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-dvh w-full bg-surface-page">
       {/* -------------------- CỘT TRÁI: BANNER THƯƠNG HIỆU (Desktop) -------------------- */}
-      <div className="relative hidden select-none flex-col justify-between overflow-hidden bg-[#712b21] bg-linear-to-br from-[#3e211e] via-[#712b21] to-[#a73723] p-12 lg:flex lg:w-[44%] xl:p-16">
-        {/* Logo & Tên nhà hàng */}
-        <div className="relative z-10 flex items-center gap-4">
-          <div className="flex size-12 items-center justify-center rounded-xl bg-white">
-            <span className="text-2xl font-black text-brand-primary">P</span>
-          </div>
-          <span className="text-2xl font-bold tracking-tight text-white">Phở Việt</span>
-        </div>
+      <div
+        className={`relative hidden select-none flex-col justify-between overflow-hidden p-12 lg:flex lg:w-[44%] xl:p-16 ${platform ? "bg-slate-950" : "bg-[#712b21] bg-linear-to-br from-[#3e211e] via-[#712b21] to-[#a73723]"}`}
+      >
+        <LoginBrand onBanner />
 
         {/* Thông điệp & Giới thiệu hệ thống */}
         <div className="relative z-10 max-w-lg pb-4 xl:pb-10">
           <h1 className="text-4xl leading-[1.18] font-bold tracking-tight text-balance text-white xl:text-[2.625rem] 2xl:text-5xl">
-            Hệ thống quản lý
-            <br />
-            nhà hàng & gọi món QR
+            {platform ? (
+              "Quản trị nền tảng"
+            ) : (
+              <>
+                Hệ thống quản lý
+                <br />
+                nhà hàng & gọi món QR
+              </>
+            )}
           </h1>
           <p className="mt-5 max-w-md text-base leading-relaxed text-pretty text-white/85">
-            Quản lý bàn, chế biến, thực đơn, khuyến mãi và báo cáo
+            {platform
+              ? "Quản lý nhà hàng trên T&T POS và tra cứu nhật ký hệ thống."
+              : "Quản lý bàn, chế biến, thực đơn, khuyến mãi và báo cáo"}
           </p>
         </div>
 
@@ -268,13 +340,7 @@ export default function LoginPage() {
       {/* -------------------- CỘT PHẢI: FORM ĐĂNG NHẬP -------------------- */}
       <div className="flex min-w-0 flex-1 flex-col items-center justify-center px-3 py-6 sm:px-8 sm:py-10 lg:px-12">
         <div className="w-full max-w-[29rem] rounded-card border border-border-default bg-surface-card px-5 py-7 shadow-sm sm:px-8 sm:py-9">
-          {/* Header Mobile: Hiện logo khi ở màn hình nhỏ */}
-          <div className="mb-6 flex items-center gap-3 lg:hidden">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-brand-primary text-white shadow-sm">
-              <span className="text-xl font-black">P</span>
-            </div>
-            <span className="text-xl font-bold text-text-primary">Phở Việt</span>
-          </div>
+          <LoginBrand />
 
           {/* -------------------- BƯỚC 2: CHỌN VAI TRÒ (NẾU CÓ NHIỀU VAI TRÒ) -------------------- */}
           {choices && pendingAccount ? (
@@ -300,7 +366,7 @@ export default function LoginPage() {
                   >
                     <div className="min-w-0">
                       <p className="truncate text-base font-semibold text-text-primary">
-                        {APP_ROLE_LABEL[choice.role]}
+                        {choice.includesWaiter ? "Thu ngân + Phục vụ" : APP_ROLE_LABEL[choice.role]}
                       </p>
                       <p className="truncate text-xs text-text-tertiary mt-0.5">
                         {choice.assignment.branchName
@@ -328,10 +394,11 @@ export default function LoginPage() {
               {/* Tiêu đề */}
               <div className="mb-7">
                 <h2 className="text-2xl font-bold tracking-tight sm:text-3xl text-text-primary">
-                  Đăng nhập
+                  {platform ? "Đăng nhập quản trị nền tảng" : "Đăng nhập"}
                 </h2>
-                <p className="mt-1.5 text-sm text-text-tertiary font-medium">
-                  Dành cho nhân viên nhà hàng
+                <p className="mt-1.5 flex items-center gap-2 text-sm text-text-tertiary font-medium">
+                  {platform && <ShieldCheck aria-hidden="true" className="size-4 shrink-0" />}
+                  {platform ? "Dành cho quản trị viên hệ thống" : "Dành cho nhân viên nhà hàng"}
                 </p>
               </div>
 
@@ -340,53 +407,50 @@ export default function LoginPage() {
                 {error ? <ErrorBanner message={error} /> : null}
 
                 {/* Mã nhà hàng - Ẩn nếu đã lưu */}
-                {showRestaurantField ? (
-                  <div className="space-y-1.5">
-                    <label
-                      htmlFor="restaurantCode"
-                      className="text-sm font-semibold text-text-primary"
-                    >
-                      Mã nhà hàng
-                    </label>
-                    <Input
-                      id="restaurantCode"
-                      placeholder="VD: NH001 (Để trống nếu là Quản trị nền tảng)"
-                      autoComplete="organization"
-                      value={restaurantCode}
-                      onChange={(e) => {
-                        setRestaurantCode(e.target.value)
-                        setError(null)
-                      }}
-                      disabled={isSubmitting}
-                      className="h-12 rounded-xl px-3.5 text-base sm:text-sm"
-                    />
-                    <p className="mt-1 flex items-start gap-1.5 text-xs text-text-tertiary">
-                      <Lightbulb
-                        aria-hidden="true"
-                        className="mt-0.5 size-3 shrink-0 text-brand-primary"
-                      />
-                      Quản trị nền tảng không cần nhập mã nhà hàng
-                    </p>
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-border-default bg-surface-muted p-3.5">
-                    <div className="flex items-center justify-between">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-neutral-500 mb-0.5">Đăng nhập vào</p>
-                        <p className="text-sm font-semibold text-text-primary truncate">
-                          Mã nhà hàng: {restaurantCode}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleChangeRestaurant}
-                        className="ml-3 shrink-0 text-xs font-medium text-brand-primary hover:underline"
+                {!platform &&
+                  (showRestaurantField ? (
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="restaurantCode"
+                        className="text-sm font-semibold text-text-primary"
                       >
-                        Đổi
-                      </button>
+                        Mã nhà hàng
+                      </label>
+                      <Input
+                        id="restaurantCode"
+                        placeholder="VD: NH001"
+                        required
+                        autoComplete="organization"
+                        value={restaurantCode}
+                        onChange={(e) => {
+                          setRestaurantCode(e.target.value)
+                          setError(null)
+                        }}
+                        disabled={isSubmitting}
+                        className="h-12 rounded-xl px-3.5 text-base sm:text-sm"
+                      />
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="rounded-xl border border-border-default bg-surface-muted p-3.5">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-neutral-500 mb-0.5">
+                            Đăng nhập vào
+                          </p>
+                          <p className="text-sm font-semibold text-text-primary truncate">
+                            Mã nhà hàng: {restaurantCode}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleChangeRestaurant}
+                          className="ml-3 shrink-0 text-xs font-medium text-brand-primary hover:underline"
+                        >
+                          Đổi
+                        </button>
+                      </div>
+                    </div>
+                  ))}
 
                 {/* Email hoặc số điện thoại */}
                 <div className="space-y-1.5">
@@ -425,12 +489,6 @@ export default function LoginPage() {
                       }}
                       disabled={isSubmitting}
                       className="h-12 rounded-xl px-3.5 pr-11 text-base sm:text-sm"
-                      onKeyDown={(e) => {
-                        // Enter để submit
-                        if (e.key === "Enter" && !isSubmitting) {
-                          handleSubmit(e as any)
-                        }
-                      }}
                     />
                     <button
                       type="button"
@@ -458,14 +516,16 @@ export default function LoginPage() {
                     </span>
                   </label>
 
-                  <button
-                    type="button"
-                    onClick={() => navigate(AUTH_PATHS.FORGOT_PASSWORD)}
-                    className="text-sm font-medium text-brand-primary hover:underline transition-all"
-                    tabIndex={-1}
-                  >
-                    Quên mật khẩu?
-                  </button>
+                  {!platform && (
+                    <button
+                      type="button"
+                      onClick={() => navigate(AUTH_PATHS.FORGOT_PASSWORD)}
+                      className="text-sm font-medium text-brand-primary hover:underline transition-all"
+                      tabIndex={-1}
+                    >
+                      Quên mật khẩu?
+                    </button>
+                  )}
                 </div>
 
                 {/* Nút Đăng nhập */}
@@ -479,10 +539,12 @@ export default function LoginPage() {
                 </Button>
 
                 {/* Chú thích vai trò */}
-                <p className="pt-2 text-center text-xs leading-relaxed text-text-tertiary">
-                  Tài khoản do quản lý cấp theo vai trò (Chủ nhà hàng · Quản lý chi nhánh · Thu ngân
-                  · Phục vụ).
-                </p>
+                {!platform && (
+                  <p className="pt-2 text-center text-xs leading-relaxed text-text-tertiary">
+                    Tài khoản do quản lý cấp theo vai trò (Chủ nhà hàng · Quản lý chi nhánh · Thu
+                    ngân · Phục vụ).
+                  </p>
+                )}
               </form>
             </div>
           )}

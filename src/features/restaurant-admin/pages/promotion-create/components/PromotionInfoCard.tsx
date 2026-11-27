@@ -141,7 +141,7 @@ export const PromotionInfoCard: React.FC<PromotionInfoCardProps> = ({
           <FormField
             label="Mã khuyến mãi (Tùy chọn)"
             htmlFor="promo-code"
-            helperText="Để trống nếu hệ thống tự áp dụng"
+            helperText="Dùng để nhận diện chương trình. Hệ thống tự áp dụng khi đủ điều kiện."
           >
             <Input
               id="promo-code"

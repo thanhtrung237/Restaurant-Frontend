@@ -36,7 +36,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { CancelSessionDialog } from "../CancelSessionDialog"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import {
   useOrdersBySession,
@@ -47,7 +47,6 @@ import {
   useRequestPayment,
   useReprintKitchenTicket,
   useCloseSession,
-  useCancelSession,
   useInvoiceBySession,
 } from "@/features/shared/floor-ops/api"
 import { isBillableDetail } from "@/lib/order-detail-billing"
@@ -109,7 +108,6 @@ export default function OrderDetailPage() {
   const { data: session } = useTableSession(tableSessionId, { refetchInterval: 1000 })
   const { data: sessionInvoice } = useInvoiceBySession(tableSessionId)
   const closeSessionMutation = useCloseSession()
-  const cancelSessionMutation = useCancelSession()
 
   // Fetch all orders of this session (làm mới mỗi 1s)
   const { data: orders = [] } = useOrdersBySession(tableSessionId, undefined, {
@@ -150,8 +148,6 @@ export default function OrderDetailPage() {
   const [isTransferModalOpen, setIsTransferModalOpen] = React.useState(false)
   const [isCloseTableModalOpen, setIsCloseTableModalOpen] = React.useState(false)
   const [isCancelSessionModalOpen, setIsCancelSessionModalOpen] = React.useState(false)
-  const [cancelSessionReason, setCancelSessionReason] = React.useState("")
-  const [isCancellingSession, setIsCancellingSession] = React.useState(false)
   const [isConfirmPayModalOpen, setIsConfirmPayModalOpen] = React.useState(false)
   const [isProcessingPay, setIsProcessingPay] = React.useState(false)
   const [itemToCancel, setItemToCancel] = React.useState<{
@@ -345,7 +341,7 @@ export default function OrderDetailPage() {
    * |------------------|-----------|-----------|------------------------------------------|
    * | ĐANG PHỤC VỤ     | > 0       | Đóng bàn  | sang màn Thanh toán của phiên            |
    * | ĐANG PHỤC VỤ     | 0đ        | Hủy phiên | modal bắt buộc lý do → API huỷ           |
-   * | CHỜ THANH TOÁN   | 0đ        | Hủy phiên | mở lại bàn rồi huỷ, trong 1 modal        |
+   * | CHỜ THANH TOÁN   | 0đ        | Hủy phiên | hủy trực tiếp sau khi nhập lý do        |
    * | CHỜ THANH TOÁN   | hoá đơn đã phát hành | Đóng bàn | modal xác nhận → API đóng phiên |
    *
    * Tổng tiền lấy theo ĐÚNG tiêu chí của backend (`shouldChargeDetail` ⇄
@@ -358,6 +354,7 @@ export default function OrderDetailPage() {
   )
   const sessionStatus = session?.status
   const invoiceIssued = sessionInvoice?.status === "ISSUED" || sessionInvoice?.status === "PAID"
+  const hasCollectedPayment = (sessionInvoice?.totalPaid ?? 0) > 0
 
   type TableActionMode = "checkout" | "cancel-session" | "close-table" | "none"
   const tableActionMode: TableActionMode = React.useMemo(() => {
@@ -367,11 +364,13 @@ export default function OrderDetailPage() {
     }
     if (sessionStatus === "WAITING_FOR_PAY") {
       if (invoiceIssued) return "close-table"
-      if (billableTotal === 0) return canCancelSession ? "cancel-session" : "none"
+      if (billableTotal === 0) {
+        return canCancelSession && !hasCollectedPayment ? "cancel-session" : "none"
+      }
       return "checkout"
     }
     return "none"
-  }, [sessionStatus, billableTotal, invoiceIssued, canCancelSession])
+  }, [sessionStatus, billableTotal, invoiceIssued, canCancelSession, hasCollectedPayment])
 
   const tableActionLabel = tableActionMode === "cancel-session" ? "Hủy phiên" : "Đóng bàn"
 
@@ -381,7 +380,6 @@ export default function OrderDetailPage() {
       return
     }
     if (tableActionMode === "cancel-session") {
-      setCancelSessionReason("")
       setIsCancelSessionModalOpen(true)
       return
     }
@@ -426,44 +424,6 @@ export default function OrderDetailPage() {
         description: error instanceof Error ? error.message : "Vui lòng thử lại",
         variant: "danger",
       })
-    }
-  }
-
-  /**
-   * Huỷ phiên. Phiên đang CHỜ THANH TOÁN phải MỞ LẠI trước (backend chỉ cho huỷ từ các
-   * trạng thái khác ĐÃ ĐÓNG, nhưng mở lại giữ đúng luồng ĐANG PHỤC VỤ → ĐÃ HỦY của Bảng 2.2).
-   * Hai bước trong MỘT modal; bước 2 lỗi thì báo rõ để phiên không kẹt nửa chừng.
-   */
-  /**
-   * Hủy phiên — MỘT lời gọi duy nhất (QĐ-02).
-   *
-   * Trước đây phiên ở CHỜ THANH TOÁN phải "mở lại bàn rồi mới hủy": hai lời gọi, và kẹt
-   * nửa chừng nếu bước hai lỗi (bàn đã mở lại nhưng chưa hủy). Backend nay cho hủy thẳng khi
-   * tổng tiền = 0 và chưa có hoá đơn đã phát hành / đã thu — còn lại trả 409 kèm lý do rõ.
-   */
-  async function handleConfirmCancelSession() {
-    if (!tableSessionId || !cancelSessionReason.trim()) return
-    setIsCancellingSession(true)
-    try {
-      await cancelSessionMutation.mutateAsync({
-        id: tableSessionId,
-        reason: cancelSessionReason.trim(),
-      })
-      setIsCancelSessionModalOpen(false)
-      toast({
-        title: "Đã hủy phiên",
-        description: "Bàn đã về trạng thái Trống.",
-        variant: "success",
-      })
-      navigate(listPath)
-    } catch (error) {
-      toast({
-        title: "Không hủy được phiên",
-        description: error instanceof Error ? error.message : "Vui lòng thử lại",
-        variant: "danger",
-      })
-    } finally {
-      setIsCancellingSession(false)
     }
   }
 
@@ -984,55 +944,13 @@ export default function OrderDetailPage() {
       {/* ============================================================
           MODAL: HỦY PHIÊN — Bảng 2.2 bắt buộc nhập lý do
           ============================================================ */}
-      <Dialog open={isCancelSessionModalOpen} onOpenChange={setIsCancelSessionModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-status-danger">
-              <AlertTriangle className="size-5" />
-              Hủy phiên {tableName}?
-            </DialogTitle>
-            <DialogDescription>
-              {sessionStatus === "WAITING_FOR_PAY"
-                ? "Bàn đang CHỜ THANH TOÁN nhưng không có món nào tính tiền. Hệ thống sẽ mở lại bàn rồi hủy phiên trong một lần."
-                : "Phiên chưa có món nào tính tiền. Hủy phiên sẽ giải phóng bàn về trạng thái Trống."}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-2 py-1">
-            <label
-              htmlFor="cancel-session-reason"
-              className="text-sm font-medium text-text-primary"
-            >
-              Lý do hủy <span className="text-status-danger">*</span>
-            </label>
-            <Input
-              id="cancel-session-reason"
-              value={cancelSessionReason}
-              onChange={(e) => setCancelSessionReason(e.target.value)}
-              placeholder="VD: Khách đổi ý, chưa gọi món"
-              autoFocus
-            />
-            <p className="text-xs text-text-tertiary">Lý do được ghi vào nhật ký hoạt động.</p>
-          </div>
-
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setIsCancelSessionModalOpen(false)}
-              disabled={isCancellingSession}
-            >
-              Giữ lại
-            </Button>
-            <Button
-              onClick={handleConfirmCancelSession}
-              disabled={!cancelSessionReason.trim() || isCancellingSession}
-              className="bg-status-danger text-white hover:bg-status-danger/90"
-            >
-              {isCancellingSession ? "Đang hủy..." : "Xác nhận hủy phiên"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CancelSessionDialog
+        open={isCancelSessionModalOpen}
+        onOpenChange={setIsCancelSessionModalOpen}
+        sessionId={tableActionMode === "cancel-session" ? tableSessionId : undefined}
+        tableName={tableName}
+        onCancelled={() => navigate(listPath)}
+      />
 
       {/* ============================================================
           MODAL: ĐÓNG BÀN

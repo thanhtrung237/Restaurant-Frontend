@@ -2,42 +2,20 @@
 
 const table = { id: 4, branchId: 2, name: "Bàn realtime", capacity: 4, status: "AVAILABLE" }
 const session = {
-  id: 12,
-  tableId: 4,
-  branchId: 2,
-  restaurantId: 3,
-  tableName: table.name,
-  guestCount: 2,
+  id: 12, tableId: 4, branchId: 2, restaurantId: 3, tableName: table.name, guestCount: 2,
   status: "SERVING",
 }
 const dish = {
-  dishId: 7,
-  dishName: "Phở realtime",
-  categoryId: 1,
-  categoryName: "Món chính",
-  basePrice: 59000,
-  effectivePrice: 59000,
-  isHidden: false,
+  dishId: 7, dishName: "Phở realtime", categoryId: 1, categoryName: "Món chính",
+  basePrice: 59000, effectivePrice: 59000, isHidden: false,
 }
 const detail = {
-  id: 31,
-  orderId: 20,
-  dishId: dish.dishId,
-  dishName: dish.dishName,
-  quantity: 2,
-  priceAtOrderTime: 59000,
-  price: 118000,
-  status: "PENDING",
-  isBillable: true,
+  id: 31, orderId: 20, dishId: dish.dishId, dishName: dish.dishName, quantity: 2,
+  priceAtOrderTime: 59000, price: 118000, status: "PENDING", isBillable: true,
 }
 const invoice = {
-  id: 45,
-  tableSessionId: 12,
-  invoiceNumber: "HD-45",
-  grandTotal: 118000,
-  remainingAmount: 118000,
-  totalPaid: 0,
-  status: "PENDING",
+  id: 45, tableSessionId: 12, invoiceNumber: "HD-45", grandTotal: 118000,
+  remainingAmount: 118000, totalPaid: 0, status: "PENDING",
 }
 const guestPath = "/ban/QR-B2-T4"
 const sessionTopic = "/topic/session/12/session-updated"
@@ -63,7 +41,7 @@ async function mockApi(
     }
     if (route.request().method() === "OPTIONS" || path.endsWith("/qr-opened"))
       return route.fulfill({ status: 204 })
-    const data = overrides[path] ? overrides[path]() : (defaults[path] ?? [])
+    const data = overrides[path] ? overrides[path]() : defaults[path] ?? []
     return route.fulfill({ json: { data } })
   })
 }
@@ -76,9 +54,7 @@ async function mockSocket(page: Page) {
       setInterval(handler, delay && delay <= 20_000 ? 60_000 : delay, ...args)
   })
   await page.route(/\/ws\/info(?:\?|$)/, (route) =>
-    route.fulfill({
-      json: { websocket: true, cookie_needed: false, origins: ["*:*"], entropy: 1 },
-    }),
+    route.fulfill({ json: { websocket: true, cookie_needed: false, origins: ["*:*"], entropy: 1 } }),
   )
   const subscriptions = new Map<string, { socket: WebSocketRoute; id: string }>()
   let revision = 0
@@ -103,16 +79,8 @@ async function mockSocket(page: Page) {
     publish(topic: string, payload: object = { changed: true }) {
       const subscription = subscriptions.get(topic)
       if (!subscription) throw new Error("Missing subscription for " + topic)
-      const frame =
-        "MESSAGE\ndestination:" +
-        topic +
-        "\nsubscription:" +
-        subscription.id +
-        "\nmessage-id:" +
-        ++revision +
-        "\n\n" +
-        JSON.stringify(payload) +
-        "\u0000"
+      const frame = "MESSAGE\ndestination:" + topic + "\nsubscription:" + subscription.id +
+        "\nmessage-id:" + ++revision + "\n\n" + JSON.stringify(payload) + "\u0000"
       subscription.socket.send("a" + JSON.stringify([frame]))
     },
     async disconnect(topic: string) {
@@ -125,53 +93,37 @@ async function mockSocket(page: Page) {
 }
 
 async function guest(page: Page, activeSession = session) {
-  await page.addInitScript(
-    ({ activeSession, qrCode }) => {
-      sessionStorage.setItem(
-        "restaurant-guest-credential-v1",
-        JSON.stringify({ sessionId: activeSession.id, token: "guest-realtime-test" }),
-      )
-      localStorage.setItem(
-        "pho-viet-customer-session",
-        JSON.stringify({ version: 2, state: { qrCode, tableSession: activeSession } }),
-      )
-    },
-    { activeSession, qrCode: "QR-B2-T4" },
-  )
+  await page.addInitScript(({ activeSession, qrCode }) => {
+    sessionStorage.setItem(
+      "restaurant-guest-credential-v1",
+      JSON.stringify({ sessionId: activeSession.id, token: "guest-realtime-test" }),
+    )
+    localStorage.setItem(
+      "pho-viet-customer-session",
+      JSON.stringify({ version: 2, state: { qrCode, tableSession: activeSession } }),
+    )
+  }, { activeSession, qrCode: "QR-B2-T4" })
 }
 
 async function staff(page: Page, role: string, branchId: number | null = 2) {
-  await page.addInitScript(
-    ({ role, branchId }) => {
-      const accessToken = "staff-realtime-test"
-      localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken }))
-      localStorage.setItem(
-        "pho-viet-auth",
-        JSON.stringify({
-          version: 0,
-          state: {
-            role,
-            branchId,
-            accessToken,
-            isAuthenticated: true,
-            account: {
-              id: 1,
-              restaurantId: role === "PLATFORM_ADMIN" ? null : 3,
-              fullName: "Test",
-            },
-          },
-        }),
-      )
-    },
-    { role, branchId },
-  )
+  await page.addInitScript(({ role, branchId }) => {
+    const accessToken = "staff-realtime-test"
+    localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken }))
+    localStorage.setItem("pho-viet-auth", JSON.stringify({
+      version: 0,
+      state: {
+        role, branchId, accessToken, isAuthenticated: true,
+        account: { id: 1, restaurantId: role === "PLATFORM_ADMIN" ? null : 3, fullName: "Test" },
+      },
+    }))
+  }, { role, branchId })
 }
 
 test("guest menu removes an out-of-stock dish and resyncs on reconnect", async ({ page }) => {
   await guest(page)
   const socket = await mockSocket(page)
   let stocked = true
-  await mockApi(page, { "/branches/2/menu": () => (stocked ? [dish] : []) })
+  await mockApi(page, { "/branches/2/menu": () => stocked ? [dish] : [] })
   await page.goto(guestPath + "/thuc-don")
   const name = page.getByText(dish.dishName, { exact: true }).first()
   await expect(name).toBeVisible()
@@ -205,25 +157,14 @@ test("guest invoice replaces the preview when the cashier issues the bill", asyn
   await guest(page, active)
   const socket = await mockSocket(page)
   let ready = false
-  await mockApi(
-    page,
-    {
-      "/invoices/session/12": () => (ready ? invoice : null),
-      "/table-sessions/12/bill-preview": () => ({
-        grossSubTotal: 118000,
-        grandTotal: 118000,
-        itemPromotionDiscount: 0,
-        orderPromotionDiscount: 0,
-        manualDiscount: 0,
-        serviceFeeRate: 0,
-        serviceFee: 0,
-        vatRate: 0,
-        vatAmount: 0,
-        vatBase: 118000,
-      }),
-    },
-    active,
-  )
+  await mockApi(page, {
+    "/invoices/session/12": () => ready ? invoice : null,
+    "/table-sessions/12/bill-preview": () => ({
+      grossSubTotal: 118000, grandTotal: 118000, itemPromotionDiscount: 0,
+      orderPromotionDiscount: 0, manualDiscount: 0, serviceFeeRate: 0,
+      serviceFee: 0, vatRate: 0, vatAmount: 0, vatBase: 118000,
+    }),
+  }, active)
   await page.goto(guestPath + "/hoa-don")
   await expect(page.getByRole("heading", { name: "Hóa đơn tạm tính" })).toBeVisible()
   await socket.waitFor(sessionTopic)
@@ -237,30 +178,18 @@ test("guest QR payment switches to success after a session update", async ({ pag
   await guest(page, active)
   const socket = await mockSocket(page)
   let paid = false
-  const readInvoice = () =>
-    paid ? { ...invoice, status: "PAID", remainingAmount: 0, totalPaid: 118000 } : invoice
+  const readInvoice = () => paid ? { ...invoice, status: "PAID", remainingAmount: 0, totalPaid: 118000 } : invoice
   const qr = {
-    invoiceId: 45,
-    grandTotal: 118000,
-    remainingAmount: 118000,
-    totalPaid: 0,
-    bankName: "MB",
-    accountNo: "123456789",
-    accountName: "Test",
-    transferContent: "HD45",
-    automaticVerification: true,
-    qrImageUrl: "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'/%3E",
+    invoiceId: 45, grandTotal: 118000, remainingAmount: 118000, totalPaid: 0,
+    bankName: "MB", accountNo: "123456789", accountName: "Test", transferContent: "HD45",
+    automaticVerification: true, qrImageUrl: "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'/%3E",
   }
-  await mockApi(
-    page,
-    {
-      "/invoices/session/12": readInvoice,
-      "/invoices/45": readInvoice,
-      "/invoices/session/12/qr-code": () => qr,
-      "/invoices/45/qr-code": () => qr,
-    },
-    active,
-  )
+  await mockApi(page, {
+    "/invoices/session/12": readInvoice,
+    "/invoices/45": readInvoice,
+    "/invoices/session/12/qr-code": () => qr,
+    "/invoices/45/qr-code": () => qr,
+  }, active)
   await page.goto(guestPath + "/thanh-toan-qr")
   await expect(page.getByRole("img", { name: "VietQR Thanh toán" })).toBeVisible()
   await socket.waitFor(sessionTopic)
@@ -275,7 +204,7 @@ test("staff table map sees a session opened at another terminal", async ({ page 
   let open = false
   await mockApi(page, {
     "/tables/branch/2": () => [{ ...table, status: open ? "OCCUPIED" : "AVAILABLE" }],
-    "/table-sessions/branch/2/open": () => (open ? [session] : []),
+    "/table-sessions/branch/2/open": () => open ? [session] : [],
   })
   await page.goto("/quan-ly-chi-nhanh/so-do-ban")
   await expect(page.getByRole("button", { name: /Bàn realtime.*Trống/ })).toBeVisible()
@@ -290,7 +219,7 @@ test("kitchen receives a dish from another terminal", async ({ page }) => {
   const socket = await mockSocket(page)
   let orderReceived = false
   await mockApi(page, {
-    "/order-details/session/12": () => (orderReceived ? [detail] : []),
+    "/order-details/session/12": () => orderReceived ? [detail] : [],
   })
   await page.goto("/quan-ly-chi-nhanh/bep")
   await socket.waitFor(branchTopic)
@@ -300,33 +229,25 @@ test("kitchen receives a dish from another terminal", async ({ page }) => {
   await expect(page.getByText(dish.dishName, { exact: true })).toBeVisible()
 })
 
-test("restaurant admin reloads reports and management data from restaurant events", async ({
-  page,
-}) => {
+test("restaurant admin reloads reports and management data from restaurant events", async ({ page }) => {
   await staff(page, "RESTAURANT_ADMIN", null)
   const socket = await mockSocket(page)
   let revenue = 0
   let branchName = "Chi nhánh ban đầu"
   await mockApi(page, {
     "/reports/revenue": () => ({
-      totalRevenue: revenue,
-      avgRevenuePerInvoice: revenue,
-      totalInvoices: revenue ? 1 : 0,
-      totalGuests: 0,
-      revenueByPaymentMethod: {},
-      trend: [],
+      totalRevenue: revenue, avgRevenuePerInvoice: revenue, totalInvoices: revenue ? 1 : 0,
+      totalGuests: 0, revenueByPaymentMethod: {}, trend: [],
     }),
     "/branches/restaurant/3": () => [{ id: 2, name: branchName, code: "CN2", status: "ACTIVE" }],
   })
   await page.goto("/quan-tri-nha-hang/bao-cao")
   const operations = "/topic/restaurant/3/operations-updated"
   await socket.waitFor(operations)
-  const reportRequest = page.waitForResponse(
-    (r) =>
-      new URL(r.url()).pathname.endsWith("/reports/revenue") &&
-      r.request().method() === "GET" &&
-      r.ok() &&
-      r.json().then((body) => body.data.totalRevenue === 987654),
+  const reportRequest = page.waitForResponse((r) =>
+    new URL(r.url()).pathname.endsWith("/reports/revenue") &&
+    r.request().method() === "GET" && r.ok() &&
+    r.json().then((body) => body.data.totalRevenue === 987654),
   )
   revenue = 987654
   socket.publish(operations)
@@ -346,21 +267,15 @@ test("platform admin refreshes restaurant data on a platform event", async ({ pa
   const socket = await mockSocket(page)
   let name = "Nhà hàng ban đầu"
   await mockApi(page, {
-    "/restaurants": () => ({
-      content: [{ id: 3, name, code: "NH3", status: "ACTIVE" }],
-      totalElements: 1,
-      totalPages: 1,
-    }),
+    "/restaurants": () => ({ content: [{ id: 3, name, code: "NH3", status: "ACTIVE" }], totalElements: 1, totalPages: 1 }),
   })
   await page.goto("/quan-tri-nen-tang")
   const topic = "/topic/platform/structure-updated"
   await socket.waitFor(topic)
-  const refresh = page.waitForResponse(
-    (r) =>
-      new URL(r.url()).pathname.endsWith("/restaurants") &&
-      r.request().method() === "GET" &&
-      r.ok() &&
-      r.json().then((body) => body.data.content[0]?.name === "Nhà hàng mới"),
+  const refresh = page.waitForResponse((r) =>
+    new URL(r.url()).pathname.endsWith("/restaurants") &&
+    r.request().method() === "GET" && r.ok() &&
+    r.json().then((body) => body.data.content[0]?.name === "Nhà hàng mới"),
   )
   name = "Nhà hàng mới"
   socket.publish(topic)
@@ -390,14 +305,8 @@ test("restaurant admin sees a remotely created promotion", async ({ page }) => {
   const socket = await mockSocket(page)
   let created = false
   const promotion = {
-    id: 2,
-    name: "Ưu đãi realtime",
-    code: "WS20",
-    status: "ACTIVE",
-    type: "PERCENTAGE",
-    discountValue: 20,
-    startDate: "2026-01-01",
-    endDate: "2099-01-01",
+    id: 2, name: "Ưu đãi realtime", code: "WS20", status: "ACTIVE", type: "PERCENTAGE",
+    discountValue: 20, startDate: "2026-01-01", endDate: "2099-01-01",
   }
   await mockApi(page, {
     "/promotions/restaurant/3": () => ({ content: created ? [promotion] : [] }),
@@ -409,3 +318,4 @@ test("restaurant admin sees a remotely created promotion", async ({ page }) => {
   socket.publish(menuTopic)
   await expect(page.getByText(promotion.name, { exact: true }).first()).toBeVisible()
 })
+

@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { getErrorMessage, isApiStatus } from "@/lib/http"
+import { isStaffPhone, STAFF_PHONE_ERROR } from "@/lib/staff-phone"
 
 const roleOptions = Object.keys(branchStaffRoles) as BranchStaffRole[]
 
@@ -55,6 +56,10 @@ export function BranchStaffDialog({
     const form = new FormData(event.currentTarget)
     const text = (field: string) => String(form.get(field) ?? "").trim()
     const password = String(form.get("password") ?? "")
+    if (!employee && !isStaffPhone(text("phone"))) {
+      setValidation(STAFF_PHONE_ERROR)
+      return
+    }
     if (!employee && (!text("fullName") || !text("username") || !password.trim())) {
       setValidation("Vui lòng nhập họ tên, tên đăng nhập và mật khẩu.")
       return
@@ -71,7 +76,8 @@ export function BranchStaffDialog({
             create: {
               fullName: text("fullName"),
               username: text("username"),
-              email: text("email") || undefined,
+              phone: text("phone"),
+              hireDate: text("hireDate"),
               password,
               roles,
             },
@@ -129,8 +135,18 @@ export function BranchStaffDialog({
                   />
                 </label>
                 <label className="space-y-1.5 text-sm font-medium">
-                  Email (tùy chọn)
-                  <Input name="email" type="email" autoComplete="off" maxLength={100} />
+                  Số điện thoại
+                  <Input
+                    name="phone"
+                    type="tel"
+                    inputMode="numeric"
+                    autoComplete="tel-national"
+                    required
+                  />
+                </label>
+                <label className="space-y-1.5 text-sm font-medium">
+                  Ngày vào làm
+                  <Input name="hireDate" type="date" required />
                 </label>
                 <label className="space-y-1.5 text-sm font-medium">
                   Mật khẩu ban đầu

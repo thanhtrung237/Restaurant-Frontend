@@ -17,6 +17,75 @@ const sessions = [
   { id: 33, tableId: 7, status: "WAITING_FOR_PAY", guestCount: 4 },
 ]
 
+for (const waiterBranch of [2, 3]) {
+  test(`cashier and waiter assignments are combined only at the same branch (${waiterBranch})`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 850 })
+    const assignments = [
+      { id: 5, roleCode: "CASHIER", branchId: 2, branchName: "Quận 1" },
+      { id: 6, roleCode: "WAITER", branchId: waiterBranch, branchName: "Phục vụ" },
+    ]
+    let opened = false
+    await page.route("**/ws/**", (route) => route.abort())
+    await page.route("**/api/v1/**", async (route) => {
+      const path = new URL(route.request().url()).pathname
+      let data: unknown = []
+      if (path.endsWith("/auth/login")) {
+        data = { accountId: 1, restaurantId: 1, accessToken: "test-token", refreshToken: "test-refresh" }
+      }
+      if (path.endsWith("/accounts/1")) {
+        data = { id: 1, restaurantId: 1, fullName: "Thu ngân kiêm phục vụ", status: "ACTIVE" }
+      }
+      if (path.endsWith("/assignments/account/1")) data = assignments
+      if (path.endsWith("/tables/branch/2")) data = tables
+      if (path.endsWith("/table-sessions/branch/2/open")) {
+        data = opened
+          ? sessions.map((session) => session.id === 31 ? { ...session, status: "SERVING" } : session)
+          : sessions
+      }
+      if (path.endsWith("/table-sessions/31")) {
+        data = { ...sessions[0], branchId: 2, tableName: "Bàn 02", status: "SERVING" }
+      }
+      if (path.endsWith("/table-sessions/31/confirm-open")) {
+        expect(route.request().method()).toBe("POST")
+        opened = true
+        data = { ...sessions[0], status: "SERVING" }
+      }
+      if (path.endsWith("/branches/2")) data = { id: 2, name: "Quận 1", status: "ACTIVE" }
+      return route.fulfill({ json: { data } })
+    })
+
+    await page.goto("/dang-nhap")
+    await page.locator("#restaurantCode").fill("TEST")
+    await page.getByLabel("Tên đăng nhập").fill("thungan4")
+    await page.getByLabel("Mật khẩu", { exact: true }).fill("test-password")
+    await page.getByRole("button", { name: "Đăng nhập", exact: true }).click()
+
+    if (waiterBranch !== 2) {
+      await expect(page.getByRole("heading", { name: "Chọn vai trò đăng nhập" })).toBeVisible()
+      await page.getByRole("button", { name: /^Thu ngân/ }).click()
+      await expect(page).toHaveURL("/thu-ngan/so-do-ban")
+      await page.goto("/thu-ngan/order-che-bien")
+      await expect(page).toHaveURL("/khong-co-quyen-truy-cap")
+      return
+    }
+
+    await expect(page).toHaveURL("/thu-ngan/so-do-ban")
+    await expect(page.getByRole("link", { name: "Gọi món & Chế biến" }).first()).toBeVisible()
+    await page.reload()
+    await page.getByRole("button", { name: /Bàn 02.*Chờ mở bàn/ }).click()
+    const dialog = page.getByRole("dialog", { name: /Xác nhận mở bàn.*Bàn 02/ })
+    await dialog.locator('button[type="submit"]').click()
+    await expect.poll(() => opened).toBe(true)
+    await page.getByRole("button", { name: /Bàn 02.*Đang phục vụ/ }).click()
+    await expect(page).toHaveURL("/thu-ngan/order/31")
+    await page.goto("/thu-ngan/so-do-ban")
+    await page.getByRole("button", { name: /Bàn 07.*Chờ thanh toán/ }).click()
+    await expect(page).toHaveURL("/thu-ngan/thanh-toan/33")
+  })
+}
+
 async function mockMap(
   page: Page,
   options: {

@@ -4,6 +4,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useLogout } from "@/features/auth/hooks/useLogout"
 import { useAuthStore } from "@/stores/auth.store"
+import { useCashierWaiter } from "@/hooks/use-cashier-waiter"
 import { APP_ROLE_LABEL } from "@/config/roles"
 import { flattenNavItems } from "@/config/nav-utils"
 import { useBranchSwitcher } from "@/features/auth/hooks/useBranchSwitcher"
@@ -32,7 +33,8 @@ export function NavDrawer({ open, onOpenChange }: NavDrawerProps) {
   const { activeChoice } = useBranchSwitcher()
   const restaurantName = useRestaurantName()
 
-  const items = role ? flattenNavItems(role) : []
+  const { allowed: canAlsoServe } = useCashierWaiter()
+  const items = role ? flattenNavItems(role, "mobile", canAlsoServe) : []
 
   const initials =
     account?.fullName

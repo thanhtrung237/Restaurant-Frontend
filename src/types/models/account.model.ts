@@ -22,6 +22,8 @@ export interface Account extends BaseResponse {
   employeeCode: string
   username: string
   email?: string
+  phone?: string
+  hireDate?: string
   status: AccountStatus
   assignments?: Assignment[]
   createdAt?: string

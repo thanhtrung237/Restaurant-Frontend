@@ -1,7 +1,7 @@
 import { Navigate } from "react-router-dom"
 import { useAuthStore } from "@/stores/auth.store"
 import { APP_ROLE, type AppRole } from "@/config/roles"
-import { AUTH_PATHS } from "./paths"
+import { AUTH_PATHS, isPlatformHost } from "./paths/auth.paths"
 
 /** Trang chủ mặc định của từng vai trò khi vào "/" — theo mục 4.1 (phạm vi mỗi vai trò). */
 export const ROLE_HOME: Record<AppRole, string> = {
@@ -22,7 +22,7 @@ export default function RoleHomeRedirect() {
   const role = useAuthStore((s) => s.role)
 
   if (!isAuthenticated || !role) {
-    return <Navigate to={AUTH_PATHS.LOGIN} replace />
+    return <Navigate to={isPlatformHost() ? AUTH_PATHS.PLATFORM_LOGIN : AUTH_PATHS.LOGIN} replace />
   }
   return <Navigate to={ROLE_HOME[role]} replace />
 }

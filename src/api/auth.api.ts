@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { apiPost } from "@/lib/http"
-import { clearTokens, getRefreshToken, setTokens } from "@/lib/auth-token"
+import { clearTokens, getRefreshToken } from "@/lib/auth-token"
 import type { LoginResponse, RefreshTokenResponse } from "@/types/models"
 import type { LoginRequest } from "@/types/requests"
 
@@ -35,9 +35,6 @@ export function logout() {
 export function useLoginMutation() {
   return useMutation({
     mutationFn: login,
-    onSuccess: (data) => {
-      setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken })
-    },
   })
 }
 

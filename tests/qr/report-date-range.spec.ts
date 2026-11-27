@@ -64,7 +64,7 @@ test("keeps report filters and export aligned when resizing the page", async ({ 
 for (const width of [390, 1280]) {
   test(`report calendar jumps to past years at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 })
-    await page.clock.setFixedTime(new Date(2026, 10, 21, 12))
+    await page.clock.setFixedTime(new Date("2026-11-21T05:00:00Z"))
     await page.addInitScript(() => {
       localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
       localStorage.setItem(
@@ -81,8 +81,12 @@ for (const width of [390, 1280]) {
         }),
       )
     })
+    await page.route("**/ws/**", (route) => route.abort())
     await page.route("**/api/v1/**", async (route) => {
       const url = new URL(route.request().url())
+      if (url.pathname.endsWith("/operational-permissions/branches/2/me")) {
+        return route.fulfill({ json: { data: ["VIEW_REPORT"] } })
+      }
       const historical = url.searchParams.get("from")?.startsWith("2023-02-10")
       const data = url.pathname.endsWith("/reports/revenue")
         ? {
@@ -114,17 +118,21 @@ for (const width of [390, 1280]) {
     await rangeButton.click()
     await page.getByRole("dialog").getByRole("button", { name: "Hôm qua", exact: true }).click()
     await page.getByRole("button", { name: "Áp dụng", exact: true }).click()
-    const hourlyChart = page
-      .getByRole("heading", { name: /Doanh thu theo khung giờ · Hôm qua/ })
-      .locator("..")
-    await hourlyChart.locator(".recharts-bar-rectangle").hover()
+    const hourlyChart = page.locator("div.rounded-card").filter({
+      has: page.getByRole("heading", { name: /Doanh thu theo khung giờ · Hôm qua/ }),
+    })
+    await hourlyChart.locator(".recharts-bar-rectangle path").hover()
     await expect(hourlyChart.locator('path[fill="#EA4A2A"]')).toBeVisible()
-    await expect(hourlyChart.getByText("3.614.625đ", { exact: true })).toBeVisible()
+    await expect(hourlyChart.locator("foreignObject")).toContainText("3.614.625đ")
 
     await rangeButton.click()
+    const calendar = page.getByRole("dialog", { name: "Khoảng ngày báo cáo" })
     const year = page.getByRole("combobox", { name: "Năm hiển thị" })
     const month = page.getByRole("combobox", { name: "Tháng hiển thị" })
+    await expect(month.getByRole("option", { name: "Tháng 11", exact: true })).toHaveCount(1)
     await expect(month.getByRole("option", { name: "Tháng 12" })).toBeDisabled()
+    await expect(calendar.getByRole("button", { name: "30 ngày qua" })).toBeVisible()
+    await calendar.getByRole("button", { name: "Tùy chỉnh" }).click()
 
     await year.selectOption("2023")
     await month.selectOption("1")
@@ -161,27 +169,31 @@ for (const width of [390, 1280]) {
 
     await rangeButton.click()
     await page.getByRole("button", { name: "Năm trước", exact: true }).click()
-    await expect(page.getByRole("button", { name: /Từ ngày.*01\/01\/2025/ })).toBeVisible()
-    await expect(page.getByRole("button", { name: /Đến ngày.*31\/12\/2025/ })).toBeVisible()
+    await expect(calendar.getByText("01/01/2025 – 31/12/2025", { exact: true })).toBeVisible()
     await page.getByRole("button", { name: "Hủy", exact: true }).click()
     await expect(rangeButton).toHaveAccessibleName(/10\/02\/2023 – 29\/02\/2024/)
 
     await rangeButton.click()
-    await page.getByRole("button", { name: /^Đến ngày/ }).click()
+    await calendar.getByRole("button", { name: "Tùy chỉnh" }).click()
+    await year.selectOption("2023")
+    await month.selectOption("1")
+    await page.getByRole("button", { name: "10/02/2023", exact: true }).click()
     await year.selectOption("2026")
     await month.selectOption("4")
     await page.getByRole("button", { name: "01/05/2026", exact: true }).click()
     await page.getByRole("button", { name: "Áp dụng", exact: true }).click()
-    const yearlyChart = page.getByRole("heading", { name: "Doanh thu theo năm" }).locator("..")
+    const yearlyChart = page.locator("div.rounded-card").filter({
+      has: page.getByRole("heading", { name: "Doanh thu theo năm" }),
+    })
     await expect(yearlyChart.getByText("2023", { exact: true })).toBeVisible()
     await expect(yearlyChart.getByText("2026", { exact: true })).toBeVisible()
     const firstBar = yearlyChart.locator(".recharts-bar-rectangle").first()
     await expect(firstBar.locator("path")).toHaveCSS("fill", "rgb(253, 215, 199)")
-    await firstBar.hover()
+    await firstBar.locator("path").hover()
     await expect(yearlyChart.locator('path[fill="#EA4A2A"]')).toBeVisible()
-    await expect(yearlyChart.getByText("Năm 2023", { exact: true })).toBeVisible()
-    await expect(yearlyChart.getByText(/3\.000\.000/)).toBeVisible()
+    await expect(yearlyChart.locator("foreignObject")).toContainText("Năm 2023")
+    await expect(yearlyChart.locator("foreignObject")).toContainText("3.000.000")
     await yearlyChart.getByRole("heading").hover()
-    await expect(yearlyChart.getByText("Năm 2023", { exact: true })).toHaveCount(0)
+    await expect(yearlyChart.locator("foreignObject")).toHaveCount(0)
   })
 }

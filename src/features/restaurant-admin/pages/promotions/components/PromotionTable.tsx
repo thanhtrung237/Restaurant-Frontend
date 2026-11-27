@@ -26,6 +26,7 @@ import type { Promotion } from "@/types/models"
 import {
   getPromotionDisplayStatus,
   formatUsageDisplay,
+  formatPromotionBriefRule,
   formatDateForDisplay,
 } from "@/lib/promotion-format"
 
@@ -36,71 +37,6 @@ interface PromotionTableProps {
   onDeletePromotion?: (promotion: Promotion) => void
   onCreatePromotion?: () => void
   isUpdating?: boolean
-}
-
-function formatBriefRule(promo: Promotion): string {
-  const isDish = promo.applyLevel === "ITEM"
-  let actionText = ""
-  let conditionText = ""
-
-  if (promo.action) {
-    try {
-      const act = JSON.parse(promo.action)
-      const type = act.type || act.actionType
-      if (type === "percentage") {
-        const val = act.value ?? act.discountPercent ?? 0
-        actionText = `Giảm ${val}%`
-      } else if (type === "gift_dish") {
-        actionText = `Mua ${act.buyQty || 2} tặng ${act.getQty || 1}`
-      } else {
-        const val = Number(act.value ?? act.discountAmount ?? 0)
-        actionText = val > 0 ? `Giảm ${val.toLocaleString("vi-VN")}đ` : "Giảm giá"
-      }
-    } catch {
-      actionText = ""
-    }
-  }
-
-  if (promo.condition) {
-    try {
-      const cond = JSON.parse(promo.condition)
-      if (isDish) {
-        if (
-          cond.target === "category" &&
-          Array.isArray(cond.categoryIds) &&
-          cond.categoryIds.length > 0
-        ) {
-          conditionText = `${cond.categoryIds.length} danh mục`
-        } else if (
-          cond.target === "specific_dish" &&
-          Array.isArray(cond.dishIds) &&
-          cond.dishIds.length > 0
-        ) {
-          conditionText = `${cond.dishIds.length} món cụ thể`
-        } else {
-          conditionText = "Tất cả món"
-        }
-        const minQ = cond.minQty || cond.minQuantity
-        if (minQ && minQ > 1) {
-          conditionText += ` (từ ${minQ} món)`
-        }
-      } else {
-        const minOrder = cond.minOrderValue || cond.minTotal
-        if (minOrder && Number(minOrder) > 0) {
-          conditionText = `Đơn từ ${Number(minOrder).toLocaleString("vi-VN")}đ`
-        } else {
-          conditionText = "Toàn hóa đơn"
-        }
-      }
-    } catch {
-      conditionText = ""
-    }
-  }
-
-  if (actionText && conditionText) {
-    return `${actionText} · ${conditionText}`
-  }
-  return actionText || conditionText || (isDish ? "Khuyến mãi món" : "Khuyến mãi hóa đơn")
 }
 
 /**
@@ -196,7 +132,7 @@ export const PromotionTable: React.FC<PromotionTableProps> = ({
                 const displayStatus = getPromotionDisplayStatus(promo)
                 const usageDisplay = formatUsageDisplay(promo.usageCount, promo.usageLimit)
                 const isDish = promo.applyLevel === "ITEM"
-                const briefRule = formatBriefRule(promo)
+                const briefRule = formatPromotionBriefRule(promo)
 
                 return (
                   <TableRow

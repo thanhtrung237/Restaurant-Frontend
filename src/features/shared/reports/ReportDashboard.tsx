@@ -6,19 +6,19 @@ import { ReportHeaderActions } from "./components/ReportHeader"
 import { DailyReportTab } from "./components/DailyReportTab"
 import { HourlyReportTab } from "./components/HourlyReportTab"
 import { BranchCompareTab } from "./components/BranchCompareTab"
-import {
-  TimeRangeDropdown,
-  detectActivePreset,
-  PRESET_OPTIONS,
-  type DateRangeValue,
-} from "./components/TimeRangeDropdown"
+import { DateRangePicker } from "@/components/ui/date-range-picker"
 import { HourlyTimePicker } from "./components/HourlyTimePicker"
 import { useAuthStore } from "@/stores/auth.store"
 import { useBranchesByRestaurant } from "@/api/branches.api"
 import { downloadReportFile } from "@/api/reports.api"
 import { getErrorMessage } from "@/lib/http"
 import { APP_ROLE } from "@/config/roles"
-import { format as formatDate } from "date-fns"
+import {
+  calendarDateLabel,
+  findRangePreset,
+  vietnamTodayKey,
+  type CalendarDateRange,
+} from "@/lib/calendar-range"
 
 const TAB_HEADER_META: Record<string, { title: string; subtitle: string }> = {
   daily: {
@@ -51,10 +51,8 @@ export function ReportDashboard({
   const [selectedBranchIds, setSelectedBranchIds] = React.useState<number[]>([])
 
   // State quản lý khoảng thời gian (Date Range)
-  const [dateRange, setDateRange] = React.useState<DateRangeValue>(() => {
-    const today = new Date()
-    return { from: today, to: today }
-  })
+  const [today] = React.useState(vietnamTodayKey)
+  const [dateRange, setDateRange] = React.useState<CalendarDateRange>({ from: today, to: today })
 
   const [selectedMetric, setSelectedMetric] = React.useState<string>("Theo doanh thu")
   const [hourlyStartHour, setHourlyStartHour] = React.useState<number>(0)
@@ -80,20 +78,16 @@ export function ReportDashboard({
 
   // Calculate dynamic date range (ISO strings) based on dateRange
   const { dateFrom, dateTo, dateDisplayLabel } = React.useMemo(() => {
-    const now = new Date()
-    const fromStr = formatDate(dateRange.from, "yyyy-MM-dd")
-    const toStr = formatDate(dateRange.to, "yyyy-MM-dd")
-    const fromLabel = formatDate(dateRange.from, "dd/MM/yyyy")
-    const toLabel = formatDate(dateRange.to, "dd/MM/yyyy")
-
-    const matchingKey = detectActivePreset(dateRange.from, dateRange.to, now)
-    const preset = PRESET_OPTIONS.find((p) => p.key === matchingKey)
+    const { from: fromStr, to: toStr } = dateRange
+    const fromLabel = calendarDateLabel(fromStr)
+    const toLabel = calendarDateLabel(toStr)
+    const preset = findRangePreset(dateRange, today)
 
     let label = ""
     if (preset) {
-      if (matchingKey === "today") {
+      if (preset.key === "today") {
         label = `Hôm nay · ${fromLabel}`
-      } else if (matchingKey === "yesterday") {
+      } else if (preset.key === "yesterday") {
         label = `Hôm qua · ${fromLabel}`
       } else {
         label = `${preset.label} (${fromLabel} – ${toLabel})`
@@ -107,7 +101,7 @@ export function ReportDashboard({
       dateTo: `${toStr}T23:59:59`,
       dateDisplayLabel: label,
     }
-  }, [dateRange])
+  }, [dateRange, today])
 
   // Hourly datetime range for Hourly tab
   const hourlyDateTimeRange = React.useMemo(() => {
@@ -179,7 +173,16 @@ export function ReportDashboard({
   const headerActions = React.useMemo(
     () => (
       <div className="flex items-center gap-2">
-        <TimeRangeDropdown variant="chip" range={dateRange} onChangeRange={setDateRange} />
+        <DateRangePicker
+          label="Chọn khoảng thời gian báo cáo"
+          dialogLabel="Khoảng ngày báo cáo"
+          today={today}
+          range={dateRange}
+          onApply={setDateRange}
+          align="end"
+          showYearPresets
+          className="h-auto min-w-0 shrink rounded-pill bg-surface-muted px-3 py-1.5 text-xs"
+        />
         {currentTab === "hourly" && (
           <HourlyTimePicker
             variant="chip"
@@ -191,7 +194,7 @@ export function ReportDashboard({
         )}
       </div>
     ),
-    [dateRange, currentTab, hourlyStartHour, hourlyEndHour],
+    [dateRange, today, currentTab, hourlyStartHour, hourlyEndHour],
   )
 
   // Show loading indicator while branches are being fetched for Restaurant Admin
@@ -226,6 +229,7 @@ export function ReportDashboard({
             selectedBranchIds={selectedBranchIds}
             onSelectBranchIds={handleSelectBranches}
             isBranchManager={isBranchManager}
+            today={today}
             dateRange={dateRange}
             onChangeRange={setDateRange}
             selectedMetric={selectedMetric}

@@ -12,6 +12,7 @@ import {
   useHourlyRevenue,
 } from "@/api/reports.api"
 import { computeGrowthTrend, formatCurrency, formatNumber } from "@/lib/format"
+import { calendarDate, vietnamTodayKey } from "@/lib/calendar-range"
 import {
   differenceInCalendarDays,
   differenceInCalendarMonths,
@@ -19,8 +20,8 @@ import {
   eachMonthOfInterval,
   eachYearOfInterval,
   format as formatDate,
-  isToday,
-  isYesterday,
+  isSameDay,
+  subDays,
 } from "date-fns"
 import type { DailyRevenueItem, HourlyRevenueItem } from "../types"
 
@@ -180,9 +181,10 @@ export function DailyReportTab({ branchIds, from, to }: DailyReportTabProps) {
   const rangeLabel = `${formatDate(fromDate, "dd/MM/yyyy")} – ${formatDate(toDate, "dd/MM/yyyy")}`
   let chartTitle = `Doanh thu theo ${periodLabel}`
   if (isSingleDay) {
-    if (isToday(fromDate)) {
+    const today = calendarDate(vietnamTodayKey())
+    if (isSameDay(fromDate, today)) {
       chartTitle = `Doanh thu theo khung giờ · Hôm nay (${formatDate(fromDate, "dd/MM/yyyy")})`
-    } else if (isYesterday(fromDate)) {
+    } else if (isSameDay(fromDate, subDays(today, 1))) {
       chartTitle = `Doanh thu theo khung giờ · Hôm qua (${formatDate(fromDate, "dd/MM/yyyy")})`
     } else {
       chartTitle = `Doanh thu theo khung giờ · Ngày ${formatDate(fromDate, "dd/MM/yyyy")}`

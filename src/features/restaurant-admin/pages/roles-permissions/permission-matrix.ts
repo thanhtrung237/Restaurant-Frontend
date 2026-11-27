@@ -182,6 +182,16 @@ const BRANCH_LEVEL: PermissionMatrixSection = {
       feature: "Hoàn tiền / điều chỉnh hóa đơn",
       cells: { cashier: "approval", branchManager: "allow", restaurantAdmin: "allow" },
     },
+    {
+      id: 25,
+      feature: "Xem khuyến mãi đang áp dụng tại chi nhánh",
+      cells: { branchManager: "readonly", restaurantAdmin: "readonly" },
+    },
+    {
+      id: 26,
+      feature: "Tra cứu hóa đơn theo chi nhánh",
+      cells: { cashier: "readonly", branchManager: "readonly", restaurantAdmin: "readonly" },
+    },
   ],
 }
 

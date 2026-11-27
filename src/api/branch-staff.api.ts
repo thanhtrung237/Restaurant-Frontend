@@ -19,7 +19,8 @@ export interface BranchStaffMember {
 export interface BranchStaffCreate {
   fullName: string
   username: string
-  email?: string
+  phone: string
+  hireDate: string
   password: string
   roles: BranchStaffRole[]
 }

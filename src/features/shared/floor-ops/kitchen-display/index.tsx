@@ -42,9 +42,16 @@ import {
   type KDSTicketItem,
 } from "./kitchen-items"
 import { formatWeight, toKg, fromKg, WEIGHT_INPUT_CONFIG, type WeightUnit } from "@/lib/weight"
+import {
+  RECEIPT_CONTENT_WIDTH_MM,
+  RECEIPT_MARGIN_MM,
+  RECEIPT_PAPER_WIDTH_MM,
+  printToLocalEmulator,
+  setReceiptPaperSize,
+} from "@/lib/receipt-paper"
 
 /**
- * In phiếu bếp trực tiếp thông qua cửa sổ in trình duyệt (hỗ trợ máy in nhiệt 80mm/58mm)
+ * In phiếu bếp khổ 80 mm thông qua cửa sổ in trình duyệt.
  */
 function printKitchenSlip(params: {
   branchName?: string
@@ -114,20 +121,25 @@ function printKitchenSlip(params: {
   doc.open()
   doc.write(`
     <!DOCTYPE html>
-    <html>
+    <html lang="vi">
       <head>
         <title>Phiếu Bếp - ${escapeText(tableName)}</title>
         <style>
-          @page {
-            size: 80mm auto;
-            margin: 3mm;
+          @page kitchen-ticket {
+            size: ${RECEIPT_PAPER_WIDTH_MM}mm 200mm;
+            margin: ${RECEIPT_MARGIN_MM}mm;
           }
           body {
+            page: kitchen-ticket;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
             color: #000;
-            margin: 0;
-            padding: 8px;
+            margin: 0 auto;
+            width: ${RECEIPT_CONTENT_WIDTH_MM}mm;
+            overflow-wrap: anywhere;
             font-size: 12px;
+          }
+          @media print {
+            body { max-width: 100%; }
           }
           .header {
             text-align: center;
@@ -153,6 +165,9 @@ function printKitchenSlip(params: {
           table {
             width: 100%;
             border-collapse: collapse;
+          }
+          tr, .header, .footer {
+            break-inside: avoid;
           }
           .footer {
             text-align: center;
@@ -189,8 +204,18 @@ function printKitchenSlip(params: {
   `)
   doc.close()
 
+  const emulator = printToLocalEmulator(
+    () => `${doc.querySelector("style")?.outerHTML ?? ""}${doc.body.innerHTML}`,
+  )
+  if (emulator) {
+    iframe.remove()
+    void emulator.finally(onPrintComplete)
+    return
+  }
+
   setTimeout(() => {
     try {
+      setReceiptPaperSize(doc.body, "kitchen-ticket")
       iframe.contentWindow?.focus()
       iframe.contentWindow?.print()
     } catch (e) {

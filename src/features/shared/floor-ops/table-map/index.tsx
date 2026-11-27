@@ -30,6 +30,7 @@ import {
   RESTAURANT_ADMIN_PATHS,
 } from "@/app/router/paths"
 import { OpenTableModal } from "../OpenTableModal"
+import { useCashierWaiter } from "@/hooks/use-cashier-waiter"
 import { ReservationModal } from "../ReservationModal"
 import { ReservationListPanel } from "../ReservationListPanel"
 import { cn } from "@/lib/utils"
@@ -262,6 +263,7 @@ export default function TableMapPage() {
 }
 
 function BranchTableMap({ branchId }: { branchId?: number }) {
+  const { allowed: canAlsoServe } = useCashierWaiter()
   const canReserve = useBranchOperationalPermissions(branchId).can("RESERVE_TABLE")
   const { toast } = useToast()
   const { pathname } = useLocation()
@@ -407,7 +409,11 @@ function BranchTableMap({ branchId }: { branchId?: number }) {
 
     // Mở chi tiết đơn khi cần xem hoặc xử lý món.
     if (table.displayStatus === "OCCUPIED" || table.displayStatus === "AWAITING_PAYMENT") {
-      const orderDetailPath = role ? ORDER_DETAIL_PATH_BY_ROLE[role] : undefined
+      const orderDetailPath = canAlsoServe
+        ? CASHIER_PATHS.ORDER_DETAIL
+        : role
+          ? ORDER_DETAIL_PATH_BY_ROLE[role]
+          : undefined
       if (orderDetailPath && table.session?.id) {
         // TODO: Cần lấy orderId thực từ session, hiện tạm dùng sessionId
         navigate(generatePath(orderDetailPath, { orderId: String(table.session.id) }))

@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate } from "react-router-dom"
 import { APP_ROLE } from "@/config/roles"
 import RequireAuth from "./guards/RequireAuth"
 import RequireRole from "./guards/RequireRole"
+import RequireCashierWaiter from "./guards/RequireCashierWaiter"
 import RequirePermission from "./guards/RequirePermission"
 import RedirectIfAuthenticated from "./guards/RedirectIfAuthenticated"
 import RequireTableSession from "./guards/RequireTableSession"
@@ -18,6 +19,7 @@ import NotFoundPage from "./fallback/NotFoundPage"
 import RoleHomeRedirect from "./RoleHomeRedirect"
 import ForbiddenPage from "./fallback/ForbiddenPage"
 import { FORBIDDEN_PATH } from "./post-login-target"
+import { AUTH_PATHS, isPlatformHost } from "./paths/auth.paths"
 
 // ---- Auth pages ----
 const LoginPage = lazy(() => import("@/features/auth/pages/login"))
@@ -125,7 +127,15 @@ export const router = createBrowserRouter([
       {
         element: <RedirectIfAuthenticated />,
         children: [
-          { path: "/dang-nhap", element: <LoginPage /> }, // AUTH_PATHS.LOGIN
+          {
+            path: AUTH_PATHS.LOGIN,
+            element: isPlatformHost() ? (
+              <Navigate to={AUTH_PATHS.PLATFORM_LOGIN} replace />
+            ) : (
+              <LoginPage key="staff" />
+            ),
+          },
+          { path: AUTH_PATHS.PLATFORM_LOGIN, element: <LoginPage key="platform" platform /> },
         ],
       },
       { path: "/quen-mat-khau", element: <ForgotPasswordPage /> }, // AUTH_PATHS.FORGOT_PASSWORD
@@ -205,6 +215,14 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <Navigate to="so-do-ban" replace /> },
               { path: "so-do-ban", element: <TableMapPage /> }, // CASHIER_PATHS.TABLE_MAP — "Xem tạm tính của bàn"
+              {
+                element: <RequireCashierWaiter />,
+                children: [
+                  { path: "order-che-bien", element: <KitchenDisplayPage /> },
+                  { path: "order/:orderId", element: <OrderDetailPage /> },
+                  { path: "order/:orderId/them-mon", element: <AddDishPage /> },
+                ],
+              },
               { path: "so-do-ban/them-don-mang-ve/:orderId?", element: <AddDishPage takeaway /> },
               { path: "chuyen-gop-ban", element: <TransferMergeTablePage /> }, // CASHIER_PATHS.TRANSFER_MERGE_TABLE — "Chuyển/gộp bàn" (X)
               { path: "thanh-toan/:tableSessionId", element: <CheckoutPage /> }, // CASHIER_PATHS.CHECKOUT — cũng là "Đóng phiên bàn"
@@ -256,13 +274,14 @@ export const router = createBrowserRouter([
                 element: <QrTransferPaymentPage />,
               },
               { path: "thuc-don", element: <BranchManagerMenuPage /> }, // BRANCH_MENU
-              // Bảng 4.3 để TRỐNG cột QL chi nhánh ở "Khuyến mãi" và "Quản lý nhân viên".
-              // Các route bên dưới được GIỮ LẠI (không xoá file) nhưng bị RequirePermission
-              // chặn — gõ thẳng URL sẽ chuyển sang trang 403. Xem docs/todo.md để dọn sau.
+              {
+                element: <RequirePermission permission="BRANCH_PROMOTIONS_VIEW" />,
+                children: [{ path: "khuyen-mai", element: <BranchManagerPromotionsPage /> }],
+              },
+              // Giữ quyền quản lý chương trình tách biệt với quyền tra cứu.
               {
                 element: <RequirePermission permission="PROMOTIONS" />,
                 children: [
-                  { path: "khuyen-mai", element: <BranchManagerPromotionsPage /> }, // PROMOTIONS
                   {
                     path: "khuyen-mai/tao-moi",
                     element: <BranchManagerPromotionCreatePage />,
@@ -328,6 +347,13 @@ export const router = createBrowserRouter([
                 element: <QrTransferPaymentPage />,
               },
               { path: "hoa-don/:invoiceId", element: <EInvoicePage /> },
+              {
+                element: <RequirePermission permission="INVOICES" />,
+                children: [
+                  { path: "hoa-don", element: <InvoiceListPage /> },
+                  { path: "hoa-don/tra-cuu/:invoiceId", element: <EInvoicePage readOnly /> },
+                ],
+              },
               { path: "thuc-don", element: <MenuManagementPage /> }, // THỰC ĐƠN
               { path: "khuyen-mai", element: <PromotionsPage /> }, // KHUYẾN MÃI
               { path: "khuyen-mai/tao-moi", element: <PromotionCreatePage /> },

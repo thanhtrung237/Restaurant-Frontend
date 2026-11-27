@@ -10,7 +10,12 @@ import { useToast } from "@/hooks/use-toast"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { useAuthStore } from "@/stores/auth.store"
 import { APP_ROLE } from "@/config/roles"
-import { WAITER_PATHS, BRANCH_MANAGER_PATHS, RESTAURANT_ADMIN_PATHS } from "@/app/router/paths"
+import {
+  WAITER_PATHS,
+  CASHIER_PATHS,
+  BRANCH_MANAGER_PATHS,
+  RESTAURANT_ADMIN_PATHS,
+} from "@/app/router/paths"
 import { ROLE_HOME } from "@/app/router/RoleHomeRedirect"
 import { useGoBack } from "@/hooks/use-go-back"
 import { cn } from "@/lib/utils"
@@ -85,7 +90,9 @@ function AddDishForm({ orderId, takeaway }: { orderId?: string; takeaway: boolea
       ? BRANCH_MANAGER_PATHS.ORDER_DETAIL
       : role === APP_ROLE.RESTAURANT_ADMIN
         ? RESTAURANT_ADMIN_PATHS.ORDER_DETAIL
-        : WAITER_PATHS.ORDER_DETAIL
+        : role === APP_ROLE.CASHIER
+          ? CASHIER_PATHS.ORDER_DETAIL
+          : WAITER_PATHS.ORDER_DETAIL
   const tableMapPath = role ? ROLE_HOME[role] : WAITER_PATHS.TABLE_MAP
   const takeawayPath = takeawayListPath(tableMapPath)
   const goBack = useGoBack(

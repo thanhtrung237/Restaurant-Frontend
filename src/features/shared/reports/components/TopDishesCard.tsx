@@ -7,7 +7,9 @@ import {
   Sparkles,
   Lightbulb,
 } from "lucide-react"
-import { formatCurrency } from "@/lib/format"
+import { Pie, PieChart, Tooltip } from "recharts"
+import { ChartContainer } from "@/components/ui/chart"
+import { formatCurrency, formatPercent } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { DishRankItem } from "@/types/models/reports"
 import type { TopSellingDishItem } from "../types"
@@ -19,6 +21,21 @@ interface TopDishesCardProps {
   dishes?: TopSellingDishItem[] // Backward compatibility
   title?: string
 }
+
+const dishColors = [
+  "var(--color-brand-primary)",
+  "#3B82F6",
+  "#10B981",
+  "#F59E0B",
+  "#8B5CF6",
+  "#0E7490",
+  "#DB2777",
+  "#65A30D",
+  "#475569",
+  "#A16207",
+]
+
+const chartConfig = { value: { label: "Món ăn" } }
 
 export function TopDishesCard({
   topByRevenue,
@@ -60,10 +77,32 @@ export function TopDishesCard({
     }
   }, [activeTab, revenueItems, quantityItems, slowItems])
 
+  const isRevenue = activeTab === "revenue"
+  const formatQuantity = (quantity: number) => `${quantity.toLocaleString("vi-VN")} phần`
+  const formatValue = isRevenue ? formatCurrency : formatQuantity
+  const chartItems = currentList.map((item, index) => {
+    const revenue = Number(item.totalRevenue) || 0
+    const quantityLabel = formatQuantity(item.totalQuantity)
+    const revenueLabel = formatCurrency(revenue)
+    const value = isRevenue ? revenue : item.totalQuantity
+
+    return {
+      item,
+      name: item.dishName,
+      value: Number.isFinite(value) && value > 0 ? value : 0,
+      fill: dishColors[index % dishColors.length],
+      label: isRevenue ? revenueLabel : quantityLabel,
+      secondaryLabel: isRevenue ? quantityLabel : revenueLabel,
+    }
+  })
+  const slices = chartItems.filter(({ value }) => value > 0)
+  const total = slices.reduce((sum, { value }) => sum + value, 0)
+  const share = (value: number) => formatPercent(total > 0 ? (value / total) * 100 : 0, 1)
+
   return (
-    <div className="rounded-card border border-border-default/80 bg-surface-card p-6 shadow-2xs">
+    <div className="@container min-w-0 rounded-card border border-border-default/80 bg-surface-card p-4 shadow-2xs sm:p-6">
       {/* Header with Title and Tabs */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border-default/60 pb-4">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border-default/60 pb-4">
         <div>
           <h3 className="text-base font-bold text-text-primary tracking-tight">{title}</h3>
           <p className="text-xs text-text-tertiary mt-0.5">
@@ -72,9 +111,14 @@ export function TopDishesCard({
         </div>
 
         {/* Tab pills */}
-        <div className="inline-flex rounded-xl bg-surface-muted p-1 border border-border-default/60 max-md:flex-wrap max-md:gap-1">
+        <div
+          role="group"
+          aria-label="Chỉ số món ăn"
+          className="inline-flex max-w-full flex-wrap gap-1 rounded-xl border border-border-default/60 bg-surface-muted p-1"
+        >
           <button
             type="button"
+            aria-pressed={activeTab === "revenue"}
             onClick={() => setActiveTab("revenue")}
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer",
@@ -89,6 +133,7 @@ export function TopDishesCard({
 
           <button
             type="button"
+            aria-pressed={activeTab === "quantity"}
             onClick={() => setActiveTab("quantity")}
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer",
@@ -103,6 +148,7 @@ export function TopDishesCard({
 
           <button
             type="button"
+            aria-pressed={activeTab === "slowest"}
             onClick={() => setActiveTab("slowest")}
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer",
@@ -135,7 +181,7 @@ export function TopDishesCard({
         </div>
       )}
 
-      {/* List or Empty State */}
+      {/* Chart or Empty State */}
       {currentList.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <div className="flex size-12 items-center justify-center rounded-full bg-surface-muted text-text-tertiary">
@@ -150,61 +196,85 @@ export function TopDishesCard({
           </p>
         </div>
       ) : (
-        <div className="mt-4 divide-y divide-border-default/50">
-          {currentList.map((item, idx) => {
-            const rank = item.rank || idx + 1
-            const revenueNum = parseFloat(item.totalRevenue) || 0
-
-            return (
-              <div
-                key={`${item.dishId}-${rank}`}
-                className="flex items-center justify-between gap-4 py-3 transition-colors hover:bg-surface-page/40 px-2 rounded-lg"
-              >
-                {/* Rank badge + Tên món + Danh mục */}
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div
-                    className={cn(
-                      "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all",
-                      rank === 1 && activeTab !== "slowest"
-                        ? "bg-amber-100 text-amber-800 ring-2 ring-amber-300"
-                        : rank === 2 && activeTab !== "slowest"
-                          ? "bg-slate-200 text-slate-800 ring-2 ring-slate-300"
-                          : rank === 3 && activeTab !== "slowest"
-                            ? "bg-orange-100 text-orange-800 ring-2 ring-orange-300"
-                            : activeTab === "slowest"
-                              ? "bg-amber-50 text-amber-700 border border-amber-200"
-                              : "bg-surface-muted text-text-secondary",
-                    )}
-                  >
-                    {rank}
-                  </div>
-                  <div className="min-w-0 flex flex-col">
-                    <span className="truncate text-sm font-semibold text-text-primary">
-                      {item.dishName}
-                    </span>
-                    {item.categoryName && (
-                      <span className="text-[11px] text-text-tertiary truncate">
-                        {item.categoryName}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Số phần + Thành tiền */}
-                <div className="flex items-center gap-6 sm:gap-10 shrink-0 text-right">
-                  <div className="text-right">
-                    <span className="text-sm font-semibold text-text-secondary">
-                      {item.totalQuantity}
-                    </span>
-                    <span className="text-xs text-text-tertiary ml-1">phần</span>
-                  </div>
-                  <div className="w-28 text-sm font-bold text-text-primary text-right">
-                    {formatCurrency(revenueNum)}
-                  </div>
-                </div>
+        <div className="mt-4 grid min-w-0 items-center gap-4 @lg:grid-cols-[12rem_minmax(0,1fr)] @lg:gap-6">
+          {total > 0 ? (
+            <div className="relative mx-auto w-full max-w-48">
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                <span className="text-xs text-text-secondary">
+                  {isRevenue ? "Doanh thu các món" : "Tổng số phần"}
+                </span>
+                <strong className="max-w-[58%] break-words text-sm tabular-nums text-text-primary">
+                  {formatValue(total)}
+                </strong>
               </div>
-            )
-          })}
+              <ChartContainer config={chartConfig} className="aspect-square w-full">
+                <PieChart>
+                  <Pie
+                    data={slices}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius="62%"
+                    outerRadius="95%"
+                    stroke="var(--color-surface-card)"
+                    strokeWidth={2}
+                    isAnimationActive={false}
+                  />
+                  <Tooltip
+                    formatter={(value) =>
+                      typeof value === "number" ? `${formatValue(value)} · ${share(value)}` : ""
+                    }
+                    contentStyle={{
+                      maxWidth: 192,
+                      whiteSpace: "normal",
+                      overflowWrap: "anywhere",
+                      backgroundColor: "#1E2229",
+                      border: 0,
+                      borderRadius: 8,
+                      fontSize: 12,
+                    }}
+                    itemStyle={{ color: "#fff" }}
+                    isAnimationActive={false}
+                  />
+                </PieChart>
+              </ChartContainer>
+            </div>
+          ) : (
+            <p className="rounded-xl bg-surface-page px-4 py-6 text-center text-sm text-text-secondary">
+              {isRevenue ? "Các món này chưa có doanh thu" : "Các món này chưa bán được phần nào"}
+            </p>
+          )}
+
+          <ol
+            role="list"
+            aria-label="Tỷ trọng theo món ăn"
+            className="min-w-0 divide-y divide-border-default/60"
+          >
+            {chartItems.map(({ item, value, label, secondaryLabel, fill }) => (
+              <li key={item.dishId} className="flex items-start justify-between gap-2 py-2">
+                <div className="flex min-w-0 items-start gap-2">
+                  <span
+                    aria-hidden="true"
+                    className="mt-1 size-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: value > 0 ? fill : "var(--color-surface-muted)" }}
+                  />
+                  <div className="min-w-0">
+                    <p className="break-words text-sm font-semibold text-text-primary">
+                      {item.dishName}
+                    </p>
+                    {item.categoryName && (
+                      <p className="break-words text-xs text-text-tertiary">{item.categoryName}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="shrink-0 text-right tabular-nums">
+                  <p className="text-sm font-semibold text-text-primary">{label}</p>
+                  <p className="text-xs text-text-secondary">
+                    {share(value)} · {secondaryLabel}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
         </div>
       )}
     </div>
