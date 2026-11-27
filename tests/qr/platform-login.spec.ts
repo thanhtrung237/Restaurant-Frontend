@@ -6,7 +6,10 @@ test("restaurant login requires a restaurant code", async ({ page }) => {
   await expect(page.getByLabel("Mã nhà hàng")).toHaveAttribute("required", "")
 })
 
-test("the configured platform hostname opens the platform login from its root", async ({ page, baseURL }) => {
+test("the configured platform hostname opens the platform login from its root", async ({
+  page,
+  baseURL,
+}) => {
   const url = new URL("/", baseURL)
   url.hostname = "localhost"
   await page.goto(url.href)
@@ -14,7 +17,9 @@ test("the configured platform hostname opens the platform login from its root", 
   await expect(page.getByLabel("Mã nhà hàng")).toHaveCount(0)
 })
 
-test("platform login checks the account scope and returns to the requested page", async ({ page }) => {
+test("platform login checks the account scope and returns to the requested page", async ({
+  page,
+}) => {
   let platformAccount = false
   const requests: Array<{ restaurantCode: string | null }> = []
   await page.route("**/ws/**", (route) => route.abort())

@@ -11,40 +11,44 @@ const table = { id: 4, branchId: 2, name: "Bàn 4", status: "AVAILABLE", capacit
 const session = { id: 12, tableId: 4, branchId: 2, restaurantId: 1, status: "SERVING" }
 const qr = "QR-B2-T4"
 
-type TestRole = "RESTAURANT_ADMIN" | "PLATFORM_ADMIN" | "BRANCH_MANAGER" | "WAITER" | "CASHIER" | "GUEST"
+type TestRole =
+  "RESTAURANT_ADMIN" | "PLATFORM_ADMIN" | "BRANCH_MANAGER" | "WAITER" | "CASHIER" | "GUEST"
 
 async function openApp(page: Page, role: TestRole) {
   await page.route("**/ws/**", (route) => route.abort())
-  await page.addInitScript(({ role, qr, session }) => {
-    if (role === "GUEST") {
-      sessionStorage.setItem(
-        "restaurant-guest-credential-v1",
-        JSON.stringify({ sessionId: session.id, token: "mobile-guest" }),
-      )
-      localStorage.setItem(
-        "pho-viet-customer-session",
-        JSON.stringify({ version: 2, state: { qrCode: qr, tableSession: session } }),
-      )
-      return
-    }
+  await page.addInitScript(
+    ({ role, qr, session }) => {
+      if (role === "GUEST") {
+        sessionStorage.setItem(
+          "restaurant-guest-credential-v1",
+          JSON.stringify({ sessionId: session.id, token: "mobile-guest" }),
+        )
+        localStorage.setItem(
+          "pho-viet-customer-session",
+          JSON.stringify({ version: 2, state: { qrCode: qr, tableSession: session } }),
+        )
+        return
+      }
 
-    const accessToken = "mobile-staff"
-    const platform = role === "PLATFORM_ADMIN"
-    localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken }))
-    localStorage.setItem(
-      "pho-viet-auth",
-      JSON.stringify({
-        version: 0,
-        state: {
-          role,
-          accessToken,
-          isAuthenticated: true,
-          branchId: platform ? null : 2,
-          account: { id: 1, restaurantId: platform ? null : 1, fullName: "Quản trị viên" },
-        },
-      }),
-    )
-  }, { role, qr, session })
+      const accessToken = "mobile-staff"
+      const platform = role === "PLATFORM_ADMIN"
+      localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken }))
+      localStorage.setItem(
+        "pho-viet-auth",
+        JSON.stringify({
+          version: 0,
+          state: {
+            role,
+            accessToken,
+            isAuthenticated: true,
+            branchId: platform ? null : 2,
+            account: { id: 1, restaurantId: platform ? null : 1, fullName: "Quản trị viên" },
+          },
+        }),
+      )
+    },
+    { role, qr, session },
+  )
 
   await page.route("**/api/v1/**", (route) => {
     const path = new URL(route.request().url()).pathname.replace(/^\/api\/v1/, "")
@@ -60,7 +64,10 @@ async function openApp(page: Page, role: TestRole) {
     const data: Record<string, unknown> = {
       "/assignments/account/1": role === "RESTAURANT_ADMIN" ? [{ id: 1, roleCode: "MANAGER" }] : [],
       "/branches/2": branch,
-      "/branches/restaurant/1": [branch, { ...branch, id: 3, code: "Q2", name: "Chi nhánh Quận 2" }],
+      "/branches/restaurant/1": [
+        branch,
+        { ...branch, id: 3, code: "Q2", name: "Chi nhánh Quận 2" },
+      ],
       "/branches/2/menu": dishes,
       "/restaurants/1": { id: 1, name: "Nhà hàng test", status: "ACTIVE" },
       "/tables/branch/2": [table],
@@ -68,15 +75,26 @@ async function openApp(page: Page, role: TestRole) {
       "/table-sessions/table/4/open": session,
       "/table-sessions/12": session,
       "/table-sessions/12/bill-preview": {
-        grossSubTotal: 0, grandTotal: 0, itemPromotionDiscount: 0, orderPromotionDiscount: 0,
-        manualDiscount: 0, serviceFeeRate: 0, serviceFee: 0, vatRate: 0, vatAmount: 0,
+        grossSubTotal: 0,
+        grandTotal: 0,
+        itemPromotionDiscount: 0,
+        orderPromotionDiscount: 0,
+        manualDiscount: 0,
+        serviceFeeRate: 0,
+        serviceFee: 0,
+        vatRate: 0,
+        vatAmount: 0,
       },
       "/invoices/session/12": null,
       "/invoices/session/12/qr-code": null,
       "/table-sessions/branch/2/open": [],
       "/reports/revenue": {
-        totalRevenue: "0", totalInvoices: 0, totalGuests: 0,
-        avgRevenuePerInvoice: "0", revenueByPaymentMethod: {}, trend: [],
+        totalRevenue: "0",
+        totalInvoices: 0,
+        totalGuests: 0,
+        avgRevenuePerInvoice: "0",
+        revenueByPaymentMethod: {},
+        trend: [],
       },
       "/reports/hourly": { hourlySlots: [] },
       "/reports/branch-comparison": { avgRevenue: "0", avgCancelRate: 0, branches: [] },
@@ -95,8 +113,12 @@ async function withinViewport(control: Locator) {
     const range = document.createRange()
     range.selectNodeContents(node)
     const label = range.getBoundingClientRect()
-    return element.left >= -1 && element.right <= window.innerWidth + 1 &&
-      label.left >= -1 && label.right <= window.innerWidth + 1
+    return (
+      element.left >= -1 &&
+      element.right <= window.innerWidth + 1 &&
+      label.left >= -1 &&
+      label.right <= window.innerWidth + 1
+    )
   })
   expect(fits).toBe(true)
 }
@@ -173,7 +195,9 @@ test("staff navigation and menu tabs remain accessible at 320px", async ({ page 
   await noPageOverflow(page)
 })
 
-test("legacy platform settings opens the dashboard and keeps audit navigation accessible", async ({ page }) => {
+test("legacy platform settings opens the dashboard and keeps audit navigation accessible", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 320, height: 800 })
   await openApp(page, "PLATFORM_ADMIN")
   await page.goto("/quan-tri-nen-tang/cau-hinh")
@@ -187,7 +211,9 @@ test("legacy platform settings opens the dashboard and keeps audit navigation ac
   await noPageOverflow(page)
 })
 
-test("customer can reach the last long category without scrolling the page sideways", async ({ page }) => {
+test("customer can reach the last long category without scrolling the page sideways", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 320, height: 800 })
   await openApp(page, "GUEST")
   await page.goto("/ban/" + qr + "/thuc-don")
@@ -257,7 +283,9 @@ for (const role of Object.keys(mobileScreens) as TestRole[]) {
           : page.getByRole("heading").first()
         await expect(screen).toBeVisible()
         await expect(page).toHaveURL((url) => url.pathname + url.search === path)
-        await expect(page.getByText("Unexpected Application Error!", { exact: true })).toHaveCount(0)
+        await expect(page.getByText("Unexpected Application Error!", { exact: true })).toHaveCount(
+          0,
+        )
         await noPageOverflow(page)
         const main = page.locator("main:visible").first()
         if (await main.count()) {
@@ -271,7 +299,6 @@ for (const role of Object.keys(mobileScreens) as TestRole[]) {
     }
   })
 }
-
 
 test("login fits at 320px", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 800 })

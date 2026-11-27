@@ -32,7 +32,12 @@ for (const waiterBranch of [2, 3]) {
       const path = new URL(route.request().url()).pathname
       let data: unknown = []
       if (path.endsWith("/auth/login")) {
-        data = { accountId: 1, restaurantId: 1, accessToken: "test-token", refreshToken: "test-refresh" }
+        data = {
+          accountId: 1,
+          restaurantId: 1,
+          accessToken: "test-token",
+          refreshToken: "test-refresh",
+        }
       }
       if (path.endsWith("/accounts/1")) {
         data = { id: 1, restaurantId: 1, fullName: "Thu ngân kiêm phục vụ", status: "ACTIVE" }
@@ -41,7 +46,9 @@ for (const waiterBranch of [2, 3]) {
       if (path.endsWith("/tables/branch/2")) data = tables
       if (path.endsWith("/table-sessions/branch/2/open")) {
         data = opened
-          ? sessions.map((session) => session.id === 31 ? { ...session, status: "SERVING" } : session)
+          ? sessions.map((session) =>
+              session.id === 31 ? { ...session, status: "SERVING" } : session,
+            )
           : sessions
       }
       if (path.endsWith("/table-sessions/31")) {

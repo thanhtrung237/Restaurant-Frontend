@@ -115,7 +115,13 @@ test("branch manager creates staff and changes their branch roles", async ({ pag
   expect(writes).toEqual([
     {
       path: "/branches/10/staff",
-      body: { fullName: "Nhân viên mới", username: "new_staff", roles: ["WAITER"], phone: "0321234567", hireDate: "2026-11-25" },
+      body: {
+        fullName: "Nhân viên mới",
+        username: "new_staff",
+        roles: ["WAITER"],
+        phone: "0321234567",
+        hireDate: "2026-11-25",
+      },
     },
     { path: "/branches/10/staff/2/roles", body: { expected: ["WAITER"], roles: ["CASHIER"] } },
   ])
