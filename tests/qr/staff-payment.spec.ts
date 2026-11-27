@@ -53,7 +53,9 @@ for (const { role, prefix, branchId } of roles) {
       if (path.endsWith("/table-sessions/12")) data = session
       if (path.endsWith("/branches/2")) data = { id: 2, name: "Chi nhánh" }
       if (path.endsWith("/order-details/session/12")) {
-        data = [{ id: 10, dishName: "Cơm sườn", quantity: 4, status: "CANCELLED", isBillable: false }]
+        data = [
+          { id: 10, dishName: "Cơm sườn", quantity: 4, status: "CANCELLED", isBillable: false },
+        ]
       }
       if (path.endsWith("/invoices/session/12")) {
         data = { ...invoice, subTotalBeforeDiscount: 0, grandTotal: 0, totalPaid: 0 }

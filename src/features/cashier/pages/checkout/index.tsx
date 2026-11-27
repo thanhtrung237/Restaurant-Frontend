@@ -72,8 +72,11 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
   const { data: session, isLoading: sessionLoading } = useTableSession(tableSessionId)
   const tableMapPath = role ? ROLE_HOME[role] : CASHIER_PATHS.TABLE_MAP
   const goBack = useGoBack(session?.takeaway ? takeawayListPath(tableMapPath) : tableMapPath)
-  const { data: orderDetails = [], isLoading: orderDetailsLoading, isSuccess: orderDetailsLoaded } =
-    useOrderDetailsBySession(tableSessionId)
+  const {
+    data: orderDetails = [],
+    isLoading: orderDetailsLoading,
+    isSuccess: orderDetailsLoaded,
+  } = useOrderDetailsBySession(tableSessionId)
 
   // Lấy bill từ BE (invoice nếu có, preview nếu chưa)
   const { data: bill, isLoading: billLoading } = useBill(tableSessionId, { refreshDraft: true })
@@ -137,7 +140,8 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
         (currentInvoice.orderPromotionDiscount ??
           Math.max(
             0,
-            (currentInvoice.totalPromotionDiscount ?? 0) - (currentInvoice.itemPromotionDiscount ?? 0),
+            (currentInvoice.totalPromotionDiscount ?? 0) -
+              (currentInvoice.itemPromotionDiscount ?? 0),
           )))
   const emptyTableCheckout =
     session?.status === "WAITING_FOR_PAY" &&
@@ -146,10 +150,13 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
     !orderDetails.some(isBillableDetail) &&
     bill?.grandTotal === 0
   const canCancelEmptyTable =
-    canReview && emptyTableCheckout && invoiceLoaded &&
+    canReview &&
+    emptyTableCheckout &&
+    invoiceLoaded &&
     (!currentInvoice ||
       (["PENDING", "CANCELLED"].includes(currentInvoice.status) &&
-        (currentInvoice.totalPaid ?? 0) === 0 && !currentInvoice.eInvoiceRef))
+        (currentInvoice.totalPaid ?? 0) === 0 &&
+        !currentInvoice.eInvoiceRef))
   const canEditDiscount =
     !emptyTableCheckout &&
     !approvalPending &&
@@ -217,12 +224,13 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
     isSubmittingRef.current = true
     setSavingDiscount(true)
     try {
-      const invoice = currentInvoice && !draftTotalChanged
-        ? currentInvoice
-        : await createInvoiceMutation.mutateAsync({
-            branchId: effectiveBranchId,
-            tableSessionId,
-          })
+      const invoice =
+        currentInvoice && !draftTotalChanged
+          ? currentInvoice
+          : await createInvoiceMutation.mutateAsync({
+              branchId: effectiveBranchId,
+              tableSessionId,
+            })
       setVerifiedTotal(null)
       const updated = await saveInvoiceDiscount.mutateAsync({ invoiceId: invoice.id, discount })
       setCashTendered(null)

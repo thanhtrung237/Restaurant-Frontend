@@ -52,9 +52,10 @@ export function InvoiceFilterBar({
       remove: () => onChange({ ...filters, advanced: { ...advanced, issuance: "all" } }),
     },
     advanced.area && {
-      label: advanced.area === TAKEAWAY_AREA
-        ? "Mang về"
-        : `Khu vực: ${locations.find((location) => location.value === advanced.area)?.label ?? "Đã chọn"}`,
+      label:
+        advanced.area === TAKEAWAY_AREA
+          ? "Mang về"
+          : `Khu vực: ${locations.find((location) => location.value === advanced.area)?.label ?? "Đã chọn"}`,
       remove: () => onChange({ ...filters, advanced: { ...advanced, area: "", table: "" } }),
     },
     advanced.table && {

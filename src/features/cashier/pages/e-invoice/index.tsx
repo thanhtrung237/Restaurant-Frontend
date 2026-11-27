@@ -83,10 +83,10 @@ export default function EInvoicePage({ readOnly = false }: { readOnly?: boolean 
   const backLabel = readOnly
     ? "Về danh sách hóa đơn"
     : invoice?.takeaway
-    ? "Về đơn mang về"
-    : hasPreviousPage
-      ? "Quay lại"
-      : "Về sơ đồ bàn"
+      ? "Về đơn mang về"
+      : hasPreviousPage
+        ? "Quay lại"
+        : "Về sơ đồ bàn"
 
   const {
     data: orderDetails = [],
@@ -299,7 +299,9 @@ export default function EInvoicePage({ readOnly = false }: { readOnly?: boolean 
           ============================================================ */}
       <PageHeader
         title={readOnly ? "Chi tiết hóa đơn" : "Hoá đơn điện tử"}
-        subtitle={readOnly || invoice.takeaway ? tableName : `${tableName} · Phiên ${sessionCode} đã đóng`}
+        subtitle={
+          readOnly || invoice.takeaway ? tableName : `${tableName} · Phiên ${sessionCode} đã đóng`
+        }
         mobileHeaderActions={readOnly ? undefined : eInvoiceHeaderOverflow}
         actions={
           <>
@@ -472,7 +474,7 @@ export default function EInvoicePage({ readOnly = false }: { readOnly?: boolean 
               <span className="font-bold text-text-primary">
                 {readOnly && !firstPayment
                   ? "Chưa ghi nhận thanh toán"
-                  : PAYMENT_METHOD_LABEL[paymentMethod] ?? "Tiền mặt"}
+                  : (PAYMENT_METHOD_LABEL[paymentMethod] ?? "Tiền mặt")}
               </span>
             </div>
             {firstPayment && (!readOnly || firstPayment.amountTendered != null) && (
@@ -490,7 +492,9 @@ export default function EInvoicePage({ readOnly = false }: { readOnly?: boolean 
             {readOnly && (
               <div className="flex items-center justify-between text-sm">
                 <span className="text-text-tertiary">Đã thu</span>
-                <span className="font-bold text-text-primary">{formatVnd(invoice.totalPaid ?? 0)}</span>
+                <span className="font-bold text-text-primary">
+                  {formatVnd(invoice.totalPaid ?? 0)}
+                </span>
               </div>
             )}
             {(isIssued || invoice.eInvoiceIssuedAt || formatInvoiceIssuer(invoice)) && (
@@ -640,8 +644,8 @@ export default function EInvoicePage({ readOnly = false }: { readOnly?: boolean 
             {/* Thông báo BR-12 */}
             <div className="rounded-xl bg-[#fffaf0] border border-[#fde68a]/60 p-3.5 text-center">
               <p className="text-xs font-medium text-[#b45309] leading-relaxed">
-                Cần Quản lý chi nhánh duyệt. Hệ thống ghi nhật ký và gửi thông báo điều
-                chỉnh thuế theo mẫu 04/SS-HĐĐT.
+                Cần Quản lý chi nhánh duyệt. Hệ thống ghi nhật ký và gửi thông báo điều chỉnh thuế
+                theo mẫu 04/SS-HĐĐT.
               </p>
             </div>
 

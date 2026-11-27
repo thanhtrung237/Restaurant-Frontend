@@ -171,8 +171,8 @@ function normalizeInvoiceSearch(value: string) {
 function matchesInvoiceSearch(invoice: InvoiceListItem, keyword: string, words: string[]) {
   const issuer = normalizeInvoiceSearch(invoice.issuerName ?? "")
   return (
-    [invoice.invoiceNumber, invoice.tableName].some((value) =>
-      value && normalizeInvoiceSearch(value).includes(keyword),
+    [invoice.invoiceNumber, invoice.tableName].some(
+      (value) => value && normalizeInvoiceSearch(value).includes(keyword),
     ) || words.every((word) => issuer.includes(word))
   )
 }

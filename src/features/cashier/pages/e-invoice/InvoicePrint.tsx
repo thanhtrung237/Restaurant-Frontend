@@ -68,9 +68,7 @@ export function InvoicePrint({
     printInvoiceReceipt()
   }, [autoPrint, invoice.id, invoice.invoiceNumber])
 
-  const seller = transfer
-    ? printedBy?.fullName?.trim()
-    : invoice.eInvoiceIssuedByName?.trim()
+  const seller = transfer ? printedBy?.fullName?.trim() : invoice.eInvoiceIssuedByName?.trim()
 
   return createPortal(
     <article id="invoice-print" lang="vi">

@@ -174,7 +174,10 @@ export default function InvoiceListPage() {
                 <InvoiceFilterSelect
                   label="Chi nhánh"
                   value={String(branchId)}
-                  options={branches.map((branch) => ({ value: String(branch.id), label: branch.name }))}
+                  options={branches.map((branch) => ({
+                    value: String(branch.id),
+                    label: branch.name,
+                  }))}
                   onChange={(nextBranchId) => {
                     const next = writeInvoiceFilters(searchParams, {
                       ...filters,
