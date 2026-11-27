@@ -17,6 +17,25 @@ test("the configured platform hostname opens the platform login from its root", 
   await expect(page.getByLabel("Mã nhà hàng")).toHaveCount(0)
 })
 
+for (const path of ["/", "/dang-nhap"]) {
+  test(`the production platform hostname redirects ${path} to platform login`, async ({
+    page,
+    baseURL,
+  }) => {
+    const hostname = "platform-admin.thanhtrung.click"
+    await page.route(`https://${hostname}/**`, async (route) => {
+      const { pathname, search } = new URL(route.request().url())
+      const response = await page.request.get(new URL(pathname + search, baseURL).href)
+      await route.fulfill({ response })
+    })
+
+    await page.goto(`https://${hostname}${path}`)
+    await expect(page).toHaveURL(`https://${hostname}/dang-nhap-quan-tri`)
+    await expect(page.getByRole("heading", { name: "Đăng nhập quản trị nền tảng" })).toBeVisible()
+    await expect(page.getByLabel("Mã nhà hàng")).toHaveCount(0)
+  })
+}
+
 test("platform login checks the account scope and returns to the requested page", async ({
   page,
 }) => {
