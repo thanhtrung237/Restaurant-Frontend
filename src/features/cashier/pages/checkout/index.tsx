@@ -35,6 +35,9 @@ import { cn } from "@/lib/utils"
 import { useIsMutating } from "@tanstack/react-query"
 import { CheckoutLines } from "./CheckoutLines"
 import { qk } from "@/lib/query-keys"
+import { APP_ROLE } from "@/config/roles"
+import { isBillableDetail } from "@/lib/order-detail-billing"
+import { CancelSessionDialog } from "@/features/shared/floor-ops/CancelSessionDialog"
 
 const formatVnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`
 
@@ -69,20 +72,20 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
   const { data: session, isLoading: sessionLoading } = useTableSession(tableSessionId)
   const tableMapPath = role ? ROLE_HOME[role] : CASHIER_PATHS.TABLE_MAP
   const goBack = useGoBack(session?.takeaway ? takeawayListPath(tableMapPath) : tableMapPath)
-  const { data: orderDetails = [], isLoading: orderDetailsLoading } =
+  const { data: orderDetails = [], isLoading: orderDetailsLoading, isSuccess: orderDetailsLoaded } =
     useOrderDetailsBySession(tableSessionId)
 
   // Lấy bill từ BE (invoice nếu có, preview nếu chưa)
-  const { data: bill, isLoading: billLoading } = useBill(tableSessionId)
+  const { data: bill, isLoading: billLoading } = useBill(tableSessionId, { refreshDraft: true })
 
   // Mutations
   const createInvoiceMutation = useCreateInvoice()
   const createPaymentMutation = useCreatePayment()
   const saveInvoiceDiscount = useSaveInvoiceDiscount(tableSessionId)
-  const { data: currentInvoice } = useInvoiceBySession(tableSessionId, {
+  const { data: currentInvoice, isSuccess: invoiceLoaded } = useInvoiceBySession(tableSessionId, {
     refetchInterval: (query) => (query.state.data?.status === "PENDING" ? 2500 : false),
   })
-  const canReview = role === "BRANCH_MANAGER" || role === "RESTAURANT_ADMIN"
+  const canReview = role === APP_ROLE.BRANCH_MANAGER || role === APP_ROLE.RESTAURANT_ADMIN
   const approvalPending = currentInvoice?.discountApprovalPending ?? false
   const sharedQuote = currentInvoice?.quoteShared ?? false
   const approval = usePendingDiscountApproval(approvalPending ? currentInvoice?.id : undefined)
@@ -99,6 +102,8 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
   const [isDiscountModalOpen, setDiscountModalOpen] = React.useState(false)
   const [savingDiscount, setSavingDiscount] = React.useState(false)
   const [isIssuingInvoice, setIssuingInvoice] = React.useState(false)
+  const [syncingQrInvoice, setSyncingQrInvoice] = React.useState(false)
+  const [cancelSessionOpen, setCancelSessionOpen] = React.useState(false)
   // Chặn double-submit: React state (isPending) chỉ cập nhật sau khi re-render,
   // nên nếu bấm 2 lần liên tiếp rất nhanh (hoặc double-click) trước khi nút kịp
   // disable, handleIssueInvoice có thể chạy song song 2 lần và tạo 2 hóa đơn /
@@ -120,8 +125,33 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
   const displayGrandTotal = bill?.grandTotal ?? 0
 
   const grandTotal = verifiedTotal ?? displayGrandTotal
-  const checkoutBusy = isIssuingInvoice || savingDiscount || decideApproval.isPending || adjusting
+  const checkoutBusy =
+    isIssuingInvoice || syncingQrInvoice || savingDiscount || decideApproval.isPending || adjusting
+  const draftTotalChanged =
+    currentInvoice?.status === "PENDING" &&
+    !sharedQuote &&
+    (currentInvoice.totalPaid ?? 0) === 0 &&
+    bill != null &&
+    (bill.grandTotal !== currentInvoice.grandTotal ||
+      (bill.orderPromotionDiscount ?? 0) !==
+        (currentInvoice.orderPromotionDiscount ??
+          Math.max(
+            0,
+            (currentInvoice.totalPromotionDiscount ?? 0) - (currentInvoice.itemPromotionDiscount ?? 0),
+          )))
+  const emptyTableCheckout =
+    session?.status === "WAITING_FOR_PAY" &&
+    !session.takeaway &&
+    orderDetailsLoaded &&
+    !orderDetails.some(isBillableDetail) &&
+    bill?.grandTotal === 0
+  const canCancelEmptyTable =
+    canReview && emptyTableCheckout && invoiceLoaded &&
+    (!currentInvoice ||
+      (["PENDING", "CANCELLED"].includes(currentInvoice.status) &&
+        (currentInvoice.totalPaid ?? 0) === 0 && !currentInvoice.eInvoiceRef))
   const canEditDiscount =
+    !emptyTableCheckout &&
     !approvalPending &&
     session?.status === "WAITING_FOR_PAY" &&
     (!currentInvoice ||
@@ -137,8 +167,38 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
   const next500k = Math.ceil((next100k + 1) / 500_000) * 500_000
   const quickAmounts = [next100k, next500k].filter((amount) => amount > grandTotal)
 
-  function goToQrTransfer(printPrebill = false) {
-    if (!tableSessionId || !paymentPaths || !canSelectQr || checkoutBusy) return
+  async function goToQrTransfer(printPrebill = false) {
+    if (!tableSessionId || !paymentPaths || !canSelectQr || checkoutBusy || isSubmittingRef.current)
+      return
+    if (draftTotalChanged) {
+      if (!effectiveBranchId) return
+      isSubmittingRef.current = true
+      setSyncingQrInvoice(true)
+      try {
+        const refreshedInvoice = await createInvoiceMutation.mutateAsync({
+          branchId: effectiveBranchId,
+          tableSessionId,
+        })
+        if (refreshedInvoice.grandTotal !== grandTotal) {
+          setVerifiedTotal(refreshedInvoice.grandTotal)
+          toast({
+            title: "Số tiền phải thu đã thay đổi",
+            description: "Kiểm tra lại tạm tính trước khi tiếp tục.",
+          })
+          return
+        }
+      } catch (error) {
+        toast({
+          title: "Chưa cập nhật được tạm tính",
+          description: error instanceof Error ? error.message : "Vui lòng thử lại.",
+          variant: "danger",
+        })
+        return
+      } finally {
+        setSyncingQrInvoice(false)
+        isSubmittingRef.current = false
+      }
+    }
     navigate(
       generatePath(paymentPaths.QR_TRANSFER_PAYMENT, { tableSessionId: String(tableSessionId) }),
       { state: { printPrebill } },
@@ -157,7 +217,7 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
     isSubmittingRef.current = true
     setSavingDiscount(true)
     try {
-      const invoice = currentInvoice
+      const invoice = currentInvoice && !draftTotalChanged
         ? currentInvoice
         : await createInvoiceMutation.mutateAsync({
             branchId: effectiveBranchId,
@@ -514,7 +574,7 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
           selected="CASH"
           transfer={{
             onClick: () => goToQrTransfer(),
-            disabled: checkoutBusy || !canSelectQr,
+            disabled: checkoutBusy || !canSelectQr || emptyTableCheckout,
             "aria-describedby": !canSelectQr ? "checkout-qr-availability" : undefined,
           }}
         />
@@ -570,7 +630,7 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
             autoComplete="off"
             aria-describedby="checkout-cash-status"
             aria-invalid={changeAmount !== null && changeAmount < 0}
-            disabled={checkoutBusy}
+            disabled={checkoutBusy || emptyTableCheckout}
             value={cashTendered != null ? cashTendered.toLocaleString("vi-VN") : ""}
             onChange={(e) => {
               const raw = e.target.value.replace(/\D/g, "")
@@ -625,18 +685,29 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
                   : `Tiền thối lại ${formatVnd(changeAmount)}`}
         </p>
 
-        {/* Phiên 0đ: backend từ chối phát hành ("Số tiền thanh toán phải > 0"), nên ẩn hẳn
-            nút thay vì để thu ngân bấm rồi nhận lỗi. Gỡ phiên là việc của QL chi nhánh
-            (Bảng 2.2 — huỷ phiên bắt buộc lý do). */}
         {grandTotal <= 0 ? (
           <div className="mt-8 rounded-card border border-status-warning/30 bg-status-warning-subtle p-4">
             <p className="text-sm font-semibold text-status-warning">
-              Phiên không có món nào tính tiền
+              {emptyTableCheckout ? "Phiên không có món nào tính tiền" : "Số tiền phải thu là 0đ"}
             </p>
             <p className="mt-1 text-xs text-text-secondary">
-              Không phát hành được hoá đơn 0đ. Liên hệ Quản lý chi nhánh để huỷ phiên và giải phóng
-              bàn.
+              {canCancelEmptyTable
+                ? "Bạn có thể hủy phiên để giải phóng bàn."
+                : emptyTableCheckout && !canReview
+                  ? "Liên hệ Quản lý chi nhánh hoặc Quản trị nhà hàng để kiểm tra và hủy phiên."
+                  : "Không thể phát hành hóa đơn 0đ."}
             </p>
+            {canCancelEmptyTable && (
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-3 w-full text-status-danger"
+                disabled={checkoutBusy}
+                onClick={() => setCancelSessionOpen(true)}
+              >
+                Hủy phiên bàn
+              </Button>
+            )}
           </div>
         ) : null}
 
@@ -664,6 +735,13 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
         ) : null}
       </section>
 
+      <CancelSessionDialog
+        open={cancelSessionOpen}
+        onOpenChange={setCancelSessionOpen}
+        sessionId={canCancelEmptyTable ? session.id : undefined}
+        tableName={tableName}
+        onCancelled={() => navigate(tableMapPath, { replace: true })}
+      />
       <ManualDiscountModal
         open={isDiscountModalOpen}
         onOpenChange={setDiscountModalOpen}

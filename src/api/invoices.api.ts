@@ -5,6 +5,24 @@ import type { Invoice, InvoiceListItem } from "@/types/models"
 import type { InvoiceStatus } from "@/types/enums"
 import type { InvoiceCreateRequest } from "@/types/requests"
 
+type InvoiceResponse = Invoice & {
+  einvoiceRef?: string
+  einvoiceIssuedAt?: string
+  einvoiceIssuedByName?: string | null
+  einvoiceIssuedByEmployeeCode?: string | null
+}
+
+function normalizeInvoice(invoice: InvoiceResponse): Invoice {
+  return {
+    ...invoice,
+    eInvoiceRef: invoice.eInvoiceRef ?? invoice.einvoiceRef,
+    eInvoiceIssuedAt: invoice.eInvoiceIssuedAt ?? invoice.einvoiceIssuedAt,
+    eInvoiceIssuedByName: invoice.eInvoiceIssuedByName ?? invoice.einvoiceIssuedByName,
+    eInvoiceIssuedByEmployeeCode:
+      invoice.eInvoiceIssuedByEmployeeCode ?? invoice.einvoiceIssuedByEmployeeCode,
+  }
+}
+
 export interface QrCodeResponse {
   automaticVerification?: boolean
   invoiceId: number
@@ -21,17 +39,18 @@ export interface QrCodeResponse {
 
 /** Chốt hoá đơn cho 1 PHIÊN BÀN (1 phiên nhiều order → 1 hoá đơn). */
 export function createInvoice(body: InvoiceCreateRequest) {
-  return apiPost<Invoice>("/invoices", body)
+  return apiPost<InvoiceResponse>("/invoices", body).then(normalizeInvoice)
 }
 export function getInvoice(id: number) {
-  return apiGet<Invoice>(`/invoices/${id}`)
+  return apiGet<InvoiceResponse>(`/invoices/${id}`).then(normalizeInvoice)
 }
 export function shareInvoiceQuote(id: number, expectedTotal: number) {
   return apiPost<void>(`/invoices/${id}/share-quote`, { expectedTotal })
 }
 export async function getInvoiceBySession(tableSessionId: number): Promise<Invoice | null> {
   try {
-    return await apiGet<Invoice>(`/invoices/session/${tableSessionId}`)
+    const invoice = await apiGet<InvoiceResponse | null>(`/invoices/session/${tableSessionId}`)
+    return invoice ? normalizeInvoice(invoice) : null
   } catch (error) {
     // Một phiên đang chờ thanh toán có thể chưa lập hóa đơn.
     if (isApiStatus(error, 404)) return null
@@ -58,7 +77,7 @@ export function deleteInvoice(id: number) {
 }
 /** Phát hành hóa đơn điện tử — chỉ gọi được khi invoice status = PAID. */
 export function issueEInvoice(id: number) {
-  return apiPost<Invoice>(`/invoices/${id}/issue`)
+  return apiPost<InvoiceResponse>(`/invoices/${id}/issue`).then(normalizeInvoice)
 }
 
 export function useInvoice(id?: number, options?: { refetchInterval?: number }) {
@@ -100,7 +119,11 @@ export function useCreateInvoice() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: createInvoice,
-    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.invoices.all }),
+    onSuccess: (invoice, { tableSessionId }) => {
+      qc.setQueryData(qk.invoices.bySession(tableSessionId), invoice)
+      void qc.invalidateQueries({ queryKey: qk.invoices.all })
+      void qc.invalidateQueries({ queryKey: qk.tableSessions.billPreview(tableSessionId) })
+    },
   })
 }
 export function useCancelInvoice() {
@@ -114,7 +137,10 @@ export function useIssueEInvoice() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: issueEInvoice,
-    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.invoices.all }),
+    onSuccess: (invoice) => {
+      qc.setQueryData(qk.invoices.detail(invoice.id), invoice)
+      void qc.invalidateQueries({ queryKey: qk.invoices.all })
+    },
   })
 }
 

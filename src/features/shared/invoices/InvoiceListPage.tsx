@@ -1,111 +1,129 @@
 import * as React from "react"
-import { useNavigate, generatePath } from "react-router-dom"
-import { FileText, Search, X, ChevronRight, ReceiptText, Calendar } from "lucide-react"
+import { useNavigate, useSearchParams, generatePath } from "react-router-dom"
+import { FileText, ChevronRight, ReceiptText } from "lucide-react"
 import { useInvoicesByBranch } from "@/api/invoices.api"
+import { useBranchesByRestaurant } from "@/api/branches.api"
 import { useAuthStore } from "@/stores/auth.store"
 import { StatusBadge } from "@/components/common/StatusBadge"
 import { CASHIER_PATHS } from "@/app/router/paths/cashier.paths"
 import { BRANCH_MANAGER_PATHS } from "@/app/router/paths/branch-manager.paths"
+import { RESTAURANT_ADMIN_PATHS } from "@/app/router/paths/restaurant-admin.paths"
 import { APP_ROLE } from "@/config/roles"
-import { INVOICE_STATUS_LABEL, type InvoiceStatus } from "@/types/enums"
+import { vietnamTodayKey } from "@/lib/calendar-range"
 import type { InvoiceListItem } from "@/types/models"
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+import { InvoiceFilterBar } from "./InvoiceFilterBar"
+import { InvoiceFilterSelect } from "./InvoiceFilterSelect"
+import {
+  filterInvoices,
+  formatInvoiceDateTime,
+  getInvoiceLocations,
+  paymentStatus,
+  readInvoiceFilters,
+  writeInvoiceFilters,
+  type InvoiceFiltersValue,
+  type PaymentFilter,
+} from "./invoice-filters"
 
 const formatVnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`
 
-function formatDateTime(iso: string | undefined) {
-  if (!iso) return "—"
-  const d = new Date(iso)
-  const pad = (n: number) => String(n).padStart(2, "0")
-  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
-function toDateInputValue(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0")
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-}
-
-type StatusFilter = InvoiceStatus | "ALL"
-
-const FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
-  { value: "ALL", label: "Tất cả" },
-  { value: "PAID", label: INVOICE_STATUS_LABEL.PAID },
-  { value: "ISSUED", label: INVOICE_STATUS_LABEL.ISSUED },
-  { value: "PENDING", label: INVOICE_STATUS_LABEL.PENDING },
-  { value: "CANCELLED", label: INVOICE_STATUS_LABEL.CANCELLED },
-  { value: "REFUNDED", label: INVOICE_STATUS_LABEL.REFUNDED },
-]
-
-// ─── Component ───────────────────────────────────────────────────────────────
-
 /**
- * Trang danh sách hóa đơn — dùng chung cho Thu ngân và Quản lý chi nhánh.
- * API: GET /invoices/branch/{branchId}?status={status}
- * Lọc ngày thực hiện phía client (createdAt đã có trong InvoiceListResponse).
+ * Tra cứu hóa đơn theo chi nhánh. Quản trị nhà hàng chọn trong các chi nhánh của nhà hàng mình.
+ * API: GET /invoices/branch/{branchId}
+ * Giữ bộ lọc trong URL để có thể quay lại từ trang chi tiết.
  */
 export default function InvoiceListPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const role = useAuthStore((s) => s.role)
-  const branchId = useAuthStore((s) => s.branchId)
+  const activeBranchId = useAuthStore((s) => s.branchId)
+  const restaurantId = useAuthStore((s) => s.account?.restaurantId)
+  const isRestaurantAdmin = role === APP_ROLE.RESTAURANT_ADMIN
+  const {
+    data: branches = [],
+    isLoading: branchesLoading,
+    isError: branchesError,
+    refetch: refetchBranches,
+  } = useBranchesByRestaurant(isRestaurantAdmin ? (restaurantId ?? undefined) : undefined)
+  const requestedBranch = branches.find(
+    (branch) => String(branch.id) === searchParams.get("chi-nhanh"),
+  )
+  const activeBranch = branches.find((branch) => branch.id === activeBranchId)
+  const branchId = isRestaurantAdmin
+    ? (requestedBranch ?? activeBranch ?? branches[0])?.id
+    : activeBranchId
 
-  const [statusFilter, setStatusFilter] = React.useState<StatusFilter>("ALL")
-  const [search, setSearch] = React.useState("")
-  const today = React.useMemo(() => toDateInputValue(new Date()), [])
-  const [dateFrom, setDateFrom] = React.useState(today)
-  const [dateTo, setDateTo] = React.useState(today)
-
+  const [today] = React.useState(vietnamTodayKey)
+  const filters = React.useMemo(
+    () => readInvoiceFilters(searchParams, today),
+    [searchParams, today],
+  )
   const {
     data: invoices = [],
     isLoading,
     isError,
-  } = useInvoicesByBranch(branchId ?? undefined, statusFilter === "ALL" ? undefined : statusFilter)
+    refetch,
+  } = useInvoicesByBranch(branchId ?? undefined)
 
-  const filtered = React.useMemo(() => {
-    return invoices.filter((inv) => {
-      // Lọc ngày
-      if (dateFrom || dateTo) {
-        const d = inv.createdAt ? new Date(inv.createdAt) : null
-        if (!d) return false
-        if (dateFrom) {
-          const from = new Date(dateFrom)
-          from.setHours(0, 0, 0, 0)
-          if (d < from) return false
-        }
-        if (dateTo) {
-          const to = new Date(dateTo)
-          to.setHours(23, 59, 59, 999)
-          if (d > to) return false
-        }
-      }
-      // Lọc text
-      const q = search.trim().toLowerCase()
-      if (q) {
-        return (
-          inv.invoiceNumber?.toLowerCase().includes(q) || inv.tableName?.toLowerCase().includes(q)
-        )
-      }
-      return true
-    })
-  }, [invoices, dateFrom, dateTo, search])
+  function updateFilters(next: InvoiceFiltersValue) {
+    setSearchParams(writeInvoiceFilters(searchParams, next), { replace: true })
+  }
 
-  const totalPaid = React.useMemo(
-    () =>
-      filtered
-        .filter((i) => i.status === "PAID" || i.status === "ISSUED")
-        .reduce((s, i) => s + (i.grandTotal ?? 0), 0),
-    [filtered],
-  )
+  const matchingInvoices = filterInvoices(invoices, filters)
+  const counts: Record<PaymentFilter, number> = {
+    ALL: matchingInvoices.length,
+    PENDING: 0,
+    PAID: 0,
+    CANCELLED: 0,
+    REFUNDED: 0,
+  }
+  for (const invoice of matchingInvoices) counts[paymentStatus(invoice.status)] += 1
 
+  const filtered =
+    filters.status === "ALL"
+      ? matchingInvoices
+      : matchingInvoices.filter((invoice) => paymentStatus(invoice.status) === filters.status)
+  const locations = getInvoiceLocations(invoices)
+  const totalPaid = filtered
+    .filter((invoice) => paymentStatus(invoice.status) === "PAID")
+    .reduce((total, invoice) => total + (Number(invoice.grandTotal) || 0), 0)
   const hasActiveFilter =
-    !!search || statusFilter !== "ALL" || dateFrom !== today || dateTo !== today
+    filters.status !== "ALL" ||
+    !!filters.search ||
+    !!filters.range ||
+    filters.advanced.issuance !== "all" ||
+    !!filters.advanced.area ||
+    !!filters.advanced.table ||
+    !!filters.advanced.min ||
+    !!filters.advanced.max
 
   function handleRowClick(inv: InvoiceListItem) {
-    const path =
-      role === APP_ROLE.CASHIER
-        ? generatePath(CASHIER_PATHS.E_INVOICE, { invoiceId: String(inv.id) })
-        : generatePath(BRANCH_MANAGER_PATHS.E_INVOICE, { invoiceId: String(inv.id) })
-    navigate(path)
+    const detailPath = isRestaurantAdmin
+      ? RESTAURANT_ADMIN_PATHS.INVOICE_DETAILS
+      : role === APP_ROLE.CASHIER
+        ? CASHIER_PATHS.E_INVOICE
+        : BRANCH_MANAGER_PATHS.E_INVOICE
+    navigate(generatePath(detailPath, { invoiceId: String(inv.id) }))
+  }
+
+  if (isRestaurantAdmin && (branchesLoading || branchesError)) {
+    return (
+      <div className="p-6 text-center text-sm text-text-secondary">
+        {branchesLoading ? (
+          <p role="status">Đang tải chi nhánh…</p>
+        ) : (
+          <div role="alert">
+            <p>Không thể tải danh sách chi nhánh.</p>
+            <button
+              type="button"
+              onClick={() => void refetchBranches()}
+              className="mt-2 font-semibold text-brand-primary underline"
+            >
+              Thử lại
+            </button>
+          </div>
+        )}
+      </div>
+    )
   }
 
   if (!branchId) {
@@ -115,9 +133,13 @@ export default function InvoiceListPage() {
           <span className="flex size-14 items-center justify-center rounded-full bg-surface-muted">
             <ReceiptText className="size-7 text-text-tertiary" />
           </span>
-          <p className="text-sm font-semibold text-text-primary">Chưa chọn chi nhánh</p>
+          <p className="text-sm font-semibold text-text-primary">
+            {isRestaurantAdmin ? "Chưa có chi nhánh để tra cứu" : "Chưa chọn chi nhánh"}
+          </p>
           <p className="text-xs text-text-tertiary">
-            Vui lòng chọn chi nhánh để xem danh sách hóa đơn.
+            {isRestaurantAdmin
+              ? "Hóa đơn được tra cứu theo từng chi nhánh của nhà hàng."
+              : "Vui lòng chọn chi nhánh để xem danh sách hóa đơn."}
           </p>
         </div>
       </div>
@@ -139,81 +161,33 @@ export default function InvoiceListPage() {
       </div>
 
       <div className="flex-1 p-4 sm:p-6 space-y-4">
-        {/* THANH CÔNG CỤ */}
-        <div className="flex flex-col gap-3">
-          {/* Hàng 1: lọc trạng thái */}
-          <div className="flex flex-wrap gap-2">
-            {FILTER_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setStatusFilter(opt.value)}
-                className={[
-                  "h-8 shrink-0 rounded-full px-3.5 text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer",
-                  statusFilter === opt.value
-                    ? "bg-brand-primary text-text-on-brand shadow-xs"
-                    : "bg-surface-card border border-border-default text-text-secondary hover:border-border-strong",
-                ].join(" ")}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Hàng 2: lọc ngày + tìm kiếm */}
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Calendar className="size-4 shrink-0 text-text-tertiary" />
-              <input
-                type="date"
-                value={dateFrom}
-                max={dateTo || undefined}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="h-9 rounded-lg border border-border-default bg-surface-card px-2 text-sm text-text-primary outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary"
-              />
-              <span className="text-xs text-text-tertiary">đến</span>
-              <input
-                type="date"
-                value={dateTo}
-                min={dateFrom || undefined}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="h-9 rounded-lg border border-border-default bg-surface-card px-2 text-sm text-text-primary outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary"
-              />
-              {(dateFrom || dateTo) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDateFrom("")
-                    setDateTo("")
+        <InvoiceFilterBar
+          key={branchId}
+          filters={filters}
+          counts={isLoading || isError ? undefined : counts}
+          today={today}
+          locations={locations}
+          onChange={updateFilters}
+          branchSelector={
+            isRestaurantAdmin && (
+              <div className="w-full max-w-sm">
+                <InvoiceFilterSelect
+                  label="Chi nhánh"
+                  value={String(branchId)}
+                  options={branches.map((branch) => ({ value: String(branch.id), label: branch.name }))}
+                  onChange={(nextBranchId) => {
+                    const next = writeInvoiceFilters(searchParams, {
+                      ...filters,
+                      advanced: { ...filters.advanced, area: "", table: "" },
+                    })
+                    next.set("chi-nhanh", nextBranchId)
+                    setSearchParams(next, { replace: true })
                   }}
-                  className="text-xs text-brand-primary hover:underline cursor-pointer whitespace-nowrap"
-                >
-                  Tất cả ngày
-                </button>
-              )}
-            </div>
-
-            <div className="relative w-full sm:w-56 sm:ml-auto shrink-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-text-tertiary" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Số HĐ hoặc tên bàn..."
-                className="h-10 w-full rounded-lg border border-border-default bg-surface-card pl-9 pr-8 text-sm text-text-primary placeholder:text-text-tertiary outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
-                >
-                  <X className="size-3.5" />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+                />
+              </div>
+            )
+          }
+        />
 
         {/* BẢNG DESKTOP */}
         <div className="hidden md:block min-w-0 max-w-full overflow-x-auto rounded-card border border-border-default bg-surface-card shadow-xs">
@@ -229,11 +203,14 @@ export default function InvoiceListPage() {
                 <th className="py-3 px-4 text-left text-xs font-semibold text-text-tertiary tracking-wide uppercase">
                   Thời gian
                 </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+                  Nhân viên bán
+                </th>
                 <th className="py-3 px-4 text-right text-xs font-semibold text-text-tertiary tracking-wide uppercase">
                   Tổng tiền
                 </th>
                 <th className="py-3 pl-4 pr-5 text-left text-xs font-semibold text-text-tertiary tracking-wide uppercase">
-                  Trạng thái
+                  Thanh toán / HĐĐT
                 </th>
                 <th className="w-8" />
               </tr>
@@ -241,7 +218,7 @@ export default function InvoiceListPage() {
             <tbody className="divide-y divide-border-default/60">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="py-16 text-center text-sm text-text-tertiary">
+                  <td colSpan={7} className="py-16 text-center text-sm text-text-tertiary">
                     <div className="flex flex-col items-center gap-2">
                       <div className="size-8 animate-spin rounded-full border-4 border-gray-200 border-t-brand-primary" />
                       <span>Đang tải hóa đơn...</span>
@@ -250,13 +227,13 @@ export default function InvoiceListPage() {
                 </tr>
               ) : isError ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-sm text-status-danger">
-                    Không thể tải dữ liệu. Vui lòng thử lại.
+                  <td colSpan={7} className="py-12 text-center text-sm text-status-danger">
+                    <InvoiceListError onRetry={() => void refetch()} />
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-14 text-center">
+                  <td colSpan={7} className="py-14 text-center">
                     <EmptyRow hasFilter={hasActiveFilter} />
                   </td>
                 </tr>
@@ -268,21 +245,31 @@ export default function InvoiceListPage() {
                     className="cursor-pointer hover:bg-surface-muted/50 transition-colors group"
                   >
                     <td className="py-3.5 pl-5">
-                      <span className="font-mono font-bold text-brand-primary">
+                      <button
+                        type="button"
+                        className="font-mono font-bold text-brand-primary hover:underline"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          handleRowClick(inv)
+                        }}
+                      >
                         {inv.invoiceNumber ?? `#${inv.id}`}
-                      </span>
+                      </button>
                     </td>
                     <td className="py-3.5 px-4 font-medium text-text-primary">
                       {inv.tableName ?? "—"}
                     </td>
                     <td className="py-3.5 px-4 text-text-secondary">
-                      {formatDateTime(inv.createdAt)}
+                      {formatInvoiceDateTime(inv.createdAt)}
+                    </td>
+                    <td className="px-4 py-3.5 text-text-secondary [overflow-wrap:anywhere]">
+                      {inv.issuerName?.trim() || "—"}
                     </td>
                     <td className="py-3.5 px-4 text-right font-bold text-text-primary">
                       {formatVnd(inv.grandTotal)}
                     </td>
                     <td className="py-3.5 pl-4 pr-5">
-                      <StatusBadge type="invoice" status={inv.status} />
+                      <InvoiceListStatuses status={inv.status} />
                     </td>
                     <td className="py-3.5 pr-3 text-text-tertiary group-hover:text-text-secondary transition-colors">
                       <ChevronRight className="size-4" />
@@ -309,9 +296,9 @@ export default function InvoiceListPage() {
               <div className="size-8 animate-spin rounded-full border-4 border-gray-200 border-t-brand-primary" />
             </div>
           ) : isError ? (
-            <p className="py-8 text-center text-sm text-status-danger">
-              Không thể tải dữ liệu. Vui lòng thử lại.
-            </p>
+            <div className="py-8 text-center">
+              <InvoiceListError onRetry={() => void refetch()} />
+            </div>
           ) : filtered.length === 0 ? (
             <div className="rounded-card border border-border-default bg-surface-card py-14">
               <EmptyRow hasFilter={hasActiveFilter} />
@@ -331,14 +318,19 @@ export default function InvoiceListPage() {
                     </span>
                     <p className="mt-0.5 text-xs text-text-secondary truncate">
                       {inv.tableName ?? "—"}
-                      {inv.createdAt ? ` · ${formatDateTime(inv.createdAt)}` : ""}
+                      {inv.createdAt ? ` · ${formatInvoiceDateTime(inv.createdAt)}` : ""}
                     </p>
+                    {inv.issuerName?.trim() && (
+                      <p className="mt-1 text-xs text-text-secondary [overflow-wrap:anywhere]">
+                        Nhân viên bán: {inv.issuerName.trim()}
+                      </p>
+                    )}
                   </div>
                   <div className="flex flex-col items-end gap-1.5 shrink-0">
                     <span className="text-sm font-bold text-text-primary">
                       {formatVnd(inv.grandTotal)}
                     </span>
-                    <StatusBadge type="invoice" status={inv.status} />
+                    <InvoiceListStatuses status={inv.status} />
                   </div>
                 </div>
               </button>
@@ -372,6 +364,34 @@ function EmptyRow({ hasFilter }: { hasFilter: boolean }) {
             : "Hóa đơn sẽ xuất hiện sau khi thu ngân chốt bàn."}
         </p>
       </div>
+    </div>
+  )
+}
+
+function InvoiceListStatuses({ status }: { status: InvoiceListItem["status"] }) {
+  return (
+    <div className="flex flex-wrap justify-end gap-1.5 md:justify-start">
+      <StatusBadge type="invoice" status={paymentStatus(status)} />
+      {status === "ISSUED" && (
+        <span className="whitespace-nowrap rounded-full bg-surface-muted px-2 py-1 text-xs text-text-secondary">
+          Đã phát hành HĐĐT
+        </span>
+      )}
+    </div>
+  )
+}
+
+function InvoiceListError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div role="alert" className="space-y-2 text-sm">
+      <p className="text-status-danger">Không thể tải danh sách hóa đơn.</p>
+      <button
+        type="button"
+        className="font-semibold text-brand-primary underline"
+        onClick={onRetry}
+      >
+        Thử lại
+      </button>
     </div>
   )
 }

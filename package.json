@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:pos": "vite --mode pos-emulator",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "format": "prettier --write --ignore-unknown",

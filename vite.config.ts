@@ -3,20 +3,23 @@ import { readFileSync } from "node:fs"
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
 import { defineConfig, loadEnv } from "vite"
+import { posEmulator } from "./vite-pos-emulator.ts"
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, command, isPreview }) => {
   const env = loadEnv(mode, process.cwd(), "DEV_")
   const { DEV_HTTPS_CERT, DEV_HTTPS_KEY } = env
   const backend = env.DEV_BACKEND_ORIGIN || "http://127.0.0.1:8080"
+  const printToEmulator = command === "serve" && !isPreview && mode === "pos-emulator"
   if (Boolean(DEV_HTTPS_CERT) !== Boolean(DEV_HTTPS_KEY)) {
     throw new Error("Set both DEV_HTTPS_CERT and DEV_HTTPS_KEY to enable HTTPS.")
   }
 
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), printToEmulator && posEmulator()],
     define: {
       global: "globalThis",
+      "import.meta.env.DEV_POS_EMULATOR": JSON.stringify(printToEmulator),
     },
     resolve: {
       alias: {

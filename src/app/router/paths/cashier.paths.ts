@@ -6,6 +6,8 @@ const CASHIER_BASE = "/thu-ngan"
  * TRANSFER_MERGE_TABLE vì Thu ngân có quyền X đầy đủ (không cần duyệt, khác Phục vụ) (mục 4.2).
  */
 export const CASHIER_PATHS = {
+  ORDER_AND_PREP: `${CASHIER_BASE}/order-che-bien`,
+  ORDER_DETAIL: `${CASHIER_BASE}/order/:orderId`,
   TABLE_MAP: `${CASHIER_BASE}/so-do-ban`, // Sơ đồ bàn — trang chủ của Thu ngân, xem tạm tính
   TRANSFER_MERGE_TABLE: `${CASHIER_BASE}/chuyen-gop-ban`, // Chuyển / Gộp bàn
   CHECKOUT: `${CASHIER_BASE}/thanh-toan/:tableSessionId`, // Chốt bàn, tính phí DV/VAT, chiết khấu tay, đóng phiên

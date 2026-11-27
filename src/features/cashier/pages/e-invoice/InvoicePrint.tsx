@@ -1,10 +1,11 @@
-import { Fragment, useEffect } from "react"
+import { useEffect } from "react"
 import { createPortal } from "react-dom"
-import { PAYMENT_METHOD_LABEL } from "@/types/enums"
 import type { Invoice } from "@/types/models"
 import type { InvoiceLine } from "./invoice-lines"
 import type { QrCodeResponse } from "@/api/invoices.api"
+import { printToLocalEmulator, setReceiptPaperSize } from "@/lib/receipt-paper"
 import "./invoice-print.css"
+import invoicePrintCss from "./invoice-print.css?inline"
 
 const formatVnd = (amount: number) => `${Math.round(amount).toLocaleString("vi-VN")}đ`
 
@@ -13,7 +14,26 @@ export interface InvoiceAmountRow {
   amount: number
 }
 
+export function formatInvoiceIssuer(invoice: Invoice) {
+  return formatReceiptEmployee(invoice.eInvoiceIssuedByName, invoice.eInvoiceIssuedByEmployeeCode)
+}
+
+function formatReceiptEmployee(name?: string | null, code?: string | null) {
+  return [name, code]
+    .map((value) => value?.trim())
+    .filter(Boolean)
+    .join(" · ")
+}
+
 const requestedPrints = new Set<string>()
+
+export function printInvoiceReceipt() {
+  const receipt = document.getElementById("invoice-print")
+  if (!receipt) return
+  if (printToLocalEmulator(() => `<style>${invoicePrintCss}</style>${receipt.outerHTML}`)) return
+  setReceiptPaperSize(receipt, "invoice-receipt")
+  window.print()
+}
 
 export function InvoicePrint({
   invoice,
@@ -23,6 +43,7 @@ export function InvoicePrint({
   amounts,
   autoPrint,
   transfer,
+  printedBy,
 }: {
   invoice: Invoice
   issuedAt: string
@@ -31,6 +52,7 @@ export function InvoicePrint({
   amounts: InvoiceAmountRow[]
   autoPrint?: boolean
   transfer?: QrCodeResponse
+  printedBy?: { fullName?: string } | null
 }) {
   useEffect(() => {
     if (!autoPrint) return
@@ -43,8 +65,12 @@ export function InvoicePrint({
       // Keep at most one automatic request per loaded app if storage is unavailable.
     }
     requestedPrints.add(key)
-    window.print()
+    printInvoiceReceipt()
   }, [autoPrint, invoice.id, invoice.invoiceNumber])
+
+  const seller = transfer
+    ? printedBy?.fullName?.trim()
+    : invoice.eInvoiceIssuedByName?.trim()
 
   return createPortal(
     <article id="invoice-print" lang="vi">
@@ -55,8 +81,8 @@ export function InvoicePrint({
         <p>
           {issuedAt} · {tableName}
         </p>
-        {invoice.taxCodeUsed && <p>Mã số thuế {invoice.taxCodeUsed}</p>}
         {invoice.eInvoiceRef && <p>Mã tham chiếu {invoice.eInvoiceRef}</p>}
+        <p>Nhân viên bán: {seller || "Chưa có thông tin"}</p>
       </header>
 
       <table aria-label="Các món tính tiền">
@@ -117,26 +143,6 @@ export function InvoicePrint({
             <dd>{formatVnd(transfer.remainingAmount)}</dd>
           </div>
         )}
-        {invoice.payments?.map((payment) => (
-          <Fragment key={payment.id}>
-            <div>
-              <dt>{PAYMENT_METHOD_LABEL[payment.method] ?? payment.method}</dt>
-              <dd>{formatVnd(payment.amount)}</dd>
-            </div>
-            {payment.method === "CASH" && payment.amountTendered != null && (
-              <div>
-                <dt>Khách đưa</dt>
-                <dd>{formatVnd(payment.amountTendered)}</dd>
-              </div>
-            )}
-            {payment.method === "CASH" && payment.changeAmount != null && (
-              <div>
-                <dt>Tiền thối</dt>
-                <dd>{formatVnd(payment.changeAmount)}</dd>
-              </div>
-            )}
-          </Fragment>
-        ))}
       </dl>
       {transfer && (
         <section className="invoice-print-transfer">
@@ -148,7 +154,6 @@ export function InvoicePrint({
           <p>
             Nội dung chuyển khoản <strong>{transfer.transferContent}</strong>
           </p>
-          <p>Vui lòng dùng phiếu mới nhất nếu có điều chỉnh món.</p>
         </section>
       )}
     </article>,

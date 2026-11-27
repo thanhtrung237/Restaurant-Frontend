@@ -25,12 +25,12 @@ function getBillPreview(tableSessionId: number) {
 
 export interface UseBillOptions {
   refetchInterval?: number | false
+  refreshDraft?: boolean
 }
 
 /**
  * Hook lấy thông tin hóa đơn hoặc preview tạm tính.
- * - Nếu đã có invoice: dùng invoice
- * - Nếu chưa có invoice: gọi API preview
+ * Dùng số đã lưu trên hóa đơn. Chốt bàn có thể yêu cầu tính lại bản nháp từ API preview.
  */
 export function useBill(tableSessionId?: number, options?: UseBillOptions) {
   // Thử lấy invoice trước (không retry với 404)
@@ -40,7 +40,12 @@ export function useBill(tableSessionId?: number, options?: UseBillOptions) {
     refetchInterval: options?.refetchInterval === false ? undefined : options?.refetchInterval,
   })
 
-  // Nếu chưa có invoice, lấy preview
+  const refreshDraft =
+    options?.refreshDraft &&
+    invoice?.status === "PENDING" &&
+    !invoice.quoteShared &&
+    (invoice.totalPaid ?? 0) === 0
+  const usePreview = !invoice || refreshDraft
   const {
     data: preview,
     isLoading: previewLoading,
@@ -48,12 +53,17 @@ export function useBill(tableSessionId?: number, options?: UseBillOptions) {
   } = useQuery({
     queryKey: qk.tableSessions.billPreview(tableSessionId as number),
     queryFn: () => getBillPreview(tableSessionId as number),
-    enabled: typeof tableSessionId === "number" && !invoice,
+    enabled: typeof tableSessionId === "number" && Boolean(usePreview),
     retry: false,
+    refetchOnMount: options?.refreshDraft ? "always" : undefined,
     refetchInterval: options?.refetchInterval,
   })
 
-  const isLoading = invoiceLoading || (!invoice && previewLoading)
+  const isLoading = invoiceLoading || (Boolean(usePreview) && previewLoading)
+
+  if (usePreview && preview && Number.isFinite(preview.grandTotal)) {
+    return { data: preview, isLoading, hasInvoice: Boolean(invoice), error: null }
+  }
 
   if (invoice) {
     // Chuyển đổi invoice thành format chuẩn
@@ -103,15 +113,6 @@ export function useBill(tableSessionId?: number, options?: UseBillOptions) {
       },
       isLoading,
       hasInvoice: true,
-      error: null,
-    }
-  }
-
-  if (preview) {
-    return {
-      data: preview,
-      isLoading,
-      hasInvoice: false,
       error: null,
     }
   }

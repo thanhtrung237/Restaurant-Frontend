@@ -15,16 +15,23 @@ import { HeaderOverflowMenu, type OverflowMenuAction } from "@/components/layout
 import { StickyActionBar } from "@/components/layout/StickyActionBar"
 import { useToast } from "@/hooks/use-toast"
 import { PageHeader } from "@/components/layout/PageHeader"
+import { StatusBadge } from "@/components/common/StatusBadge"
 import { getStaffPaymentPaths } from "@/app/router/paths/staff-payment.paths"
 import { CASHIER_PATHS } from "@/app/router/paths/cashier.paths"
 import { BRANCH_MANAGER_PATHS } from "@/app/router/paths/branch-manager.paths"
+import { RESTAURANT_ADMIN_PATHS } from "@/app/router/paths/restaurant-admin.paths"
 import { APP_ROLE } from "@/config/roles"
 import { useGoBack } from "@/hooks/use-go-back"
 import { PAYMENT_METHOD_LABEL, type PaymentMethod } from "@/types/enums"
 import { useInvoice, useOrderDetailsBySession, useIssueEInvoice } from "@/features/cashier/api"
 import { useAuthStore } from "@/stores/auth.store"
 import { isBillableDetail } from "@/lib/order-detail-billing"
-import { InvoicePrint, type InvoiceAmountRow } from "./InvoicePrint"
+import {
+  formatInvoiceIssuer,
+  InvoicePrint,
+  printInvoiceReceipt,
+  type InvoiceAmountRow,
+} from "./InvoicePrint"
 import { groupInvoiceLines } from "./invoice-lines"
 
 const formatVnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`
@@ -46,17 +53,17 @@ const REFUND_REASONS = [
  * - Đến từ Danh sách hóa đơn → quay về Danh sách hóa đơn
  * - Mở trực tiếp URL → về fallback theo role
  */
-export default function EInvoicePage() {
+export default function EInvoicePage({ readOnly = false }: { readOnly?: boolean } = {}) {
   const { invoiceId: invoiceIdParam } = useParams<{ invoiceId: string }>()
   const navigate = useNavigate()
   const location = useLocation()
   const { toast } = useToast()
-  const currentUser = useAuthStore((s) => s.account)
   const role = useAuthStore((s) => s.role)
 
   // Fallback khi mở trực tiếp URL (không có trang trước trong app)
-  const fallbackPath =
-    role === APP_ROLE.BRANCH_MANAGER
+  const fallbackPath = readOnly
+    ? RESTAURANT_ADMIN_PATHS.INVOICES
+    : role === APP_ROLE.BRANCH_MANAGER
       ? BRANCH_MANAGER_PATHS.INVOICES
       : (getStaffPaymentPaths(role)?.TABLE_MAP ?? CASHIER_PATHS.TABLE_MAP)
   const goBack = useGoBack(fallbackPath)
@@ -73,7 +80,9 @@ export default function EInvoicePage() {
 
   // --- Fetch dữ liệu từ BE ---
   const { data: invoice, isLoading: invoiceLoading, isError: invoiceError } = useInvoice(invoiceId)
-  const backLabel = invoice?.takeaway
+  const backLabel = readOnly
+    ? "Về danh sách hóa đơn"
+    : invoice?.takeaway
     ? "Về đơn mang về"
     : hasPreviousPage
       ? "Quay lại"
@@ -92,6 +101,7 @@ export default function EInvoicePage() {
   const hasTriedIssue = React.useRef(false)
   React.useEffect(() => {
     if (
+      !readOnly &&
       invoice &&
       invoice.status === "PAID" &&
       !hasTriedIssue.current &&
@@ -108,7 +118,7 @@ export default function EInvoicePage() {
         },
       })
     }
-  }, [invoice, issueEInvoiceMutation, toast])
+  }, [readOnly, invoice, issueEInvoiceMutation, toast])
 
   // --- Modal Hoàn tiền / Điều chỉnh ---
   const [isRefundModalOpen, setRefundModalOpen] = React.useState(false)
@@ -136,7 +146,7 @@ export default function EInvoicePage() {
   }
 
   function handleBackToTableMap() {
-    if (invoice?.takeaway) {
+    if (!readOnly && invoice?.takeaway) {
       navigate(takeawayListPath(getStaffPaymentPaths(role)?.TABLE_MAP ?? CASHIER_PATHS.TABLE_MAP))
     } else {
       goBack()
@@ -251,9 +261,6 @@ export default function EInvoicePage() {
   const amountTendered = firstPayment?.amountTendered ?? grandTotal
   const changeAmount = firstPayment?.changeAmount ?? Math.max(0, amountTendered - grandTotal)
 
-  // Thu ngân
-  const cashierNameDisplay = currentUser?.fullName ?? "Thu ngân"
-
   // Thông tin bàn / phiên
   const tableName = invoice.tableName ?? `Bàn #${invoice.tableSessionId}`
   const sessionCode = `#${invoice.tableSessionId}`
@@ -281,6 +288,7 @@ export default function EInvoicePage() {
           items={items}
           amounts={amounts}
           autoPrint={
+            !readOnly &&
             location.state?.autoPrint === true &&
             invoice.payments?.some((payment) => payment.bankVerified)
           }
@@ -290,20 +298,22 @@ export default function EInvoicePage() {
           HEADER: Tiêu đề + Cụm nút hành động
           ============================================================ */}
       <PageHeader
-        title="Hoá đơn điện tử"
-        subtitle={invoice.takeaway ? tableName : `${tableName} · Phiên ${sessionCode} đã đóng`}
-        mobileHeaderActions={eInvoiceHeaderOverflow}
+        title={readOnly ? "Chi tiết hóa đơn" : "Hoá đơn điện tử"}
+        subtitle={readOnly || invoice.takeaway ? tableName : `${tableName} · Phiên ${sessionCode} đã đóng`}
+        mobileHeaderActions={readOnly ? undefined : eInvoiceHeaderOverflow}
         actions={
           <>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleOpenRefundModal}
-              className="h-10 gap-2 border-border-default px-4 text-text-primary hover:bg-surface-muted"
-            >
-              <ReceiptText className="size-4 text-text-secondary" />
-              Hoàn tiền / Điều chỉnh
-            </Button>
+            {!readOnly && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleOpenRefundModal}
+                className="h-10 gap-2 border-border-default px-4 text-text-primary hover:bg-surface-muted"
+              >
+                <ReceiptText className="size-4 text-text-secondary" />
+                Hoàn tiền / Điều chỉnh
+              </Button>
+            )}
 
             <Button type="button" onClick={handleBackToTableMap} className="h-10 px-5">
               {backLabel}
@@ -425,7 +435,12 @@ export default function EInvoicePage() {
         <div className="space-y-4">
           {/* Card trạng thái phát hành */}
           <div className="flex flex-col items-center gap-2 rounded-2xl border border-border-default/80 bg-surface-card p-6 text-center shadow-xs">
-            {isIssued ? (
+            {readOnly ? (
+              <>
+                <p className="text-sm font-semibold text-text-primary">Trạng thái hóa đơn</p>
+                <StatusBadge type="invoice" status={invoice.status} />
+              </>
+            ) : isIssued ? (
               <>
                 <span className="flex size-12 items-center justify-center rounded-full bg-[#e6f7ef] text-[#12B76A]">
                   <Check className="size-6 stroke-[2.5]" />
@@ -455,10 +470,12 @@ export default function EInvoicePage() {
             <div className="flex items-center justify-between text-sm">
               <span className="text-text-tertiary">Phương thức</span>
               <span className="font-bold text-text-primary">
-                {PAYMENT_METHOD_LABEL[paymentMethod] ?? "Tiền mặt"}
+                {readOnly && !firstPayment
+                  ? "Chưa ghi nhận thanh toán"
+                  : PAYMENT_METHOD_LABEL[paymentMethod] ?? "Tiền mặt"}
               </span>
             </div>
-            {firstPayment && (
+            {firstPayment && (!readOnly || firstPayment.amountTendered != null) && (
               <>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-text-tertiary">Khách đưa</span>
@@ -470,16 +487,26 @@ export default function EInvoicePage() {
                 </div>
               </>
             )}
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-text-tertiary">Thu ngân</span>
-              <span className="font-bold text-text-primary">{cashierNameDisplay}</span>
-            </div>
+            {readOnly && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-text-tertiary">Đã thu</span>
+                <span className="font-bold text-text-primary">{formatVnd(invoice.totalPaid ?? 0)}</span>
+              </div>
+            )}
+            {(isIssued || invoice.eInvoiceIssuedAt || formatInvoiceIssuer(invoice)) && (
+              <div className="flex flex-wrap items-center justify-between gap-x-3 text-sm">
+                <span className="text-text-tertiary">Nhân viên bán</span>
+                <span className="min-w-0 break-words font-bold text-text-primary">
+                  {formatInvoiceIssuer(invoice) || "Chưa có thông tin"}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Nút In hóa đơn */}
           <Button
             type="button"
-            onClick={() => window.print()}
+            onClick={printInvoiceReceipt}
             disabled={!canPrint}
             className="h-12 w-full rounded-xl font-bold"
           >
@@ -500,7 +527,7 @@ export default function EInvoicePage() {
       {/* ============================================================
           MODAL: Hoàn tiền / Điều chỉnh
           ============================================================ */}
-      <Dialog open={isRefundModalOpen} onOpenChange={setRefundModalOpen}>
+      <Dialog open={!readOnly && isRefundModalOpen} onOpenChange={setRefundModalOpen}>
         <DialogContent
           showCloseButton={false}
           className="w-[calc(100%_-_2rem)] max-w-[560px] sm:max-w-[560px] rounded-2xl p-4 sm:p-7 gap-0 border border-border-default/60 bg-surface-card shadow-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden"
@@ -613,8 +640,8 @@ export default function EInvoicePage() {
             {/* Thông báo BR-12 */}
             <div className="rounded-xl bg-[#fffaf0] border border-[#fde68a]/60 p-3.5 text-center">
               <p className="text-xs font-medium text-[#b45309] leading-relaxed">
-                Cần Quản lý chi nhánh duyệt. Hệ thống ghi nhật ký và gửi thông báo điều chỉnh thuế
-                theo mẫu 04/SS-HĐĐT.
+                Cần Quản lý chi nhánh duyệt. Hệ thống ghi nhật ký và gửi thông báo điều
+                chỉnh thuế theo mẫu 04/SS-HĐĐT.
               </p>
             </div>
 

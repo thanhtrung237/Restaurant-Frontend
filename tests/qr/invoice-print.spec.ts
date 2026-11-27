@@ -1,4 +1,20 @@
-import { expect, test } from "@playwright/test"
+import { expect, test, type Locator } from "@playwright/test"
+
+async function expectAlignedTotals(receipt: Locator) {
+  const rows = await receipt.locator(".invoice-print-totals > div").evaluateAll((elements) =>
+    elements.map((row) => {
+      const label = row.querySelector("dt")!.getBoundingClientRect()
+      const amount = row.querySelector("dd")!.getBoundingClientRect()
+      return { labelRight: label.right, amountRight: amount.right, offsetY: amount.y - label.y }
+    }),
+  )
+  expect(rows.length).toBeGreaterThan(1)
+  for (const row of rows) {
+    expect(row.labelRight).toBeCloseTo(rows[0].labelRight)
+    expect(row.amountRight).toBeCloseTo(rows[0].amountRight)
+    expect(row.offsetY).toBeCloseTo(0)
+  }
+}
 
 test("opens, issues and prints an invoice after bank verification", async ({ page }) => {
   await page.addInitScript(() => {
@@ -12,13 +28,17 @@ test("opens, issues and prints an invoice after bank verification", async ({ pag
           branchId: 2,
           accessToken: "test-token",
           isAuthenticated: true,
-          account: { id: 1, restaurantId: 1, fullName: "Thu ngân" },
+          account: { id: 1, restaurantId: 1, fullName: "Thu ngân", employeeCode: "NV001" },
         },
       }),
     )
     window.print = () => {
       const count = Number(sessionStorage.getItem("print-count") ?? 0)
       sessionStorage.setItem("print-count", String(count + 1))
+      sessionStorage.setItem(
+        "printed-receipt-text",
+        document.getElementById("invoice-print")?.textContent ?? "",
+      )
     }
   })
   await page.route("**/ws/**", (route) => route.abort())
@@ -42,8 +62,11 @@ test("opens, issues and prints an invoice after bank verification", async ({ pag
     branchName: "Chi nhánh",
     tableSessionId: 12,
     tableName: "Bàn 3",
+    taxCodeUsed: "1234567890",
     grandTotal: amount,
     status,
+    einvoiceIssuedByName: status === "ISSUED" ? "Nguyễn Minh Anh" : undefined,
+    einvoiceIssuedByEmployeeCode: status === "ISSUED" ? "NV045" : undefined,
     totalPaid: status === "PENDING" ? 0 : amount,
     payments:
       status === "PENDING" ? [] : [{ id: 5, amount, method: "BANK_TRANSFER", bankVerified: true }],
@@ -106,7 +129,13 @@ test("opens, issues and prints an invoice after bank verification", async ({ pag
   const prebill = page.locator("#invoice-print")
   await expect(prebill.getByRole("heading", { name: "Phiếu tạm tính" })).toBeVisible()
   await expect(prebill.getByRole("img")).toBeVisible()
+  await expect(prebill.getByText("Nhân viên bán: Thu ngân", { exact: true })).toBeVisible()
+  await expect(prebill).not.toContainText("NV001")
+  await expect(prebill).toContainText("Còn phải chuyển")
+  await expect(prebill).not.toContainText("Vui lòng dùng phiếu mới nhất")
   await expect(prebill).toContainText("45.360đ")
+  await expect(prebill).not.toContainText("Mã số thuế")
+  await expectAlignedTotals(prebill)
   await page.emulateMedia({ media: "screen" })
   await page.getByRole("button", { name: "Bỏ món tính nhầm" }).click()
   const adjustment = page.getByRole("dialog", { name: "Bỏ món tính nhầm" })
@@ -121,6 +150,9 @@ test("opens, issues and prints an invoice after bank verification", async ({ pag
   status = "PAID"
   await expect(page).toHaveURL(/\/hoa-don-dien-tu\/45$/)
   await expect.poll(() => page.evaluate(() => sessionStorage.getItem("print-count"))).toBe("2")
+  const printedReceipt = await page.evaluate(() => sessionStorage.getItem("printed-receipt-text"))
+  expect(printedReceipt).toContain("Nhân viên bán: Nguyễn Minh Anh")
+  expect(printedReceipt).not.toMatch(/NV045|Chuyển khoản/)
   expect(issued).toBe(1)
   expect(manualPayments).toBe(0)
   await page.reload()
@@ -168,6 +200,7 @@ test("groups repeated dishes into a single-page invoice without changing the tot
         branchName: "Chi Nhánh Quận 1",
         tableSessionId: 12,
         tableName: "Mang về #12",
+        taxCodeUsed: "1234567890",
         takeaway: true,
         status: "ISSUED",
         subTotalBeforeDiscount: 4289500,
@@ -177,6 +210,8 @@ test("groups repeated dishes into a single-page invoice without changing the tot
         vatAmount: 4400,
         grandTotal: 4288900,
         eInvoiceRef: "REF-45",
+        eInvoiceIssuedByName: "Nguyễn Minh Anh",
+        eInvoiceIssuedByEmployeeCode: "NV045",
         eInvoiceIssuedAt: "2026-11-21T13:42:00",
         payments: [
           { id: 1, method: "CASH", amount: 4288900, amountTendered: 4289500, changeAmount: 600 },
@@ -234,6 +269,7 @@ test("groups repeated dishes into a single-page invoice without changing the tot
   const print = page.getByRole("button", { name: "In hóa đơn" })
   const receipt = page.locator("#invoice-print")
   await expect(receipt).toBeHidden()
+  await expect(page.getByText("Nguyễn Minh Anh · NV045", { exact: true })).toBeVisible()
   await expect(page.getByRole("table").locator("tbody tr")).toHaveCount(4)
   await print.click()
   await expect(page.locator("body")).toHaveAttribute("data-print-called", "true")
@@ -246,11 +282,21 @@ test("groups repeated dishes into a single-page invoice without changing the tot
   await expect(receipt).toContainText("Mang về #12")
   await expect(receipt).toContainText("HD-45")
   await expect(receipt).toContainText("REF-45")
+  await expect(receipt).not.toContainText("Mã số thuế")
+  await expectAlignedTotals(receipt)
+  await expect(receipt.getByText("Nhân viên bán: Nguyễn Minh Anh", { exact: true })).toBeVisible()
+  await expect(receipt).not.toContainText("NV045")
   await expect(receipt).toContainText("Trứng")
   await expect(receipt).toContainText("Ưu đãi")
   await expect(receipt).toContainText("4.288.900đ")
-  await expect(receipt).toContainText("Tiền thối")
+  await expect(receipt).not.toContainText(/Tiền mặt|Khách đưa|Tiền thối/)
   await expect(receipt).not.toContainText("Món đã hủy")
+  const receiptBounds = (await receipt.boundingBox())!
+  const total = receipt.locator(".invoice-print-grand-total")
+  await expect(total).toHaveText("Tổng cộng4.288.900đ")
+  const totalBounds = (await total.boundingBox())!
+  expect(totalBounds.width).toBeLessThan(receiptBounds.width)
+  expect(totalBounds.x + totalBounds.width).toBeCloseTo(receiptBounds.x + receiptBounds.width)
   const lines = receipt.locator("tbody tr")
   await expect(lines).toHaveCount(4)
   await expect(lines.nth(0).getByRole("cell").nth(1)).toHaveText("60")
@@ -258,7 +304,11 @@ test("groups repeated dishes into a single-page invoice without changing the tot
   await expect(lines.nth(2).getByRole("cell").nth(2)).toHaveText("57.000đ")
   await expect(lines.nth(3).getByRole("cell").nth(1)).toHaveText("2,5 kg")
   await expect(lines.nth(3).getByRole("cell").nth(3)).toHaveText("262.500đ")
-  const pdf = await page.pdf({ format: "A4" })
+  const pdf = await page.pdf({ preferCSSPageSize: true })
   expect(pdf.subarray(0, 5).toString()).toBe("%PDF-")
-  expect(pdf.toString("latin1").match(/\/Type\s*\/Page\b/g)).toHaveLength(1)
+  const output = pdf.toString("latin1")
+  expect(output.match(/\/Type\s*\/Page\b/g)).toHaveLength(1)
+  const [, width, height] = /\/MediaBox\s*\[0 0 ([\d.]+) ([\d.]+)\]/.exec(output) ?? []
+  expect(Math.abs((Number(width) * 25.4) / 72 - 80)).toBeLessThan(1)
+  expect((Number(height) * 25.4) / 72).toBeLessThan(200)
 })

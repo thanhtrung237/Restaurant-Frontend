@@ -38,7 +38,7 @@ import {
 import { useAuthStore } from "@/stores/auth.store"
 import { CheckoutLines } from "../checkout/CheckoutLines"
 import { qk } from "@/lib/query-keys"
-import { InvoicePrint, type InvoiceAmountRow } from "../e-invoice/InvoicePrint"
+import { InvoicePrint, printInvoiceReceipt, type InvoiceAmountRow } from "../e-invoice/InvoicePrint"
 import { groupInvoiceLines } from "../e-invoice/invoice-lines"
 
 const formatVnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`
@@ -203,7 +203,7 @@ function QrTransferPayment({ tableSessionId }: { tableSessionId?: number }) {
   React.useEffect(() => {
     if (!location.state?.printPrebill || !canPrintPrebill || requestedPrebill.current) return
     requestedPrebill.current = true
-    window.print()
+    printInvoiceReceipt()
   }, [canPrintPrebill, location.state])
 
   // Mọi giá trị HAY ĐỔI mà việc tạo hoá đơn cần đọc — để ngoài danh sách phụ thuộc của effect.
@@ -452,6 +452,7 @@ function QrTransferPayment({ tableSessionId }: { tableSessionId?: number }) {
           items={groupInvoiceLines(orderDetails)}
           amounts={prebillAmounts}
           transfer={qrData}
+          printedBy={currentUser}
         />
       )}
       {/* CỘT TRÁI: DANH SÁCH MÓN */}
@@ -693,7 +694,7 @@ function QrTransferPayment({ tableSessionId }: { tableSessionId?: number }) {
                   variant="outline"
                   className="w-full"
                   disabled={!canPrintPrebill}
-                  onClick={() => window.print()}
+                  onClick={printInvoiceReceipt}
                 >
                   In tạm tính có QR
                 </Button>

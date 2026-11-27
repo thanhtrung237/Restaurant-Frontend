@@ -46,6 +46,8 @@ export interface Invoice extends BaseResponse {
   modifiedAt?: string
   eInvoiceRef?: string
   eInvoiceIssuedAt?: string
+  eInvoiceIssuedByName?: string | null
+  eInvoiceIssuedByEmployeeCode?: string | null
   taxCodeUsed?: string
 }
 
@@ -57,6 +59,10 @@ export interface InvoiceListItem extends BaseResponse {
   invoiceNumber: string
   branchName?: string
   tableName?: string
+  takeaway?: boolean
+  areaId?: number | null
+  areaName?: string | null
+  issuerName?: string | null
   grandTotal: number
   status: InvoiceStatus
   createdAt?: string

@@ -22,6 +22,82 @@ const roles = [
   { role: "CASHIER", prefix: "/thu-ngan", branchId: 2, invoicePath: "hoa-don-dien-tu" },
 ]
 
+for (const { role, prefix, branchId } of roles) {
+  test(role + " sees the appropriate action when every dish is excluded", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.addInitScript(
+      ({ role, branchId }) => {
+        localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
+        localStorage.setItem(
+          "pho-viet-auth",
+          JSON.stringify({
+            version: 0,
+            state: {
+              role,
+              branchId,
+              accessToken: "test-token",
+              isAuthenticated: true,
+              account: { id: 1, restaurantId: 1 },
+            },
+          }),
+        )
+      },
+      { role, branchId },
+    )
+    await page.route("**/ws/**", (route) => route.abort())
+    const cancellationBodies: unknown[] = []
+    await page.route("**/api/v1/**", async (route) => {
+      const request = route.request()
+      const path = new URL(request.url()).pathname
+      let data: unknown = []
+      if (path.endsWith("/table-sessions/12")) data = session
+      if (path.endsWith("/branches/2")) data = { id: 2, name: "Chi nhánh" }
+      if (path.endsWith("/order-details/session/12")) {
+        data = [{ id: 10, dishName: "Cơm sườn", quantity: 4, status: "CANCELLED", isBillable: false }]
+      }
+      if (path.endsWith("/invoices/session/12")) {
+        data = { ...invoice, subTotalBeforeDiscount: 0, grandTotal: 0, totalPaid: 0 }
+      }
+      if (path.endsWith("/table-sessions/12/cancel")) {
+        expect(request.method()).toBe("POST")
+        cancellationBodies.push(request.postDataJSON())
+        if (cancellationBodies.length === 1) {
+          await route.fulfill({
+            status: 409,
+            json: { message: "Phiên đang được xử lý. Vui lòng thử lại." },
+          })
+          return
+        }
+        data = { ...session, status: "CANCELLED" }
+      }
+      await route.fulfill({ json: { data } })
+    })
+
+    await page.goto(prefix + "/thanh-toan/12")
+    await expect(page.getByText("Phiên không có món nào tính tiền")).toBeVisible()
+    const cancel = page.getByRole("button", { name: "Hủy phiên bàn" })
+    if (role === "CASHIER") {
+      await expect(cancel).toHaveCount(0)
+      return
+    }
+
+    await cancel.click()
+    const dialog = page.getByRole("dialog", { name: "Hủy phiên Bàn 5?" })
+    const confirm = dialog.getByRole("button", { name: "Xác nhận hủy phiên" })
+    await expect(confirm).toBeDisabled()
+    await dialog.getByLabel(/Lý do hủy/).fill("  Đã bỏ hết món tính nhầm  ")
+    await confirm.click()
+    await expect(page.getByText("Không hủy được phiên", { exact: true })).toBeVisible()
+    await expect(dialog).toBeVisible()
+    await confirm.click()
+    await expect(page).toHaveURL(prefix + "/so-do-ban")
+    expect(cancellationBodies).toEqual([
+      { reason: "Đã bỏ hết món tính nhầm" },
+      { reason: "Đã bỏ hết món tính nhầm" },
+    ])
+  })
+}
+
 async function checkPaymentButtons(page: Page, selected: "Tiền mặt" | "Chuyển khoản QR") {
   await page.mouse.move(0, 0)
   const group = page.getByRole("group", { name: "Phương thức thanh toán" })
