@@ -258,8 +258,8 @@ export default function LoginPage({ platform = false }: { platform?: boolean }) 
         )
         .map((choice) =>
           choice.role === APP_ROLE.CASHIER &&
-            choice.assignment.branchId != null &&
-            waiterBranches.has(choice.assignment.branchId)
+          choice.assignment.branchId != null &&
+          waiterBranches.has(choice.assignment.branchId)
             ? { ...choice, includesWaiter: true }
             : choice,
         )
