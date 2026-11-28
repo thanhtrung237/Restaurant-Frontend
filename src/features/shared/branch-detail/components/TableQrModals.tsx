@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { DraggableTableQr, getTableGuestUrl } from "@/components/common/TableCard"
+import { getTableGuestPath } from "@/app/router/paths/customer.paths"
 import type { DiningTable, Area } from "@/types/models"
 import { groupBranchTables } from "../table-areas"
 import "./table-qr-print.css"
@@ -324,7 +325,7 @@ export function PrintSingleQrModal({
 }: PrintSingleQrModalProps) {
   if (!table) return null
 
-  const scanLink = `/ban/${table.qrCode || table.name}`
+  const scanLink = getTableGuestPath(table.qrCode || table.name)
 
   // Bàn chưa có mã QR thì thẻ in ra chỉ là khung rỗng — chặn in thay vì để nhân viên
   // dán một tờ giấy không quét được lên bàn (FR-TBL-02).

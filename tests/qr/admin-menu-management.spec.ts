@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import { mockSessionRefresh } from "./staff-session"
 
 test("restaurant menu keeps global changes and branch stock in their own scopes", async ({
   page,
@@ -29,17 +30,14 @@ test("restaurant menu keeps global changes and branch stock in their own scopes"
   })
 
   await page.addInitScript(() => {
-    localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
     localStorage.setItem(
       "pho-viet-auth",
       JSON.stringify({
-        version: 0,
+        version: 1,
         state: {
           role: "RESTAURANT_ADMIN",
           branchId: null,
           assignmentId: 7,
-          accessToken: "test-token",
-          isAuthenticated: true,
           account: { id: 1, restaurantId: 1, fullName: "Quản trị test" },
         },
       }),
@@ -118,8 +116,9 @@ test("restaurant menu keeps global changes and branch stock in their own scopes"
     await route.fulfill({ headers, json: { data } })
   })
 
-  const menuUrl = "/quan-tri-nha-hang/thuc-don"
+  const menuUrl = "/restaurant-admin/menu"
   await page.setViewportSize({ width: 1231, height: 905 })
+  await mockSessionRefresh(page)
   await page.goto(menuUrl)
   await expect(
     page.getByRole("navigation", { name: "Phạm vi thực đơn" }).getByRole("button"),

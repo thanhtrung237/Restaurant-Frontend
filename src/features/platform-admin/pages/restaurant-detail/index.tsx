@@ -141,7 +141,7 @@ export default function RestaurantDetailPage() {
       <div className="p-12 text-center text-slate-600">
         <p className="font-semibold text-lg">Không tìm thấy thông tin nhà hàng</p>
         <button
-          onClick={() => navigate("/quan-tri-nen-tang/nha-hang")}
+          onClick={() => navigate("/platform-admin/restaurants")}
           className="mt-4 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
         >
           Quay lại danh sách
@@ -155,7 +155,7 @@ export default function RestaurantDetailPage() {
       {/* Back button */}
       <div>
         <button
-          onClick={() => navigate("/quan-tri-nen-tang/nha-hang")}
+          onClick={() => navigate("/platform-admin/restaurants")}
           className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-950 transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
         >
           <ArrowLeft className="w-4 h-4" />

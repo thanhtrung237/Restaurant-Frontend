@@ -9,7 +9,7 @@
  * - Backend KHÔNG có endpoint "quên mật khẩu" tự phục hồi. Luồng duy nhất là admin gọi
  *   `resetPassword()` hộ. Trang "Quên mật khẩu" hiện tại cần chốt lại nghiệp vụ với BE.
  */
-export { login, logout, refreshToken, useLoginMutation, useLogoutMutation } from "@/api/auth.api"
+export { login, logout, useLoginMutation, useLogoutMutation } from "@/api/auth.api"
 export { getAccount, useAccount, changePassword, resetPassword } from "@/api/accounts.api"
 export { getAssignmentsByAccount, useAssignmentsByAccount } from "@/api/assignments.api"
 export { getRestaurantByCode } from "@/api/restaurants.api"

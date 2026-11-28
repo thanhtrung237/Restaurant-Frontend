@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import { mockSessionRefresh } from "./staff-session"
 
 test("branch manager stays in their branch menu and can add an own dish with a shared topping", async ({
   page,
@@ -17,17 +18,14 @@ test("branch manager stays in their branch menu and can add an own dish with a s
   const creates: unknown[] = []
   const links: unknown[] = []
   await page.addInitScript(() => {
-    localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
     localStorage.setItem(
       "pho-viet-auth",
       JSON.stringify({
-        version: 0,
+        version: 1,
         state: {
           role: "BRANCH_MANAGER",
           branchId: 10,
           assignmentId: 7,
-          accessToken: "test-token",
-          isAuthenticated: true,
           account: { id: 1, restaurantId: 1, fullName: "Quản lý test" },
         },
       }),
@@ -89,7 +87,8 @@ test("branch manager stays in their branch menu and can add an own dish with a s
     return route.fulfill({ headers, json: { data } })
   })
 
-  await page.goto("/quan-ly-chi-nhanh/thuc-don?tab=options")
+  await mockSessionRefresh(page)
+  await page.goto("/branch-manager/menu?tab=options")
   await expect(page.getByRole("heading", { name: "Tùy chọn món", exact: true })).toBeVisible()
   await expect(page.getByText("Thêm nấm", { exact: false })).toBeVisible()
   await expect(

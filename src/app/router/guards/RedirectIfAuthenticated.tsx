@@ -5,7 +5,7 @@ import { resolvePostLoginTarget, type PostLoginFrom } from "@/app/router/post-lo
 /**
  * Đang đăng nhập mà vào trang đăng nhập ⇒ đưa thẳng về trang chủ của vai trò.
  *
- * Không có chốt này thì người đang làm việc gõ `/dang-nhap` (hoặc bị một đường dẫn hỏng đá
+ * Không có chốt này thì người đang làm việc gõ `/login` (hoặc bị một đường dẫn hỏng đá
  * về đó) sẽ thấy form đăng nhập trống, tưởng mình đã bị đăng xuất — trong khi phiên vẫn còn
  * nguyên. Dùng chung `ROLE_HOME` với `RoleHomeRedirect` và `resolvePostLoginTarget` để chỉ
  * có MỘT nguồn quyết định "trang chủ của vai trò này ở đâu".

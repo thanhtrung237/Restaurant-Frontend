@@ -13,7 +13,6 @@ import type { AccountStatus } from "../enums"
  */
 export interface LoginResponse {
   accessToken: string
-  refreshToken: string
   accountId: number
   restaurantId: number | null
   username: string
@@ -24,7 +23,7 @@ export interface LoginResponse {
 /** Mirror của `RefreshTokenResponse.java` — kết quả `POST /auth/refresh-token`. */
 export interface RefreshTokenResponse {
   accessToken: string
-  refreshToken: string
+  accountId: number
 }
 
 /** Tiện ích: trạng thái tài khoản dùng khi gọi `PUT /accounts/{id}/status`. */

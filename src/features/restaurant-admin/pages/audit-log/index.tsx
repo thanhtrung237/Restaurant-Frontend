@@ -60,7 +60,7 @@ export default function AuditLogPage() {
 
   /**
    * `GET /accounts/restaurant/{id}` la `hasRole('MANAGER')`: chi Quan tri nha hang goi duoc.
-   * Quan ly chi nhanh cung mo man nay (route /quan-ly-chi-nhanh/nhat-ky), goi se an 403 —
+   * Quan ly chi nhanh cung mo man nay (route /branch-manager/audit-log), goi se an 403 —
    * dung Bang 4.3 nhung khong duoc de no thanh loi tren man hinh, nen khong goi.
    */
   const role = useAuthStore((s) => s.role)

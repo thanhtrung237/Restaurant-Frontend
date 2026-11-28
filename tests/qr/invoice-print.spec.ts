@@ -1,4 +1,5 @@
 import { expect, test, type Locator } from "@playwright/test"
+import { mockSessionRefresh } from "./staff-session"
 
 async function expectAlignedTotals(receipt: Locator) {
   const rows = await receipt.locator(".invoice-print-totals > div").evaluateAll((elements) =>
@@ -18,16 +19,13 @@ async function expectAlignedTotals(receipt: Locator) {
 
 test("opens, issues and prints an invoice after bank verification", async ({ page }) => {
   await page.addInitScript(() => {
-    localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
     localStorage.setItem(
       "pho-viet-auth",
       JSON.stringify({
-        version: 0,
+        version: 1,
         state: {
           role: "CASHIER",
           branchId: 2,
-          accessToken: "test-token",
-          isAuthenticated: true,
           account: { id: 1, restaurantId: 1, fullName: "Thu ngân", employeeCode: "NV001" },
         },
       }),
@@ -115,9 +113,10 @@ test("opens, issues and prints an invoice after bank verification", async ({ pag
     if (path.endsWith("/payments") && request.method() === "POST") manualPayments += 1
     return route.fulfill({ headers, json: { data } })
   })
-  await page.goto("/thu-ngan/thanh-toan/12")
+  await mockSessionRefresh(page)
+  await page.goto("/cashier/checkout/12")
   await page.getByRole("button", { name: "In tạm tính có QR" }).click()
-  await expect(page).toHaveURL(/\/chuyen-khoan-qr$/)
+  await expect(page).toHaveURL(/\/qr-transfer$/)
   await expect(page.getByRole("button", { name: "Chuyển khoản QR" })).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -148,7 +147,7 @@ test("opens, issues and prints an invoice after bank verification", async ({ pag
   await expect(prebill).not.toContainText("45.360đ")
   await page.emulateMedia({ media: "screen" })
   status = "PAID"
-  await expect(page).toHaveURL(/\/hoa-don-dien-tu\/45$/)
+  await expect(page).toHaveURL(/\/e-invoices\/45$/)
   await expect.poll(() => page.evaluate(() => sessionStorage.getItem("print-count"))).toBe("2")
   const printedReceipt = await page.evaluate(() => sessionStorage.getItem("printed-receipt-text"))
   expect(printedReceipt).toContain("Nhân viên bán: Nguyễn Minh Anh")
@@ -164,16 +163,13 @@ test("groups repeated dishes into a single-page invoice without changing the tot
   page,
 }) => {
   await page.addInitScript(() => {
-    localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
     localStorage.setItem(
       "pho-viet-auth",
       JSON.stringify({
-        version: 0,
+        version: 1,
         state: {
           role: "BRANCH_MANAGER",
           branchId: 2,
-          accessToken: "test-token",
-          isAuthenticated: true,
           account: { id: 1, restaurantId: 1, fullName: "Nhân viên test" },
         },
       }),
@@ -265,7 +261,8 @@ test("groups repeated dishes into a single-page invoice without changing the tot
     return route.fulfill({ headers, json: { data } })
   })
 
-  await page.goto("/quan-ly-chi-nhanh/hoa-don/45")
+  await mockSessionRefresh(page)
+  await page.goto("/branch-manager/invoices/45")
   const print = page.getByRole("button", { name: "In hóa đơn" })
   const receipt = page.locator("#invoice-print")
   await expect(receipt).toBeHidden()

@@ -20,22 +20,22 @@ import { matchPath } from "react-router-dom"
 export const SUB_SCREEN_ROUTE_PATTERNS: readonly string[] = [
   // Order chi tiết + Thêm món — dùng chung cho Phục vụ / QL chi nhánh / Quản trị NH
   "/:roleBase/order/:orderId",
-  "/:roleBase/order/:orderId/them-mon",
-  "/:roleBase/so-do-ban/them-don-mang-ve/:orderId",
+  "/:roleBase/order/:orderId/add-items",
+  "/:roleBase/table-map/takeaway/:orderId",
   // Xác nhận order route removed: items now go directly to KDS where kitchen staff confirms them
   // Chốt bàn / Thanh toán QR / Hóa đơn điện tử — vào từ thẻ bàn trên Sơ đồ bàn
-  "/thu-ngan/thanh-toan/:tableSessionId",
-  "/thu-ngan/thanh-toan/:tableSessionId/chuyen-khoan-qr",
-  "/thu-ngan/hoa-don-dien-tu/:invoiceId",
+  "/cashier/checkout/:tableSessionId",
+  "/cashier/checkout/:tableSessionId/qr-transfer",
+  "/cashier/e-invoices/:invoiceId",
   // Hóa đơn điện tử của QL chi nhánh — vào từ danh sách hóa đơn
-  "/quan-ly-chi-nhanh/hoa-don/:invoiceId",
+  "/branch-manager/invoices/:invoiceId",
   // Tạo khuyến mãi — vào từ FAB trên màn Khuyến mãi
-  "/:roleBase/khuyen-mai/tao-moi",
+  "/:roleBase/promotions/new",
   // Chi tiết chi nhánh của Quản trị NH — vào từ thẻ trên danh sách Chi nhánh.
-  // KHÔNG tính `/quan-ly-chi-nhanh/chi-nhanh`: đó là chi nhánh của chính QL chi nhánh,
+  // KHÔNG tính `/branch-manager/branches`: đó là chi nhánh của chính QL chi nhánh,
   // có mục riêng trên thanh điều hướng nên là màn CHÍNH.
-  "/quan-tri-nha-hang/chi-nhanh/:branchId",
-  "/quan-tri-nha-hang/chi-nhanh/:branchId/cau-hinh",
+  "/restaurant-admin/branches/:branchId",
+  "/restaurant-admin/branches/:branchId/settings",
 ]
 
 /** true nếu đường dẫn hiện tại là một màn con (xem `SUB_SCREEN_ROUTE_PATTERNS`). */

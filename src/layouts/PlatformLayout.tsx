@@ -12,9 +12,9 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { to: "/quan-tri-nen-tang", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { to: "/quan-tri-nen-tang/nha-hang", label: "Nhà hàng", icon: Building2 },
-  { to: "/quan-tri-nen-tang/nhat-ky-he-thong", label: "Nhật ký hệ thống", icon: ClipboardList },
+  { to: "/platform-admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { to: "/platform-admin/restaurants", label: "Nhà hàng", icon: Building2 },
+  { to: "/platform-admin/system-audit-log", label: "Nhật ký hệ thống", icon: ClipboardList },
 ]
 
 /**

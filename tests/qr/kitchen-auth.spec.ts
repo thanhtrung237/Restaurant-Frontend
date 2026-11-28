@@ -27,35 +27,26 @@ const detail = {
 }
 
 async function signIn(page: Page) {
-  await page.addInitScript(
-    ({ token }) => {
-      localStorage.setItem(
-        "pho-viet-auth-tokens",
-        JSON.stringify({ accessToken: token, refreshToken: "refresh-token" }),
-      )
-      localStorage.setItem(
-        "pho-viet-auth",
-        JSON.stringify({
-          state: {
-            account: {
-              id: 1,
-              restaurantId: 1,
-              fullName: "Quản lý test",
-              username: "manager",
-              status: "ACTIVE",
-            },
-            role: "BRANCH_MANAGER",
-            branchId: 1,
-            accessToken: token,
-            assignmentId: 1,
-            isAuthenticated: true,
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "pho-viet-auth",
+      JSON.stringify({
+        state: {
+          account: {
+            id: 1,
+            restaurantId: 1,
+            fullName: "Quản lý test",
+            username: "manager",
+            status: "ACTIVE",
           },
-          version: 0,
-        }),
-      )
-    },
-    { token: STAFF_TOKEN },
-  )
+          role: "BRANCH_MANAGER",
+          branchId: 1,
+          assignmentId: 1,
+        },
+        version: 1,
+      }),
+    )
+  })
 }
 
 async function kitchenApi(
@@ -66,6 +57,7 @@ async function kitchenApi(
 ) {
   const headers: Array<string | undefined> = []
   let refreshed = false
+  let refreshRequests = 0
   await page.route("**/ws/info?*", (route) =>
     route.fulfill({
       headers: { "Access-Control-Allow-Origin": "*" },
@@ -86,10 +78,10 @@ async function kitchenApi(
       return
     }
     if (path.endsWith("/auth/refresh-token")) {
-      refreshed = true
+      refreshed = ++refreshRequests > 1
       await route.fulfill({
         headers: cors,
-        json: { data: { accessToken: NEW_TOKEN, refreshToken: "refresh-token" } },
+        json: { data: { accountId: 1, accessToken: refreshed ? NEW_TOKEN : STAFF_TOKEN } },
       })
       return
     }
@@ -142,7 +134,7 @@ test("kitchen initial load and repeated polling always send staff authentication
 }) => {
   await signIn(page)
   const headers = await kitchenApi(page, "normal")
-  await page.goto("/quan-ly-chi-nhanh/bep")
+  await page.goto("/branch-manager/kitchen")
   await expect(page.getByText(DISH, { exact: true })).toBeVisible()
   await expect.poll(() => headers.length).toBeGreaterThanOrEqual(3)
   expect(headers.every((value) => value === "Bearer " + STAFF_TOKEN)).toBe(true)
@@ -152,7 +144,7 @@ test("kitchen initial load and repeated polling always send staff authentication
 test("kitchen displays forbidden errors and stops unauthorized polling", async ({ page }) => {
   await signIn(page)
   const headers = await kitchenApi(page, "forbidden")
-  await page.goto("/quan-ly-chi-nhanh/bep")
+  await page.goto("/branch-manager/kitchen")
   await expect(page.getByRole("alert")).toContainText("Không có quyền xem món")
   const count = headers.length
   await page.waitForTimeout(2200)
@@ -164,7 +156,7 @@ test("kitchen refreshes an expired token and polls with the replacement token", 
 }) => {
   await signIn(page)
   const headers = await kitchenApi(page, "refresh")
-  await page.goto("/quan-ly-chi-nhanh/bep")
+  await page.goto("/branch-manager/kitchen")
   await expect(page.getByText(DISH, { exact: true })).toBeVisible()
   await expect
     .poll(() => headers.filter((value) => value === "Bearer " + NEW_TOKEN).length)
@@ -174,7 +166,7 @@ test("kitchen refreshes an expired token and polls with the replacement token", 
 })
 
 const secondDish = { ...detail, id: 32, dishId: 8, dishName: "Bún bò kiểm thử" }
-const kitchenPath = "/quan-ly-chi-nhanh/bep"
+const kitchenPath = "/branch-manager/kitchen"
 
 for (const viewport of [
   { width: 390, height: 844 },

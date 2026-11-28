@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import { mockSessionRefresh } from "./staff-session"
 import type { TakeawayOrder } from "../../src/api/takeaway-orders.api"
 
 test("creates a counter order, adds items to the same order, and tracks payment and handoff", async ({
@@ -6,17 +7,14 @@ test("creates a counter order, adds items to the same order, and tracks payment 
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.addInitScript(() => {
-    localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
     localStorage.setItem(
       "pho-viet-auth",
       JSON.stringify({
-        version: 0,
+        version: 1,
         state: {
           role: "CASHIER",
           branchId: 10,
           assignmentId: 7,
-          accessToken: "test-token",
-          isAuthenticated: true,
           account: { id: 1, restaurantId: 1, fullName: "Nhân viên quầy" },
         },
       }),
@@ -101,7 +99,8 @@ test("creates a counter order, adds items to the same order, and tracks payment 
     return route.fulfill({ headers, json: { data } })
   })
 
-  await page.goto("/thu-ngan/so-do-ban")
+  await mockSessionRefresh(page)
+  await page.goto("/cashier/table-map")
   const serviceMode = page.getByRole("navigation", { name: "Hình thức phục vụ" })
   await expect(serviceMode.getByRole("link", { name: "Tại bàn" })).toHaveAttribute(
     "aria-current",
@@ -112,7 +111,7 @@ test("creates a counter order, adds items to the same order, and tracks payment 
   await page.getByRole("textbox", { name: "Số lượng Cơm sườn" }).fill("3")
   await page.getByRole("textbox", { name: /Tên khách/ }).fill("An")
   await page.getByRole("button", { name: "Gửi bếp" }).click()
-  await expect(page).toHaveURL(/\/so-do-ban\?mode=takeaway$/)
+  await expect(page).toHaveURL(/\/table-map\?mode=takeaway$/)
   await expect(serviceMode.getByRole("link", { name: /Mang về 1/ })).toHaveAttribute(
     "aria-current",
     "page",
@@ -123,9 +122,9 @@ test("creates a counter order, adds items to the same order, and tracks payment 
   await expect(card.getByText("Chờ xác nhận")).toBeVisible()
   await expect(card.getByText("Chưa thanh toán")).toBeVisible()
   await card.getByRole("button", { name: "Thanh toán" }).click()
-  await expect(page).toHaveURL(/\/thanh-toan\/61$/)
+  await expect(page).toHaveURL(/\/checkout\/61$/)
   await page.goBack()
-  await expect(page).toHaveURL(/\/so-do-ban\?mode=takeaway$/)
+  await expect(page).toHaveURL(/\/table-map\?mode=takeaway$/)
   expect(order).toMatchObject({ sessionStatus: "WAITING_FOR_PAY" })
   await card.getByRole("link", { name: "Thêm món" }).click()
   const addItemsUrl = page.url()
@@ -141,7 +140,7 @@ test("creates a counter order, adds items to the same order, and tracks payment 
   ])
   await expect(card.getByRole("button", { name: "Đã giao khách" })).toHaveCount(0)
   await card.getByRole("button", { name: "Thanh toán" }).click()
-  await expect(page).toHaveURL(/\/thanh-toan\/61$/)
+  await expect(page).toHaveURL(/\/checkout\/61$/)
   if (!order) throw new Error("Đơn mang về chưa được tạo.")
   Object.assign(order, { invoiceId: 41 })
   await page.goto(addItemsUrl)
@@ -162,17 +161,14 @@ test("refreshes takeaway orders after a branch session update without waiting fo
   page,
 }) => {
   await page.addInitScript(() => {
-    localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
     localStorage.setItem(
       "pho-viet-auth",
       JSON.stringify({
-        version: 0,
+        version: 1,
         state: {
           role: "CASHIER",
           branchId: 10,
           assignmentId: 7,
-          accessToken: "test-token",
-          isAuthenticated: true,
           account: { id: 1, restaurantId: 1, fullName: "Nhân viên quầy" },
         },
       }),
@@ -233,7 +229,8 @@ test("refreshes takeaway orders after a branch session update without waiting fo
     socket.send("o")
   })
 
-  await page.goto("/thu-ngan/so-do-ban?mode=takeaway")
+  await mockSessionRefresh(page)
+  await page.goto("/cashier/table-map?mode=takeaway")
   await expect(page.getByText("Chưa thanh toán")).toBeVisible()
   await expect.poll(() => Boolean(pushUpdate)).toBe(true)
   Object.assign(order!, { paid: true })

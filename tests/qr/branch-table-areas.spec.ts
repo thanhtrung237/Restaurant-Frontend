@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import { mockSessionRefresh } from "./staff-session"
 
 test("creates areas, moves tables and safely removes them from branch operations", async ({
   page,
@@ -20,17 +21,14 @@ test("creates areas, moves tables and safely removes them from branch operations
   ]
 
   await page.addInitScript(() => {
-    localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
     localStorage.setItem(
       "pho-viet-auth",
       JSON.stringify({
-        version: 0,
+        version: 1,
         state: {
           role: "BRANCH_MANAGER",
           branchId: 10,
           assignmentId: 7,
-          accessToken: "test-token",
-          isAuthenticated: true,
           account: { id: 1, restaurantId: 1, fullName: "Quản lý test" },
         },
       }),
@@ -106,7 +104,8 @@ test("creates areas, moves tables and safely removes them from branch operations
   })
 
   await page.setViewportSize({ width: 375, height: 812 })
-  await page.goto("/quan-ly-chi-nhanh/chi-nhanh")
+  await mockSessionRefresh(page)
+  await page.goto("/branch-manager/branches")
   const filter = page.getByRole("combobox", { name: "Lọc theo khu vực" })
   const usage = page.getByRole("combobox", { name: "Lọc theo trạng thái sử dụng" })
   await expect(usage).toHaveText("Đang sử dụng")
@@ -172,7 +171,8 @@ test("creates areas, moves tables and safely removes them from branch operations
   await expect(areaOnFloorMap.getByText("Bàn 01", { exact: true })).toBeVisible()
   await expect(areaOnFloorMap.getByText("Bàn 02", { exact: true })).toBeVisible()
 
-  await page.goto("/quan-ly-chi-nhanh/chi-nhanh")
+  await mockSessionRefresh(page)
+  await page.goto("/branch-manager/branches")
   await filter.click()
   await page.getByRole("option", { name: "Sân thượng (2)" }).click()
   await page.getByRole("button", { name: "Xóa khu vực", exact: true }).click()
@@ -260,7 +260,8 @@ test("creates areas, moves tables and safely removes them from branch operations
     status: "AVAILABLE",
     qrCode: "",
   })
-  await page.goto("/quan-ly-chi-nhanh/chi-nhanh")
+  await mockSessionRefresh(page)
+  await page.goto("/branch-manager/branches")
   await page.getByRole("button", { name: "In QR hàng loạt", exact: true }).click()
   await expect(printDialog.getByRole("button", { name: "In 10 mã QR" })).toBeEnabled()
   await expect(printDialog.getByText("1 bàn chưa có mã QR")).toBeVisible()

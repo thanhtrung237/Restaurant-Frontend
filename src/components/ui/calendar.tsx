@@ -1,11 +1,43 @@
 import * as React from "react"
 import { DayPicker } from "react-day-picker"
 import { vi } from "date-fns/locale"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
+import { calendarDateKey, calendarDateLabel } from "@/lib/calendar-range"
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>
+
+const calendarPickerOptions = {
+  captionLayout: "dropdown",
+  showOutsideDays: false,
+  formatters: { formatMonthDropdown: (date) => `Tháng ${date.getMonth() + 1}` },
+  labels: {
+    labelMonthDropdown: () => "Tháng hiển thị",
+    labelYearDropdown: () => "Năm hiển thị",
+    labelPrevious: () => "Lùi một tháng",
+    labelNext: () => "Tiến một tháng",
+    labelDayButton: (day, modifiers) =>
+      `${calendarDateLabel(calendarDateKey(day))}${modifiers.selected ? ", đã chọn" : ""}`,
+  },
+  components: {
+    Chevron: ({ orientation }) => {
+      const Icon =
+        orientation === "left" ? ChevronLeft : orientation === "right" ? ChevronRight : ChevronDown
+      return <Icon className="size-4" aria-hidden="true" />
+    },
+  },
+  classNames: {
+    months: "relative w-full",
+    dropdowns: "flex items-center justify-center gap-2",
+    dropdown_root: "relative rounded-md border border-border-default px-2 py-1.5 text-sm",
+    dropdown: "absolute inset-0 size-full cursor-pointer opacity-0",
+    caption_label: "pointer-events-none flex items-center gap-1 text-sm font-semibold capitalize",
+    day: "p-0 text-center",
+    day_button:
+      "mx-auto size-8 rounded-lg outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-brand-primary/60 sm:size-9",
+  },
+} satisfies Partial<CalendarProps>
 
 function Calendar({
   className,
@@ -73,4 +105,8 @@ function Calendar({
 }
 Calendar.displayName = "Calendar"
 
-export { Calendar }
+function PickerCalendar(props: CalendarProps) {
+  return <Calendar {...calendarPickerOptions} {...props} />
+}
+
+export { Calendar, PickerCalendar }

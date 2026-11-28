@@ -58,7 +58,6 @@ export function useBranchSwitcher() {
   const branchId = useAuthStore((s) => s.branchId)
   const assignmentId = useAuthStore((s) => s.assignmentId)
   const setSession = useAuthStore((s) => s.setSession)
-  const accessToken = useAuthStore((s) => s.accessToken)
 
   const { data: assignments } = useAssignmentsByAccount(account?.id)
   const adminAssignment = assignments?.find(
@@ -130,7 +129,7 @@ export function useBranchSwitcher() {
 
   const switchTo = React.useCallback(
     (choice: BranchChoice) => {
-      if (!account || !accessToken) return
+      if (!account) return
       if (
         choice.assignmentId === assignmentId &&
         choice.branchId === branchId &&
@@ -142,7 +141,6 @@ export function useBranchSwitcher() {
         account,
         role: choice.role,
         branchId: choice.branchId,
-        accessToken,
         assignmentId: choice.assignmentId,
       })
 
@@ -159,7 +157,7 @@ export function useBranchSwitcher() {
         navigate(ROLE_HOME[choice.role])
       }
     },
-    [account, accessToken, assignmentId, branchId, role, setSession, navigate],
+    [account, assignmentId, branchId, role, setSession, navigate],
   )
 
   return {

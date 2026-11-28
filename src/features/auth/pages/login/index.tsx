@@ -4,7 +4,7 @@
  *
  * Luồng thật (Phase 5):
  * 1. `POST /auth/login` với `restaurantCode, username, password` → nhận
- *    `accessToken/refreshToken/accountId/restaurantId/username/fullName/roles`
+ *    `accessToken/accountId/restaurantId/username/fullName/roles` và cookie phiên.
  *    (xem `LoginResponse` — KHÔNG có `branchId`).
  * 2. Gọi thêm `GET /accounts/{id}` (đủ `employeeCode/email/status`) và
  *    `GET /assignments/account/{id}` (nguồn `branchId` thật) song song.
@@ -23,18 +23,16 @@ import { useLocation, useNavigate } from "react-router-dom"
 import { Eye, EyeOff, Loader2, ChevronRight, ShieldCheck } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { useLoginMutation } from "@/api/auth.api"
+import { logout, useLoginMutation } from "@/api/auth.api"
 import { getAccount } from "@/api/accounts.api"
 import { getAssignmentsByAccount } from "@/api/assignments.api"
-import { getErrorMessage } from "@/lib/http"
-import { clearTokens, setTokens } from "@/lib/auth-token"
+import { getErrorMessage, isApiStatus } from "@/lib/http"
+import { clearTokens, setAccessToken } from "@/lib/auth-token"
 import { useAuthStore } from "@/stores/auth.store"
 import { mapRoleCodeToAppRole, APP_ROLE_LABEL, APP_ROLE, type AppRole } from "@/config/roles"
 import { resolvePostLoginTarget } from "@/app/router/post-login-target"
-import { AUTH_PATHS } from "@/app/router/paths"
 import type { Account, Assignment } from "@/types/models"
-import brandArtwork from "./tt-pos-brand.png"
+import "./login.css"
 
 /** 1 lựa chọn hiển thị ở bước chọn vai trò/chi nhánh — gắn liền 1 Assignment cụ thể. */
 interface AssignmentChoice {
@@ -43,55 +41,72 @@ interface AssignmentChoice {
   includesWaiter?: boolean
 }
 
-function LoginBrand({ onBanner = false }: { onBanner?: boolean }) {
+type LoginField = "restaurantCode" | "username" | "password"
+type LoginErrors = Partial<Record<LoginField | "form", string>>
+
+const LOCKED_ACCOUNT = "Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ."
+
+function LoginBrand({
+  className,
+  showDescriptor = false,
+}: {
+  className: string
+  showDescriptor?: boolean
+}) {
   return (
-    <div
-      className={
-        onBanner
-          ? "relative z-10 flex items-center gap-4 text-white"
-          : "mb-6 flex items-center gap-3 text-text-primary lg:hidden"
-      }
-    >
-      <span
-        aria-hidden="true"
-        className={
-          onBanner
-            ? "relative size-28 shrink-0 overflow-hidden rounded-[31%]"
-            : "relative size-18 shrink-0 overflow-hidden rounded-[31%]"
-        }
-      >
-        <img
-          src={brandArtwork}
-          alt=""
-          width={1536}
-          height={1024}
-          className="absolute top-[-34.1%] left-[-31.1%] h-auto w-[310.9%] max-w-none"
-        />
-      </span>
-      <span
-        className="relative aspect-[626/143] w-36 max-w-full overflow-hidden rounded-[12%] lg:w-48"
-        style={{
-          maskImage: "radial-gradient(ellipse 72% 105% at center, #000 68%, transparent 100%)",
-        }}
-      >
-        <img
-          src={brandArtwork}
-          alt="T&T POS"
-          width={1536}
-          height={1024}
-          className="absolute top-[-478%] left-[-14.1%] h-auto w-[245.4%] max-w-none"
-        />
-      </span>
+    <div className={className}>
+      <img
+        src="/tt-pos-favicon.png"
+        alt="T&T POS"
+        width={112}
+        height={112}
+        className="size-16 shrink-0 lg:size-[72px]"
+      />
+      {showDescriptor && (
+        <span className="text-base font-semibold xl:text-lg">Phần mềm POS nhà hàng</span>
+      )}
     </div>
   )
 }
 
-function ErrorBanner({ message }: { message: string }) {
+function InlineError({ id, message }: { id: string; message?: string }) {
+  if (!message) return null
+
   return (
-    <div className="rounded-xl border border-status-danger/20 bg-status-danger-subtle px-4 py-3 text-sm text-status-danger font-medium">
+    <p id={id} role="alert" className="login-error text-sm font-medium">
       {message}
-    </div>
+    </p>
   )
+}
+
+function getLoginErrors(error: unknown, platform: boolean, sessionCreated: boolean): LoginErrors {
+  if (isApiStatus(error, 0)) {
+    return { form: "Không kết nối được với máy chủ. Vui lòng kiểm tra mạng và thử lại." }
+  }
+  if (isApiStatus(error, 502, 503, 504)) {
+    return { form: "Máy chủ tạm thời không phản hồi. Vui lòng thử lại sau." }
+  }
+
+  const message = getErrorMessage(error)
+  if (/tài khoản.*(?:khóa|khoá|vô hiệu hóa|vô hiệu hoá)/i.test(message)) {
+    return { form: LOCKED_ACCOUNT }
+  }
+  if (!sessionCreated && /sai.*mật khẩu/i.test(message)) {
+    return {
+      password: platform ? message : "Sai mã nhà hàng, tên đăng nhập hoặc mật khẩu.",
+    }
+  }
+  if (!sessionCreated && !platform && /mã nhà hàng/i.test(message)) {
+    return { restaurantCode: message }
+  }
+  return { form: message }
+}
+
+async function discardLogin() {
+  clearTokens()
+  await logout().catch(() => {
+    // A new login can replace the cookie if the server is temporarily unreachable.
+  })
 }
 
 export default function LoginPage({ platform = false }: { platform?: boolean }) {
@@ -103,38 +118,36 @@ export default function LoginPage({ platform = false }: { platform?: boolean }) 
   const usernameKey = platform ? "platform_saved_username" : "saved_username"
 
   const [restaurantCode, setRestaurantCode] = React.useState(() => {
-    return localStorage.getItem("saved_restaurant_code") || ""
+    return localStorage.getItem("saved_restaurant_code")?.trim().toUpperCase() || ""
   })
   const [username, setUsername] = React.useState(() => {
     return localStorage.getItem(usernameKey) || ""
   })
   const [password, setPassword] = React.useState("")
   const [showPassword, setShowPassword] = React.useState(false)
+  const [capsLock, setCapsLock] = React.useState(false)
   const [rememberMe, setRememberMe] = React.useState(() => {
     return localStorage.getItem(rememberKey) === "true"
   })
-  const [error, setError] = React.useState<string | null>(null)
+  const [errors, setErrors] = React.useState<LoginErrors>({})
   const [isResolving, setIsResolving] = React.useState(false)
-  const [showRestaurantField, setShowRestaurantField] = React.useState(() => {
-    // Chỉ ẩn field nếu đã có restaurant code được lưu
-    return !localStorage.getItem("saved_restaurant_code")
-  })
+  const initialField = React.useRef<LoginField>(
+    platform || restaurantCode ? "username" : "restaurantCode",
+  )
 
   // Bước 2 (chỉ xuất hiện khi tài khoản có >1 Assignment hợp lệ)
   const [pendingAccount, setPendingAccount] = React.useState<Account | null>(null)
-  const [pendingAccessToken, setPendingAccessToken] = React.useState<string | null>(null)
   const [choices, setChoices] = React.useState<AssignmentChoice[] | null>(null)
 
   const redirectTarget = (location.state as { from?: Location } | null)?.from
 
-  function finalizeSession(account: Account, choice: AssignmentChoice, accessToken: string) {
+  function finalizeSession(account: Account, choice: AssignmentChoice) {
+    if (!platform) localStorage.setItem("saved_restaurant_code", restaurantCode.trim())
     if (rememberMe) {
       localStorage.setItem(rememberKey, "true")
-      if (!platform) localStorage.setItem("saved_restaurant_code", restaurantCode.trim())
       localStorage.setItem(usernameKey, username.trim())
     } else {
       localStorage.removeItem(rememberKey)
-      if (!platform) localStorage.removeItem("saved_restaurant_code")
       localStorage.removeItem(usernameKey)
     }
 
@@ -142,7 +155,6 @@ export default function LoginPage({ platform = false }: { platform?: boolean }) 
       account,
       role: choice.role,
       branchId: choice.assignment.branchId ?? null,
-      accessToken,
       assignmentId: choice.assignment.id,
     })
     // Đích sau đăng nhập phải hợp lệ với vai trò VỪA CHỌN, không chỉ là trang cũ —
@@ -151,28 +163,39 @@ export default function LoginPage({ platform = false }: { platform?: boolean }) 
     navigate(resolvePostLoginTarget(choice.role, redirectTarget), { replace: true })
   }
 
-  function handleChangeRestaurant() {
-    setShowRestaurantField(true)
-    setRestaurantCode("")
-    // Focus vào field restaurant code sau khi hiện
-    setTimeout(() => {
-      document.getElementById("restaurantCode")?.focus()
-    }, 0)
+  function clearFieldError(field: LoginField) {
+    setErrors((current) => ({
+      ...current,
+      [field]: undefined,
+      form: undefined,
+    }))
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handlePasswordKey(event: React.KeyboardEvent<HTMLInputElement>) {
+    setCapsLock(event.getModifierState("CapsLock"))
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setError(null)
+    if (isSubmitting) return
 
-    if (!username.trim() || !password) {
-      setError("Vui lòng nhập đầy đủ Tên đăng nhập và Mật khẩu.")
+    const validation: LoginErrors = {}
+    if (!platform && !restaurantCode.trim())
+      validation.restaurantCode = "Vui lòng nhập mã nhà hàng."
+    if (!username.trim()) validation.username = "Vui lòng nhập tên đăng nhập."
+    if (!password) validation.password = "Vui lòng nhập mật khẩu."
+
+    setErrors(validation)
+    const firstInvalid = (["restaurantCode", "username", "password"] as const).find(
+      (field) => validation[field],
+    )
+    if (firstInvalid) {
+      e.currentTarget.querySelector<HTMLInputElement>(`#${firstInvalid}`)?.focus()
       return
     }
-    if (!platform && !restaurantCode.trim()) {
-      setError("Vui lòng nhập mã nhà hàng.")
-      return
-    }
 
+    let sessionCreated = false
+    setIsResolving(true)
     try {
       const loginRes = await loginMutation.mutateAsync({
         restaurantCode: platform ? null : restaurantCode.trim(),
@@ -180,16 +203,17 @@ export default function LoginPage({ platform = false }: { platform?: boolean }) 
         password,
         deviceInfo: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
       })
+      sessionCreated = true
 
       const hasPlatformRole = loginRes.roles?.includes(APP_ROLE.PLATFORM_ADMIN)
       const isRestaurantAccount = loginRes.restaurantId != null
       if (platform ? !hasPlatformRole || isRestaurantAccount : !isRestaurantAccount) {
-        setError("Tài khoản không thuộc cổng đăng nhập này.")
+        await discardLogin()
+        setErrors({ form: "Tài khoản không thuộc cổng đăng nhập này." })
         return
       }
 
-      setTokens({ accessToken: loginRes.accessToken, refreshToken: loginRes.refreshToken })
-      setIsResolving(true)
+      setAccessToken(loginRes.accessToken, loginRes.accountId)
 
       // `LoginResponse` không có branchId/employeeCode/status — lấy thêm từ 2 API sau.
       const [account, assignments] = await Promise.all([
@@ -198,8 +222,8 @@ export default function LoginPage({ platform = false }: { platform?: boolean }) 
       ])
 
       if (account.status === "INACTIVE") {
-        clearTokens()
-        setError("Tài khoản đã bị khoá. Vui lòng liên hệ quản trị viên nhà hàng.")
+        await discardLogin()
+        setErrors({ form: LOCKED_ACCOUNT })
         return
       }
 
@@ -234,8 +258,8 @@ export default function LoginPage({ platform = false }: { platform?: boolean }) 
         )
         .map((choice) =>
           choice.role === APP_ROLE.CASHIER &&
-          choice.assignment.branchId != null &&
-          waiterBranches.has(choice.assignment.branchId)
+            choice.assignment.branchId != null &&
+            waiterBranches.has(choice.assignment.branchId)
             ? { ...choice, includesWaiter: true }
             : choice,
         )
@@ -266,90 +290,75 @@ export default function LoginPage({ platform = false }: { platform?: boolean }) 
       }
 
       if (validChoices.length === 0) {
-        clearTokens()
-        setError(
-          "Tài khoản chưa được phân vai trò hợp lệ. Vui lòng liên hệ quản trị viên nhà hàng.",
-        )
+        await discardLogin()
+        setErrors({
+          form: "Tài khoản chưa được phân vai trò hợp lệ. Vui lòng liên hệ quản trị viên nhà hàng.",
+        })
         return
       }
 
       if (validChoices.length === 1) {
-        finalizeSession(account, validChoices[0], loginRes.accessToken)
+        finalizeSession(account, validChoices[0])
         return
       }
 
       // Nhiều Assignment (nhiều vai trò và/hoặc nhiều chi nhánh) → để người dùng tự chọn.
       setPendingAccount(account)
-      setPendingAccessToken(loginRes.accessToken)
       setChoices(validChoices)
     } catch (err) {
-      clearTokens()
-      setError(getErrorMessage(err))
+      if (sessionCreated) await discardLogin()
+      setErrors(getLoginErrors(err, platform, sessionCreated))
     } finally {
       setIsResolving(false)
     }
   }
 
   function handleChooseAssignment(choice: AssignmentChoice) {
-    if (!pendingAccount || !pendingAccessToken) return
-    finalizeSession(pendingAccount, choice, pendingAccessToken)
+    if (!pendingAccount) return
+    finalizeSession(pendingAccount, choice)
   }
 
-  function handleBackToCredentials() {
-    clearTokens()
+  async function handleBackToCredentials() {
+    await discardLogin()
     setChoices(null)
     setPendingAccount(null)
-    setPendingAccessToken(null)
   }
 
   const isSubmitting = loginMutation.isPending || isResolving
 
   return (
-    <div className="flex min-h-dvh w-full bg-surface-page">
-      {/* -------------------- CỘT TRÁI: BANNER THƯƠNG HIỆU (Desktop) -------------------- */}
-      <div
-        className={`relative hidden select-none flex-col justify-between overflow-hidden p-12 lg:flex lg:w-[44%] xl:p-16 ${platform ? "bg-slate-950" : "bg-[#712b21] bg-linear-to-br from-[#3e211e] via-[#712b21] to-[#a73723]"}`}
-      >
-        <LoginBrand onBanner />
-
-        {/* Thông điệp & Giới thiệu hệ thống */}
-        <div className="relative z-10 max-w-lg pb-4 xl:pb-10">
-          <h1 className="text-4xl leading-[1.18] font-bold tracking-tight text-balance text-white xl:text-[2.625rem] 2xl:text-5xl">
-            {platform ? (
-              "Quản trị nền tảng"
-            ) : (
-              <>
-                Hệ thống quản lý
-                <br />
-                nhà hàng & gọi món QR
-              </>
-            )}
-          </h1>
-          <p className="mt-5 max-w-md text-base leading-relaxed text-pretty text-white/85">
-            {platform
-              ? "Quản lý nhà hàng trên T&T POS và tra cứu nhật ký hệ thống."
-              : "Quản lý bàn, chế biến, thực đơn, khuyến mãi và báo cáo"}
+    <main className={`login-page ${platform ? "login-page--platform" : ""}`} lang="vi">
+      <aside className="login-brand-panel">
+        <LoginBrand className="flex items-center gap-3" showDescriptor />
+        <div>
+          <p className="login-brand-title text-balance">
+            {platform ? "Quản trị nền tảng" : "Hệ thống quản lý nhà hàng & gọi món QR"}
           </p>
+          {platform ? (
+            <p className="mt-6 text-base leading-relaxed xl:text-lg">
+              Quản lý nhà hàng trên T&amp;T POS và tra cứu nhật ký hệ thống.
+            </p>
+          ) : (
+            <ul className="mt-6 list-disc space-y-2 pl-5 text-base leading-relaxed xl:text-lg">
+              <li>Quản lý bàn và gọi món bằng mã QR</li>
+              <li>Điều phối bếp và chế biến theo thời gian thực</li>
+              <li>Khuyến mãi, thực đơn và báo cáo doanh thu</li>
+            </ul>
+          )}
         </div>
+        <p className="text-sm"></p>
+      </aside>
 
-        {/* Hoạ tiết trang trí mờ phía sau */}
-        <div className="pointer-events-none absolute -right-40 top-[16%] size-112 rounded-full border border-white/20 shadow-[0_0_0_28px_#ffffff09,0_0_0_56px_#ffffff07,0_0_0_84px_#ffffff05]" />
-        <div className="pointer-events-none absolute -right-24 top-[23%] size-80 rounded-full border border-white/10" />
-      </div>
-
-      {/* -------------------- CỘT PHẢI: FORM ĐĂNG NHẬP -------------------- */}
-      <div className="flex min-w-0 flex-1 flex-col items-center justify-center px-3 py-6 sm:px-8 sm:py-10 lg:px-12">
-        <div className="w-full max-w-[29rem] rounded-card border border-border-default bg-surface-card px-5 py-7 shadow-sm sm:px-8 sm:py-9">
-          <LoginBrand />
-
-          {/* -------------------- BƯỚC 2: CHỌN VAI TRÒ (NẾU CÓ NHIỀU VAI TRÒ) -------------------- */}
+      <section className="login-form-panel" aria-labelledby="login-title">
+        <LoginBrand className="login-mobile-brand" />
+        <div className="login-card">
           {choices && pendingAccount ? (
             <div className="space-y-6">
               <div>
-                <h2 className="text-2xl font-bold tracking-tight sm:text-3xl text-text-primary">
+                <h1 id="login-title" className="login-title">
                   Chọn vai trò đăng nhập
-                </h2>
-                <p className="mt-2 text-sm text-text-tertiary">
+                </h1>
+                <p className="login-muted mt-2 text-sm">
                   Tài khoản{" "}
                   <span className="font-semibold text-[#292723]">{pendingAccount.fullName}</span> có
                   nhiều vai trò — chọn vai trò để tiếp tục:
@@ -389,167 +398,162 @@ export default function LoginPage({ platform = false }: { platform?: boolean }) 
               </Button>
             </div>
           ) : (
-            /* -------------------- BƯỚC 1: FORM NHẬP THÔNG TIN -------------------- */
-            <div>
-              {/* Tiêu đề */}
-              <div className="mb-7">
-                <h2 className="text-2xl font-bold tracking-tight sm:text-3xl text-text-primary">
+            <>
+              <header className="mb-6">
+                <h1 id="login-title" className="login-title">
                   {platform ? "Đăng nhập quản trị nền tảng" : "Đăng nhập"}
-                </h2>
-                <p className="mt-1.5 flex items-center gap-2 text-sm text-text-tertiary font-medium">
+                </h1>
+                <p className="login-muted mt-1.5 flex items-center gap-2 text-sm">
                   {platform && <ShieldCheck aria-hidden="true" className="size-4 shrink-0" />}
                   {platform ? "Dành cho quản trị viên hệ thống" : "Dành cho nhân viên nhà hàng"}
                 </p>
-              </div>
+              </header>
 
-              {/* Form */}
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {error ? <ErrorBanner message={error} /> : null}
+              <form onSubmit={handleSubmit} noValidate className="space-y-4">
+                {!platform && (
+                  <div className="space-y-1.5">
+                    <label htmlFor="restaurantCode" className="block text-sm font-semibold">
+                      Mã nhà hàng
+                    </label>
+                    <Input
+                      id="restaurantCode"
+                      name="restaurantCode"
+                      placeholder="VD: NH001"
+                      required
+                      autoComplete="organization"
+                      autoCapitalize="characters"
+                      autoFocus={initialField.current === "restaurantCode"}
+                      spellCheck={false}
+                      value={restaurantCode}
+                      onChange={(event) => {
+                        setRestaurantCode(event.target.value.toUpperCase())
+                        clearFieldError("restaurantCode")
+                      }}
+                      aria-invalid={Boolean(errors.restaurantCode)}
+                      aria-describedby={errors.restaurantCode ? "restaurant-code-error" : undefined}
+                      disabled={isSubmitting}
+                      className="login-input"
+                    />
+                    <InlineError id="restaurant-code-error" message={errors.restaurantCode} />
+                  </div>
+                )}
 
-                {/* Mã nhà hàng - Ẩn nếu đã lưu */}
-                {!platform &&
-                  (showRestaurantField ? (
-                    <div className="space-y-1.5">
-                      <label
-                        htmlFor="restaurantCode"
-                        className="text-sm font-semibold text-text-primary"
-                      >
-                        Mã nhà hàng
-                      </label>
-                      <Input
-                        id="restaurantCode"
-                        placeholder="VD: NH001"
-                        required
-                        autoComplete="organization"
-                        value={restaurantCode}
-                        onChange={(e) => {
-                          setRestaurantCode(e.target.value)
-                          setError(null)
-                        }}
-                        disabled={isSubmitting}
-                        className="h-12 rounded-xl px-3.5 text-base sm:text-sm"
-                      />
-                    </div>
-                  ) : (
-                    <div className="rounded-xl border border-border-default bg-surface-muted p-3.5">
-                      <div className="flex items-center justify-between">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium text-neutral-500 mb-0.5">
-                            Đăng nhập vào
-                          </p>
-                          <p className="text-sm font-semibold text-text-primary truncate">
-                            Mã nhà hàng: {restaurantCode}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleChangeRestaurant}
-                          className="ml-3 shrink-0 text-xs font-medium text-brand-primary hover:underline"
-                        >
-                          Đổi
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-
-                {/* Email hoặc số điện thoại */}
                 <div className="space-y-1.5">
-                  <label htmlFor="username" className="text-sm font-semibold text-text-primary">
+                  <label htmlFor="username" className="block text-sm font-semibold">
                     Tên đăng nhập
                   </label>
                   <Input
                     id="username"
+                    name="username"
                     placeholder="Nhập tên đăng nhập"
+                    required
                     autoComplete="username"
+                    autoCapitalize="none"
+                    autoFocus={initialField.current === "username"}
+                    spellCheck={false}
                     value={username}
-                    onChange={(e) => {
-                      setUsername(e.target.value)
-                      setError(null)
+                    onChange={(event) => {
+                      setUsername(event.target.value)
+                      clearFieldError("username")
                     }}
+                    aria-invalid={Boolean(errors.username)}
+                    aria-describedby={errors.username ? "username-error" : undefined}
                     disabled={isSubmitting}
-                    className="h-12 rounded-xl px-3.5 text-base sm:text-sm"
+                    className="login-input"
                   />
+                  <InlineError id="username-error" message={errors.username} />
                 </div>
 
-                {/* Mật khẩu */}
                 <div className="space-y-1.5">
-                  <label htmlFor="password" className="text-sm font-semibold text-text-primary">
+                  <label htmlFor="password" className="block text-sm font-semibold">
                     Mật khẩu
                   </label>
                   <div className="relative">
                     <Input
                       id="password"
+                      name="password"
                       type={showPassword ? "text" : "password"}
                       placeholder="Nhập mật khẩu"
+                      required
                       autoComplete="current-password"
+                      autoCapitalize="none"
+                      spellCheck={false}
                       value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value)
-                        setError(null)
+                      onChange={(event) => {
+                        setPassword(event.target.value)
+                        clearFieldError("password")
                       }}
+                      onKeyDown={handlePasswordKey}
+                      onKeyUp={handlePasswordKey}
+                      onBlur={() => setCapsLock(false)}
+                      aria-invalid={Boolean(errors.password)}
+                      aria-describedby={
+                        [
+                          errors.password && "password-error",
+                          errors.form && "login-error",
+                          capsLock && "caps-lock-warning",
+                        ]
+                          .filter(Boolean)
+                          .join(" ") || undefined
+                      }
                       disabled={isSubmitting}
-                      className="h-12 rounded-xl px-3.5 pr-11 text-base sm:text-sm"
+                      className="login-input login-input--password"
                     />
                     <button
                       type="button"
-                      onClick={() => setShowPassword((v) => !v)}
-                      className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-neutral-400 hover:text-neutral-700 transition-colors"
-                      tabIndex={-1}
-                      title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                      onClick={() => setShowPassword((visible) => !visible)}
+                      className="login-password-toggle"
+                      aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                      disabled={isSubmitting}
                     >
-                      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      {showPassword ? (
+                        <EyeOff aria-hidden="true" className="size-5" />
+                      ) : (
+                        <Eye aria-hidden="true" className="size-5" />
+                      )}
                     </button>
                   </div>
-                </div>
-
-                {/* Hàng tiện ích: Ghi nhớ đăng nhập & Quên mật khẩu */}
-                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-1">
-                  <label className="flex items-center gap-2 cursor-pointer select-none group">
-                    <Checkbox
-                      id="rememberMe"
-                      checked={rememberMe}
-                      onCheckedChange={(checked) => setRememberMe(Boolean(checked))}
-                      className="size-4 rounded-md data-[state=checked]:bg-brand-primary data-[state=checked]:border-brand-primary"
-                    />
-                    <span className="text-sm text-neutral-600 font-normal group-hover:text-neutral-900 transition-colors">
-                      Ghi nhớ đăng nhập
-                    </span>
-                  </label>
-
-                  {!platform && (
-                    <button
-                      type="button"
-                      onClick={() => navigate(AUTH_PATHS.FORGOT_PASSWORD)}
-                      className="text-sm font-medium text-brand-primary hover:underline transition-all"
-                      tabIndex={-1}
-                    >
-                      Quên mật khẩu?
-                    </button>
+                  <InlineError id="password-error" message={errors.password} />
+                  <InlineError id="login-error" message={errors.form} />
+                  {capsLock && (
+                    <p id="caps-lock-warning" role="status" className="login-muted text-sm">
+                      Caps Lock đang bật.
+                    </p>
                   )}
                 </div>
 
-                {/* Nút Đăng nhập */}
-                <Button
-                  type="submit"
-                  className="mt-2 h-12 w-full text-base"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+                <label className="flex min-h-11 w-fit cursor-pointer items-center gap-3 text-sm">
+                  <input
+                    type="checkbox"
+                    name="rememberMe"
+                    checked={rememberMe}
+                    onChange={(event) => setRememberMe(event.target.checked)}
+                    disabled={isSubmitting}
+                    className="login-remember"
+                  />
+                  Ghi nhớ đăng nhập
+                </label>
+
+                <Button type="submit" className="login-submit" disabled={isSubmitting}>
+                  {isSubmitting && (
+                    <Loader2 aria-hidden="true" className="size-5 motion-safe:animate-spin" />
+                  )}
                   {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
                 </Button>
-
-                {/* Chú thích vai trò */}
-                {!platform && (
-                  <p className="pt-2 text-center text-xs leading-relaxed text-text-tertiary">
-                    Tài khoản do quản lý cấp theo vai trò (Chủ nhà hàng · Quản lý chi nhánh · Thu
-                    ngân · Phục vụ).
-                  </p>
-                )}
               </form>
-            </div>
+              <span role="status" className="sr-only">
+                {isSubmitting ? "Đang đăng nhập..." : ""}
+              </span>
+
+              {!platform && (
+                <p className="login-muted mt-5 text-center text-sm leading-relaxed">
+                  Quên mật khẩu? Hãy liên hệ quản lý chi nhánh để được cấp lại.
+                </p>
+              )}
+            </>
           )}
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   )
 }

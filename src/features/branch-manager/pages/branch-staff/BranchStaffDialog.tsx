@@ -6,6 +6,8 @@ import {
   type BranchStaffRole,
 } from "@/api/branch-staff.api"
 import { Button } from "@/components/ui/button"
+import { FormField } from "@/components/common/FormField"
+import { DatePicker } from "@/components/ui/date-picker"
 import {
   Dialog,
   DialogContent,
@@ -20,6 +22,7 @@ import { getErrorMessage, isApiStatus } from "@/lib/http"
 import { isStaffPhone, STAFF_PHONE_ERROR } from "@/lib/staff-phone"
 
 const roleOptions = Object.keys(branchStaffRoles) as BranchStaffRole[]
+const HIRE_DATE_REQUIRED = "Vui lòng chọn ngày vào làm."
 
 interface BranchStaffDialogProps {
   branchId: number
@@ -42,6 +45,7 @@ export function BranchStaffDialog({
     roleOptions.filter((role) => employee?.roles.includes(role)),
   )
   const [validation, setValidation] = useState("")
+  const [hireDate, setHireDate] = useState("")
   const save = useSaveBranchStaff(branchId)
   const { toast } = useToast()
   const changed =
@@ -56,6 +60,10 @@ export function BranchStaffDialog({
     const form = new FormData(event.currentTarget)
     const text = (field: string) => String(form.get(field) ?? "").trim()
     const password = String(form.get("password") ?? "")
+    if (!employee && !hireDate) {
+      setValidation(HIRE_DATE_REQUIRED)
+      return
+    }
     if (!employee && !isStaffPhone(text("phone"))) {
       setValidation(STAFF_PHONE_ERROR)
       return
@@ -77,7 +85,7 @@ export function BranchStaffDialog({
               fullName: text("fullName"),
               username: text("username"),
               phone: text("phone"),
-              hireDate: text("hireDate"),
+              hireDate,
               password,
               roles,
             },
@@ -144,10 +152,19 @@ export function BranchStaffDialog({
                     required
                   />
                 </label>
-                <label className="space-y-1.5 text-sm font-medium">
-                  Ngày vào làm
-                  <Input name="hireDate" type="date" required />
-                </label>
+                <FormField label="Ngày vào làm" htmlFor="branch-staff-hire-date" required>
+                  <DatePicker
+                    id="branch-staff-hire-date"
+                    label="Ngày vào làm"
+                    value={hireDate}
+                    onChange={(value) => {
+                      setHireDate(value)
+                      if (validation === HIRE_DATE_REQUIRED) setValidation("")
+                    }}
+                    aria-invalid={validation === HIRE_DATE_REQUIRED}
+                    required
+                  />
+                </FormField>
                 <label className="space-y-1.5 text-sm font-medium">
                   Mật khẩu ban đầu
                   <Input

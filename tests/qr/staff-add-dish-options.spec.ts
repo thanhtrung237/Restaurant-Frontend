@@ -1,21 +1,19 @@
 import { expect, test } from "@playwright/test"
+import { mockSessionRefresh } from "./staff-session"
 
 test("staff can order separate configurations of a dish and send their option IDs", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.addInitScript(() => {
-    localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
     localStorage.setItem(
       "pho-viet-auth",
       JSON.stringify({
-        version: 0,
+        version: 1,
         state: {
           role: "BRANCH_MANAGER",
           branchId: 10,
           assignmentId: 7,
-          accessToken: "test-token",
-          isAuthenticated: true,
           account: { id: 1, restaurantId: 1, fullName: "Quản lý test" },
         },
       }),
@@ -90,7 +88,8 @@ test("staff can order separate configurations of a dish and send their option ID
     return route.fulfill({ headers, json: { data } })
   })
 
-  await page.goto("/quan-ly-chi-nhanh/order/12/them-mon")
+  await mockSessionRefresh(page)
+  await page.goto("/branch-manager/order/12/add-items")
   const soup = page.getByRole("button", { name: /Phở bò/ })
   const dialog = page.getByRole("dialog", { name: "Phở bò" })
   const add = dialog.getByRole("button", { name: "Thêm vào bàn" })

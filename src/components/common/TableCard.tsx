@@ -2,6 +2,7 @@ import * as React from "react"
 import { TABLE_DISPLAY_STATUS_LABEL, type TableDisplayStatus } from "@/types/enums"
 import type { DiningTable } from "@/types/models"
 import { cn } from "@/lib/utils"
+import { getTableGuestPath } from "@/app/router/paths/customer.paths"
 
 import { User, QrCode, Printer, Pencil, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -108,7 +109,8 @@ const CARD_STYLE_BY_DISPLAY_STATUS: Record<
 }
 
 export function getTableGuestUrl(qrCode: string) {
-  return `${typeof window !== "undefined" ? window.location.origin : "http://localhost:5173"}/ban/${qrCode}`
+  const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:5173"
+  return origin + getTableGuestPath(qrCode)
 }
 
 /**

@@ -1,7 +1,8 @@
 import { expect, test, type Page } from "@playwright/test"
+import { mockSessionRefresh } from "./staff-session"
 
-const checkout = "/thu-ngan/thanh-toan/12"
-const qrPayment = checkout + "/chuyen-khoan-qr"
+const checkout = "/cashier/checkout/12"
+const qrPayment = checkout + "/qr-transfer"
 const invoice = { id: 45, branchId: 2, tableSessionId: 12, status: "PENDING", grandTotal: 50000 }
 const transfer = {
   invoiceId: 45,
@@ -20,16 +21,13 @@ async function mockCheckout(
 ) {
   const requests = { qr: 0, invoice: 0, payments: [] as unknown[] }
   await page.addInitScript(() => {
-    localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
     localStorage.setItem(
       "pho-viet-auth",
       JSON.stringify({
-        version: 0,
+        version: 1,
         state: {
           role: "CASHIER",
           branchId: 2,
-          accessToken: "test-token",
-          isAuthenticated: true,
           account: { id: 1, restaurantId: 1, fullName: "Thu ngân test" },
         },
       }),
@@ -81,6 +79,7 @@ test("missing bank configuration keeps cash available on checkout and a direct Q
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   const requests = await mockCheckout(page, { configured: false })
+  await mockSessionRefresh(page)
   await page.goto(checkout)
   await expect(page.getByRole("button", { name: "Chuyển khoản QR" })).toBeDisabled()
   await expect(
@@ -89,6 +88,7 @@ test("missing bank configuration keeps cash available on checkout and a direct Q
     }),
   ).toBeVisible()
 
+  await mockSessionRefresh(page)
   await page.goto(qrPayment)
   await expect(page.getByText("QR chưa khả dụng", { exact: true })).toBeVisible()
   await expect(page.getByText("Đang chờ khách chuyển khoản")).toHaveCount(0)
@@ -103,6 +103,7 @@ test("missing bank configuration keeps cash available on checkout and a direct Q
 test("bank lookup failure gives a retry and leaves cash available", async ({ page }) => {
   let unavailable = true
   const requests = await mockCheckout(page, { branchStatus: () => (unavailable ? 500 : 200) })
+  await mockSessionRefresh(page)
   await page.goto(checkout)
   await expect(page.getByText("Chưa kiểm tra được tài khoản nhận chuyển khoản.")).toBeVisible({
     timeout: 12000,
@@ -123,6 +124,7 @@ for (const invalidated of [false, true]) {
     async ({ page }) => {
       let qrStatus = invalidated ? 200 : 500
       const requests = await mockCheckout(page, { qrStatus: () => qrStatus })
+      await mockSessionRefresh(page)
       await page.goto(qrPayment)
       if (!invalidated) {
         await expect(page.getByText("Chưa tải được mã QR chuyển khoản.")).toBeVisible({
@@ -147,7 +149,7 @@ for (const invalidated of [false, true]) {
         await expect(dialog).toBeHidden()
         expect(requests.payments).toEqual([])
       } else {
-        await expect(page).toHaveURL("/thu-ngan/hoa-don-dien-tu/45")
+        await expect(page).toHaveURL("/cashier/e-invoices/45")
         expect(requests.payments).toEqual([
           { invoiceId: 45, method: "BANK_TRANSFER", amount: 50000 },
         ])

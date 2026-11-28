@@ -1,12 +1,13 @@
 import { ROLE_HOME } from "./RoleHomeRedirect"
 import { AUTH_PATHS } from "./paths"
+import { getLegacyPathTarget } from "./legacy-paths"
 import type { AppRole } from "@/config/roles"
 
 /**
  * Trang 403 — nguồn duy nhất. Dùng ở `RequirePermission`, `RequireRole`, khai báo route
  * trong `app/router/index.tsx`, và trong danh sách chặn bên dưới.
  */
-export const FORBIDDEN_PATH = "/khong-co-quyen-truy-cap"
+export const FORBIDDEN_PATH = "/forbidden"
 
 /**
  * Những trang KHÔNG bao giờ được dùng làm đích sau đăng nhập, kể cả khi
@@ -22,15 +23,16 @@ const BLOCKED_TARGETS: readonly string[] = [
   FORBIDDEN_PATH,
 ]
 
-/** Phần `state.from` mà `RequireAuth` lưu — chỉ cần 2 trường này. */
+/** Phần URL trong `state.from` mà `RequireAuth` lưu. */
 export interface PostLoginFrom {
   pathname?: string
   search?: string
+  hash?: string
 }
 
 /**
  * Khu vực đường dẫn của một vai trò, suy từ `ROLE_HOME` để chỉ có MỘT nguồn sự thật.
- * VD: `/phuc-vu/so-do-ban` ⇒ `/phuc-vu`.
+ * VD: `/waiter/table-map` ⇒ `/waiter`.
  */
 function areaPrefixOf(role: AppRole): string {
   const segment = (ROLE_HOME[role] ?? "/").split("/").filter(Boolean)[0]
@@ -43,7 +45,7 @@ function areaPrefixOf(role: AppRole): string {
  * VẤN ĐỀ ĐƯỢC SỬA: `RequireAuth` lưu `state.from` = trang đang đứng lúc mất phiên.
  * Trước đây màn đăng nhập LUÔN nhảy về đó, không xét vai trò vừa chọn. Nên:
  *  - Đang ở trang Thu ngân, hết phiên, đăng nhập bằng tài khoản Quản trị nhà hàng
- *    ⇒ bị đẩy vào `/thu-ngan/...` ⇒ `RequireRole` đá ra **403**.
+ *    ⇒ bị đẩy vào `/cashier/...` ⇒ `RequireRole` đá ra **403**.
  *  - Đang ở chính trang 403 rồi đăng nhập ⇒ quay lại 403.
  * Lần đăng nhập thứ hai hết lỗi chỉ vì nút "Đăng nhập lại" không kèm `state`.
  *
@@ -53,10 +55,11 @@ function areaPrefixOf(role: AppRole): string {
 export function resolvePostLoginTarget(role: AppRole, from?: PostLoginFrom | null): string {
   const home = ROLE_HOME[role]
 
-  const pathname = from?.pathname?.trim()
-  if (!pathname || !pathname.startsWith("/")) {
+  const requestedPath = from?.pathname?.trim()
+  if (!requestedPath?.startsWith("/")) {
     return home
   }
+  const pathname = getLegacyPathTarget(requestedPath) ?? requestedPath
   if (BLOCKED_TARGETS.includes(pathname)) {
     return home
   }
@@ -67,5 +70,5 @@ export function resolvePostLoginTarget(role: AppRole, from?: PostLoginFrom | nul
     return home
   }
 
-  return `${pathname}${from?.search ?? ""}`
+  return `${pathname}${from?.search ?? ""}${from?.hash ?? ""}`
 }

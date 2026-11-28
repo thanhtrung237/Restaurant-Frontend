@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import { mockSessionRefresh } from "./staff-session"
 
 test("combines branch menu filters and updates them after visibility, price and stock changes", async ({
   page,
@@ -58,17 +59,14 @@ test("combines branch menu filters and updates them after visibility, price and 
     },
   ]
   await page.addInitScript(() => {
-    localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
     localStorage.setItem(
       "pho-viet-auth",
       JSON.stringify({
-        version: 0,
+        version: 1,
         state: {
           role: "BRANCH_MANAGER",
           branchId: 10,
           assignmentId: 7,
-          accessToken: "test-token",
-          isAuthenticated: true,
           account: { id: 1, restaurantId: 1, fullName: "Quản lý test" },
         },
       }),
@@ -130,7 +128,8 @@ test("combines branch menu filters and updates them after visibility, price and 
   })
 
   await page.setViewportSize({ width: 1280, height: 850 })
-  await page.goto("/quan-ly-chi-nhanh/thuc-don")
+  await mockSessionRefresh(page)
+  await page.goto("/branch-manager/menu")
   const status = page.getByRole("combobox", { name: "Trạng thái món tại chi nhánh" })
   const category = page.getByRole("combobox", { name: "Danh mục tại chi nhánh" })
   const selectStatus = async (label: string) => {

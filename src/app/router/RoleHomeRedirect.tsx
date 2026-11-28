@@ -1,20 +1,28 @@
 import { Navigate } from "react-router-dom"
 import { useAuthStore } from "@/stores/auth.store"
 import { APP_ROLE, type AppRole } from "@/config/roles"
-import { AUTH_PATHS, isPlatformHost } from "./paths/auth.paths"
+import {
+  AUTH_PATHS,
+  BRANCH_MANAGER_PATHS,
+  CASHIER_PATHS,
+  PLATFORM_ADMIN_PATHS,
+  RESTAURANT_ADMIN_PATHS,
+  WAITER_PATHS,
+  isPlatformHost,
+} from "./paths"
 
 /** Trang chủ mặc định của từng vai trò khi vào "/" — theo mục 4.1 (phạm vi mỗi vai trò). */
 export const ROLE_HOME: Record<AppRole, string> = {
-  [APP_ROLE.CUSTOMER]: AUTH_PATHS.LOGIN, // khách hàng không vào "/", luôn vào qua /ban/:qrCode
-  [APP_ROLE.WAITER]: "/phuc-vu/so-do-ban",
-  [APP_ROLE.CASHIER]: "/thu-ngan/so-do-ban",
-  [APP_ROLE.BRANCH_MANAGER]: "/quan-ly-chi-nhanh/so-do-ban",
-  [APP_ROLE.RESTAURANT_ADMIN]: "/quan-tri-nha-hang/so-do-ban",
-  [APP_ROLE.PLATFORM_ADMIN]: "/quan-tri-nen-tang",
+  [APP_ROLE.CUSTOMER]: AUTH_PATHS.LOGIN, // khách hàng không vào "/", luôn vào qua /table/:qrCode
+  [APP_ROLE.WAITER]: WAITER_PATHS.TABLE_MAP,
+  [APP_ROLE.CASHIER]: CASHIER_PATHS.TABLE_MAP,
+  [APP_ROLE.BRANCH_MANAGER]: BRANCH_MANAGER_PATHS.TABLE_MAP,
+  [APP_ROLE.RESTAURANT_ADMIN]: RESTAURANT_ADMIN_PATHS.TABLE_MAP,
+  [APP_ROLE.PLATFORM_ADMIN]: PLATFORM_ADMIN_PATHS.DASHBOARD,
 }
 
 /**
- * Thay cho việc hardcode redirect "/" -> /quan-tri-nha-hang (chỉ đúng cho 1 role).
+ * Thay cho việc hardcode redirect "/" -> /restaurant-admin (chỉ đúng cho 1 role).
  * Chưa đăng nhập -> trang đăng nhập. Đã đăng nhập -> trang chủ đúng theo role hiện tại.
  */
 export default function RoleHomeRedirect() {

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DatePicker } from "@/components/ui/date-picker"
 import {
   Select,
   SelectContent,
@@ -53,7 +54,7 @@ const NO_BRANCH = "NONE"
  * Quy tắc phạm vi vai trò không nằm trong schema tĩnh được (phải tra `scope` của vai trò vừa
  * chọn), nên nằm ở `superRefine` của schema dựng theo danh sách vai trò — xem `buildSchema`.
  */
-function buildSchema(roles: RoleOption[], isEdit: boolean) {
+function buildSchema(roles: RoleOption[], isEdit: boolean, requireHireDate: boolean) {
   /**
    * ⚠️ KHÔNG đặt tên trường là `id`: `useFieldArray` của react-hook-form dùng chính khoá `id`
    * làm key nội bộ và ghi đè giá trị của mình bằng một chuỗi uuid. Khi đó zod `z.number()`
@@ -84,7 +85,7 @@ function buildSchema(roles: RoleOption[], isEdit: boolean) {
       hireDate: z
         .string()
         .refine(
-          (value) => (isEdit && value === "") || z.iso.date().safeParse(value).success,
+          (value) => (!requireHireDate && value === "") || z.iso.date().safeParse(value).success,
           "Vui lòng nhập ngày vào làm hợp lệ.",
         ),
       password: z.string(),
@@ -266,7 +267,11 @@ function StaffForm({
   onResetPassword,
 }: Omit<StaffFormModalProps, "isOpen"> & { isSaving: boolean }) {
   const isEdit = Boolean(initialData)
-  const schema = React.useMemo(() => buildSchema(roles, isEdit), [roles, isEdit])
+  const requireHireDate = !isEdit || Boolean(initialData?.hireDate)
+  const schema = React.useMemo(
+    () => buildSchema(roles, isEdit, requireHireDate),
+    [roles, isEdit, requireHireDate],
+  )
 
   const {
     register,
@@ -382,14 +387,25 @@ function StaffForm({
         <FormField
           label="Ngày vào làm"
           htmlFor="staff-hire-date"
-          required={!isEdit || Boolean(initialData?.hireDate)}
+          required={requireHireDate}
           error={errors.hireDate?.message}
         >
-          <Input
-            id="staff-hire-date"
-            type="date"
-            required={!isEdit || Boolean(initialData?.hireDate)}
-            {...register("hireDate")}
+          <Controller
+            control={control}
+            name="hireDate"
+            render={({ field }) => (
+              <DatePicker
+                id="staff-hire-date"
+                label="Ngày vào làm"
+                required={requireHireDate}
+                disabled={busy}
+                aria-invalid={!!errors.hireDate}
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                ref={field.ref}
+              />
+            )}
           />
         </FormField>
       </div>

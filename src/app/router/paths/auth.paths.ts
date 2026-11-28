@@ -1,8 +1,8 @@
 export const AUTH_PATHS = {
-  LOGIN: "/dang-nhap",
-  PLATFORM_LOGIN: "/dang-nhap-quan-tri",
-  FORGOT_PASSWORD: "/quen-mat-khau",
-  FIRST_LOGIN_PASSWORD: "/doi-mat-khau-lan-dau",
+  LOGIN: "/login",
+  PLATFORM_LOGIN: "/platform-login",
+  FORGOT_PASSWORD: "/forgot-password",
+  FIRST_LOGIN_PASSWORD: "/first-login-password",
 } as const
 
 const PLATFORM_HOSTNAME = "platform-admin.thanhtrung.click"

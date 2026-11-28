@@ -1,5 +1,5 @@
 import { lazy } from "react"
-import { createBrowserRouter, Navigate } from "react-router-dom"
+import { createBrowserRouter, Navigate, useLocation } from "react-router-dom"
 import { APP_ROLE } from "@/config/roles"
 import RequireAuth from "./guards/RequireAuth"
 import RequireRole from "./guards/RequireRole"
@@ -20,6 +20,8 @@ import RoleHomeRedirect from "./RoleHomeRedirect"
 import ForbiddenPage from "./fallback/ForbiddenPage"
 import { FORBIDDEN_PATH } from "./post-login-target"
 import { AUTH_PATHS, isPlatformHost } from "./paths/auth.paths"
+import { CUSTOMER_PATHS } from "./paths/customer.paths"
+import { getLegacyPathTarget } from "./legacy-paths"
 
 // ---- Auth pages ----
 const LoginPage = lazy(() => import("@/features/auth/pages/login"))
@@ -122,7 +124,7 @@ export const router = createBrowserRouter([
   {
     element: <AuthLayout />,
     children: [
-      // Đang đăng nhập mà vào /dang-nhap ⇒ về thẳng trang chủ của vai trò, không hiện form
+      // Đang đăng nhập mà vào /login ⇒ về thẳng trang chủ của vai trò, không hiện form
       // trống làm người dùng tưởng mình bị đăng xuất.
       {
         element: <RedirectIfAuthenticated />,
@@ -138,33 +140,33 @@ export const router = createBrowserRouter([
           { path: AUTH_PATHS.PLATFORM_LOGIN, element: <LoginPage key="platform" platform /> },
         ],
       },
-      { path: "/quen-mat-khau", element: <ForgotPasswordPage /> }, // AUTH_PATHS.FORGOT_PASSWORD
-      { path: "/doi-mat-khau-lan-dau", element: <FirstLoginPasswordPage /> }, // AUTH_PATHS.FIRST_LOGIN_PASSWORD
+      { path: AUTH_PATHS.FORGOT_PASSWORD, element: <ForgotPasswordPage /> },
+      { path: AUTH_PATHS.FIRST_LOGIN_PASSWORD, element: <FirstLoginPasswordPage /> },
     ],
   },
 
   // ================= KHÁCH HÀNG (mobile, theo mã QR bàn) =================
   {
-    path: "/ban/:qrCode",
+    path: CUSTOMER_PATHS.TABLE_OPEN_QR,
     element: <CustomerLayout />,
     children: [
       { index: true, element: <TableOpenQrPage /> }, // CUSTOMER_PATHS.TABLE_OPEN_QR
-      { path: "cho-mo-ban", element: <WaitingTableOpenPage /> }, // WAITING_TABLE_OPEN
-      { path: "tu-choi", element: <OrderRejectedPage /> }, // REJECTED
+      { path: "waiting-for-table", element: <WaitingTableOpenPage /> }, // WAITING_TABLE_OPEN
+      { path: "rejected", element: <OrderRejectedPage /> }, // REJECTED
       {
         element: <RequireTableSession />, // các route bên dưới cần phiên ĐANG PHỤC VỤ
         children: [
-          { path: "thuc-don", element: <MenuPage /> }, // MENU
-          { path: "thuc-don/tim-kiem", element: <SearchDishPage /> }, // SEARCH_DISH
-          { path: "mon/:dishId", element: <DishDetailPage /> }, // DISH_DETAIL
-          { path: "gio-hang", element: <CartPage /> }, // CART
-          { path: "mon-da-goi", element: <OrderedItemsPage /> }, // ORDERED_ITEMS
-          { path: "yeu-cau-tinh-tien", element: <RequestBillPage /> }, // REQUEST_BILL
-          { path: "hoa-don", element: <InvoicePage /> }, // INVOICE
-          { path: "thanh-toan-qr", element: <PaymentQrPage /> }, // PAYMENT_QR
-          { path: "thanh-toan-thanh-cong", element: <PaymentSuccessPage /> }, // PAYMENT_SUCCESS
-          { path: "thanh-toan-that-bai", element: <PaymentFailedPage /> }, // PAYMENT_FAILED
-          { path: "danh-gia", element: <ReviewPage /> }, // REVIEW
+          { path: "menu", element: <MenuPage /> }, // MENU
+          { path: "menu/search", element: <SearchDishPage /> }, // SEARCH_DISH
+          { path: "dish/:dishId", element: <DishDetailPage /> }, // DISH_DETAIL
+          { path: "cart", element: <CartPage /> }, // CART
+          { path: "ordered-items", element: <OrderedItemsPage /> }, // ORDERED_ITEMS
+          { path: "request-bill", element: <RequestBillPage /> }, // REQUEST_BILL
+          { path: "invoice", element: <InvoicePage /> }, // INVOICE
+          { path: "payment-qr", element: <PaymentQrPage /> }, // PAYMENT_QR
+          { path: "payment-success", element: <PaymentSuccessPage /> }, // PAYMENT_SUCCESS
+          { path: "payment-failed", element: <PaymentFailedPage /> }, // PAYMENT_FAILED
+          { path: "review", element: <ReviewPage /> }, // REVIEW
         ],
       },
     ],
@@ -179,26 +181,26 @@ export const router = createBrowserRouter([
         element: <RequireRole allow={[APP_ROLE.WAITER]} />,
         children: [
           {
-            path: "/phuc-vu",
+            path: "/waiter",
             element: <StaffLayout />,
             children: [
-              { index: true, element: <Navigate to="so-do-ban" replace /> },
-              { path: "so-do-ban", element: <TableMapPage /> }, // WAITER_PATHS.TABLE_MAP
+              { index: true, element: <Navigate to="table-map" replace /> },
+              { path: "table-map", element: <TableMapPage /> }, // WAITER_PATHS.TABLE_MAP
               // Màn "Mở bàn" riêng đã bị gỡ: không nơi nào điều hướng tới, và store nuôi nó không
               // ai ghi vào nên modal bên trong không bao giờ hiện. Mở bàn thật làm bằng
               // OpenTableModal ngay trên Sơ đồ bàn. Giữ redirect cho URL cũ (bookmark, lịch sử)
               // để người dùng về đúng Sơ đồ bàn của vai trò, không rơi ra ngoài layout.
               {
-                path: "so-do-ban/:tableId/mo-ban",
-                element: <Navigate to="/phuc-vu/so-do-ban" replace />,
+                path: "table-map/:tableId/open-table",
+                element: <Navigate to="/waiter/table-map" replace />,
               },
-              { path: "so-do-ban/them-don-mang-ve/:orderId?", element: <AddDishPage takeaway /> },
-              { path: "order-che-bien", element: <KitchenDisplayPage /> }, // ORDER_AND_PREP -> dùng chung UI Bếp (KDS)
+              { path: "table-map/takeaway/:orderId?", element: <AddDishPage takeaway /> },
+              { path: "orders-and-prep", element: <KitchenDisplayPage /> }, // ORDER_AND_PREP -> dùng chung UI Bếp (KDS)
               // ORDER_CONFIRM route removed: items now go directly to KDS where kitchen staff confirms them (PENDING → PREPARING)
               { path: "order/:orderId", element: <OrderDetailPage /> }, // ORDER_DETAIL
-              { path: "order/:orderId/them-mon", element: <AddDishPage /> }, // ADD_DISH
-              { path: "bep", element: <KitchenDisplayPage /> }, // KITCHEN_DISPLAY
-              { path: "chuyen-gop-ban", element: <TransferMergeTablePage /> }, // TRANSFER_MERGE_TABLE
+              { path: "order/:orderId/add-items", element: <AddDishPage /> }, // ADD_DISH
+              { path: "kitchen", element: <KitchenDisplayPage /> }, // KITCHEN_DISPLAY
+              { path: "transfer-merge-tables", element: <TransferMergeTablePage /> }, // TRANSFER_MERGE_TABLE
               // Phục vụ KHÔNG có quyền "Xem báo cáo" / "Quản lý nhân viên" (mục 4.2, 4.3) — đã bỏ 2 route này.
             ],
           },
@@ -210,28 +212,28 @@ export const router = createBrowserRouter([
         element: <RequireRole allow={[APP_ROLE.CASHIER]} />,
         children: [
           {
-            path: "/thu-ngan",
+            path: "/cashier",
             element: <StaffLayout />,
             children: [
-              { index: true, element: <Navigate to="so-do-ban" replace /> },
-              { path: "so-do-ban", element: <TableMapPage /> }, // CASHIER_PATHS.TABLE_MAP — "Xem tạm tính của bàn"
+              { index: true, element: <Navigate to="table-map" replace /> },
+              { path: "table-map", element: <TableMapPage /> }, // CASHIER_PATHS.TABLE_MAP — "Xem tạm tính của bàn"
               {
                 element: <RequireCashierWaiter />,
                 children: [
-                  { path: "order-che-bien", element: <KitchenDisplayPage /> },
+                  { path: "orders-and-prep", element: <KitchenDisplayPage /> },
                   { path: "order/:orderId", element: <OrderDetailPage /> },
-                  { path: "order/:orderId/them-mon", element: <AddDishPage /> },
+                  { path: "order/:orderId/add-items", element: <AddDishPage /> },
                 ],
               },
-              { path: "so-do-ban/them-don-mang-ve/:orderId?", element: <AddDishPage takeaway /> },
-              { path: "chuyen-gop-ban", element: <TransferMergeTablePage /> }, // CASHIER_PATHS.TRANSFER_MERGE_TABLE — "Chuyển/gộp bàn" (X)
-              { path: "thanh-toan/:tableSessionId", element: <CheckoutPage /> }, // CASHIER_PATHS.CHECKOUT — cũng là "Đóng phiên bàn"
+              { path: "table-map/takeaway/:orderId?", element: <AddDishPage takeaway /> },
+              { path: "transfer-merge-tables", element: <TransferMergeTablePage /> }, // CASHIER_PATHS.TRANSFER_MERGE_TABLE — "Chuyển/gộp bàn" (X)
+              { path: "checkout/:tableSessionId", element: <CheckoutPage /> }, // CASHIER_PATHS.CHECKOUT — cũng là "Đóng phiên bàn"
               {
-                path: "thanh-toan/:tableSessionId/chuyen-khoan-qr",
+                path: "checkout/:tableSessionId/qr-transfer",
                 element: <QrTransferPaymentPage />,
               }, // QR_TRANSFER_PAYMENT
-              { path: "hoa-don-dien-tu/:invoiceId", element: <EInvoicePage /> }, // E_INVOICE
-              { path: "hoa-don", element: <InvoiceListPage /> }, // CASHIER_PATHS.INVOICES
+              { path: "e-invoices/:invoiceId", element: <EInvoicePage /> }, // E_INVOICE
+              { path: "invoices", element: <InvoiceListPage /> }, // CASHIER_PATHS.INVOICES
             ],
           },
         ],
@@ -244,72 +246,72 @@ export const router = createBrowserRouter([
         element: <RequireRole allow={[APP_ROLE.BRANCH_MANAGER]} />,
         children: [
           {
-            path: "/quan-ly-chi-nhanh",
+            path: "/branch-manager",
             element: <StaffLayout />,
             children: [
-              { index: true, element: <Navigate to="so-do-ban" replace /> },
+              { index: true, element: <Navigate to="table-map" replace /> },
               // Vận hành sàn/bếp — QL chi nhánh có X cho toàn bộ nhóm này (mục 4.2), dùng chung
               // component với Phục vụ / Quản trị NH (@/features/shared/floor-ops).
-              { path: "so-do-ban", element: <TableMapPage /> }, // BRANCH_MANAGER_PATHS.TABLE_MAP
-              { path: "so-do-ban/them-don-mang-ve/:orderId?", element: <AddDishPage takeaway /> },
+              { path: "table-map", element: <TableMapPage /> }, // BRANCH_MANAGER_PATHS.TABLE_MAP
+              { path: "table-map/takeaway/:orderId?", element: <AddDishPage takeaway /> },
               // Màn "Mở bàn" riêng đã bị gỡ: không nơi nào điều hướng tới, và store nuôi nó không
               // ai ghi vào nên modal bên trong không bao giờ hiện. Mở bàn thật làm bằng
               // OpenTableModal ngay trên Sơ đồ bàn. Giữ redirect cho URL cũ (bookmark, lịch sử)
               // để người dùng về đúng Sơ đồ bàn của vai trò, không rơi ra ngoài layout.
               {
-                path: "so-do-ban/:tableId/mo-ban",
-                element: <Navigate to="/quan-ly-chi-nhanh/so-do-ban" replace />,
+                path: "table-map/:tableId/open-table",
+                element: <Navigate to="/branch-manager/table-map" replace />,
               },
-              { path: "order-che-bien", element: <KitchenDisplayPage /> }, // ORDER_AND_PREP -> dùng chung UI Bếp (KDS)
+              { path: "orders-and-prep", element: <KitchenDisplayPage /> }, // ORDER_AND_PREP -> dùng chung UI Bếp (KDS)
               // ORDER_CONFIRM route removed: items now go directly to KDS where kitchen staff confirms them (PENDING → PREPARING)
               { path: "order/:orderId", element: <OrderDetailPage /> }, // ORDER_DETAIL
-              { path: "order/:orderId/them-mon", element: <AddDishPage /> }, // ADD_DISH
-              { path: "bep", element: <KitchenDisplayPage /> }, // KITCHEN_DISPLAY
-              { path: "chuyen-gop-ban", element: <TransferMergeTablePage /> }, // TRANSFER_MERGE_TABLE
+              { path: "order/:orderId/add-items", element: <AddDishPage /> }, // ADD_DISH
+              { path: "kitchen", element: <KitchenDisplayPage /> }, // KITCHEN_DISPLAY
+              { path: "transfer-merge-tables", element: <TransferMergeTablePage /> }, // TRANSFER_MERGE_TABLE
               // 8 phân hệ chính — phạm vi chi nhánh của mình
               // Bang 4.2 "Thu tien, dong ban": QL chi nhanh cung duoc dong ban.
-              { path: "thanh-toan/:tableSessionId", element: <CheckoutPage /> }, // CHECKOUT
+              { path: "checkout/:tableSessionId", element: <CheckoutPage /> }, // CHECKOUT
               {
-                path: "thanh-toan/:tableSessionId/chuyen-khoan-qr",
+                path: "checkout/:tableSessionId/qr-transfer",
                 element: <QrTransferPaymentPage />,
               },
-              { path: "thuc-don", element: <BranchManagerMenuPage /> }, // BRANCH_MENU
+              { path: "menu", element: <BranchManagerMenuPage /> }, // BRANCH_MENU
               {
                 element: <RequirePermission permission="BRANCH_PROMOTIONS_VIEW" />,
-                children: [{ path: "khuyen-mai", element: <BranchManagerPromotionsPage /> }],
+                children: [{ path: "promotions", element: <BranchManagerPromotionsPage /> }],
               },
               // Giữ quyền quản lý chương trình tách biệt với quyền tra cứu.
               {
                 element: <RequirePermission permission="PROMOTIONS" />,
                 children: [
                   {
-                    path: "khuyen-mai/tao-moi",
+                    path: "promotions/new",
                     element: <BranchManagerPromotionCreatePage />,
                   }, // PROMOTION_CREATE
                   {
-                    path: "khuyen-mai/:id/chinh-sua",
+                    path: "promotions/:id/edit",
                     element: <BranchManagerPromotionEditPage />,
                   }, // PROMOTION_EDIT
                 ],
               },
-              { path: "bao-cao", element: <BranchReportPage /> }, // REPORT — không có tab "So sánh chi nhánh"
+              { path: "reports", element: <BranchReportPage /> }, // REPORT — không có tab "So sánh chi nhánh"
               {
-                path: "bao-cao/doanh-thu-theo-gio",
+                path: "reports/hourly-revenue",
                 element: <RevenueByHourPage />,
               }, // REVENUE_BY_HOUR
-              { path: "chi-nhanh", element: <BranchManagerBranchDetailPage /> }, // BRANCH — thẳng vào chi tiết chi nhánh mình (3 tab)
+              { path: "branches", element: <BranchManagerBranchDetailPage /> }, // BRANCH — thẳng vào chi tiết chi nhánh mình (3 tab)
               // KHÔNG có màn "Nhân viên" cho QL chi nhánh: Bảng 4.3 để TRỐNG ô "Quản lý nhân
               // viên" của vai trò này, nên màn đó đã bị gỡ hẳn ở Phần B2.
               //
               // Giữ lại một redirect cho URL cũ: người đã lưu bookmark sẽ về Sơ đồ bàn thay vì
               // rơi vào trang 404 nằm ngoài layout (không có menu để đi tiếp).
-              { path: "nhan-vien", element: <BranchStaffPage /> },
-              { path: "cau-hinh", element: <BranchManagerBranchConfigPage /> }, // CONFIG — chỉ cấu hình chi nhánh mình
-              { path: "chiet-khau-thu-cong", element: <ManualDiscountPage /> }, // MANUAL_DISCOUNT
-              { path: "nhat-ky", element: <RestaurantAuditLogPage /> }, // AUDIT_LOG (tương thích ngược) — chỉ đọc (R)
-              { path: "vai-tro-phan-quyen", element: <RolesPermissionsPage /> },
-              { path: "hoa-don", element: <InvoiceListPage /> }, // BRANCH_MANAGER_PATHS.INVOICES
-              { path: "hoa-don/:invoiceId", element: <EInvoicePage /> }, // BRANCH_MANAGER_PATHS.E_INVOICE
+              { path: "staff", element: <BranchStaffPage /> },
+              { path: "settings", element: <BranchManagerBranchConfigPage /> }, // CONFIG — chỉ cấu hình chi nhánh mình
+              { path: "manual-discount", element: <ManualDiscountPage /> }, // MANUAL_DISCOUNT
+              { path: "audit-log", element: <RestaurantAuditLogPage /> }, // AUDIT_LOG (tương thích ngược) — chỉ đọc (R)
+              { path: "roles-permissions", element: <RolesPermissionsPage /> },
+              { path: "invoices", element: <InvoiceListPage /> }, // BRANCH_MANAGER_PATHS.INVOICES
+              { path: "invoices/:invoiceId", element: <EInvoicePage /> }, // BRANCH_MANAGER_PATHS.E_INVOICE
             ],
           },
         ],
@@ -320,69 +322,68 @@ export const router = createBrowserRouter([
         element: <RequireRole allow={[APP_ROLE.RESTAURANT_ADMIN]} />,
         children: [
           {
-            path: "/quan-tri-nha-hang",
+            path: "/restaurant-admin",
             element: <StaffLayout />,
             children: [
-              { index: true, element: <Navigate to="so-do-ban" replace /> },
-              { path: "so-do-ban", element: <TableMapPage /> }, // SƠ ĐỒ BÀN
-              { path: "so-do-ban/them-don-mang-ve/:orderId?", element: <AddDishPage takeaway /> },
+              { index: true, element: <Navigate to="table-map" replace /> },
+              { path: "table-map", element: <TableMapPage /> }, // SƠ ĐỒ BÀN
+              { path: "table-map/takeaway/:orderId?", element: <AddDishPage takeaway /> },
               // Màn "Mở bàn" riêng đã bị gỡ: không nơi nào điều hướng tới, và store nuôi nó không
               // ai ghi vào nên modal bên trong không bao giờ hiện. Mở bàn thật làm bằng
               // OpenTableModal ngay trên Sơ đồ bàn. Giữ redirect cho URL cũ (bookmark, lịch sử)
               // để người dùng về đúng Sơ đồ bàn của vai trò, không rơi ra ngoài layout.
               {
-                path: "so-do-ban/:tableId/mo-ban",
-                element: <Navigate to="/quan-tri-nha-hang/so-do-ban" replace />,
+                path: "table-map/:tableId/open-table",
+                element: <Navigate to="/restaurant-admin/table-map" replace />,
               },
-              { path: "order-che-bien", element: <KitchenDisplayPage /> }, // GỌI MÓN & CHẾ BIẾN -> dùng chung UI Bếp (KDS)
+              { path: "orders-and-prep", element: <KitchenDisplayPage /> }, // GỌI MÓN & CHẾ BIẾN -> dùng chung UI Bếp (KDS)
               // ORDER_CONFIRM route removed: items now go directly to KDS where kitchen staff confirms them (PENDING → PREPARING)
               { path: "order/:orderId", element: <OrderDetailPage /> },
-              { path: "order/:orderId/them-mon", element: <AddDishPage /> }, // ADD_DISH
-              { path: "bep", element: <KitchenDisplayPage /> },
-              { path: "chuyen-gop-ban", element: <TransferMergeTablePage /> },
+              { path: "order/:orderId/add-items", element: <AddDishPage /> }, // ADD_DISH
+              { path: "kitchen", element: <KitchenDisplayPage /> },
+              { path: "transfer-merge-tables", element: <TransferMergeTablePage /> },
               // Bang 4.2 "Thu tien, dong ban": Quan tri nha hang cung duoc dong ban.
-              { path: "thanh-toan/:tableSessionId", element: <CheckoutPage /> }, // CHECKOUT
+              { path: "checkout/:tableSessionId", element: <CheckoutPage /> }, // CHECKOUT
               {
-                path: "thanh-toan/:tableSessionId/chuyen-khoan-qr",
+                path: "checkout/:tableSessionId/qr-transfer",
                 element: <QrTransferPaymentPage />,
               },
-              { path: "hoa-don/:invoiceId", element: <EInvoicePage /> },
+              { path: "invoices/:invoiceId", element: <EInvoicePage /> },
               {
                 element: <RequirePermission permission="INVOICES" />,
                 children: [
-                  { path: "hoa-don", element: <InvoiceListPage /> },
-                  { path: "hoa-don/tra-cuu/:invoiceId", element: <EInvoicePage readOnly /> },
+                  { path: "invoices", element: <InvoiceListPage /> },
+                  { path: "invoices/lookup/:invoiceId", element: <EInvoicePage readOnly /> },
                 ],
               },
-              { path: "thuc-don", element: <MenuManagementPage /> }, // THỰC ĐƠN
-              { path: "khuyen-mai", element: <PromotionsPage /> }, // KHUYẾN MÃI
-              { path: "khuyen-mai/tao-moi", element: <PromotionCreatePage /> },
-              { path: "khuyen-mai/:id/chinh-sua", element: <PromotionEditPage /> },
-              { path: "khuyen-mai/:id/edit", element: <PromotionEditPage /> },
-              { path: "bao-cao", element: <RestaurantReportsPage /> }, // BÁO CÁO (đủ 3 tab, kể cả So sánh chi nhánh)
-              { path: "chi-nhanh", element: <BranchListPage /> }, // CHI NHÁNH — danh sách dạng card
-              { path: "chi-nhanh/:branchId", element: <BranchDetailPage /> }, // chi tiết 1 chi nhánh (3 tab)
+              { path: "menu", element: <MenuManagementPage /> }, // THỰC ĐƠN
+              { path: "promotions", element: <PromotionsPage /> }, // KHUYẾN MÃI
+              { path: "promotions/new", element: <PromotionCreatePage /> },
+              { path: "promotions/:id/edit", element: <PromotionEditPage /> },
+              { path: "reports", element: <RestaurantReportsPage /> }, // BÁO CÁO (đủ 3 tab, kể cả So sánh chi nhánh)
+              { path: "branches", element: <BranchListPage /> }, // CHI NHÁNH — danh sách dạng card
+              { path: "branches/:branchId", element: <BranchDetailPage /> }, // chi tiết 1 chi nhánh (3 tab)
               {
-                path: "chi-nhanh/:branchId/cau-hinh",
+                path: "branches/:branchId/settings",
                 element: <RestaurantBranchConfigPage />,
               }, // cấu hình 1 chi nhánh bất kỳ — nhóm 1 (FR-BRN-02)
               {
-                path: "chi-nhanh/:branchId/thue-phi",
+                path: "branches/:branchId/taxes-fees",
                 element: <BranchTaxFeePage />,
               }, // BRANCH_TAX_FEE — nhóm 2: VAT, phí DV, ngưỡng chiết khấu, MST riêng (CHỈ Quản trị NH)
               {
-                path: "chi-nhanh/:branchId/het-hang",
+                path: "branches/:branchId/out-of-stock",
                 lazy: async () => {
                   const { default: Component } =
                     await import("@/features/restaurant-admin/pages/out-of-stock")
                   return { Component }
                 },
               }, // OUT_OF_STOCK — Danh sách món đang hết hàng (GĐ2)
-              { path: "nhan-vien", element: <StaffManagementPage /> }, // NHÂN VIÊN (3 tab)
-              { path: "cau-hinh", element: <RestaurantConfigPage /> }, // CẤU HÌNH — chỉ cấp nhà hàng
-              { path: "vai-tro-phan-quyen", element: <RolesPermissionsPage /> },
-              { path: "danh-muc", element: <CategoryManagementPage /> },
-              { path: "nhat-ky", element: <RestaurantAuditLogPage /> },
+              { path: "staff", element: <StaffManagementPage /> }, // NHÂN VIÊN (3 tab)
+              { path: "settings", element: <RestaurantConfigPage /> }, // CẤU HÌNH — chỉ cấp nhà hàng
+              { path: "roles-permissions", element: <RolesPermissionsPage /> },
+              { path: "categories", element: <CategoryManagementPage /> },
+              { path: "audit-log", element: <RestaurantAuditLogPage /> },
             ],
           },
         ],
@@ -393,17 +394,17 @@ export const router = createBrowserRouter([
         element: <RequireRole allow={[APP_ROLE.PLATFORM_ADMIN]} />,
         children: [
           {
-            path: "/quan-tri-nen-tang",
+            path: "/platform-admin",
             element: <PlatformLayout />,
             children: [
               { index: true, element: <PlatformDashboardPage /> }, // PLATFORM_ADMIN_PATHS.DASHBOARD
-              { path: "nha-hang", element: <RestaurantListPage /> }, // RESTAURANT_LIST
+              { path: "restaurants", element: <RestaurantListPage /> }, // RESTAURANT_LIST
               {
-                path: "nha-hang/:restaurantId",
+                path: "restaurants/:restaurantId",
                 element: <RestaurantDetailPage />,
               }, // RESTAURANT_DETAIL
-              { path: "cau-hinh", element: <Navigate to="/quan-tri-nen-tang" replace /> },
-              { path: "nhat-ky-he-thong", element: <SystemAuditLogPage /> }, // SYSTEM_AUDIT_LOG
+              { path: "settings", element: <Navigate to="/platform-admin" replace /> },
+              { path: "system-audit-log", element: <SystemAuditLogPage /> }, // SYSTEM_AUDIT_LOG
             ],
           },
         ],
@@ -414,12 +415,26 @@ export const router = createBrowserRouter([
   // ================= FALLBACK =================
   { path: FORBIDDEN_PATH, element: <ForbiddenPage /> },
   /*
-   * "/" đưa về trang chủ THEO VAI TRÒ, chỉ về /dang-nhap khi chưa đăng nhập.
+   * "/" đưa về trang chủ THEO VAI TRÒ, chỉ về /login khi chưa đăng nhập.
    *
    * Trước đây "/" redirect cứng sang /dang-nhap, nên mọi điều hướng lỡ rơi vào "/" đều ném
    * người đang làm việc ra màn đăng nhập. `RoleHomeRedirect` viết sẵn cho việc này từ trước
    * nhưng chưa được gắn vào route nào.
    */
   { path: "/", element: <RoleHomeRedirect /> },
-  { path: "*", element: <NotFoundPage /> },
+  { path: "*", element: <LegacyRouteRedirect /> },
 ])
+
+function LegacyRouteRedirect() {
+  const location = useLocation()
+  const pathname = getLegacyPathTarget(location.pathname)
+  if (!pathname) return <NotFoundPage />
+
+  return (
+    <Navigate
+      to={{ pathname, search: location.search, hash: location.hash }}
+      state={location.state}
+      replace
+    />
+  )
+}

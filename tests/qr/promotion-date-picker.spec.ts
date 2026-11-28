@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import { mockSessionRefresh } from "./staff-session"
 
 test("edits the promotion dates through the calendar and sends calendar dates to the API", async ({
   page,
@@ -15,17 +16,14 @@ test("edits the promotion dates through the calendar and sends calendar dates to
   }
   await page.setViewportSize({ width: 390, height: 844 })
   await page.addInitScript(() => {
-    localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
     localStorage.setItem(
       "pho-viet-auth",
       JSON.stringify({
-        version: 0,
+        version: 1,
         state: {
           role: "RESTAURANT_ADMIN",
           branchId: null,
           assignmentId: 7,
-          accessToken: "test-token",
-          isAuthenticated: true,
           account: { id: 1, restaurantId: 1, fullName: "Quản trị test" },
         },
       }),
@@ -51,7 +49,8 @@ test("edits the promotion dates through the calendar and sends calendar dates to
     return route.fulfill({ headers, json: { data } })
   })
 
-  await page.goto("/quan-tri-nha-hang/khuyen-mai/1/chinh-sua")
+  await mockSessionRefresh(page)
+  await page.goto("/restaurant-admin/promotions/1/edit")
   const start = page.getByRole("button", { name: /^Từ ngày/ })
   const end = page.getByRole("button", { name: /^Đến ngày/ })
   await expect(start).toHaveText("23/03/2026")

@@ -68,7 +68,7 @@ test("confirms the invoice total before showing the guest payment QR", async ({ 
     (request) =>
       request.method() === "POST" && request.url().endsWith("/invoices/session/10/qr-opened"),
   )
-  await page.goto("/ban/QR-B1-T1/thanh-toan-qr")
+  await page.goto("/table/QR-B1-T1/payment-qr")
   const request = await reported
   expect(request.headers()["x-guest-token"]).toBe(TOKEN)
   expect(request.postDataJSON()).toEqual({ expectedTotal: 22680 })
@@ -100,7 +100,7 @@ async function mockApi(page: Page, info = table, activeSession = session) {
   })
 }
 
-test("valid location creates a guest session and polling uses only the server token", async ({
+test("a printed QR link still opens a guest session and polling uses only the server token", async ({
   page,
   context,
 }) => {
@@ -113,13 +113,14 @@ test("valid location creates a guest session and polling uses only the server to
     ),
   )
   await mockApi(page)
-  await page.goto("/ban/QR-B1-T1")
+  await page.goto("/ban/QR-B1-T1?source=printed#table")
+  await expect(page).toHaveURL("/table/QR-B1-T1?source=printed#table")
   const admission = page.waitForRequest((r) => r.url().endsWith("/guest/access"))
   await page.getByRole("button", { name: "Gửi yêu cầu mở bàn" }).click()
   const request = await admission
   expect(request.postDataJSON().location.latitude).toBe(10)
   expect(request.headers().authorization).toBeUndefined()
-  await expect(page).toHaveURL(/cho-mo-ban|waiting/)
+  await expect(page).toHaveURL(/waiting-for-table/)
   await expect
     .poll(() =>
       page.evaluate(
@@ -130,7 +131,7 @@ test("valid location creates a guest session and polling uses only the server to
   const polling = await page.waitForRequest((r) => /table-sessions\/10$/.test(r.url()))
   expect(polling.headers()["x-guest-token"]).toBe(TOKEN)
   await page.reload()
-  await expect(page).toHaveURL(/cho-mo-ban|waiting/)
+  await expect(page).toHaveURL(/waiting-for-table/)
 })
 
 test("permission denied gives staff assistance and sends no admission", async ({
@@ -147,7 +148,7 @@ test("permission denied gives staff assistance and sends no admission", async ({
     if (r.url().endsWith("/guest/access")) admissions++
   })
   await mockApi(page)
-  await page.goto("/ban/QR-B1-T1")
+  await page.goto("/table/QR-B1-T1")
   await page.getByRole("button", { name: "Gửi yêu cầu mở bàn" }).click()
   await expect(page.getByRole("alert")).toContainText("Không lấy được vị trí")
   expect(admissions).toBe(0)
@@ -155,7 +156,7 @@ test("permission denied gives staff assistance and sends no admission", async ({
 
 test("location failure can use an optional staff assistance code", async ({ page }) => {
   await mockApi(page, { ...table, joinRequired: true })
-  await page.goto("/ban/QR-B1-T1")
+  await page.goto("/table/QR-B1-T1")
   await expect(page.getByLabel("Mã hỗ trợ", { exact: true })).toHaveCount(0)
   await page.getByText("Không thể định vị? Nhờ nhân viên hỗ trợ", { exact: true }).click()
   await page.getByRole("checkbox").check()
@@ -165,7 +166,7 @@ test("location failure can use an optional staff assistance code", async ({ page
   const body = (await admission).postDataJSON()
   expect(body.joinCode).toBe("12345678")
   expect(body.location).toBeUndefined()
-  await expect(page).toHaveURL(/cho-mo-ban|waiting/)
+  await expect(page).toHaveURL(/waiting-for-table/)
 })
 
 test("a backend rejection is shown and does not save a token", async ({ page, context }) => {
@@ -179,7 +180,7 @@ test("a backend rejection is shown and does not save a token", async ({ page, co
       headers: { "Access-Control-Allow-Origin": "*" },
     }),
   )
-  await page.goto("/ban/QR-B1-T1")
+  await page.goto("/table/QR-B1-T1")
   await page.getByRole("button", { name: "Gửi yêu cầu mở bàn" }).click()
   await expect(page.getByRole("alert")).toContainText("ngoài phạm vi")
   expect(
@@ -194,11 +195,11 @@ test("a disabled geofence does not request device location", async ({ page }) =>
     }
   })
   await mockApi(page, { ...table, locationRequired: false })
-  await page.goto("/ban/QR-B1-T1")
+  await page.goto("/table/QR-B1-T1")
   const admission = page.waitForRequest((r) => r.url().endsWith("/guest/access"))
   await page.getByRole("button", { name: "Gửi yêu cầu mở bàn" }).click()
   expect((await admission).postDataJSON().location).toBeUndefined()
-  await expect(page).toHaveURL(/cho-mo-ban|waiting/)
+  await expect(page).toHaveURL(/waiting-for-table/)
 })
 
 test("existing table needs only table confirmation and valid location", async ({
@@ -208,7 +209,7 @@ test("existing table needs only table confirmation and valid location", async ({
   await context.grantPermissions(["geolocation"])
   await context.setGeolocation({ latitude: 10, longitude: 106, accuracy: 10 })
   await mockApi(page, { ...table, joinRequired: true })
-  await page.goto("/ban/QR-B1-T1")
+  await page.goto("/table/QR-B1-T1")
   await expect(page.getByRole("heading", { name: "Bạn đang ngồi tại Bàn test?" })).toBeVisible()
   await expect(page.getByLabel("Mã hỗ trợ", { exact: true })).toHaveCount(0)
   const admission = page.waitForRequest((r) => r.url().endsWith("/guest/access"))
@@ -216,7 +217,7 @@ test("existing table needs only table confirmation and valid location", async ({
   const body = (await admission).postDataJSON()
   expect(body.joinCode).toBeUndefined()
   expect(body.location.latitude).toBe(10)
-  await expect(page).toHaveURL(/cho-mo-ban/)
+  await expect(page).toHaveURL(/waiting-for-table/)
 })
 
 test("existing table with geofence disabled joins without a code or location", async ({ page }) => {
@@ -226,14 +227,14 @@ test("existing table with geofence disabled joins without a code or location", a
     }
   })
   await mockApi(page, { ...table, joinRequired: true, locationRequired: false })
-  await page.goto("/ban/QR-B1-T1")
+  await page.goto("/table/QR-B1-T1")
   await expect(page.getByLabel("Mã hỗ trợ", { exact: true })).toHaveCount(0)
   const admission = page.waitForRequest((r) => r.url().endsWith("/guest/access"))
   await page.getByRole("button", { name: "Đúng bàn, tiếp tục" }).click()
   const body = (await admission).postDataJSON()
   expect(body.joinCode).toBeUndefined()
   expect(body.location).toBeUndefined()
-  await expect(page).toHaveURL(/cho-mo-ban/)
+  await expect(page).toHaveURL(/waiting-for-table/)
 })
 
 test("a valid credential resumes the table without confirmation or location", async ({ page }) => {
@@ -251,8 +252,8 @@ test("a valid credential resumes the table without confirmation or location", as
   page.on("request", (r) => {
     if (r.url().endsWith("/guest/access")) admissions++
   })
-  await page.goto("/ban/QR-B1-T1")
-  await expect(page).toHaveURL(/cho-mo-ban/)
+  await page.goto("/table/QR-B1-T1")
+  await expect(page).toHaveURL(/waiting-for-table/)
   expect(admissions).toBe(0)
 })
 
@@ -260,9 +261,9 @@ test("a serving table opens the menu after confirmation", async ({ page, context
   await context.grantPermissions(["geolocation"])
   await context.setGeolocation({ latitude: 10, longitude: 106, accuracy: 10 })
   await mockApi(page, { ...table, joinRequired: true }, { ...session, status: "SERVING" })
-  await page.goto("/ban/QR-B1-T1")
+  await page.goto("/table/QR-B1-T1")
   await page.getByRole("button", { name: "Đúng bàn, tiếp tục" }).click()
-  await expect(page).toHaveURL(/thuc-don/)
+  await expect(page).toHaveURL(/menu/)
 })
 
 test("restores the unsent cart after reload until it expires or the table session changes", async ({
@@ -298,7 +299,7 @@ test("restores the unsent cart after reload until it expires or the table sessio
     return route.fulfill({ json: { data } })
   })
 
-  const menu = "/ban/QR-B1-T1/thuc-don"
+  const menu = "/table/QR-B1-T1/menu"
   const addDish = page.getByRole("button", { name: "Thêm Chả giò" })
   const viewCart = page.getByRole("button", { name: /Xem giỏ hàng/ })
   const emptyCart = page.getByRole("heading", { name: "Giỏ hàng đang trống" })
@@ -397,12 +398,12 @@ test("opens the guest menu after a session update arrives over WebSocket", async
     socket.send("o")
   })
 
-  await page.goto("/ban/QR-B1-T1")
+  await page.goto("/table/QR-B1-T1")
   await page.getByRole("button", { name: "Gửi yêu cầu mở bàn" }).click()
-  await expect(page).toHaveURL(/cho-mo-ban/)
+  await expect(page).toHaveURL(/waiting-for-table/)
   await expect.poll(() => Boolean(publish)).toBe(true)
   expect(sentCredential).toBe(TOKEN)
   activeSession.status = "SERVING"
   publish!()
-  await expect(page).toHaveURL(/thuc-don/, { timeout: 1500 })
+  await expect(page).toHaveURL(/menu/, { timeout: 1500 })
 })

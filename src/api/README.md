@@ -4,7 +4,7 @@
 
 ```
 src/lib/http.ts          axios instance + interceptor JWT + refresh 401 + bóc vỏ ResponseSuccess
-src/lib/auth-token.ts    nơi duy nhất giữ access/refresh token (tách khỏi store để tránh phụ thuộc vòng)
+src/lib/auth-token.ts    giữ access token trong bộ nhớ
 src/lib/query-keys.ts    toàn bộ query key của React Query
 src/types/api.ts         ResponseSuccess / ResponseError / PageResponse
 src/types/requests/      body của mọi POST/PUT (mirror dtos/request/** của backend)
@@ -37,20 +37,16 @@ src/features/*/api/      re-export phần mà feature đó dùng (đọc file n�
 
 Đừng viết sẵn API client đoán đường dẫn cho các mục trên — chốt với đội backend trước.
 
-## Luồng refresh token (đã thông)
+## Luồng xác thực bằng cookie
 
-`AuthController.refreshToken` đọc token từ header `Refresh-Token`. Trước đây
-`SecurityConfig.corsConfigurationSource()` chỉ cho phép
-`allowedHeaders = ["Authorization", "Content-Type"]` nên browser chặn header này ngay ở
-preflight → refresh luôn fail khi chạy từ trình duyệt. Đã sửa ở BE:
+Đăng nhập đặt refresh token trong cookie HttpOnly, SameSite=Lax, giới hạn ở
+đường dẫn API xác thực. Cookie có cờ Secure mặc định. Chỉ đặt
+`APP_AUTH_COOKIE_SECURE=false` trên backend phát triển khi chạy HTTP cục bộ.
 
-```java
-config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Refresh-Token"));
-```
+Frontend gọi login, refresh và logout với credentials và header
+`X-Auth-Request: 1`. Backend chỉ chấp nhận các origin đã cấu hình cho CORS.
+Khi tải lại trang, frontend dùng cookie để lấy access token và khôi phục lựa
+chọn vai trò của tài khoản tương ứng. Logout thu hồi phiên và xóa cookie.
 
-`logout()` trong `auth.api.ts` cũng đã được sửa để GỬI header `Refresh-Token` — trước đó nó
-không gửi gì, nên `AuthServiceImpl.getRefreshTokenFromRequest()` luôn nhận null và refresh
-token không bao giờ bị thu hồi phía server.
-
-Fallback đọc cookie `refreshToken` ở backend vẫn không dùng được, vì backend không hề set
-cookie đó — `refreshToken` được trả trong body của `LoginResponse`.
+Dùng `VITE_API_BASE_URL=/api/v1` để Vite, Nginx hoặc Vercel chuyển tiếp API
+trên cùng origin với frontend.

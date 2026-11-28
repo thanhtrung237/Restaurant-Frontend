@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import { mockSessionRefresh } from "./staff-session"
 
 test.use({ timezoneId: "America/Los_Angeles" })
 
@@ -74,17 +75,13 @@ for (const width of [360, 834, 1440]) {
     await page.setViewportSize({ width, height: 850 })
     await page.clock.setFixedTime(new Date("2026-11-26T18:00:00Z"))
     await page.addInitScript(() => {
-      const accessToken = "test-token"
-      localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken }))
       localStorage.setItem(
         "pho-viet-auth",
         JSON.stringify({
-          version: 0,
+          version: 1,
           state: {
             role: "RESTAURANT_ADMIN",
             branchId: null,
-            accessToken,
-            isAuthenticated: true,
             account: { id: 1, restaurantId: 1, fullName: "Quản trị" },
           },
         }),
@@ -114,7 +111,8 @@ for (const width of [360, 834, 1440]) {
       return route.fulfill({ json: { data } })
     })
 
-    await page.goto("/quan-tri-nha-hang/hoa-don?chi-nhanh=999")
+    await mockSessionRefresh(page)
+    await page.goto("/restaurant-admin/invoices?chi-nhanh=999")
     const invoice = (code: string) => page.getByRole("button", { name: new RegExp(code) })
     const branch = page.getByRole("combobox", { name: "Chi nhánh", exact: true })
     const date = page.getByRole("button", { name: /Chọn khoảng ngày hóa đơn/ })
@@ -223,7 +221,7 @@ for (const width of [360, 834, 1440]) {
     await search.fill("nguyen thu ngan")
     await search.press("Enter")
     await invoice("HD-ISSUED").click()
-    await expect(page).toHaveURL(/\/hoa-don\/tra-cuu\/41$/)
+    await expect(page).toHaveURL(/\/invoices\/lookup\/41$/)
     await page.getByRole("button", { name: "Về danh sách hóa đơn" }).click()
     await expect(date).toHaveAccessibleName(/26\/11\/2026 – 27\/11\/2026/)
     await expect(page.getByRole("button", { name: "Bỏ lọc HĐĐT: Đã phát hành" })).toBeVisible()

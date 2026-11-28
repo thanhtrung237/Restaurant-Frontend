@@ -1,5 +1,68 @@
 import { expect, test } from "@playwright/test"
+import { mockSessionRefresh } from "./staff-session"
 import type { BranchStaffMember } from "../../src/api/branch-staff.api"
+
+test("restaurant administrator can choose and save a hire date on mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "pho-viet-auth",
+      JSON.stringify({
+        version: 1,
+        state: {
+          role: "RESTAURANT_ADMIN",
+          branchId: null,
+          assignmentId: 1,
+          account: { id: 1, restaurantId: 1, fullName: "Quản trị kiểm thử" },
+        },
+      }),
+    )
+  })
+  await page.route("**/ws/**", (route) => route.abort())
+  await page.route("**/api/v1/**", (route) => {
+    const request = route.request()
+    const path = new URL(request.url()).pathname
+    let data: unknown = []
+    if (path.endsWith("/roles/restaurant/1"))
+      data = [{ id: 2, name: "Quản lý", scope: "RESTAURANT" }]
+    if (path.endsWith("/accounts") && request.method() === "POST")
+      data = { id: 2, employeeCode: "NV002", ...request.postDataJSON() }
+    return route.fulfill({ json: { data } })
+  })
+  await mockSessionRefresh(page)
+  await page.goto("/restaurant-admin/staff")
+  await page.getByRole("button", { name: "Thêm nhân viên", exact: true }).click()
+
+  const form = page.getByRole("dialog", { name: "Thêm nhân viên" })
+  await form.getByLabel(/Họ và tên/).fill("Nhân viên kiểm thử")
+  await form.getByLabel(/Tên đăng nhập/).fill("employee_test")
+  await form.getByLabel(/Số điện thoại/).fill("0321234567")
+  await form.getByLabel(/Mật khẩu tạm thời/).fill("Start789!")
+  await form.getByRole("button", { name: "Thêm phân công" }).click()
+  await form.locator("#assignment-role-0").click()
+  await page.getByRole("option", { name: "Quản lý", exact: true }).click()
+  await form.getByRole("button", { name: "Lưu nhân viên" }).click()
+  await expect(form.getByText("Vui lòng nhập ngày vào làm hợp lệ.")).toBeVisible()
+
+  const trigger = form.getByRole("button", { name: /Ngày vào làm/ })
+  await trigger.click()
+  const calendar = page.getByRole("dialog", { name: "Ngày vào làm" })
+  await expect(calendar).toBeVisible()
+  await page.keyboard.press("Escape")
+  await expect(calendar).toBeHidden()
+  await trigger.click()
+  await calendar.getByLabel("Năm hiển thị").selectOption("2027")
+  await calendar.getByLabel("Tháng hiển thị").selectOption("6")
+  await calendar.getByRole("button", { name: "07/07/2027", exact: true }).click()
+  await expect(trigger).toContainText("07/07/2027")
+
+  const saved = page.waitForRequest(
+    (request) => request.method() === "POST" && request.url().endsWith("/accounts"),
+  )
+  await form.getByRole("button", { name: "Lưu nhân viên" }).click()
+  expect((await saved).postDataJSON()).toMatchObject({ hireDate: "2027-07-07" })
+  await expect(form).toBeHidden()
+})
 
 test("branch manager creates staff and changes their branch roles", async ({ page }) => {
   const branch = { id: 10, restaurantId: 1, name: "Chi nhánh Quận 1", status: "ACTIVE" }
@@ -16,17 +79,14 @@ test("branch manager creates staff and changes their branch roles", async ({ pag
   const writes: { path: string; body: unknown }[] = []
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.addInitScript(() => {
-    localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
     localStorage.setItem(
       "pho-viet-auth",
       JSON.stringify({
-        version: 0,
+        version: 1,
         state: {
           role: "BRANCH_MANAGER",
           branchId: 10,
           assignmentId: 7,
-          accessToken: "test-token",
-          isAuthenticated: true,
           account: { id: 1, restaurantId: 1, fullName: "Quản lý kiểm thử" },
         },
       }),
@@ -72,7 +132,8 @@ test("branch manager creates staff and changes their branch roles", async ({ pag
     return route.fulfill({ headers, json: { data } })
   })
 
-  await page.goto("/quan-ly-chi-nhanh/nhan-vien")
+  await mockSessionRefresh(page)
+  await page.goto("/branch-manager/staff")
   await expect(page.getByRole("link", { name: "Nhân viên", exact: true })).toBeVisible()
   await expect(page.getByRole("heading", { name: "Nhân viên chi nhánh" })).toBeVisible()
   await expect(page.getByRole("button", { name: "Đổi vai trò cho Quản lý kiểm thử" })).toHaveCount(
@@ -87,7 +148,12 @@ test("branch manager creates staff and changes their branch roles", async ({ pag
   await create.getByLabel("Họ và tên").fill("Nhân viên mới")
   await create.getByLabel("Tên đăng nhập").fill("new_staff")
   await expect(create.getByLabel(/email/i)).toHaveCount(0)
-  await create.getByLabel("Ngày vào làm").fill("2026-11-25")
+  await create.getByRole("button", { name: /Ngày vào làm/ }).click()
+  const calendar = page.getByRole("dialog", { name: "Ngày vào làm" })
+  await calendar.getByLabel("Năm hiển thị").selectOption("2026")
+  await calendar.getByLabel("Tháng hiển thị").selectOption("10")
+  await calendar.getByRole("button", { name: "25/11/2026", exact: true }).click()
+  await expect(create.getByRole("button", { name: /Ngày vào làm.*25\/11\/2026/ })).toBeVisible()
   await create.getByLabel("Số điện thoại").fill("0401234567")
   await create.getByLabel("Mật khẩu ban đầu").fill("Start789!")
   await create.getByRole("checkbox", { name: "Phục vụ" }).click()

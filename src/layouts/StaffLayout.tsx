@@ -120,7 +120,7 @@ function StaffLayoutInner() {
       return
     }
     // Điều hướng thẳng theo path của nav item. Không còn switch-case suy ra basePath
-    // từ role — cách cũ bỏ sót Thu ngân nên vai trò này rơi vào /quan-tri-nha-hang.
+    // từ role — cách cũ bỏ sót Thu ngân nên vai trò này rơi vào /restaurant-admin.
     if (key !== location.pathname) {
       navigate(key)
     }

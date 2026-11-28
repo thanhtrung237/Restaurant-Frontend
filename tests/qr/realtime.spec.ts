@@ -1,4 +1,5 @@
-﻿import { expect, test, type Page, type WebSocketRoute } from "@playwright/test"
+import { expect, test, type Page, type WebSocketRoute } from "@playwright/test"
+import { mockSessionRefresh } from "./staff-session"
 
 const table = { id: 4, branchId: 2, name: "Bàn realtime", capacity: 4, status: "AVAILABLE" }
 const session = {
@@ -39,7 +40,7 @@ const invoice = {
   totalPaid: 0,
   status: "PENDING",
 }
-const guestPath = "/ban/QR-B2-T4"
+const guestPath = "/table/QR-B2-T4"
 const sessionTopic = "/topic/session/12/session-updated"
 const menuTopic = "/topic/restaurant/3/menu-updated"
 const branchTopic = "/topic/branch/2/session-updated"
@@ -143,17 +144,13 @@ async function guest(page: Page, activeSession = session) {
 async function staff(page: Page, role: string, branchId: number | null = 2) {
   await page.addInitScript(
     ({ role, branchId }) => {
-      const accessToken = "staff-realtime-test"
-      localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken }))
       localStorage.setItem(
         "pho-viet-auth",
         JSON.stringify({
-          version: 0,
+          version: 1,
           state: {
             role,
             branchId,
-            accessToken,
-            isAuthenticated: true,
             account: {
               id: 1,
               restaurantId: role === "PLATFORM_ADMIN" ? null : 3,
@@ -172,7 +169,7 @@ test("guest menu removes an out-of-stock dish and resyncs on reconnect", async (
   const socket = await mockSocket(page)
   let stocked = true
   await mockApi(page, { "/branches/2/menu": () => (stocked ? [dish] : []) })
-  await page.goto(guestPath + "/thuc-don")
+  await page.goto(guestPath + "/menu")
   const name = page.getByText(dish.dishName, { exact: true }).first()
   await expect(name).toBeVisible()
   await socket.waitFor(menuTopic)
@@ -190,7 +187,7 @@ test("guest sees the updated status of an ordered dish", async ({ page }) => {
   const socket = await mockSocket(page)
   let status = "PENDING"
   await mockApi(page, { "/order-details/session/12": () => [{ ...detail, status }] })
-  await page.goto(guestPath + "/mon-da-goi")
+  await page.goto(guestPath + "/ordered-items")
   await expect(page.getByText(dish.dishName, { exact: true })).toBeVisible()
   await expect(page.getByText("Chờ xác nhận", { exact: true }).first()).toBeVisible()
   const topic = "/topic/session/12/item-status"
@@ -224,7 +221,7 @@ test("guest invoice replaces the preview when the cashier issues the bill", asyn
     },
     active,
   )
-  await page.goto(guestPath + "/hoa-don")
+  await page.goto(guestPath + "/invoice")
   await expect(page.getByRole("heading", { name: "Hóa đơn tạm tính" })).toBeVisible()
   await socket.waitFor(sessionTopic)
   ready = true
@@ -261,12 +258,12 @@ test("guest QR payment switches to success after a session update", async ({ pag
     },
     active,
   )
-  await page.goto(guestPath + "/thanh-toan-qr")
+  await page.goto(guestPath + "/payment-qr")
   await expect(page.getByRole("img", { name: "VietQR Thanh toán" })).toBeVisible()
   await socket.waitFor(sessionTopic)
   paid = true
   socket.publish(sessionTopic)
-  await expect(page).toHaveURL(/thanh-toan-thanh-cong$/)
+  await expect(page).toHaveURL(/payment-success$/)
 })
 
 test("staff table map sees a session opened at another terminal", async ({ page }) => {
@@ -277,7 +274,8 @@ test("staff table map sees a session opened at another terminal", async ({ page 
     "/tables/branch/2": () => [{ ...table, status: open ? "OCCUPIED" : "AVAILABLE" }],
     "/table-sessions/branch/2/open": () => (open ? [session] : []),
   })
-  await page.goto("/quan-ly-chi-nhanh/so-do-ban")
+  await mockSessionRefresh(page, "staff-realtime-test")
+  await page.goto("/branch-manager/table-map")
   await expect(page.getByRole("button", { name: /Bàn realtime.*Trống/ })).toBeVisible()
   await socket.waitFor(branchTopic)
   open = true
@@ -292,7 +290,8 @@ test("kitchen receives a dish from another terminal", async ({ page }) => {
   await mockApi(page, {
     "/order-details/session/12": () => (orderReceived ? [detail] : []),
   })
-  await page.goto("/quan-ly-chi-nhanh/bep")
+  await mockSessionRefresh(page, "staff-realtime-test")
+  await page.goto("/branch-manager/kitchen")
   await socket.waitFor(branchTopic)
   await expect(page.getByText(dish.dishName, { exact: true })).toHaveCount(0)
   orderReceived = true
@@ -318,7 +317,8 @@ test("restaurant admin reloads reports and management data from restaurant event
     }),
     "/branches/restaurant/3": () => [{ id: 2, name: branchName, code: "CN2", status: "ACTIVE" }],
   })
-  await page.goto("/quan-tri-nha-hang/bao-cao")
+  await mockSessionRefresh(page, "staff-realtime-test")
+  await page.goto("/restaurant-admin/reports")
   const operations = "/topic/restaurant/3/operations-updated"
   await socket.waitFor(operations)
   const reportRequest = page.waitForResponse(
@@ -332,7 +332,8 @@ test("restaurant admin reloads reports and management data from restaurant event
   socket.publish(operations)
   await reportRequest
 
-  await page.goto("/quan-tri-nha-hang/chi-nhanh")
+  await mockSessionRefresh(page, "staff-realtime-test")
+  await page.goto("/restaurant-admin/branches")
   await expect(page.getByText(branchName, { exact: true }).first()).toBeVisible()
   const management = "/topic/restaurant/3/management-updated"
   await socket.waitFor(management)
@@ -352,7 +353,8 @@ test("platform admin refreshes restaurant data on a platform event", async ({ pa
       totalPages: 1,
     }),
   })
-  await page.goto("/quan-tri-nen-tang")
+  await mockSessionRefresh(page, "staff-realtime-test")
+  await page.goto("/platform-admin")
   const topic = "/topic/platform/structure-updated"
   await socket.waitFor(topic)
   const refresh = page.waitForResponse(
@@ -375,7 +377,8 @@ test("cashier sees the paid invoice after a branch update", async ({ page }) => 
   await mockApi(page, {
     "/invoices/branch/2": () => [{ ...invoice, status: paid ? "PAID" : "PENDING" }],
   })
-  await page.goto("/thu-ngan/hoa-don")
+  await mockSessionRefresh(page, "staff-realtime-test")
+  await page.goto("/cashier/invoices")
   await page.getByRole("button", { name: "Tất cả ngày" }).click()
   const row = page.getByRole("row").filter({ hasText: "HD-45" })
   await expect(row.getByText("Chờ thanh toán", { exact: true })).toBeVisible()
@@ -402,7 +405,8 @@ test("restaurant admin sees a remotely created promotion", async ({ page }) => {
   await mockApi(page, {
     "/promotions/restaurant/3": () => ({ content: created ? [promotion] : [] }),
   })
-  await page.goto("/quan-tri-nha-hang/khuyen-mai")
+  await mockSessionRefresh(page, "staff-realtime-test")
+  await page.goto("/restaurant-admin/promotions")
   await expect(page.getByText(promotion.name, { exact: true })).toHaveCount(0)
   await socket.waitFor(menuTopic)
   created = true

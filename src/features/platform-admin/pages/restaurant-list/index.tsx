@@ -581,7 +581,7 @@ export default function RestaurantListPage() {
                     <tr
                       key={restaurant.id}
                       className="hover:bg-slate-50 transition-colors group cursor-pointer"
-                      onClick={() => navigate(`/quan-tri-nen-tang/nha-hang/${restaurant.id}`)}
+                      onClick={() => navigate(`/platform-admin/restaurants/${restaurant.id}`)}
                     >
                       {/* Name & Avatar */}
                       <td className="py-4 px-4 lg:px-5">
@@ -655,7 +655,7 @@ export default function RestaurantListPage() {
                             <PopoverClose
                               type="button"
                               onClick={() =>
-                                navigate("/quan-tri-nen-tang/nha-hang/" + restaurant.id)
+                                navigate("/platform-admin/restaurants/" + restaurant.id)
                               }
                               className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2.5 text-left text-sm font-medium text-slate-800 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-brand-primary"
                             >

@@ -1,21 +1,19 @@
 import { expect, test } from "@playwright/test"
+import { mockSessionRefresh } from "./staff-session"
 
 test("restaurant admin can switch table maps and open settings for a different branch", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1231, height: 905 })
   await page.addInitScript(() => {
-    localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
     localStorage.setItem(
       "pho-viet-auth",
       JSON.stringify({
-        version: 0,
+        version: 1,
         state: {
           role: "RESTAURANT_ADMIN",
           branchId: null,
           assignmentId: -1,
-          accessToken: "test-token",
-          isAuthenticated: true,
           account: { id: 1, restaurantId: 1, fullName: "Quản trị test" },
         },
       }),
@@ -65,7 +63,8 @@ test("restaurant admin can switch table maps and open settings for a different b
     await route.fulfill({ headers, json: { data } })
   })
 
-  const tableMap = "/quan-tri-nha-hang/so-do-ban"
+  const tableMap = "/restaurant-admin/table-map"
+  await mockSessionRefresh(page)
   await page.goto(tableMap)
   await expect(page.getByText("Chọn một chi nhánh để tiếp tục")).toBeVisible()
   await page
@@ -121,16 +120,16 @@ test("restaurant admin can switch table maps and open settings for a different b
   await expect(page.getByText("Bàn riêng 10", { exact: true })).toHaveCount(0)
   await expect(page).toHaveURL(tableMap)
 
-  const branchList = "/quan-tri-nha-hang/chi-nhanh"
+  const branchList = "/restaurant-admin/branches"
   await page.setViewportSize({ width: 1908, height: 909 })
   await page.goto(branchList)
   const configureDistrict1 = page.getByRole("link", {
     name: "Cấu hình chi nhánh: Chi nhánh Quận 1",
   })
-  await expect(configureDistrict1).toHaveAttribute("href", branchList + "/10/cau-hinh")
+  await expect(configureDistrict1).toHaveAttribute("href", branchList + "/10/settings")
   await expect(
     page.getByRole("link", { name: "Cấu hình chi nhánh: Chi nhánh Quận 7" }),
-  ).toHaveAttribute("href", branchList + "/20/cau-hinh")
+  ).toHaveAttribute("href", branchList + "/20/settings")
   const title = page.getByRole("heading", { name: "Chi nhánh Quận 1", exact: true })
   const card = page.locator('[data-slot="card"]').filter({ has: title })
   const detailLink = card.getByRole("link", { name: "Xem chi tiết: Chi nhánh Quận 1" })
@@ -173,7 +172,7 @@ test("restaurant admin can switch table maps and open settings for a different b
     .toBe(true)
   await page.setViewportSize({ width: 1231, height: 905 })
   await configureDistrict1.click()
-  await expect(page).toHaveURL(branchList + "/10/cau-hinh")
+  await expect(page).toHaveURL(branchList + "/10/settings")
   await expect(page.getByText("Kiểm tra vị trí khi quét QR")).toBeVisible()
   await expect(page.getByRole("checkbox", { name: "Bật kiểm tra vị trí" })).toBeEnabled()
   await expect(page.getByRole("button", { name: "Lưu cấu hình vị trí" })).toBeVisible()
@@ -186,7 +185,7 @@ test("restaurant admin can switch table maps and open settings for a different b
   await expect(page).toHaveURL(branchList + "/20")
   await expect(page.getByText("Menu chi nhánh", { exact: true })).toBeVisible()
 
-  await page.goto("/quan-tri-nha-hang/vai-tro-phan-quyen")
+  await page.goto("/restaurant-admin/roles-permissions")
   await expect(page.getByRole("heading", { name: "Vai trò & phân quyền" }).first()).toBeVisible()
   await expect(page.getByRole("button", { name: "Nhân viên", exact: true })).toBeVisible()
 })
@@ -196,17 +195,14 @@ test("branch managers can save operational settings with bank fields disabled", 
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.addInitScript(() => {
-    localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
     localStorage.setItem(
       "pho-viet-auth",
       JSON.stringify({
-        version: 0,
+        version: 1,
         state: {
           role: "BRANCH_MANAGER",
           branchId: 10,
           assignmentId: 7,
-          accessToken: "test-token",
-          isAuthenticated: true,
           account: { id: 1, restaurantId: 1, fullName: "Quản lý test" },
         },
       }),
@@ -240,7 +236,8 @@ test("branch managers can save operational settings with bank fields disabled", 
     await route.fulfill({ headers, json: { data } })
   })
 
-  await page.goto("/quan-ly-chi-nhanh/cau-hinh")
+  await mockSessionRefresh(page)
+  await page.goto("/branch-manager/settings")
   await expect(page.getByRole("heading", { name: "Cấu hình chi nhánh", exact: true })).toBeVisible()
   await expect(page.getByText("Tài khoản nhận chuyển khoản", { exact: true })).toBeVisible()
   await expect(page.getByText("Kiểm tra vị trí khi quét QR", { exact: true })).toHaveCount(0)
@@ -311,10 +308,10 @@ test("branch managers can save operational settings with bank fields disabled", 
   expect(body).not.toHaveProperty("bankAccountNo")
 
   await page.setViewportSize({ width: 1440, height: 900 })
-  await page.goto("/quan-ly-chi-nhanh/nhat-ky")
+  await page.goto("/branch-manager/audit-log")
   await expect(page.getByRole("button", { name: "Nhân viên", exact: true })).toHaveCount(0)
   await page.getByRole("button", { name: "Vai trò & phân quyền", exact: true }).click()
-  await expect(page).toHaveURL("/quan-ly-chi-nhanh/vai-tro-phan-quyen")
+  await expect(page).toHaveURL("/branch-manager/roles-permissions")
   await expect(page.getByRole("heading", { name: "Vai trò & phân quyền" }).first()).toBeVisible()
   await expect(page.getByText("Cấu hình vai trò & quyền", { exact: true }).first()).toBeVisible()
   await expect(
@@ -322,5 +319,5 @@ test("branch managers can save operational settings with bank fields disabled", 
   ).toHaveAttribute("aria-current", "page")
   await expect(page.getByRole("button", { name: "Nhân viên", exact: true })).toHaveCount(0)
   await page.getByRole("button", { name: "Nhật ký hoạt động", exact: true }).click()
-  await expect(page).toHaveURL("/quan-ly-chi-nhanh/nhat-ky")
+  await expect(page).toHaveURL("/branch-manager/audit-log")
 })

@@ -10,21 +10,30 @@ import type { RefreshTokenResponse } from "@/types/models"
 import {
   clearTokens,
   getAccessToken,
-  getRefreshToken,
+  getTokenAccountId,
+  getTokenRevision,
   notifyUnauthorized,
-  setTokens,
+  setAccessToken,
 } from "./auth-token"
 
 /**
  * Vite chuyển tiếp API cùng origin trong môi trường phát triển.
  * Bản triển khai có thể đặt VITE_API_BASE_URL để dùng API riêng.
  */
-export const API_BASE_URL: string =
-  import.meta.env.VITE_API_BASE_URL ||
-  (import.meta.env.DEV ? "/api/v1" : "http://localhost:8080/api/v1")
+export const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL || "/api/v1"
 
 /** Đường dẫn công khai (BE `SecurityConfig.PUBLIC_ENDPOINTS`) — không gắn Bearer, không refresh. */
-const PUBLIC_PATHS = ["/auth/login", "/auth/refresh-token"]
+const PUBLIC_PATHS = ["/auth/login", "/auth/refresh-token", "/auth/logout"]
+
+export const COOKIE_AUTH_CONFIG = {
+  withCredentials: true,
+  headers: { "X-Auth-Request": "1" },
+}
+
+type AuthenticatedRequest = InternalAxiosRequestConfig & {
+  _retried?: boolean
+  _accountId?: number | null
+}
 
 /** Lỗi đã chuẩn hoá để UI dùng chung, thay vì phải tự bóc `AxiosError`. */
 export class ApiError extends Error {
@@ -58,13 +67,14 @@ function isPublicPath(url?: string): boolean {
 }
 
 // ------------------------------------------------------------------ Request
-http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+http.interceptors.request.use((config: AuthenticatedRequest) => {
   if (isCustomerPage()) {
     config.headers.delete("Authorization")
     const credential = getGuestCredential()
     if (credential) config.headers.set("X-Guest-Token", credential.token)
   } else if (!isPublicPath(config.url)) {
     const token = getAccessToken()
+    config._accountId = getTokenAccountId()
     if (token) config.headers.set("Authorization", `Bearer ${token}`)
   }
   return config
@@ -75,30 +85,29 @@ http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
  * Giữ 1 promise refresh duy nhất: nếu 5 request cùng lỗi 401 một lúc thì chỉ gọi
  * `/auth/refresh-token` MỘT lần, 4 request còn lại chờ kết quả rồi retry.
  */
-let refreshPromise: Promise<string> | null = null
+let pendingRefresh: { revision: number; request: Promise<RefreshTokenResponse> } | null = null
 
-async function requestNewAccessToken(): Promise<string> {
-  const refreshToken = getRefreshToken()
-  if (!refreshToken) throw new ApiError("Phiên đăng nhập đã hết hạn", 401)
+export async function restoreAccessToken(accountId: number) {
+  const revision = getTokenRevision()
+  if (pendingRefresh?.revision !== revision) {
+    const request = apiPost<RefreshTokenResponse>("/auth/refresh-token", null, COOKIE_AUTH_CONFIG)
+    pendingRefresh = { revision, request }
+  }
 
-  // Gọi bằng axios "trần" chứ không qua `http` để không lọt vào interceptor 401 này.
-  //
-  // `AuthController.refreshToken` đọc token từ header `Refresh-Token`. Header này đã được
-  // thêm vào `SecurityConfig.corsConfigurationSource().setAllowedHeaders(...)` ở BE — trước
-  // đó browser chặn ngay từ preflight nên luồng refresh không bao giờ chạy được.
-  // (Fallback cookie `refreshToken` ở BE vẫn không dùng được vì BE không set cookie đó —
-  // refresh token được trả trong body của `LoginResponse`.)
-  const res = await axios.post<ResponseSuccess<RefreshTokenResponse>>(
-    `${API_BASE_URL}/auth/refresh-token`,
-    null,
-    { headers: { "Refresh-Token": refreshToken } },
-  )
-
-  const data = res.data?.data
-  if (!data?.accessToken) throw new ApiError("Không làm mới được phiên đăng nhập", 401)
-
-  setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken ?? refreshToken })
-  return data.accessToken
+  const pending = pendingRefresh
+  try {
+    const data = await pending.request
+    if (!data?.accessToken || data.accountId !== accountId) {
+      throw new ApiError("Phiên đăng nhập đã hết hạn", 401)
+    }
+    if (getTokenRevision() === revision) {
+      setAccessToken(data.accessToken, accountId)
+    } else if (getAccessToken() !== data.accessToken || getTokenAccountId() !== accountId) {
+      throw new ApiError("Phiên đăng nhập đã thay đổi", 401)
+    }
+  } finally {
+    if (pendingRefresh === pending) pendingRefresh = null
+  }
 }
 
 function toApiError(error: AxiosError<ResponseError>): ApiError {
@@ -124,31 +133,32 @@ function toApiError(error: AxiosError<ResponseError>): ApiError {
 http.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<ResponseError>) => {
-    const config = error.config as (InternalAxiosRequestConfig & { _retried?: boolean }) | undefined
+    const config = error.config as AuthenticatedRequest | undefined
     const status = error.response?.status
 
     if (
       status === 401 &&
       config &&
       !config._retried &&
+      config._accountId != null &&
+      config._accountId === getTokenAccountId() &&
       !isPublicPath(config.url) &&
       !isCustomerPage()
     ) {
       config._retried = true
+      const revision = getTokenRevision()
       try {
-        if (!refreshPromise) {
-          refreshPromise = requestNewAccessToken().finally(() => {
-            refreshPromise = null
-          })
+        if (config.headers.get("Authorization") === `Bearer ${getAccessToken()}`) {
+          await restoreAccessToken(config._accountId)
         }
-        await refreshPromise
-        // Gọi lại qua `http` để request interceptor tự gắn access token MỚI.
-        return await http.request(config)
-      } catch {
-        clearTokens()
-        notifyUnauthorized()
-        return Promise.reject(toApiError(error))
+      } catch (refreshError) {
+        if (getTokenRevision() === revision && isApiStatus(refreshError, 401)) {
+          clearTokens()
+          notifyUnauthorized()
+        }
+        return Promise.reject(refreshError)
       }
+      if (config._accountId === getTokenAccountId()) return http.request(config)
     }
 
     return Promise.reject(toApiError(error))

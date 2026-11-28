@@ -1,4 +1,5 @@
-﻿import { expect, test } from "@playwright/test"
+import { expect, test } from "@playwright/test"
+import { mockSessionRefresh } from "./staff-session"
 
 import type { Page } from "@playwright/test"
 
@@ -12,14 +13,14 @@ const invoice = {
   status: "PENDING",
 }
 const roles = [
-  { role: "BRANCH_MANAGER", prefix: "/quan-ly-chi-nhanh", branchId: 2, invoicePath: "hoa-don" },
+  { role: "BRANCH_MANAGER", prefix: "/branch-manager", branchId: 2, invoicePath: "invoices" },
   {
     role: "RESTAURANT_ADMIN",
-    prefix: "/quan-tri-nha-hang",
+    prefix: "/restaurant-admin",
     branchId: null,
-    invoicePath: "hoa-don",
+    invoicePath: "invoices",
   },
-  { role: "CASHIER", prefix: "/thu-ngan", branchId: 2, invoicePath: "hoa-don-dien-tu" },
+  { role: "CASHIER", prefix: "/cashier", branchId: 2, invoicePath: "e-invoices" },
 ]
 
 for (const { role, prefix, branchId } of roles) {
@@ -27,16 +28,13 @@ for (const { role, prefix, branchId } of roles) {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.addInitScript(
       ({ role, branchId }) => {
-        localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
         localStorage.setItem(
           "pho-viet-auth",
           JSON.stringify({
-            version: 0,
+            version: 1,
             state: {
               role,
               branchId,
-              accessToken: "test-token",
-              isAuthenticated: true,
               account: { id: 1, restaurantId: 1 },
             },
           }),
@@ -75,7 +73,8 @@ for (const { role, prefix, branchId } of roles) {
       await route.fulfill({ json: { data } })
     })
 
-    await page.goto(prefix + "/thanh-toan/12")
+    await mockSessionRefresh(page)
+    await page.goto(prefix + "/checkout/12")
     await expect(page.getByText("Phiên không có món nào tính tiền")).toBeVisible()
     const cancel = page.getByRole("button", { name: "Hủy phiên bàn" })
     if (role === "CASHIER") {
@@ -92,7 +91,7 @@ for (const { role, prefix, branchId } of roles) {
     await expect(page.getByText("Không hủy được phiên", { exact: true })).toBeVisible()
     await expect(dialog).toBeVisible()
     await confirm.click()
-    await expect(page).toHaveURL(prefix + "/so-do-ban")
+    await expect(page).toHaveURL(prefix + "/table-map")
     expect(cancellationBodies).toEqual([
       { reason: "Đã bỏ hết món tính nhầm" },
       { reason: "Đã bỏ hết món tính nhầm" },
@@ -143,16 +142,13 @@ for (const { role, prefix, branchId, invoicePath } of roles) {
 
     await page.addInitScript(
       ({ role, branchId }) => {
-        localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
         localStorage.setItem(
           "pho-viet-auth",
           JSON.stringify({
-            version: 0,
+            version: 1,
             state: {
               role,
               branchId,
-              accessToken: "test-token",
-              isAuthenticated: true,
               account: { id: 1, restaurantId: 1, fullName: "Nhân viên test" },
             },
           }),
@@ -237,7 +233,8 @@ for (const { role, prefix, branchId, invoicePath } of roles) {
       await route.fulfill({ headers, json: { data } })
     })
 
-    const checkout = prefix + "/thanh-toan/12"
+    const checkout = prefix + "/checkout/12"
+    await mockSessionRefresh(page)
     await page.goto(checkout)
     await expect(page.getByRole("region", { name: "Thanh toán" })).toBeVisible()
     expect(invoiceRequests).toBe(0)
@@ -248,7 +245,7 @@ for (const { role, prefix, branchId, invoicePath } of roles) {
     }
     const cashColors = await checkPaymentButtons(page, "Tiền mặt")
     await page.getByRole("button", { name: "Chuyển khoản QR" }).click()
-    await expect(page).toHaveURL(checkout + "/chuyen-khoan-qr")
+    await expect(page).toHaveURL(checkout + "/qr-transfer")
     await expect(page.getByText("QR chưa khả dụng", { exact: true })).toBeVisible()
     const qrColors = await checkPaymentButtons(page, "Chuyển khoản QR")
     expect(cashColors[0]).not.toBe(cashColors[1])
@@ -311,16 +308,13 @@ test("cash and QR show the same persisted discount after replacing and removing 
   page,
 }) => {
   await page.addInitScript(() => {
-    localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
     localStorage.setItem(
       "pho-viet-auth",
       JSON.stringify({
-        version: 0,
+        version: 1,
         state: {
           role: "RESTAURANT_ADMIN",
           branchId: 2,
-          accessToken: "test-token",
-          isAuthenticated: true,
           account: { id: 1, restaurantId: 1, fullName: "Nhân viên test" },
         },
       }),
@@ -398,7 +392,8 @@ test("cash and QR show the same persisted discount after replacing and removing 
     return route.fulfill({ headers, json: { data } })
   })
 
-  await page.goto("/quan-tri-nha-hang/thanh-toan/12")
+  await mockSessionRefresh(page)
+  await page.goto("/restaurant-admin/checkout/12")
   const cash = page.getByRole("region", { name: "Thanh toán" })
   const discountButton = cash.getByRole("button", { name: "Thay chiết khấu tay" })
   await expect(cash.getByRole("button", { name: /áp khuyến mãi|bỏ khuyến mãi/i })).toHaveCount(0)

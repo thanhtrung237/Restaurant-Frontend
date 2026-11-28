@@ -29,7 +29,7 @@ interface LocationState {
 export default function WaitingTableOpenPage() {
   const navigate = useNavigate()
   const { qrCode } = useParams<{ qrCode: string }>()
-  // Lỗi tải phiên: mở thẳng bằng link thì về màn quét QR của bàn (`/ban/:qrCode`) —
+  // Lỗi tải phiên: mở thẳng bằng link thì về màn quét QR của bàn (`/table/:qrCode`) —
   // đúng việc màn này khuyên khách làm ("quét lại mã QR").
   const goBack = useGoBack(generatePath(CUSTOMER_PATHS.TABLE_OPEN_QR, { qrCode: qrCode ?? "" }))
   const location = useLocation()

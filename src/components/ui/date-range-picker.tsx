@@ -1,14 +1,13 @@
 import { useState } from "react"
-import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
+import { CalendarDays, ChevronDown } from "lucide-react"
 import type { DateRange } from "react-day-picker"
 import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
+import { PickerCalendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import {
   calendarDate,
   calendarDateKey,
-  calendarDateLabel,
   calendarRangeLabel,
   DATE_RANGE_PRESETS,
   getPresetRange,
@@ -121,7 +120,7 @@ export function DateRangePicker({
             Tùy chỉnh
           </button>
         </div>
-        <Calendar
+        <PickerCalendar
           mode="range"
           min={1}
           resetOnSelect
@@ -133,40 +132,7 @@ export function DateRangePicker({
           disabled={{ after: currentDay }}
           startMonth={calendarDate(`${currentDay.getFullYear() - 99}-01-01`)}
           endMonth={currentDay}
-          captionLayout="dropdown"
-          showOutsideDays={false}
-          formatters={{ formatMonthDropdown: (date) => `Tháng ${date.getMonth() + 1}` }}
-          labels={{
-            labelMonthDropdown: () => "Tháng hiển thị",
-            labelYearDropdown: () => "Năm hiển thị",
-            labelPrevious: () => "Lùi một tháng",
-            labelNext: () => "Tiến một tháng",
-            labelDayButton: (day, modifiers) =>
-              `${calendarDateLabel(calendarDateKey(day))}${modifiers.selected ? ", đã chọn" : ""}`,
-          }}
-          components={{
-            Chevron: ({ orientation }) => {
-              const Icon =
-                orientation === "left"
-                  ? ChevronLeft
-                  : orientation === "right"
-                    ? ChevronRight
-                    : ChevronDown
-              return <Icon className="size-4" aria-hidden="true" />
-            },
-          }}
           className="mt-3 w-full border-t border-border-default px-0 pb-2"
-          classNames={{
-            months: "relative w-full",
-            dropdowns: "flex items-center justify-center gap-2",
-            dropdown_root: "relative rounded-md border border-border-default px-2 py-1.5 text-sm",
-            dropdown: "absolute inset-0 size-full cursor-pointer opacity-0",
-            caption_label:
-              "pointer-events-none flex items-center gap-1 text-sm font-semibold capitalize",
-            day: "p-0 text-center",
-            day_button:
-              "mx-auto size-8 rounded-lg outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-brand-primary/60 sm:size-9",
-          }}
         />
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border-default pt-3">
           <p aria-live="polite" className="text-xs text-text-secondary">

@@ -12,7 +12,7 @@ import { useLocation, useNavigate } from "react-router-dom"
  * Cách nhận biết "có trang trước trong ứng dụng":
  *  - `history.state.idx` là số thứ tự entry mà react-router tự ghi vào history; `0` = entry đầu
  *    tiên, tức chưa có bước nào trước đó. Đây là mốc CHÍNH vì nó đúng cả khi màn hiện tại tới
- *    bằng `replace` — ví dụ khách quét QR rồi `/ban/:qrCode` tự `replace` sang Hoá đơn: lúc đó
+ *    bằng `replace` — ví dụ khách quét QR rồi `/table/:qrCode` tự `replace` sang Hoá đơn: lúc đó
  *    `location.key` đã khác `"default"` nhưng phía sau vẫn KHÔNG có trang nào của ứng dụng.
  *  - Không đọc được `idx` (router khác, history bị can thiệp) thì lùi về mốc `location.key`:
  *    react-router để `"default"` cho entry đầu tiên nó thấy.

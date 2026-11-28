@@ -6,21 +6,27 @@
  * thành công, Cảnh báo món hết, Từ chối) là TRẠNG THÁI/MODAL hiển thị trong route
  * tương ứng chứ không phải route riêng — ghi chú `state của <route>` bên dưới.
  */
-const CUSTOMER_BASE = "/ban/:qrCode"
+export const CUSTOMER_BASE = "/table"
+export const LEGACY_CUSTOMER_BASE = "/ban"
+const CUSTOMER_TABLE = `${CUSTOMER_BASE}/:qrCode`
+
+export function getTableGuestPath(qrCode: string) {
+  return `${CUSTOMER_BASE}/${encodeURIComponent(qrCode)}`
+}
 
 export const CUSTOMER_PATHS = {
-  TABLE_OPEN_QR: `${CUSTOMER_BASE}`, // Mở bàn (QR) — landing sau khi quét QR
-  WAITING_TABLE_OPEN: `${CUSTOMER_BASE}/cho-mo-ban`, // Chờ mở bàn (khi Phục vụ chưa xác nhận)
-  MENU: `${CUSTOMER_BASE}/thuc-don`, // Thực đơn — cũng chứa state "Cảnh báo món hết"
-  SEARCH_DISH: `${CUSTOMER_BASE}/thuc-don/tim-kiem`, // Tìm kiếm món
-  DISH_DETAIL: `${CUSTOMER_BASE}/mon/:dishId`, // Chi tiết món
-  CART: `${CUSTOMER_BASE}/gio-hang`, // Giỏ hàng — cũng chứa state "Giỏ hàng trống"
-  ORDERED_ITEMS: `${CUSTOMER_BASE}/mon-da-goi`, // Món đã gọi — theo dõi trạng thái từng dòng món
-  INVOICE: `${CUSTOMER_BASE}/hoa-don`, // Hóa đơn tạm tính / hóa đơn chốt
-  PAYMENT_QR: `${CUSTOMER_BASE}/thanh-toan-qr`, // Thanh toán QR (chuyển khoản)
-  REQUEST_BILL: `${CUSTOMER_BASE}/yeu-cau-tinh-tien`, // Yêu cầu tính tiền
-  PAYMENT_SUCCESS: `${CUSTOMER_BASE}/thanh-toan-thanh-cong`,
-  PAYMENT_FAILED: `${CUSTOMER_BASE}/thanh-toan-that-bai`,
-  REVIEW: `${CUSTOMER_BASE}/danh-gia`, // Đánh giá sau khi đóng phiên
-  REJECTED: `${CUSTOMER_BASE}/tu-choi`, // Từ chối / Chưa thể gọi món
+  TABLE_OPEN_QR: `${CUSTOMER_TABLE}`, // Mở bàn (QR) — landing sau khi quét QR
+  WAITING_TABLE_OPEN: `${CUSTOMER_TABLE}/waiting-for-table`, // Chờ mở bàn (khi Phục vụ chưa xác nhận)
+  MENU: `${CUSTOMER_TABLE}/menu`, // Thực đơn — cũng chứa state "Cảnh báo món hết"
+  SEARCH_DISH: `${CUSTOMER_TABLE}/menu/search`, // Tìm kiếm món
+  DISH_DETAIL: `${CUSTOMER_TABLE}/dish/:dishId`, // Chi tiết món
+  CART: `${CUSTOMER_TABLE}/cart`, // Giỏ hàng — cũng chứa state "Giỏ hàng trống"
+  ORDERED_ITEMS: `${CUSTOMER_TABLE}/ordered-items`, // Món đã gọi — theo dõi trạng thái từng dòng món
+  INVOICE: `${CUSTOMER_TABLE}/invoice`, // Hóa đơn tạm tính / hóa đơn chốt
+  PAYMENT_QR: `${CUSTOMER_TABLE}/payment-qr`, // Thanh toán QR (chuyển khoản)
+  REQUEST_BILL: `${CUSTOMER_TABLE}/request-bill`, // Yêu cầu tính tiền
+  PAYMENT_SUCCESS: `${CUSTOMER_TABLE}/payment-success`,
+  PAYMENT_FAILED: `${CUSTOMER_TABLE}/payment-failed`,
+  REVIEW: `${CUSTOMER_TABLE}/review`, // Đánh giá sau khi đóng phiên
+  REJECTED: `${CUSTOMER_TABLE}/rejected`, // Từ chối / Chưa thể gọi món
 } as const

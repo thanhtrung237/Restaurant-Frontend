@@ -1,18 +1,16 @@
 import { expect, test } from "@playwright/test"
+import { mockSessionRefresh } from "./staff-session"
 
 test("keeps report filters and export aligned when resizing the page", async ({ page }) => {
   await page.setViewportSize({ width: 1760, height: 900 })
   await page.addInitScript(() => {
-    localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
     localStorage.setItem(
       "pho-viet-auth",
       JSON.stringify({
-        version: 0,
+        version: 1,
         state: {
           role: "RESTAURANT_ADMIN",
           branchId: null,
-          accessToken: "test-token",
-          isAuthenticated: true,
           account: { id: 1, restaurantId: 1, fullName: "Quản trị" },
         },
       }),
@@ -30,7 +28,8 @@ test("keeps report filters and export aligned when resizing the page", async ({ 
     return route.fulfill({ json: { data } })
   })
 
-  await page.goto("/quan-tri-nha-hang/bao-cao")
+  await mockSessionRefresh(page)
+  await page.goto("/restaurant-admin/reports")
   const exportButton = page.getByRole("button", { name: "Xuất báo cáo", exact: true })
   const branch = page.getByRole("button", { name: "Tất cả chi nhánh", exact: true })
   const date = page.getByRole("button", { name: /Chọn khoảng thời gian báo cáo/ })
@@ -66,16 +65,13 @@ for (const width of [390, 1280]) {
     await page.setViewportSize({ width, height: 844 })
     await page.clock.setFixedTime(new Date("2026-11-21T05:00:00Z"))
     await page.addInitScript(() => {
-      localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
       localStorage.setItem(
         "pho-viet-auth",
         JSON.stringify({
-          version: 0,
+          version: 1,
           state: {
             role: "BRANCH_MANAGER",
             branchId: 2,
-            accessToken: "test-token",
-            isAuthenticated: true,
             account: { id: 1, restaurantId: 1, fullName: "Quản lý" },
           },
         }),
@@ -110,7 +106,8 @@ for (const width of [390, 1280]) {
       await route.fulfill({ json: { data } })
     })
 
-    await page.goto("/quan-ly-chi-nhanh/bao-cao")
+    await mockSessionRefresh(page)
+    await page.goto("/branch-manager/reports")
     await expect(page.getByText("Chưa có doanh thu trong khoảng này")).toBeVisible()
     const paymentChart = page.getByRole("region", { name: "Phương thức thanh toán" })
     await expect(paymentChart.getByText("Chưa có thanh toán phát sinh")).toBeVisible()

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import { mockSessionRefresh } from "./staff-session"
 
 test("editing a dish loads saved options and can add, remove and relink groups", async ({
   page,
@@ -27,17 +28,14 @@ test("editing a dish loads saved options and can add, remove and relink groups",
   })
 
   await page.addInitScript(() => {
-    localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
     localStorage.setItem(
       "pho-viet-auth",
       JSON.stringify({
-        version: 0,
+        version: 1,
         state: {
           role: "RESTAURANT_ADMIN",
           branchId: null,
           assignmentId: 7,
-          accessToken: "test-token",
-          isAuthenticated: true,
           account: { id: 1, restaurantId: 1, fullName: "Quản trị test" },
         },
       }),
@@ -79,7 +77,8 @@ test("editing a dish loads saved options and can add, remove and relink groups",
     return route.fulfill({ headers, json: { data } })
   })
 
-  await page.goto("/quan-tri-nha-hang/thuc-don")
+  await mockSessionRefresh(page)
+  await page.goto("/restaurant-admin/menu")
   const edit = page.getByRole("button", { name: "Chỉnh sửa món: Tàu hủ" })
   const dialog = page.getByRole("dialog", { name: "Sửa món" })
   const save = dialog.getByRole("button", { name: "Lưu thay đổi" })

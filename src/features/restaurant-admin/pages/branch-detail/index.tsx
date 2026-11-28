@@ -14,7 +14,7 @@ export default function BranchDetailPage() {
   const currentBranchId = Number(branchId) || 1
 
   const handleConfigBranch = () => {
-    navigate(`${RESTAURANT_ADMIN_PATHS.BRANCH}/${currentBranchId}/cau-hinh`)
+    navigate(`${RESTAURANT_ADMIN_PATHS.BRANCH}/${currentBranchId}/settings`)
   }
 
   return <SharedBranchDetailPage branchId={currentBranchId} onConfigBranch={handleConfigBranch} />

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test"
+import { mockSessionRefresh } from "./staff-session"
 
-const mapUrl = "/quan-ly-chi-nhanh/so-do-ban"
+const mapUrl = "/branch-manager/table-map"
 const tables = Array.from({ length: 13 }, (_, index) => ({
   id: index + 1,
   branchId: 2,
@@ -36,7 +37,6 @@ for (const waiterBranch of [2, 3]) {
           accountId: 1,
           restaurantId: 1,
           accessToken: "test-token",
-          refreshToken: "test-refresh",
         }
       }
       if (path.endsWith("/accounts/1")) {
@@ -63,7 +63,7 @@ for (const waiterBranch of [2, 3]) {
       return route.fulfill({ json: { data } })
     })
 
-    await page.goto("/dang-nhap")
+    await page.goto("/login")
     await page.locator("#restaurantCode").fill("TEST")
     await page.getByLabel("Tên đăng nhập").fill("thungan4")
     await page.getByLabel("Mật khẩu", { exact: true }).fill("test-password")
@@ -72,24 +72,27 @@ for (const waiterBranch of [2, 3]) {
     if (waiterBranch !== 2) {
       await expect(page.getByRole("heading", { name: "Chọn vai trò đăng nhập" })).toBeVisible()
       await page.getByRole("button", { name: /^Thu ngân/ }).click()
-      await expect(page).toHaveURL("/thu-ngan/so-do-ban")
-      await page.goto("/thu-ngan/order-che-bien")
-      await expect(page).toHaveURL("/khong-co-quyen-truy-cap")
+      await expect(page).toHaveURL("/cashier/table-map")
+      await mockSessionRefresh(page)
+      await page.goto("/cashier/orders-and-prep")
+      await expect(page).toHaveURL("/forbidden")
       return
     }
 
-    await expect(page).toHaveURL("/thu-ngan/so-do-ban")
+    await expect(page).toHaveURL("/cashier/table-map")
     await expect(page.getByRole("link", { name: "Gọi món & Chế biến" }).first()).toBeVisible()
+    await mockSessionRefresh(page)
     await page.reload()
     await page.getByRole("button", { name: /Bàn 02.*Chờ mở bàn/ }).click()
     const dialog = page.getByRole("dialog", { name: /Xác nhận mở bàn.*Bàn 02/ })
     await dialog.locator('button[type="submit"]').click()
     await expect.poll(() => opened).toBe(true)
     await page.getByRole("button", { name: /Bàn 02.*Đang phục vụ/ }).click()
-    await expect(page).toHaveURL("/thu-ngan/order/31")
-    await page.goto("/thu-ngan/so-do-ban")
+    await expect(page).toHaveURL("/cashier/order/31")
+    await mockSessionRefresh(page)
+    await page.goto("/cashier/table-map")
     await page.getByRole("button", { name: /Bàn 07.*Chờ thanh toán/ }).click()
-    await expect(page).toHaveURL("/thu-ngan/thanh-toan/33")
+    await expect(page).toHaveURL("/cashier/checkout/33")
   })
 }
 
@@ -105,16 +108,13 @@ async function mockMap(
 ) {
   const requests = { tables: 0, sessions: 0 }
   await page.addInitScript((role) => {
-    localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken: "test-token" }))
     localStorage.setItem(
       "pho-viet-auth",
       JSON.stringify({
-        version: 0,
+        version: 1,
         state: {
           role,
           branchId: 2,
-          accessToken: "test-token",
-          isAuthenticated: true,
           account: { id: 1, restaurantId: 1, fullName: "Nguyễn Tấn Tài" },
         },
       }),
@@ -201,7 +201,8 @@ test("cashier receives distinct live notices for an opened QR and a verified tra
     })
     socket.send("o")
   })
-  await page.goto("/thu-ngan/so-do-ban")
+  await mockSessionRefresh(page)
+  await page.goto("/cashier/table-map")
   await expect.poll(() => Boolean(receive)).toBe(true)
   receive!("PAYMENT_QR_OPENED", 101)
   await expect(page.getByText("Khách đã mở mã QR thanh toán", { exact: true })).toBeVisible()
@@ -264,6 +265,7 @@ test("staff receives an open-table request and can find the waiting table from t
     socket.send("o")
   })
 
+  await mockSessionRefresh(page)
   await page.goto(mapUrl)
   await expect(page.getByRole("button", { name: /Bàn 02.*Chờ mở bàn/ })).toBeVisible()
   await expect.poll(() => Boolean(deliver)).toBe(true)
@@ -287,7 +289,7 @@ test("staff receives an open-table request and can find the waiting table from t
   )
   await inbox.getByRole("button", { name: /Khách yêu cầu mở bàn.*Bàn 02/ }).click()
   await markedRead
-  await expect(page).toHaveURL(/so-do-ban\?table=2$/)
+  await expect(page).toHaveURL(/table-map\?table=2$/)
   await page.getByRole("button", { name: /Bàn 02.*Chờ mở bàn/ }).click()
   await expect(page.getByRole("dialog", { name: "Mở bàn Bàn 02" })).toBeVisible()
 })
@@ -312,6 +314,7 @@ test("shows new open-table requests from the inbox while the socket is unavailab
   )
 
   const inboxLoaded = page.waitForResponse("**/api/v1/staff-notifications/branch/2**")
+  await mockSessionRefresh(page)
   await page.goto(mapUrl)
   await inboxLoaded
   const toasts = page.locator(".toast-card").filter({ hasText: "Khách yêu cầu mở bàn" })
@@ -327,6 +330,7 @@ test("shows the role below the name and layers sidebar notifications above the t
 }) => {
   await page.setViewportSize({ width: 1440, height: 700 })
   await mockMap(page)
+  await mockSessionRefresh(page)
   await page.goto(mapUrl)
 
   const sidebar = page.getByRole("complementary").filter({ hasText: "Nguyễn Tấn Tài" })
@@ -374,6 +378,7 @@ test("keeps table map actions in one row after resizing and toggling the sidebar
   await page.route("**/api/v1/operational-permissions/branches/2/me", (route) =>
     route.fulfill({ json: { data: ["RESERVE_TABLE"] } }),
   )
+  await mockSessionRefresh(page)
   await page.goto(mapUrl)
   const book = page.getByRole("button", { name: "Đặt bàn", exact: true })
   const toolbar = book.locator("..")
@@ -561,7 +566,8 @@ test("keeps order notifications on the kitchen queue, selects the exact round an
     })
     socket.send("o")
   })
-  await page.goto("/quan-ly-chi-nhanh/order-che-bien")
+  await mockSessionRefresh(page)
+  await page.goto("/branch-manager/orders-and-prep")
   await page.getByRole("button", { name: /^Đang chế biến/ }).click()
   await expect.poll(() => Boolean(pushOrder)).toBe(true)
   pushOrder!(101, 1)
@@ -581,7 +587,7 @@ test("keeps order notifications on the kitchen queue, selects the exact round an
   await panel.getByText("3 lượt gọi · 3 chưa đọc", { exact: true }).click()
   await expect(panel.getByRole("button", { name: /Lượt gọi #102/ })).toHaveCount(1)
   await panel.getByRole("button", { name: /Lượt gọi #101/ }).click()
-  await expect(page).toHaveURL(/\/order-che-bien\?session=31&round=101$/)
+  await expect(page).toHaveURL(/\/orders-and-prep\?session=31&round=101$/)
   const ticket = page.getByRole("article", { name: "bàn là", exact: true })
   await expect(ticket.getByText("1 phần · Lượt #101")).toBeInViewport()
   await expect(page.getByRole("article", { name: "Bàn khác" })).toBeVisible()
@@ -590,16 +596,17 @@ test("keeps order notifications on the kitchen queue, selects the exact round an
   await expect(review.getByText("Đã chọn 1/3 phần")).toBeVisible()
   await page.keyboard.press("Escape")
   await expect(panel).toBeHidden()
+  await mockSessionRefresh(page)
   await page.reload()
   await bell.click()
   await expect(panel.getByText("3 lượt gọi · 2 chưa đọc", { exact: true })).toBeVisible()
   await panel.getByText("3 lượt gọi · 2 chưa đọc", { exact: true }).click()
   await panel.getByRole("button", { name: /Lượt gọi #103/ }).click()
-  await expect(page).toHaveURL(/\/order-che-bien\?session=31&round=103$/)
+  await expect(page).toHaveURL(/\/orders-and-prep\?session=31&round=103$/)
   await expect(page.getByText("Đã rời hàng chế biến.")).toBeVisible()
   await expect(page.getByRole("link", { name: "Xem đơn món" })).toHaveAttribute(
     "href",
-    "/quan-ly-chi-nhanh/order/31?round=103",
+    "/branch-manager/order/31?round=103",
   )
   await bell.click()
   await panel.getByRole("button", { name: "Đóng thông báo" }).click()
@@ -609,6 +616,7 @@ test("keeps order notifications on the kitchen queue, selects the exact round an
   await panel.getByRole("button", { name: "Tùy chọn thông báo" }).click()
   await panel.getByRole("button", { name: "Ẩn tất cả của tôi" }).click()
   await expect(panel.getByText("Chưa có thông báo nào")).toBeVisible()
+  await mockSessionRefresh(page)
   await page.reload()
   await bell.click()
   await expect(panel.getByText("Chưa có thông báo nào")).toBeVisible()
@@ -656,6 +664,7 @@ test("staff calls can be resolved from the table, payment opens checkout and clo
       },
     })
   })
+  await mockSessionRefresh(page)
   await page.goto(mapUrl)
   const bell = page
     .getByRole("complementary")
@@ -674,7 +683,7 @@ test("staff calls can be resolved from the table, payment opens checkout and clo
   await expect(call.getByText("Đã xử lý", { exact: true })).toBeVisible()
   await bell.click()
   await panel.getByRole("button", { name: /Yêu cầu tính tiền.*Bàn 7/ }).click()
-  await expect(page).toHaveURL(/\/thanh-toan\/33$/)
+  await expect(page).toHaveURL(/\/checkout\/33$/)
 })
 
 test("groups tables by area and supports touch-sized cards and search on mobile", async ({
@@ -682,6 +691,7 @@ test("groups tables by area and supports touch-sized cards and search on mobile"
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockMap(page)
+  await mockSessionRefresh(page)
   await page.goto(mapUrl)
 
   const floor = page.getByRole("region", { name: "Tầng 1", exact: true })
@@ -750,6 +760,7 @@ test("shows a retry for initial API errors and distinguishes a recovered empty b
     tablesData: [],
     permissions: ["RESERVE_TABLE"],
   })
+  await mockSessionRefresh(page)
   await page.goto(mapUrl)
   const alert = page.getByRole("alert").filter({ hasText: "Không tải được sơ đồ bàn" })
   await expect(alert).toBeVisible({ timeout: 12000 })
@@ -773,6 +784,7 @@ test("combines area, minimum capacity, status and search and resets them togethe
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockMap(page)
+  await mockSessionRefresh(page)
   await page.goto(mapUrl)
 
   const area = page.getByRole("combobox", { name: "Khu vực", exact: true })
@@ -817,6 +829,7 @@ test("retains the last table states but disables interaction while session data 
 }) => {
   let healthy = true
   await mockMap(page, { sessionsStatus: () => (healthy ? 200 : 500) })
+  await mockSessionRefresh(page)
   await page.goto(mapUrl)
   const table = page.getByRole("button", { name: /^Bàn 07/ })
   await expect(table).toBeEnabled()

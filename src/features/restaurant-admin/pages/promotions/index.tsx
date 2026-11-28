@@ -109,7 +109,7 @@ export default function PromotionsPage({
 
   // Chỉnh sửa khuyến mãi
   const handleEditPromotion = (promotion: Promotion) => {
-    navigate(`${editBasePath}/${promotion.id}/chinh-sua`)
+    navigate(`${editBasePath}/${promotion.id}/edit`)
   }
 
   // Xoá khuyến mãi (Đã có AlertDialog xác nhận trong PromotionTable)

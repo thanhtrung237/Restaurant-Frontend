@@ -2,11 +2,10 @@ import { getStaffPaymentPaths } from "@/app/router/paths/staff-payment.paths"
 import { takeawayListPath } from "@/app/router/paths/takeaway.paths"
 import * as React from "react"
 import { useNavigate, useParams, generatePath } from "react-router-dom"
-import { FileStack, ChevronLeft, Trash2, TriangleAlert } from "lucide-react"
+import { ChevronLeft, Trash2, TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Divider } from "@/components/ui/divider"
 import { StatusBadge } from "@/components/common/StatusBadge"
-import { HeaderOverflowMenu, type OverflowMenuAction } from "@/components/layout/HeaderOverflowMenu"
 import { useInvoiceBySession } from "@/api/invoices.api"
 import {
   useSaveInvoiceDiscount,
@@ -339,30 +338,6 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
     }
   }
 
-  const handleSplitInvoice = React.useCallback(() => {
-    toast({
-      title: "Tách hóa đơn",
-      description: "Tính năng tách hóa đơn sẽ được triển khai ở phase tiếp theo.",
-    })
-  }, [toast])
-
-  // Header mobile — phải gọi TRƯỚC các nhánh return sớm bên dưới (quy tắc hook).
-  // "Tách hóa đơn" là thao tác phụ, đặc tả không yêu cầu, nên ở <md nó vào menu "⋯".
-  const checkoutOverflowActions = React.useMemo<OverflowMenuAction[]>(
-    () => [
-      {
-        key: "split-invoice",
-        label: "Tách hóa đơn",
-        icon: FileStack,
-        onSelect: handleSplitInvoice,
-      },
-    ],
-    [handleSplitInvoice],
-  )
-  const checkoutHeaderOverflow = React.useMemo(
-    () => <HeaderOverflowMenu actions={checkoutOverflowActions} />,
-    [checkoutOverflowActions],
-  )
   usePageHeader({
     title: session
       ? `${session.tableName || `Bàn #${session.tableId}`} · ${session.takeaway ? "Thanh toán" : "Chốt bàn"}`
@@ -370,7 +345,6 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
     subtitle: session
       ? `${session.guestCount || 0} khách · Phiên #${session.id} · ${currentUser?.fullName || "Thu ngân"}`
       : undefined,
-    headerActions: checkoutHeaderOverflow,
   })
 
   // Loading state
@@ -720,7 +694,7 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
         ) : null}
 
         {grandTotal > 0 ? (
-          <div className="mt-3 space-y-3">
+          <div className="mt-3">
             <Button
               className="w-full bg-brand-primary-hover px-3 hover:bg-[#b93617]"
               size="lg"
@@ -729,15 +703,6 @@ function Checkout({ tableSessionId }: { tableSessionId?: number }) {
               aria-describedby="checkout-cash-status"
             >
               {isIssuingInvoice ? "Đang xử lý..." : "Thu tiền & phát hành hóa đơn"}
-            </Button>
-            <Button
-              variant="outline"
-              className="hidden w-full md:inline-flex"
-              size="lg"
-              onClick={handleSplitInvoice}
-            >
-              <FileStack className="size-4" />
-              Tách hóa đơn
             </Button>
           </div>
         ) : null}

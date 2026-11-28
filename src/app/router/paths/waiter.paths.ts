@@ -1,4 +1,4 @@
-const WAITER_BASE = "/phuc-vu"
+const WAITER_BASE = "/waiter"
 
 /**
  * URI cho Phục vụ (mục 4.1: phạm vi Chi nhánh).
@@ -8,11 +8,11 @@ const WAITER_BASE = "/phuc-vu"
  * cấu hình (mục 4.2, 4.3) — đã bỏ các path đó khỏi file này.
  */
 export const WAITER_PATHS = {
-  TABLE_MAP: `${WAITER_BASE}/so-do-ban`, // Sơ đồ bàn — trang chủ của Phục vụ
-  ORDER_AND_PREP: `${WAITER_BASE}/order-che-bien`, // Gọi món & Chế biến
+  TABLE_MAP: `${WAITER_BASE}/table-map`, // Sơ đồ bàn — trang chủ của Phục vụ
+  ORDER_AND_PREP: `${WAITER_BASE}/orders-and-prep`, // Gọi món & Chế biến
   // ORDER_CONFIRM removed: kitchen staff now confirms items directly in KDS (PENDING → PREPARING)
   ORDER_DETAIL: `${WAITER_BASE}/order/:orderId`, // Order chi tiết
-  ADD_DISH: `${WAITER_BASE}/order/:orderId/them-mon`, // Thêm món vào bàn (orderId ở đây thực chất là tableSessionId)
-  KITCHEN_DISPLAY: `${WAITER_BASE}/bep`, // Bếp (KDS) — phiếu bếp theo trạng thái
-  TRANSFER_MERGE_TABLE: `${WAITER_BASE}/chuyen-gop-ban`, // Chuyển / Gộp bàn (cần duyệt — quyền A)
+  ADD_DISH: `${WAITER_BASE}/order/:orderId/add-items`, // Thêm món vào bàn (orderId ở đây thực chất là tableSessionId)
+  KITCHEN_DISPLAY: `${WAITER_BASE}/kitchen`, // Bếp (KDS) — phiếu bếp theo trạng thái
+  TRANSFER_MERGE_TABLE: `${WAITER_BASE}/transfer-merge-tables`, // Chuyển / Gộp bàn (cần duyệt — quyền A)
 } as const

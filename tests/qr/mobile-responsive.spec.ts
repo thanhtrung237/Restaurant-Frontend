@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test"
+import { mockSessionRefresh } from "./staff-session"
 
 const branch = {
   id: 2,
@@ -30,17 +31,13 @@ async function openApp(page: Page, role: TestRole) {
         return
       }
 
-      const accessToken = "mobile-staff"
       const platform = role === "PLATFORM_ADMIN"
-      localStorage.setItem("pho-viet-auth-tokens", JSON.stringify({ accessToken }))
       localStorage.setItem(
         "pho-viet-auth",
         JSON.stringify({
-          version: 0,
+          version: 1,
           state: {
             role,
-            accessToken,
-            isAuthenticated: true,
             branchId: platform ? null : 2,
             account: { id: 1, restaurantId: platform ? null : 1, fullName: "Quản trị viên" },
           },
@@ -133,7 +130,8 @@ for (const width of [320, 360, 390, 430]) {
   test("table map header and filters fit at " + width + "px", async ({ page }) => {
     await page.setViewportSize({ width, height: 800 })
     await openApp(page, "RESTAURANT_ADMIN")
-    await page.goto("/quan-tri-nha-hang/so-do-ban")
+    await mockSessionRefresh(page, "mobile-staff")
+    await page.goto("/restaurant-admin/table-map")
     const header = page.locator("main > div > header").first()
     await withinViewport(header.getByRole("heading", { name: "Sơ đồ bàn" }))
     await withinViewport(header.locator("p"))
@@ -157,7 +155,8 @@ for (const width of [320, 360, 390, 430]) {
 test("report and branch tabs stay visible and actionable at 320px", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 800 })
   await openApp(page, "RESTAURANT_ADMIN")
-  for (const path of ["/quan-tri-nha-hang/bao-cao", "/quan-tri-nha-hang/chi-nhanh/2"]) {
+  for (const path of ["/restaurant-admin/reports", "/restaurant-admin/branches/2"]) {
+    await mockSessionRefresh(page, "mobile-staff")
     await page.goto(path)
     const tabs = page.getByRole("tablist").getByRole("tab")
     await expect(tabs).toHaveCount(3)
@@ -174,7 +173,8 @@ test("report and branch tabs stay visible and actionable at 320px", async ({ pag
 test("staff navigation and menu tabs remain accessible at 320px", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 800 })
   await openApp(page, "RESTAURANT_ADMIN")
-  await page.goto("/quan-tri-nha-hang/thuc-don")
+  await mockSessionRefresh(page, "mobile-staff")
+  await page.goto("/restaurant-admin/menu")
   const menu = page.getByRole("navigation", { name: "Phạm vi thực đơn" }).filter({ visible: true })
   for (const label of ["Thực đơn chung", "Theo chi nhánh"]) {
     const button = menu.getByRole("button", { name: label, exact: true })
@@ -191,7 +191,7 @@ test("staff navigation and menu tabs remain accessible at 320px", async ({ page 
     await withinViewport(tabs.getByRole("button", { name: label, exact: true }))
   }
   await tabs.getByRole("button", { name: "Vai trò & phân quyền" }).click()
-  await expect(page).toHaveURL(/vai-tro-phan-quyen$/)
+  await expect(page).toHaveURL(/roles-permissions$/)
   await noPageOverflow(page)
 })
 
@@ -200,8 +200,9 @@ test("legacy platform settings opens the dashboard and keeps audit navigation ac
 }) => {
   await page.setViewportSize({ width: 320, height: 800 })
   await openApp(page, "PLATFORM_ADMIN")
-  await page.goto("/quan-tri-nen-tang/cau-hinh")
-  await expect(page).toHaveURL(/\/quan-tri-nen-tang$/)
+  await mockSessionRefresh(page, "mobile-staff")
+  await page.goto("/platform-admin/settings")
+  await expect(page).toHaveURL(/\/platform-admin$/)
   await expect(page.getByRole("heading", { name: "Tổng quan nền tảng" })).toBeVisible()
   await expect(page.getByText("Cấu hình nền tảng", { exact: true })).toHaveCount(0)
   await noPageOverflow(page)
@@ -216,7 +217,7 @@ test("customer can reach the last long category without scrolling the page sidew
 }) => {
   await page.setViewportSize({ width: 320, height: 800 })
   await openApp(page, "GUEST")
-  await page.goto("/ban/" + qr + "/thuc-don")
+  await page.goto("/table/" + qr + "/menu")
   const categories = page.getByRole("group", { name: "Danh mục món" })
   const last = categories.getByRole("button").last()
   await expect(last).toHaveText("Danh mục cuối có tên dài trên màn hình nhỏ")
@@ -231,7 +232,8 @@ for (const width of [768, 1440]) {
   test("staff layout keeps the tablet and desktop header at " + width + "px", async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await openApp(page, "RESTAURANT_ADMIN")
-    await page.goto("/quan-tri-nha-hang/so-do-ban")
+    await mockSessionRefresh(page, "mobile-staff")
+    await page.goto("/restaurant-admin/table-map")
     await expect(page.locator("main > div > header").first()).toBeHidden()
     await expect(page.getByRole("heading", { name: "Sơ đồ bàn", exact: true })).toBeVisible()
     await noPageOverflow(page)
@@ -240,34 +242,34 @@ for (const width of [768, 1440]) {
 
 const mobileScreens = {
   RESTAURANT_ADMIN: [
-    "/quan-tri-nha-hang/so-do-ban?mode=takeaway",
-    "/quan-tri-nha-hang/bep",
-    "/quan-tri-nha-hang/order/12",
-    "/quan-tri-nha-hang/order/12/them-mon",
-    "/quan-tri-nha-hang/chuyen-gop-ban",
-    "/quan-tri-nha-hang/khuyen-mai",
-    "/quan-tri-nha-hang/khuyen-mai/tao-moi",
-    "/quan-tri-nha-hang/chi-nhanh",
-    "/quan-tri-nha-hang/chi-nhanh/2/cau-hinh",
-    "/quan-tri-nha-hang/chi-nhanh/2/thue-phi",
-    "/quan-tri-nha-hang/cau-hinh",
-    "/quan-tri-nha-hang/nhat-ky",
+    "/restaurant-admin/table-map?mode=takeaway",
+    "/restaurant-admin/kitchen",
+    "/restaurant-admin/order/12",
+    "/restaurant-admin/order/12/add-items",
+    "/restaurant-admin/transfer-merge-tables",
+    "/restaurant-admin/promotions",
+    "/restaurant-admin/promotions/new",
+    "/restaurant-admin/branches",
+    "/restaurant-admin/branches/2/settings",
+    "/restaurant-admin/branches/2/taxes-fees",
+    "/restaurant-admin/settings",
+    "/restaurant-admin/audit-log",
   ],
   PLATFORM_ADMIN: [
-    "/quan-tri-nen-tang",
-    "/quan-tri-nen-tang/nha-hang",
-    "/quan-tri-nen-tang/nha-hang/1",
-    "/quan-tri-nen-tang/nhat-ky-he-thong",
+    "/platform-admin",
+    "/platform-admin/restaurants",
+    "/platform-admin/restaurants/1",
+    "/platform-admin/system-audit-log",
   ],
-  BRANCH_MANAGER: ["/quan-ly-chi-nhanh/nhan-vien", "/quan-ly-chi-nhanh/thuc-don"],
-  WAITER: ["/phuc-vu/so-do-ban", "/phuc-vu/order/12"],
-  CASHIER: ["/thu-ngan/hoa-don", "/thu-ngan/thanh-toan/12"],
+  BRANCH_MANAGER: ["/branch-manager/staff", "/branch-manager/menu"],
+  WAITER: ["/waiter/table-map", "/waiter/order/12"],
+  CASHIER: ["/cashier/invoices", "/cashier/checkout/12"],
   GUEST: [
-    "/ban/" + qr + "/thuc-don/tim-kiem",
-    "/ban/" + qr + "/gio-hang",
-    "/ban/" + qr + "/mon-da-goi",
-    "/ban/" + qr + "/hoa-don",
-    "/ban/" + qr + "/thanh-toan-qr",
+    "/table/" + qr + "/menu/search",
+    "/table/" + qr + "/cart",
+    "/table/" + qr + "/ordered-items",
+    "/table/" + qr + "/invoice",
+    "/table/" + qr + "/payment-qr",
   ],
 } as const
 
@@ -277,8 +279,9 @@ for (const role of Object.keys(mobileScreens) as TestRole[]) {
     await openApp(page, role)
     for (const path of mobileScreens[role]) {
       await test.step(path, async () => {
+        await mockSessionRefresh(page, "mobile-staff")
         await page.goto(path)
-        const screen = path.endsWith("/tim-kiem")
+        const screen = path.endsWith("/search")
           ? page.getByPlaceholder("Tìm món trong thực đơn...")
           : page.getByRole("heading").first()
         await expect(screen).toBeVisible()
@@ -302,7 +305,7 @@ for (const role of Object.keys(mobileScreens) as TestRole[]) {
 
 test("login fits at 320px", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 800 })
-  await page.goto("/dang-nhap")
+  await page.goto("/login")
   await withinViewport(page.getByRole("button", { name: "Đăng nhập", exact: true }))
   await noPageOverflow(page)
 })

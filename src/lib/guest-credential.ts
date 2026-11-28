@@ -1,3 +1,5 @@
+import { CUSTOMER_BASE, LEGACY_CUSTOMER_BASE } from "@/app/router/paths/customer.paths"
+
 /** A guest capability is kept per tab. Never manufacture credentials from session IDs. */
 const KEY = "restaurant-guest-credential-v1"
 interface Credential {
@@ -28,5 +30,6 @@ export function clearGuestCredential() {
   sessionStorage.removeItem(KEY)
 }
 export function isCustomerPage() {
-  return window.location.pathname.startsWith("/ban/")
+  const pathname = window.location.pathname.toLowerCase()
+  return [CUSTOMER_BASE, LEGACY_CUSTOMER_BASE].some((base) => pathname.startsWith(`${base}/`))
 }

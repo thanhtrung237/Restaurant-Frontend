@@ -392,8 +392,8 @@ export default function OrderDetailPage() {
    * Đường dẫn Sơ đồ bàn theo ĐÚNG vai trò.
    *
    * Trước đây dùng `navigate("../..")`: điều hướng tương đối của react-router tính theo cây
-   * ROUTE chứ không theo đoạn URL, nên từ `/quan-ly-chi-nhanh/order/:id` nó nhảy ra `/`
-   * — mà `/` lại redirect sang `/dang-nhap`. Người dùng hủy phiên xong bị ném về màn đăng
+   * ROUTE chứ không theo đoạn URL, nên từ `/branch-manager/order/:id` nó nhảy ra `/`
+   * — mà `/` lại redirect sang `/login`. Người dùng hủy phiên xong bị ném về màn đăng
    * nhập dù vẫn còn đăng nhập. Chỉ đường tuyệt đối mới chắc.
    */
   const tableMapPath =
@@ -768,10 +768,10 @@ export default function OrderDetailPage() {
             <div className="mt-6 space-y-3">
               <button
                 type="button"
-                // Route con "them-mon" của chính route hiện tại (order/:orderId) — relative
+                // Route con "add-items" của chính route hiện tại (order/:orderId) — relative
                 // navigate nên tự khớp đúng prefix theo vai trò (/phuc-vu, /quan-ly-chi-nhanh,
                 // /quan-tri-nha-hang) mà KHÔNG cần hardcode. Xem ADD_DISH trong *.paths.ts.
-                onClick={() => navigate("them-mon")}
+                onClick={() => navigate("add-items")}
                 disabled={Boolean(session?.takeaway && session.status !== "SERVING")}
                 className="w-full h-12 rounded-xl bg-brand-primary hover:bg-brand-primary-hover active:scale-[0.99] text-text-on-brand font-bold text-sm sm:text-base transition-all shadow-xs cursor-pointer"
               >
@@ -805,7 +805,7 @@ export default function OrderDetailPage() {
         <Button
           type="button"
           className="h-11 flex-1 font-bold"
-          onClick={() => navigate("them-mon")}
+          onClick={() => navigate("add-items")}
           disabled={Boolean(session?.takeaway && session.status !== "SERVING")}
         >
           + Thêm món
